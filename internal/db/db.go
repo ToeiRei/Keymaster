@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	_ "github.com/mattn/go-sqlite3" // SQLite driver
 	"github.com/toeirei/keymaster/internal/model"
+	_ "modernc.org/sqlite" // Pure Go SQLite driver
 )
 
 var (
@@ -19,7 +19,7 @@ var (
 // It's safe to call this multiple times.
 func InitDB(dataSourceName string) (*sql.DB, error) {
 	once.Do(func() {
-		db, err = sql.Open("sqlite3", dataSourceName)
+		db, err = sql.Open("sqlite", dataSourceName)
 		if err != nil {
 			return
 		}
