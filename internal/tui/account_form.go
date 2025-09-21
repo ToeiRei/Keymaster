@@ -10,6 +10,9 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 )
 
+// A simple style for focused text inputs.
+var focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("170"))
+
 // A message to signal that an account was created and we should go back to the list.
 type accountCreatedMsg struct{}
 
@@ -27,17 +30,19 @@ func newAccountFormModel() accountFormModel {
 	var t textinput.Model
 	for i := range m.inputs {
 		t = textinput.New()
-		t.Cursor.Style = selectedItemStyle
+		t.Cursor.Style = focusedStyle
 		t.CharLimit = 64
+		t.Width = 40 // Give the input a fixed width
 
 		switch i {
 		case 0:
-			t.Placeholder = "Username (e.g., deploy)"
+			t.Prompt = "Username: "
+			t.Placeholder = "user" // A more descriptive placeholder
 			t.Focus()
-			t.PromptStyle = selectedItemStyle
-			t.TextStyle = selectedItemStyle
+			t.TextStyle = focusedStyle
 		case 1:
-			t.Placeholder = "Hostname (e.g., www.example.com)"
+			t.Prompt = "Hostname: "
+			t.Placeholder = "www.example.com"
 		}
 		m.inputs[i] = t
 	}
@@ -96,12 +101,10 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			for i := 0; i <= len(m.inputs)-1; i++ {
 				if i == m.focusIndex {
 					cmds[i] = m.inputs[i].Focus()
-					m.inputs[i].PromptStyle = selectedItemStyle
-					m.inputs[i].TextStyle = selectedItemStyle
+					m.inputs[i].TextStyle = focusedStyle
 					continue
 				}
 				m.inputs[i].Blur()
-				m.inputs[i].PromptStyle = lipgloss.NewStyle()
 				m.inputs[i].TextStyle = lipgloss.NewStyle()
 			}
 
