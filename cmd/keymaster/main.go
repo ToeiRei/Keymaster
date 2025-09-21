@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/toeirei/keymaster/internal/tui"
 )
 
 func main() {
@@ -31,6 +32,7 @@ func init() {
 	rootCmd.AddCommand(deployCmd)
 	rootCmd.AddCommand(rotateKeyCmd)
 	rootCmd.AddCommand(auditCmd)
+	rootCmd.AddCommand(uiCmd)
 }
 
 var deployCmd = &cobra.Command{
@@ -81,5 +83,14 @@ var auditCmd = &cobra.Command{
 		//    b. Parse the sequence number
 		//    c. Compare with sequence number in DB and report drift
 		fmt.Println("Audit complete.")
+	},
+}
+
+var uiCmd = &cobra.Command{
+	Use:   "ui",
+	Short: "Launch the Keymaster interactive TUI console",
+	Long:  `Starts a terminal-based user interface for managing hosts, users, and keys interactively.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		tui.Run()
 	},
 }
