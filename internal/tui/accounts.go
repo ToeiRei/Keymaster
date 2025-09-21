@@ -12,8 +12,20 @@ import (
 // A message to signal that we should go back to the main menu.
 type backToMenuMsg struct{}
 
+// A message to signal that we should go back to the accounts list from the form.
+type backToAccountsMsg struct{}
+
+type accountsViewState int
+
+const (
+	accountsListView accountsViewState = iota
+	accountsFormView
+)
+
 // accountsModel is the model for the account management view.
 type accountsModel struct {
+	state    accountsViewState
+	form     accountFormModel
 	accounts []model.Account
 	cursor   int
 	status   string // For showing status messages like "Deleted..."
@@ -35,6 +47,31 @@ func (m accountsModel) Init() tea.Cmd {
 }
 
 func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	// Delegate updates to the form if it's active.
+	if m.state == accountsFormView {
+		// If the form signals an account was created, switch back to the list and refresh.
+		if _, ok := msg.(accountCreatedMsg); ok {
+			m.state = accountsListView
+			m.status = "Successfully added new account."
+			m.accounts, m.err = db.GetAllAccounts()
+			return m, nil
+		}
+		// If the form signals to go back, just switch the view.
+		if _, ok := msg.(backToAccountsMsg); ok {
+			m.state = accountsListView
+			m.status = "" // Clear any status
+			return m, nil
+		}
+
+		var newFormModel tea.Model
+		newFormModel, cmd = m.form.Update(msg)
+		m.form = newFormModel.(accountFormModel)
+		return m, cmd
+	}
+
+	// --- This is the list view update logic ---
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -72,16 +109,24 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
-		// TODO: Add a new account.
+		// Switch to the form view to add a new account.
 		case "a":
-			m.status = "Add functionality is not yet implemented."
-			return m, nil
+			m.state = accountsFormView
+			m.form = newAccountFormModel()
+			m.status = "" // Clear status before showing form
+			return m, m.form.Init()
 		}
 	}
 	return m, nil
 }
 
 func (m accountsModel) View() string {
+	// If we're in the form view, render that instead.
+	if m.state == accountsFormView {
+		return m.form.View()
+	}
+
+	// --- This is the list view rendering ---
 	var b strings.Builder
 
 	b.WriteString(titleStyle.Render("🔑 Manage Accounts"))
