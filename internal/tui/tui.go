@@ -1,12 +1,14 @@
 package tui
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/internal/db"
 )
 
 // --- STYLING ---
@@ -31,89 +33,137 @@ var (
 			Foreground(lipgloss.Color("240")) // A muted gray
 )
 
-// model holds the state of our TUI.
-type model struct {
+// viewState represents which part of the UI is currently active.
+type viewState int
+
+const (
+	menuView viewState = iota
+	accountsView
+)
+
+// mainModel is the top-level model for the TUI. It manages which view is currently active.
+type mainModel struct {
+	state    viewState
+	menu     menuModel
+	accounts accountsModel
+	db       *sql.DB
+	err      error
+}
+
+// menuModel holds the state for the main menu.
+type menuModel struct {
 	choices []string // The menu items to show.
 	cursor  int      // Which menu item our cursor is pointing at.
 }
 
 // initialModel returns the starting state of the TUI.
-func initialModel() model {
-	return model{
-		// Updated menu items based on your feedback
-		choices: []string{
-			"Manage Accounts (user@host)",
-			"Manage Public Keys",
-			"Assign Keys to Accounts",
-			"Rotate System Keys",
-			"Deploy to Fleet",
+func initialModel(db *sql.DB) mainModel {
+	return mainModel{
+		state: menuView,
+		menu: menuModel{
+			choices: []string{
+				"Manage Accounts (user@host)",
+				"Manage Public Keys",
+				"Assign Keys to Accounts",
+				"Rotate System Keys",
+				"Deploy to Fleet",
+			},
 		},
+		db: db,
 	}
 }
 
 // Init is the first function that will be called. It can be used to perform
 // some I/O operations on program startup.
-func (m model) Init() tea.Cmd {
+func (m mainModel) Init() tea.Cmd {
 	// We don't need to do anything on startup, so return nil.
 	return nil
 }
 
 // Update is called when "things happen." It's where we handle all events,
 // like key presses.
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
 	switch msg := msg.(type) {
-
-	// The message is a key press.
 	case tea.KeyMsg:
-
-		// What was the key pressed?
+		// Global keybindings that work everywhere.
 		switch msg.String() {
-
-		// These keys should exit the program.
-		case "ctrl+c", "q":
-			return m, tea.Quit
-
-		// The "up" and "k" keys move the cursor up.
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-
-		// The "down" and "j" keys move the cursor down.
-		case "down", "j":
-			if m.cursor < len(m.choices)-1 {
-				m.cursor++
-			}
-
-		// The "enter" key will select the item.
-		// For now, it just quits. We'll add functionality later.
-		case "enter":
-			// TODO: Handle selection by navigating to a new "view" or "model".
+		case "ctrl+c":
 			return m, tea.Quit
 		}
 	}
 
-	// Return the updated model to the Bubble Tea runtime for processing.
-	return m, nil
+	// Delegate updates to the currently active view.
+	switch m.state {
+	case accountsView:
+		// If we received a "back" message, switch the state.
+		if _, ok := msg.(backToMenuMsg); ok {
+			m.state = menuView
+			return m, nil
+		}
+		var newAccountsModel tea.Model
+		newAccountsModel, cmd = m.accounts.Update(msg)
+		m.accounts = newAccountsModel.(accountsModel)
+
+	default: // menuView
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "q":
+				return m, tea.Quit
+			case "up", "k":
+				if m.menu.cursor > 0 {
+					m.menu.cursor--
+				}
+			case "down", "j":
+				if m.menu.cursor < len(m.menu.choices)-1 {
+					m.menu.cursor++
+				}
+			case "enter":
+				switch m.menu.cursor {
+				case 0: // Manage Accounts
+					m.state = accountsView
+					m.accounts = newAccountsModel() // This loads data from the DB.
+					return m, nil
+				default:
+					// For now, other options just quit.
+					return m, tea.Quit
+				}
+			}
+		}
+	}
+
+	return m, cmd
 }
 
 // View is called to render the UI. It's a string that gets printed to the
 // terminal.
-func (m model) View() string {
+func (m mainModel) View() string {
+	if m.err != nil {
+		return fmt.Sprintf("Error: %v\n", m.err)
+	}
+
+	// Delegate rendering to the active view.
+	switch m.state {
+	case accountsView:
+		return m.accounts.View()
+	default: // menuView
+		return m.menu.View()
+	}
+}
+
+func (m menuModel) View() string {
 	var b strings.Builder
 
 	// Title
 	b.WriteString(titleStyle.Render("🔑 Keymaster TUI"))
 	b.WriteString("\n\n")
 
-	// Iterate over our choices.
 	for i, choice := range m.choices {
-		// Is the cursor pointing at this choice?
 		if m.cursor == i {
-			// Render the selected row
 			b.WriteString(selectedItemStyle.Render("» " + choice))
 		} else {
-			// Render a regular row
 			b.WriteString(itemStyle.Render(choice))
 		}
 		b.WriteString("\n")
@@ -128,8 +178,15 @@ func (m model) View() string {
 
 // Run is the entrypoint for the TUI.
 func Run() {
+	// Initialize the database. A file named keymaster.db will be created if it doesn't exist.
+	database, err := db.InitDB("./keymaster.db")
+	if err != nil {
+		fmt.Printf("Error initializing database: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Create a new Bubble Tea program.
-	p := tea.NewProgram(initialModel())
+	p := tea.NewProgram(initialModel(database))
 
 	// Run the program.
 	if _, err := p.Run(); err != nil {
