@@ -137,11 +137,27 @@ func (m accountsModel) View() string {
 		return b.String()
 	}
 
+	// Find the longest username for alignment purposes.
+	maxUserLen := 0
+	for _, acc := range m.accounts {
+		if len(acc.Username) > maxUserLen {
+			maxUserLen = len(acc.Username)
+		}
+	}
+
 	for i, acc := range m.accounts {
+		userPart := fmt.Sprintf("%*s", maxUserLen, acc.Username)
+		hostPart := fmt.Sprintf("@%s", acc.Hostname)
+
 		if m.cursor == i {
-			b.WriteString(selectedItemStyle.Render("» " + acc.String()))
+			// For the selected line, we include the cursor in the string to be rendered
+			// so that the entire line, including the cursor, gets the highlight color.
+			line := "» " + userPart + hostPart
+			b.WriteString(selectedItemStyle.Render(line))
 		} else {
-			b.WriteString(itemStyle.Render(acc.String()))
+			// For unselected lines, the style provides the necessary padding to align with the selected line.
+			line := userPart + hostPart
+			b.WriteString(itemStyle.Render(line))
 		}
 		b.WriteString("\n")
 	}
