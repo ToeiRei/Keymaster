@@ -3,8 +3,32 @@ package tui
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+// --- STYLING ---
+var (
+	// The main title style
+	titleStyle = lipgloss.NewStyle().
+			MarginLeft(2).
+			Foreground(lipgloss.Color("170")). // A nice purple
+			Bold(true)
+
+	// Style for a regular menu item
+	itemStyle = lipgloss.NewStyle().PaddingLeft(4)
+
+	// Style for the selected menu item
+	selectedItemStyle = lipgloss.NewStyle().
+				PaddingLeft(2).
+				Foreground(lipgloss.Color("170"))
+
+	// Style for the help text at the bottom
+	helpStyle = lipgloss.NewStyle().
+			MarginLeft(4).
+			Foreground(lipgloss.Color("240")) // A muted gray
 )
 
 // model holds the state of our TUI.
@@ -16,7 +40,14 @@ type model struct {
 // initialModel returns the starting state of the TUI.
 func initialModel() model {
 	return model{
-		choices: []string{"Manage Hosts", "Manage Users", "Audit Fleet"},
+		// Updated menu items based on your feedback
+		choices: []string{
+			"Manage Accounts (user@host)",
+			"Manage Public Keys",
+			"Assign Keys to Accounts",
+			"Rotate System Keys",
+			"Deploy to Fleet",
+		},
 	}
 }
 
@@ -57,7 +88,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The "enter" key will select the item.
 		// For now, it just quits. We'll add functionality later.
 		case "enter":
-			// TODO: Handle selection
+			// TODO: Handle selection by navigating to a new "view" or "model".
 			return m, tea.Quit
 		}
 	}
@@ -69,25 +100,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View is called to render the UI. It's a string that gets printed to the
 // terminal.
 func (m model) View() string {
-	s := "Welcome to Keymaster. What would you like to do?\n\n"
+	var b strings.Builder
+
+	// Title
+	b.WriteString(titleStyle.Render("🔑 Keymaster TUI"))
+	b.WriteString("\n\n")
 
 	// Iterate over our choices.
 	for i, choice := range m.choices {
 		// Is the cursor pointing at this choice?
-		cursor := " " // no cursor
 		if m.cursor == i {
-			cursor = ">" // cursor!
+			// Render the selected row
+			b.WriteString(selectedItemStyle.Render("» " + choice))
+		} else {
+			// Render a regular row
+			b.WriteString(itemStyle.Render(choice))
 		}
-
-		// Render the row.
-		s += fmt.Sprintf("%s %s\n", cursor, choice)
+		b.WriteString("\n")
 	}
 
 	// The footer.
-	s += "\n(press j/k or up/down to navigate, q to quit)\n"
+	b.WriteString(helpStyle.Render("\n(j/k or up/down to navigate, enter to select, q to quit)"))
 
 	// Send the UI for rendering.
-	return s
+	return b.String()
 }
 
 // Run is the entrypoint for the TUI.
