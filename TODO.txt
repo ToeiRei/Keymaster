@@ -1,2 +1,15 @@
-- key rotation
-- deactivate host
+# Keymaster Project TODO List
+
+This file tracks the remaining tasks and potential improvements for the Keymaster project.
+
+## High Priority / Core Logic
+
+## Security Enhancements
+
+- [ ] **Implement Host Key Verification:** The SSH deployer currently uses `InsecureIgnoreHostKey()`. For a production-ready tool, this should be replaced with a proper host key verification strategy, such as checking against a `known_hosts` file.
+  - `c:\Users\vbauer\Documents\Keymaster\internal\deploy\ssh.go`
+
+## Completed
+
+- [x] **Implement CLI Commands:** The `deploy`, `rotate-key`, and `audit` commands are now functional.
+- [x] **Implement Fleet-Wide Deployment:** The TUI and CLI both support deploying to all active accounts.

@@ -2,6 +2,8 @@ package sshkey
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -40,4 +42,25 @@ func Parse(rawKey string) (algorithm, keyData, comment string, err error) {
 	}
 
 	return
+}
+
+// ParseSerial extracts the Keymaster serial number from a comment line.
+func ParseSerial(line string) (int, error) {
+	// Expected format: # Keymaster System Key (Serial: 123)
+	line = strings.TrimSpace(line)
+	if !strings.HasPrefix(line, "# Keymaster System Key") {
+		return 0, fmt.Errorf("not a keymaster key comment line")
+	}
+
+	re := regexp.MustCompile(`Serial: (\d+)`)
+	matches := re.FindStringSubmatch(line)
+	if len(matches) < 2 {
+		return 0, fmt.Errorf("serial number not found in comment")
+	}
+
+	serial, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse serial number '%s': %w", matches[1], err)
+	}
+	return serial, nil
 }

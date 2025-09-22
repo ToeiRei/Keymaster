@@ -3,6 +3,7 @@ package deploy
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net"
 	"path"
 	"time"
@@ -105,4 +106,20 @@ func (d *Deployer) Close() {
 	if d.client != nil {
 		d.client.Close()
 	}
+}
+
+// GetAuthorizedKeys reads and returns the content of the remote authorized_keys file.
+func (d *Deployer) GetAuthorizedKeys() ([]byte, error) {
+	finalPath := ".ssh/authorized_keys"
+	f, err := d.sftp.Open(finalPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open remote file %s: %w", finalPath, err)
+	}
+	defer f.Close()
+
+	content, err := io.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read from remote file %s: %w", finalPath, err)
+	}
+	return content, nil
 }

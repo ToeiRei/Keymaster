@@ -199,7 +199,7 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch m.action {
 			case actionGetKeys:
 				m.state = deployStateShowAuthorizedKeys
-				content, err := generateKeysContent(m.selectedAccount.ID)
+				content, err := deploy.GenerateKeysContent(m.selectedAccount.ID)
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -394,7 +394,7 @@ func performDeploymentCmd(account model.Account) tea.Cmd {
 		}
 
 		// 2. Generate the target authorized_keys content (always uses the *active* key).
-		content, err := generateKeysContent(account.ID)
+		content, err := deploy.GenerateKeysContent(account.ID)
 		if err != nil {
 			return deploymentResultMsg{account: account, err: err}
 		}
@@ -421,39 +421,4 @@ func performDeploymentCmd(account model.Account) tea.Cmd {
 
 		return deploymentResultMsg{account: account, err: nil} // Success
 	}
-}
-
-// generateAuthorizedKeysContent constructs the full authorized_keys file content
-// for the currently selected account.
-func generateKeysContent(accountID int) (string, error) {
-	var b strings.Builder
-
-	// 1. Add the *active* Keymaster system key. This shows the ideal state.
-	systemKey, err := db.GetActiveSystemKey()
-	if err != nil {
-		return "", fmt.Errorf("failed to get active system key: %w", err)
-	}
-	if systemKey == nil {
-		return "", fmt.Errorf("no active system key found. Please generate one via the 'Rotate System Keys' menu.")
-	}
-	b.WriteString(fmt.Sprintf("# Keymaster System Key (Active Serial: %d)\n", systemKey.Serial))
-	b.WriteString(systemKey.PublicKey)
-	b.WriteString("\n\n")
-
-	// 2. Add all user-assigned public keys
-	userKeys, err := db.GetKeysForAccount(accountID)
-	if err != nil {
-		return "", fmt.Errorf("failed to get user keys for account %d: %w", accountID, err)
-	}
-	if len(userKeys) > 0 {
-		b.WriteString("# User-assigned Public Keys\n")
-		for _, key := range userKeys {
-			b.WriteString(key.String())
-			b.WriteString("\n")
-		}
-	} else {
-		b.WriteString("# No user-assigned public keys for this account.\n")
-	}
-
-	return b.String(), nil
 }
