@@ -63,6 +63,18 @@ func InitDB(dataSourceName string) (*sql.DB, error) {
 		if _, err = db.Exec(accountKeysTableSQL); err != nil {
 			return
 		}
+
+		systemKeysTableSQL := `
+		CREATE TABLE IF NOT EXISTS system_keys (
+			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+			serial INTEGER NOT NULL UNIQUE,
+			public_key TEXT NOT NULL,
+			private_key TEXT NOT NULL,
+			is_active BOOLEAN NOT NULL DEFAULT 0
+		);`
+		if _, err = db.Exec(systemKeysTableSQL); err != nil {
+			return
+		}
 	})
 
 	if err != nil {
@@ -134,6 +146,93 @@ func GetAllPublicKeys() ([]model.PublicKey, error) {
 		keys = append(keys, key)
 	}
 	return keys, nil
+}
+
+// CreateSystemKey adds a new system key to the database. It determines the correct serial automatically.
+func CreateSystemKey(publicKey, privateKey string) (int, error) {
+	var maxSerial sql.NullInt64
+	err := db.QueryRow("SELECT MAX(serial) FROM system_keys").Scan(&maxSerial)
+	if err != nil {
+		return 0, err
+	}
+
+	newSerial := 1
+	if maxSerial.Valid {
+		newSerial = int(maxSerial.Int64) + 1
+	}
+
+	// In a real rotation, we would first set all other keys to inactive.
+	// For initial generation, this is fine.
+	_, err = db.Exec(
+		"INSERT INTO system_keys(serial, public_key, private_key, is_active) VALUES(?, ?, ?, ?)",
+		newSerial, publicKey, privateKey, true,
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	return newSerial, nil
+}
+
+// RotateSystemKey deactivates all current system keys and adds a new one as active.
+// This should be performed within a transaction to ensure atomicity.
+func RotateSystemKey(publicKey, privateKey string) (int, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	// Defer a rollback in case anything fails.
+	defer tx.Rollback()
+
+	// Deactivate all existing keys.
+	if _, err := tx.Exec("UPDATE system_keys SET is_active = 0"); err != nil {
+		return 0, fmt.Errorf("failed to deactivate old system keys: %w", err)
+	}
+
+	// Get the next serial number.
+	var maxSerial sql.NullInt64
+	err = tx.QueryRow("SELECT MAX(serial) FROM system_keys").Scan(&maxSerial)
+	if err != nil {
+		return 0, err
+	}
+	newSerial := int(maxSerial.Int64) + 1
+
+	// Insert the new active key.
+	_, err = tx.Exec(
+		"INSERT INTO system_keys(serial, public_key, private_key, is_active) VALUES(?, ?, ?, ?)",
+		newSerial, publicKey, privateKey, true,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert new system key: %w", err)
+	}
+
+	// Commit the transaction.
+	return newSerial, tx.Commit()
+}
+
+// GetActiveSystemKey retrieves the currently active system key for deployments.
+func GetActiveSystemKey() (*model.SystemKey, error) {
+	row := db.QueryRow("SELECT id, serial, public_key, private_key, is_active FROM system_keys WHERE is_active = 1")
+
+	var key model.SystemKey
+	err := row.Scan(&key.ID, &key.Serial, &key.PublicKey, &key.PrivateKey, &key.IsActive)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No active key found, not necessarily an error.
+		}
+		return nil, err
+	}
+	return &key, nil
+}
+
+// HasSystemKeys checks if any system keys exist in the database.
+func HasSystemKeys() (bool, error) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(id) FROM system_keys").Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // DeletePublicKey removes a public key and all its associations.

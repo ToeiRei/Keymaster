@@ -28,3 +28,13 @@ type PublicKey struct {
 func (k PublicKey) String() string {
 	return fmt.Sprintf("%s %s %s", k.Algorithm, k.KeyData, k.Comment)
 }
+
+// SystemKey represents a key pair used by Keymaster itself for deployment.
+// The private key is stored to allow for agentless operation.
+type SystemKey struct {
+	ID         int
+	Serial     int
+	PublicKey  string
+	PrivateKey string // Note: Storing private keys requires secure handling.
+	IsActive   bool
+}
