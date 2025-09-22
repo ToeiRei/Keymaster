@@ -25,20 +25,20 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 	// Build our list of authentication methods.
 	var authMethods []ssh.AuthMethod
 
-	// If a specific Keymaster system key is provided, use it exclusively.
-	// This ensures deployments are deterministic and use the correct key.
+	// Add the specified Keymaster system key as the primary authentication method.
+	// This ensures deployments are deterministic when the correct key is on the host.
 	if privateKey != "" {
 		signer, err := ssh.ParsePrivateKey([]byte(privateKey))
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse private key: %w", err)
 		}
 		authMethods = append(authMethods, ssh.PublicKeys(signer))
-	} else {
-		// As a fallback for bootstrapping (e.g., initial key import),
-		// try to use a running SSH agent.
-		if agentClient := getSSHAgent(); agentClient != nil {
-			authMethods = append(authMethods, ssh.PublicKeysCallback(agentClient.Signers))
-		}
+	}
+
+	// Always add the SSH agent as a fallback. This is useful for bootstrapping
+	// a new host or for recovery if a host is out of sync.
+	if agentClient := getSSHAgent(); agentClient != nil {
+		authMethods = append(authMethods, ssh.PublicKeysCallback(agentClient.Signers))
 	}
 
 	if len(authMethods) == 0 {
