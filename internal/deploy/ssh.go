@@ -5,13 +5,18 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"path"
+	"runtime"
 	"strings"
 	"time"
 
+	"github.com/Microsoft/go-winio"
+	"github.com/davidmz/go-pageant"
 	"github.com/pkg/sftp"
 	"github.com/toeirei/keymaster/internal/db"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 )
 
 // Deployer handles the connection and deployment to a remote host.
@@ -27,11 +32,52 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 		return nil, fmt.Errorf("unable to parse private key: %w", err)
 	}
 
+	// Build our list of authentication methods.
+	var authMethods []ssh.AuthMethod
+
+	// 1. Try to use a running SSH agent. This is great for bootstrapping.
+	var agentClient agent.Agent
+	if runtime.GOOS == "windows" {
+		// On Windows, try to connect to a Pageant-like agent first (like gpg-agent or putty's pageant).
+		// This is a blocking call, but it's very fast if the agent isn't running.
+		if pageant.Available() {
+			agentClient = pageant.New()
+		}
+	}
+
+	// If Pageant isn't available or we're not on Windows, try the OpenSSH agent socket/pipe.
+	if agentClient == nil {
+		var agentConn net.Conn
+		var agentErr error
+		if sshAgentSocket := os.Getenv("SSH_AUTH_SOCK"); sshAgentSocket != "" {
+			// Use the socket defined in the environment variable.
+			if runtime.GOOS == "windows" {
+				agentConn, agentErr = winio.DialPipe(sshAgentSocket, nil)
+			} else {
+				agentConn, agentErr = net.Dial("unix", sshAgentSocket)
+			}
+		} else if runtime.GOOS == "windows" {
+			// If no env var, try the default OpenSSH for Windows named pipe as a fallback.
+			agentConn, agentErr = winio.DialPipe(`\\.\pipe\openssh-ssh-agent`, nil)
+		}
+
+		if agentErr == nil && agentConn != nil {
+			agentClient = agent.NewClient(agentConn)
+		}
+	}
+
+	// If we successfully connected to any agent, add its signers.
+	if agentClient != nil {
+		authMethods = append(authMethods, ssh.PublicKeysCallback(agentClient.Signers))
+	}
+
+	// 2. Always include the specific Keymaster system key as a reliable fallback.
+	authMethods = append(authMethods, ssh.PublicKeys(signer))
+
 	config := &ssh.ClientConfig{
 		User: user,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
-		},
+		// The client will try each auth method in order (agent, then key).
+		Auth: authMethods,
 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 			// The hostname passed to the callback can include the port. We need to strip it
 			// to ensure we're looking up the correct key in our database.
