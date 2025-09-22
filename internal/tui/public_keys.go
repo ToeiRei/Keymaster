@@ -28,6 +28,7 @@ type publicKeysModel struct {
 	usageReportKey   model.PublicKey
 	usageReportAccts []model.Account
 	filter           string
+	isFiltering      bool
 }
 
 func newPublicKeysModel() publicKeysModel {
@@ -107,30 +108,36 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// List view logic
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.state == publicKeysListView {
+		// If we are in filtering mode, capture all input for the filter.
+		if m.isFiltering {
 			switch msg.Type {
+			case tea.KeyEsc:
+				m.isFiltering = false
+				m.filter = ""
+				m.rebuildDisplayedKeys()
+			case tea.KeyEnter:
+				m.isFiltering = false
 			case tea.KeyBackspace:
 				if len(m.filter) > 0 {
 					m.filter = m.filter[:len(m.filter)-1]
 					m.rebuildDisplayedKeys()
 				}
-				return m, nil
 			case tea.KeyRunes:
-				key := string(msg.Runes)
-				switch key {
-				case "q", "a", "d", "g", "u":
-					// It's a command, fall through
-				default:
-					m.filter += key
-					m.rebuildDisplayedKeys()
-					return m, nil
-				}
+				m.filter += string(msg.Runes)
+				m.rebuildDisplayedKeys()
 			}
+			return m, nil
 		}
 
+		// Not in filtering mode, handle commands.
 		switch msg.String() {
+		case "/":
+			m.isFiltering = true
+			m.filter = "" // Start with a fresh filter
+			m.rebuildDisplayedKeys()
+			return m, nil
 		case "q", "esc":
-			if m.filter != "" {
+			if m.filter != "" && !m.isFiltering {
 				m.filter = ""
 				m.rebuildDisplayedKeys()
 				return m, nil
@@ -233,10 +240,12 @@ func (m publicKeysModel) viewKeyList() string {
 	}
 
 	var filterStatus string
-	if m.filter != "" {
+	if m.isFiltering {
 		filterStatus = fmt.Sprintf("Filter: %s█", m.filter)
+	} else if m.filter != "" {
+		filterStatus = fmt.Sprintf("Filter: %s (press 'esc' to clear)", m.filter)
 	} else {
-		filterStatus = "Type to filter..."
+		filterStatus = "Press / to filter..."
 	}
 
 	b.WriteString(helpStyle.Render(fmt.Sprintf("\n(a)dd, (d)elete, (g)lobal toggle, (u)sage report, (q)uit\n%s", filterStatus)))

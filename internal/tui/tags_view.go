@@ -16,11 +16,12 @@ type tagsViewModel struct {
 	accountsByTag map[string][]model.Account
 
 	// State
-	lines    []interface{} // Can be a string (tag) or model.Account
-	expanded map[string]bool
-	cursor   int
-	filter   string
-	err      error
+	lines       []interface{} // Can be a string (tag) or model.Account
+	expanded    map[string]bool
+	cursor      int
+	filter      string
+	isFiltering bool
+	err         error
 }
 
 func newTagsViewModel() tagsViewModel {
@@ -114,25 +115,51 @@ func (m tagsViewModel) Init() tea.Cmd {
 func (m tagsViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC:
-			return m, tea.Quit
-		case tea.KeyEsc:
+		// If we are in filtering mode, capture all input for the filter.
+		if m.isFiltering {
+			switch msg.Type {
+			case tea.KeyEsc:
+				m.isFiltering = false
+				m.filter = ""
+				m.rebuildLines()
+			case tea.KeyEnter:
+				m.isFiltering = false
+			case tea.KeyBackspace:
+				if len(m.filter) > 0 {
+					m.filter = m.filter[:len(m.filter)-1]
+					m.rebuildLines()
+				}
+			case tea.KeyRunes:
+				m.filter += string(msg.Runes)
+				m.rebuildLines()
+			}
+			return m, nil
+		}
+
+		// Not in filtering mode, handle commands.
+		switch msg.String() {
+		case "/":
+			m.isFiltering = true
+			m.filter = "" // Start with a fresh filter
+			m.rebuildLines()
+			return m, nil
+		case "q", "esc":
 			if m.filter != "" {
 				m.filter = ""
+				m.isFiltering = false
 				m.rebuildLines()
 				return m, nil
 			}
 			return m, func() tea.Msg { return backToMenuMsg{} }
-		case tea.KeyUp:
+		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
 			}
-		case tea.KeyDown:
+		case "down", "j":
 			if m.cursor < len(m.lines)-1 {
 				m.cursor++
 			}
-		case tea.KeyEnter:
+		case "enter":
 			if m.cursor >= 0 && m.cursor < len(m.lines) {
 				lineItem := m.lines[m.cursor]
 				if tag, ok := lineItem.(string); ok {
@@ -140,16 +167,6 @@ func (m tagsViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.expanded[tag] = !m.expanded[tag]
 					m.rebuildLines()
 				}
-			}
-		case tea.KeyBackspace:
-			if len(m.filter) > 0 {
-				m.filter = m.filter[:len(m.filter)-1]
-				m.rebuildLines()
-			}
-		case tea.KeyRunes:
-			if string(msg.Runes) != "q" { // Don't add 'q' to filter if it's our quit key
-				m.filter += string(msg.Runes)
-				m.rebuildLines()
 			}
 		}
 	}
@@ -190,12 +207,14 @@ func (m tagsViewModel) View() string {
 	}
 
 	var filterStatus string
-	if m.filter != "" {
+	if m.isFiltering {
 		filterStatus = fmt.Sprintf("Filter: %s█", m.filter)
+	} else if m.filter != "" {
+		filterStatus = fmt.Sprintf("Filter: %s (press 'esc' to clear)", m.filter)
 	} else {
-		filterStatus = "Type to filter tags..."
+		filterStatus = "Press / to filter tags..."
 	}
 
-	b.WriteString(helpStyle.Render(fmt.Sprintf("\n(enter to expand/collapse, esc to clear filter, q to quit)\n%s", filterStatus)))
+	b.WriteString(helpStyle.Render(fmt.Sprintf("\n(enter to expand/collapse, q to quit)\n%s", filterStatus)))
 	return b.String()
 }

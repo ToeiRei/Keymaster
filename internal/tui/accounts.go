@@ -54,6 +54,7 @@ type accountsModel struct {
 	pendingImportAccountID int
 	pendingImportKeys      []model.PublicKey
 	filter                 string
+	isFiltering            bool
 }
 
 func newAccountsModel() accountsModel {
@@ -197,33 +198,38 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// --- This is the list view update logic ---
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// Handle filtering keys first when in list view
-		if m.state == accountsListView {
+		// If we are in filtering mode, capture all input for the filter.
+		if m.isFiltering {
 			switch msg.Type {
+			case tea.KeyEsc:
+				m.isFiltering = false
+				m.filter = ""
+				m.rebuildDisplayedAccounts()
+			case tea.KeyEnter:
+				m.isFiltering = false
 			case tea.KeyBackspace:
 				if len(m.filter) > 0 {
 					m.filter = m.filter[:len(m.filter)-1]
 					m.rebuildDisplayedAccounts()
 				}
-				return m, nil
 			case tea.KeyRunes:
-				// Don't add single-key commands to the filter
-				key := string(msg.Runes)
-				switch key {
-				case "q", "k", "j", "a", "d", "e", "t", "v", "i":
-					// It's a command, fall through to the main switch
-				default:
-					m.filter += key
-					m.rebuildDisplayedAccounts()
-					return m, nil
-				}
+				m.filter += string(msg.Runes)
+				m.rebuildDisplayedAccounts()
 			}
+			return m, nil
 		}
 
+		// Not in filtering mode, handle commands.
 		switch msg.String() {
+		case "/":
+			m.isFiltering = true
+			m.filter = "" // Start with a fresh filter
+			m.rebuildDisplayedAccounts()
+			return m, nil
+
 		// Go back to the main menu.
 		case "q", "esc":
-			if m.filter != "" {
+			if m.filter != "" && !m.isFiltering {
 				m.filter = ""
 				m.rebuildDisplayedAccounts()
 				return m, nil
@@ -374,10 +380,12 @@ func (m accountsModel) View() string {
 	}
 
 	var filterStatus string
-	if m.filter != "" {
+	if m.isFiltering {
 		filterStatus = fmt.Sprintf("Filter: %s█", m.filter)
+	} else if m.filter != "" {
+		filterStatus = fmt.Sprintf("Filter: %s (press 'esc' to clear)", m.filter)
 	} else {
-		filterStatus = "Type to filter..."
+		filterStatus = "Press / to filter..."
 	}
 
 	b.WriteString(helpStyle.Render(fmt.Sprintf("\n(a)dd, (e)dit, (d)elete, (t)oggle, (v)erify, (i)mport, (q)uit\n%s", filterStatus)))
