@@ -121,6 +121,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = accountsListView
 			m.status = "Successfully modified account."
 			m.accounts, m.err = db.GetAllAccounts()
+			m.rebuildDisplayedAccounts()
 
 			// If it was a new account, automatically try to trust the host.
 			if am.isNew && am.hostname != "" {

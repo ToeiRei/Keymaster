@@ -27,28 +27,28 @@ const (
 
 type rotateKeyModel struct {
 	state        rotateState
-	hasSystemKey bool
 	newPublicKey string
 	newKeySerial int
 	err          error
 	// For confirmation modal
-	isConfirmingRotate bool
-	confirmCursor      int
-	width, height      int
+	isConfirmingGenerate bool
+	isConfirmingRotate   bool
+	confirmCursor        int
+	width, height        int
 }
 
 func newRotateKeyModel() rotateKeyModel {
-	m := rotateKeyModel{state: rotateStateChecking}
+	m := rotateKeyModel{state: rotateStateChecking, confirmCursor: 0} // Default to No
 	hasKey, err := db.HasSystemKeys()
 	if err != nil {
 		m.err = err
 		return m
 	}
-	m.hasSystemKey = hasKey
-	if m.hasSystemKey {
-		m.state = rotateStateReadyToRotate
+
+	if hasKey {
+		m.isConfirmingRotate = true
 	} else {
-		m.state = rotateStateReadyToGenerate
+		m.isConfirmingGenerate = true
 	}
 	return m
 }
@@ -64,16 +64,13 @@ func (m rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 	}
 
-	// Handle confirmation modal
-	if m.isConfirmingRotate {
+	// Handle confirmation modals
+	if m.isConfirmingGenerate || m.isConfirmingRotate {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
-			case "y":
-				// Fallthrough to confirm
-			case "n", "q", "esc":
-				m.isConfirmingRotate = false
-				return m, nil
+			case "q", "esc":
+				return m, func() tea.Msg { return backToMenuMsg{} }
 			case "right", "tab", "l":
 				m.confirmCursor = 1 // Yes
 				return m, nil
@@ -81,19 +78,27 @@ func (m rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirmCursor = 0 // No
 				return m, nil
 			case "enter":
-				if m.confirmCursor == 1 { // Yes is selected
+				if m.confirmCursor == 0 { // "No" is selected
+					return m, func() tea.Msg { return backToMenuMsg{} }
+				}
+
+				// "Yes" is selected
+				if m.isConfirmingGenerate {
+					m.state = rotateStateGenerating
+					m.isConfirmingGenerate = false
+					return m, generateInitialKey
+				}
+				if m.isConfirmingRotate {
 					m.state = rotateStateRotating
 					m.isConfirmingRotate = false
 					return m, performRotation
 				}
-				// No was selected
-				m.isConfirmingRotate = false
-				return m, nil
 			}
 		}
 		return m, nil
 	}
 
+	// Handle other states (generating, rotating, done)
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -101,22 +106,6 @@ func (m rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Allow quitting from any state except during generation/rotation
 			if m.state != rotateStateGenerating && m.state != rotateStateRotating {
 				return m, func() tea.Msg { return backToMenuMsg{} }
-			}
-		case "n":
-			// If we're at a confirmation prompt, 'n' should go back to the menu.
-			if m.state == rotateStateReadyToGenerate || m.state == rotateStateReadyToRotate {
-				return m, func() tea.Msg { return backToMenuMsg{} }
-			}
-		case "y":
-			if m.state == rotateStateReadyToGenerate {
-				m.state = rotateStateGenerating
-				// Return a command to perform the generation
-				return m, generateInitialKey
-			}
-			if m.state == rotateStateReadyToRotate {
-				m.isConfirmingRotate = true
-				m.confirmCursor = 0 // Default to No
-				return m, nil
 			}
 		}
 	// This message is sent by the generateInitialKey command on completion
@@ -134,8 +123,11 @@ func (m rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m rotateKeyModel) View() string {
+	if m.isConfirmingGenerate {
+		return m.viewConfirmationGenerate()
+	}
 	if m.isConfirmingRotate {
-		return m.viewConfirmation()
+		return m.viewConfirmationRotate()
 	}
 
 	var b strings.Builder
@@ -146,17 +138,9 @@ func (m rotateKeyModel) View() string {
 	}
 
 	switch m.state {
+	// This state is now so brief it will likely never be seen.
 	case rotateStateChecking:
 		b.WriteString("Checking for existing system key...")
-	case rotateStateReadyToGenerate:
-		b.WriteString("No Keymaster system key found in the database.\n\n")
-		b.WriteString("This key is required for Keymaster to connect to managed hosts.\n")
-		b.WriteString("Would you like to generate the initial system key now? (y/n)")
-	case rotateStateReadyToRotate:
-		b.WriteString("An active system key already exists.\n\n")
-		b.WriteString("Rotating the system key will deactivate the current key and create a new one.\n")
-		b.WriteString("Hosts will be updated to use the new key upon their next deployment.\n\n")
-		b.WriteString("Are you sure you want to rotate the system key? (y/n)")
 	case rotateStateGenerating:
 		b.WriteString("Generating new ed25519 key pair, please wait...")
 	case rotateStateGenerated:
@@ -184,9 +168,9 @@ func (m rotateKeyModel) View() string {
 	return b.String()
 }
 
-func (m rotateKeyModel) viewConfirmation() string {
+func (m rotateKeyModel) viewConfirmationRotate() string {
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("⚙️ Confirm Key Rotation"))
+	b.WriteString(titleStyle.Render("⚙️ Confirm System Key Rotation"))
 
 	question := "Are you sure you want to rotate the system key?\n\nThis will deactivate the current key and create a new one.\nHosts will need to be redeployed to get the new key."
 	b.WriteString(question)
@@ -198,6 +182,35 @@ func (m rotateKeyModel) viewConfirmation() string {
 		noButton = buttonStyle.Render("No, Cancel")
 	} else { // No
 		yesButton = buttonStyle.Render("Yes, Rotate")
+		noButton = activeButtonStyle.Render("No, Cancel")
+	}
+
+	buttons := lipgloss.JoinHorizontal(lipgloss.Top, noButton, "  ", yesButton)
+	b.WriteString(buttons)
+
+	b.WriteString("\n" + helpStyle.Render("\n(left/right to navigate, enter to confirm, esc to cancel)"))
+
+	// Center the whole dialog
+	return lipgloss.Place(m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		dialogBoxStyle.Render(b.String()),
+	)
+}
+
+func (m rotateKeyModel) viewConfirmationGenerate() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("⚙️ Generate Initial System Key"))
+
+	question := "No Keymaster system key found.\n\nThis key is required for Keymaster to connect to managed hosts.\n\nWould you like to generate one now?"
+	b.WriteString(question)
+	b.WriteString("\n\n")
+
+	var yesButton, noButton string
+	if m.confirmCursor == 1 { // Yes
+		yesButton = activeButtonStyle.Render("Yes, Generate")
+		noButton = buttonStyle.Render("No, Cancel")
+	} else { // No
+		yesButton = buttonStyle.Render("Yes, Generate")
 		noButton = activeButtonStyle.Render("No, Cancel")
 	}
 
