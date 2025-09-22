@@ -160,7 +160,8 @@ If no account is specified, deploys to all active accounts in the database.`,
 			target := args[0]
 			found := false
 			for _, acc := range allAccounts {
-				if acc.String() == target {
+				// Compare against the canonical user@host, not the pretty-printed string which includes the label.
+				if fmt.Sprintf("%s@%s", acc.Username, acc.Hostname) == target {
 					targetAccounts = append(targetAccounts, acc)
 					found = true
 					break

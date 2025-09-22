@@ -113,10 +113,10 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, func() tea.Msg { return accountModifiedMsg{isNew: false} }
 				} else {
 					// Add new account
-					username := m.inputs[0].Value()
-					hostname := m.inputs[1].Value()
-					label := m.inputs[2].Value()
-					tags := m.inputs[3].Value()
+					username := strings.TrimSpace(m.inputs[0].Value())
+					hostname := strings.TrimSpace(m.inputs[1].Value())
+					label := strings.TrimSpace(m.inputs[2].Value())
+					tags := strings.TrimSpace(m.inputs[3].Value())
 
 					if username == "" || hostname == "" {
 						m.err = fmt.Errorf("username and hostname cannot be empty")

@@ -556,7 +556,12 @@ func (s *SqliteStore) LogAction(action string, details string) error {
 	currentUser, err := user.Current()
 	username := "unknown"
 	if err == nil {
-		username = currentUser.Username
+		// On Windows, username might be "domain\user", let's just take the user part.
+		if parts := strings.Split(currentUser.Username, `\`); len(parts) > 1 {
+			username = parts[1]
+		} else {
+			username = currentUser.Username
+		}
 	}
 
 	_, err = s.db.Exec("INSERT INTO audit_log (username, action, details) VALUES (?, ?, ?)", username, action, details)
