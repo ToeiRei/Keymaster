@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 	"strings"
@@ -59,7 +58,6 @@ type mainModel struct {
 	keys       publicKeysModel
 	accounts   accountsModel
 	auditLog   auditLogModel
-	db         *sql.DB
 	width      int
 	height     int
 	err        error
@@ -72,7 +70,7 @@ type menuModel struct {
 }
 
 // initialModel returns the starting state of the TUI.
-func initialModel(db *sql.DB) mainModel {
+func initialModel() mainModel {
 	return mainModel{
 		state: menuView,
 		menu: menuModel{
@@ -85,7 +83,6 @@ func initialModel(db *sql.DB) mainModel {
 				"View Audit Log",
 			},
 		},
-		db: db,
 	}
 }
 
@@ -282,14 +279,14 @@ func (m menuModel) View() string {
 // Run is the entrypoint for the TUI.
 func Run() {
 	// Initialize the database. A file named keymaster.db will be created if it doesn't exist.
-	database, err := db.InitDB("./keymaster.db")
+	err := db.InitDB("./keymaster.db")
 	if err != nil {
 		fmt.Printf("Error initializing database: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Create a new Bubble Tea program.
-	p := tea.NewProgram(initialModel(database))
+	p := tea.NewProgram(initialModel())
 
 	// Run the program.
 	if _, err := p.Run(); err != nil {
