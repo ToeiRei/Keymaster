@@ -16,7 +16,10 @@ var focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("170"))
 var disabledStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 
 // A message to signal that an account was modified (created or updated).
-type accountModifiedMsg struct{}
+type accountModifiedMsg struct {
+	isNew    bool
+	hostname string
+}
 
 type accountFormModel struct {
 	focusIndex     int
@@ -97,6 +100,8 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.err = err
 						return m, nil
 					}
+					// Signal that we're done.
+					return m, func() tea.Msg { return accountModifiedMsg{isNew: false} }
 				} else {
 					// Add new account
 					username := m.inputs[0].Value()
@@ -112,9 +117,9 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.err = err
 						return m, nil
 					}
+					// Signal that we're done.
+					return m, func() tea.Msg { return accountModifiedMsg{isNew: true, hostname: hostname} }
 				}
-				// Signal that we're done.
-				return m, func() tea.Msg { return accountModifiedMsg{} }
 			}
 
 			// Cycle focus

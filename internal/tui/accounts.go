@@ -74,11 +74,17 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Delegate updates to the form if it's active.
 	if m.state == accountsFormView {
 		// If the form signals an account was created, switch back to the list and refresh.
-		if _, ok := msg.(accountModifiedMsg); ok {
+		if am, ok := msg.(accountModifiedMsg); ok {
 			m.state = accountsListView
 			m.status = "Successfully modified account."
 			m.accounts, m.err = db.GetAllAccounts()
-			return m, nil
+
+			// If it was a new account, automatically try to trust the host.
+			if am.isNew && am.hostname != "" {
+				m.status += fmt.Sprintf("\nAttempting to trust host %s...", am.hostname)
+				return m, verifyHostKeyCmd(am.hostname)
+			}
+			return m, nil // For edits, just return to the list.
 		}
 		// If the form signals to go back, just switch the view.
 		if _, ok := msg.(backToListMsg); ok {
