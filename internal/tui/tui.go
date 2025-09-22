@@ -39,12 +39,14 @@ type viewState int
 const (
 	menuView viewState = iota
 	accountsView
+	publicKeysView
 )
 
 // mainModel is the top-level model for the TUI. It manages which view is currently active.
 type mainModel struct {
 	state    viewState
 	menu     menuModel
+	keys     publicKeysModel
 	accounts accountsModel
 	db       *sql.DB
 	err      error
@@ -106,6 +108,15 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newAccountsModel, cmd = m.accounts.Update(msg)
 		m.accounts = newAccountsModel.(accountsModel)
 
+	case publicKeysView:
+		// If we received a "back" message, switch the state.
+		if _, ok := msg.(backToMenuMsg); ok {
+			m.state = menuView
+			return m, nil
+		}
+		var newKeysModel tea.Model
+		newKeysModel, cmd = m.keys.Update(msg)
+		m.keys = newKeysModel.(publicKeysModel)
 	default: // menuView
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -125,6 +136,10 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case 0: // Manage Accounts
 					m.state = accountsView
 					m.accounts = newAccountsModel() // This loads data from the DB.
+					return m, nil
+				case 1: // Manage Public Keys
+					m.state = publicKeysView
+					m.keys = newPublicKeysModel()
 					return m, nil
 				default:
 					// For now, other options just quit.
@@ -148,6 +163,8 @@ func (m mainModel) View() string {
 	switch m.state {
 	case accountsView:
 		return m.accounts.View()
+	case publicKeysView:
+		return m.keys.View()
 	default: // menuView
 		return m.menu.View()
 	}
