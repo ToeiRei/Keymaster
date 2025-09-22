@@ -173,20 +173,78 @@ func (s *PostgresStore) GetAllActiveAccounts() ([]model.Account, error) {
 }
 
 func (s *PostgresStore) AddPublicKey(algorithm, keyData, comment string) error {
-	return fmt.Errorf("not implemented for postgres")
+	_, err := s.db.Exec("INSERT INTO public_keys(algorithm, key_data, comment) VALUES($1, $2, $3)", algorithm, keyData, comment)
+	if err == nil {
+		_ = s.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
+	}
+	return err
 }
 
 func (s *PostgresStore) GetAllPublicKeys() ([]model.PublicKey, error) {
-	return nil, fmt.Errorf("not implemented for postgres")
+	rows, err := s.db.Query("SELECT id, algorithm, key_data, comment FROM public_keys ORDER BY comment")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []model.PublicKey
+	for rows.Next() {
+		var key model.PublicKey
+		if err := rows.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment); err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
 }
+
 func (s *PostgresStore) GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
-	return nil, fmt.Errorf("not implemented for postgres")
+	row := s.db.QueryRow("SELECT id, algorithm, key_data, comment FROM public_keys WHERE comment = $1", comment)
+	var key model.PublicKey
+	err := row.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment)
+	if err != nil {
+		return nil, err // This will be sql.ErrNoRows if not found
+	}
+	return &key, nil
 }
+
 func (s *PostgresStore) AddPublicKeyAndGetModel(algorithm, keyData, comment string) (*model.PublicKey, error) {
-	return nil, fmt.Errorf("not implemented for postgres")
+	// First, check if it exists to avoid constraint errors.
+	existing, err := s.GetPublicKeyByComment(comment)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err // A real DB error
+	}
+	if existing != nil {
+		return nil, nil // Key already exists, return nil model and nil error
+	}
+
+	var id int
+	err = s.db.QueryRow(
+		"INSERT INTO public_keys (algorithm, key_data, comment) VALUES ($1, $2, $3) RETURNING id",
+		algorithm, keyData, comment,
+	).Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+	_ = s.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
+
+	return &model.PublicKey{ID: int(id), Algorithm: algorithm, KeyData: keyData, Comment: comment}, nil
 }
+
 func (s *PostgresStore) DeletePublicKey(id int) error {
-	return fmt.Errorf("not implemented for postgres")
+	// Get key comment before deleting for logging.
+	var comment string
+	err := s.db.QueryRow("SELECT comment FROM public_keys WHERE id = $1", id).Scan(&comment)
+	details := fmt.Sprintf("id: %d", id)
+	if err == nil {
+		details = fmt.Sprintf("comment: %s", comment)
+	}
+
+	_, err = s.db.Exec("DELETE FROM public_keys WHERE id = $1", id)
+	if err == nil {
+		_ = s.LogAction("DELETE_PUBLIC_KEY", details)
+	}
+	return err
 }
 func (s *PostgresStore) GetKnownHostKey(hostname string) (string, error) {
 	return "", fmt.Errorf("not implemented for postgres")
