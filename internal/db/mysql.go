@@ -266,7 +266,16 @@ func (s *MySQLStore) DeletePublicKey(id int) error {
 	return err
 }
 func (s *MySQLStore) GetKnownHostKey(hostname string) (string, error) {
-	return "", fmt.Errorf("not implemented for mysql")
+	var key string
+	// Note the backticks around `key` because it's a reserved keyword.
+	err := s.db.QueryRow("SELECT `key` FROM known_hosts WHERE hostname = ?", hostname).Scan(&key)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil // No key found is not an error, it's a state.
+		}
+		return "", err
+	}
+	return key, nil
 }
 
 func (s *MySQLStore) AddKnownHostKey(hostname, key string) error {
@@ -279,19 +288,103 @@ func (s *MySQLStore) AddKnownHostKey(hostname, key string) error {
 	return err
 }
 func (s *MySQLStore) CreateSystemKey(publicKey, privateKey string) (int, error) {
-	return 0, fmt.Errorf("not implemented for mysql")
+	var maxSerial sql.NullInt64
+	err := s.db.QueryRow("SELECT MAX(serial) FROM system_keys").Scan(&maxSerial)
+	if err != nil {
+		return 0, err
+	}
+
+	newSerial := 1
+	if maxSerial.Valid {
+		newSerial = int(maxSerial.Int64) + 1
+	}
+
+	_, err = s.db.Exec(
+		"INSERT INTO system_keys(serial, public_key, private_key, is_active) VALUES(?, ?, ?, ?)",
+		newSerial, publicKey, privateKey, true,
+	)
+	if err != nil {
+		return 0, err
+	}
+	_ = s.LogAction("CREATE_SYSTEM_KEY", fmt.Sprintf("serial: %d", newSerial))
+
+	return newSerial, nil
 }
 func (s *MySQLStore) RotateSystemKey(publicKey, privateKey string) (int, error) {
-	return 0, fmt.Errorf("not implemented for mysql")
+	tx, err := s.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	// Defer a rollback in case anything fails.
+	defer tx.Rollback()
+
+	// Deactivate all existing keys.
+	if _, err := tx.Exec("UPDATE system_keys SET is_active = FALSE"); err != nil {
+		return 0, fmt.Errorf("failed to deactivate old system keys: %w", err)
+	}
+
+	// Get the next serial number.
+	var maxSerial sql.NullInt64
+	err = tx.QueryRow("SELECT MAX(serial) FROM system_keys").Scan(&maxSerial)
+	if err != nil {
+		// If there are no keys, maxSerial will be NULL and Scan returns ErrNoRows.
+		// This is not an error in this context.
+		if err != sql.ErrNoRows {
+			return 0, err
+		}
+	}
+	newSerial := int(maxSerial.Int64) + 1
+
+	// Insert the new active key.
+	_, err = tx.Exec(
+		"INSERT INTO system_keys(serial, public_key, private_key, is_active) VALUES(?, ?, ?, ?)",
+		newSerial, publicKey, privateKey, true,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert new system key: %w", err)
+	}
+
+	// Commit the transaction.
+	err = tx.Commit()
+	if err == nil {
+		_ = s.LogAction("ROTATE_SYSTEM_KEY", fmt.Sprintf("new_serial: %d", newSerial))
+	}
+
+	return newSerial, err
 }
 func (s *MySQLStore) GetActiveSystemKey() (*model.SystemKey, error) {
-	return nil, fmt.Errorf("not implemented for mysql")
+	row := s.db.QueryRow("SELECT id, serial, public_key, private_key, is_active FROM system_keys WHERE is_active = TRUE")
+
+	var key model.SystemKey
+	err := row.Scan(&key.ID, &key.Serial, &key.PublicKey, &key.PrivateKey, &key.IsActive)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No active key found, not necessarily an error.
+		}
+		return nil, err
+	}
+	return &key, nil
 }
 func (s *MySQLStore) GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
-	return nil, fmt.Errorf("not implemented for mysql")
+	row := s.db.QueryRow("SELECT id, serial, public_key, private_key, is_active FROM system_keys WHERE serial = ?", serial)
+
+	var key model.SystemKey
+	err := row.Scan(&key.ID, &key.Serial, &key.PublicKey, &key.PrivateKey, &key.IsActive)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No key found with that serial.
+		}
+		return nil, err
+	}
+	return &key, nil
 }
 func (s *MySQLStore) HasSystemKeys() (bool, error) {
-	return false, fmt.Errorf("not implemented for mysql")
+	var count int
+	err := s.db.QueryRow("SELECT COUNT(id) FROM system_keys").Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 func (s *MySQLStore) AssignKeyToAccount(keyID, accountID int) error {
 	_, err := s.db.Exec("INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, accountID)
