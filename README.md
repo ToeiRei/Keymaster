@@ -8,14 +8,42 @@ Keymaster centralizes control of your `authorized_keys` files. Fed up with compl
 
 ## Core Features
 
+- **Modern Interactive TUI:** A beautiful and responsive terminal UI built with `lipgloss`. Features a main dashboard, filterable lists, color-coded tables, and a consistent, professional design.
 - **Centralized Management:** A single SQLite database (`keymaster.db`) acts as the source of truth for all public keys and account assignments.
 - **Agentless Deployment:** Uses standard SSH/SFTP to connect to hosts and manage `authorized_keys` files. No remote agents required.
 - **Safe Key Rotation:** Features a robust system key rotation mechanism. Old keys are retained to ensure you can always regain access to hosts that were offline during a rotation.
 - **Fleet-Wide Operations:** Deploy key changes or audit your entire fleet of active hosts with a single command.
 - **Drift Detection:** The `audit` command quickly checks all hosts to ensure their deployed keys match the central database state.
-- **Interactive TUI:** A simple, fast terminal UI for managing accounts, keys, and assignments without leaving your console.
 - **Scriptable CLI:** All core features are available as command-line arguments, making Keymaster perfect for automation.
 - **SSH Agent Integration:** Seamlessly uses your running SSH agent (including Pageant/gpg-agent on Windows) to bootstrap new hosts without manual key copying.
+
+## A New Look
+
+Keymaster 1.2 introduces a completely redesigned user interface to make managing your keys a pleasure.
+
+```
+      🔑 Keymaster
+  An agentless SSH key manager that just does the job.
+
+╭──────────────────────────────────────╮  ╭──────────────────────────────────────────────────╮
+│ Navigation                           │  │ System Status                                    │
+│                                      │  │                                                  │
+│   ▸ Manage Accounts                  │  │ Managed Accounts: 5 (5 active)                   │
+│     Manage Public Keys               │  │    Public Keys: 3 (1 global)                     │
+│     Assign Keys to Accounts          │  │     System Key: Active (Serial #1)               │
+│     Rotate System Keys               │  │                                                  │
+│     Deploy to Fleet                  │  │                                                  │
+│     View Audit Log                   │  │ Recent Activity                                  │
+│     View Accounts by Tag             │  │                                                  │
+│                                      │  │ 09-23 10:45  ADD_ACCOUNT      account: new@host   │
+│                                      │  │ 09-23 10:44  TRUST_HOST       hostname: new@host  │
+│                                      │  │ 09-23 10:42  ROTATE_SYSTEM_KEY  new_serial: 1     │
+│                                      │  │ 09-23 10:40  DELETE_PUBLIC_KEY  comment: old-key  │
+│                                      │  │ 09-23 10:39  ADD_PUBLIC_KEY   comment: new-key    │
+╰──────────────────────────────────────╯  ╰──────────────────────────────────────────────────╯
+
+  j/k up/down: navigate  enter: select  q: quit
+```
 
 ## Getting Started
 

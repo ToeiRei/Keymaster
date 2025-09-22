@@ -1,0 +1,504 @@
+commit 9ec056336ab408a1234199dca4cfe667ea9bc053
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 21:45:59 2025 +0200
+
+    authorized_keys print style fix
+
+commit b20d03ff362df5d20e2f8e7381712eda6c62d9fc
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 21:44:21 2025 +0200
+
+    dashboard fixes
+
+commit 46cd7cef74eb04eb0abb8f175158963a05fc126e
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 21:39:21 2025 +0200
+
+    freshly added host is selected on the list
+
+commit b1fdcffb1610e89f6a34c386a6298194a38ffdfd
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 21:36:14 2025 +0200
+
+    Autocomplete for tags
+
+commit 3ef7da8da86527902a92ab6b54fb07b08acfd07e
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 21:31:42 2025 +0200
+
+    fix account view
+
+commit ee3f29f79f6bd301dc7c852a44487af7f757d201
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 21:27:00 2025 +0200
+
+    more style fixes
+
+commit 540c5422b0150fe042ac174f5ccb0dddc7daa362
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 21:21:25 2025 +0200
+
+    did I mention I hate designing?
+
+commit 5249c38e0498bd4c226387531bc524456a6832ba
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 21:06:20 2025 +0200
+
+    styling
+
+commit d72f3d260f4b5b03e135301693a849b180705072
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 19:59:47 2025 +0200
+
+    implement basic styling
+
+commit c3cd72e48bea5155e3134d79d3b9ac10119cfc1a
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 19:44:31 2025 +0200
+
+    use / as filter hotkey to not collide with i.e. (e)dit
+
+commit 0214a382b051b4ed84fe102b1229806fdeaa870f
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 19:42:51 2025 +0200
+
+    add filters on hosts and keys as well
+
+commit 4db50fd6adfd3e5d9634e870b02f9137b7824331
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 19:33:23 2025 +0200
+
+    add a filter for tags
+
+commit 40d3e201c806327f29a2b7bb393bc845b9804a33
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 19:26:44 2025 +0200
+
+    tag view. Tag, you're it!
+
+commit fdecfc5ccbe5d879dd1dfe25570df2376b9b040c
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 19:00:27 2025 +0200
+
+    global keys, baby. We need some keys everywhere
+
+commit b23321b13118b81ea5724c29b7d896432a2c5645
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 18:26:27 2025 +0200
+
+    make ssh deployment more resiliant
+
+commit 649725a755801020234e0e206444dade5de8b623
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 17:58:25 2025 +0200
+
+    system first, agent later god damnit...
+
+commit 9b97a89c6192b023548b4060758d3692d20230da
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 17:56:14 2025 +0200
+
+    unbreak deployment with the keymaster key
+
+commit f9d519ffbab7060e7a798c1477f1aba7461f8fd6
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 17:47:18 2025 +0200
+
+    Implement deploy to tag
+
+commit 93014b59389d4b783255b715212a19d3d9b180a1
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 17:40:19 2025 +0200
+
+    implement tagging for accounts
+
+commit 68ca318cce521e5c51687d590afcc808301c37e4
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 15:22:01 2025 +0200
+
+    trust is established as soon as the host is entered
+
+commit 46134904fa312ff3b30a8f73673f1d19de2e958d
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 15:17:16 2025 +0200
+
+    more fallback logic
+
+commit a6126af36cfc52b4fcc8e3b43038e21c020a6e4b
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 15:14:31 2025 +0200
+
+    fall back on ssh agent in case
+
+commit 597857f5306b9b13eb6edc2762373427ba46930f
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 15:10:06 2025 +0200
+
+    expand on PGSql as well
+
+commit 82f6663c34594da5286ee09a7b0167426a2e6805
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 15:06:01 2025 +0200
+
+    expand some pg stubs as well
+
+commit 5b21e143d9af600ff11b49cf1bd8712e26e9fd3c
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 15:05:51 2025 +0200
+
+    do some more expanding on the queries on MySQL. Stubs are nice but don't do actual work ;)
+
+commit 0582ca97fad52780289be487918b1659d430bcec
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 14:56:42 2025 +0200
+
+    also fix pg
+
+commit edcffd6e1aee93a470809407b0a694ccb17fc87c
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 14:53:12 2025 +0200
+
+    fix mysql again
+
+commit 33908d8c887f6691d2e312bf9be324d3612248a2
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 14:26:15 2025 +0200
+
+    ignore local config
+
+commit 93e1a0144858aa340aef81e040ab5d3ea4ce1f96
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 14:24:50 2025 +0200
+
+    prep for MySQL the same way
+
+commit 0c0f97a34e9043d9f6471e78dbedd27e8a4a08e3
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 14:22:19 2025 +0200
+
+    do some groundwork for pg implementation
+
+commit e5ce2e93235fc09f0befffe8a9661308dbf470ac
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 14:14:43 2025 +0200
+
+    write config per default, final corrections on db layer
+
+commit e01539723c1e846b527da98786e539fbd80e4821
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 14:05:07 2025 +0200
+
+    bit more error handling on db creation
+
+commit 29e56df2ec0701783bc39f2440939062e467799d
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 13:57:18 2025 +0200
+
+    implement a config file for the db connection string
+
+commit 5326f1455c2dce41b7db3f75653f6a3e46c550d9
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 13:49:19 2025 +0200
+
+    migrate to DB layer
+
+commit e9e9d5b3e0e277225fb5b20ebf7833dded77c82e
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 12:58:39 2025 +0200
+
+    implement key usage reports
+
+commit fb16b0b8811f07af99d4346622e8ad00f6f266e0
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 12:45:01 2025 +0200
+
+    HighPerformanceRenderer  is depreciated
+
+commit 86193a52f9fdd8a265e61c6e3f64b156e8083a8c
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 12:40:27 2025 +0200
+
+    implement labels / editing part 2
+
+commit 934549d9f6083be9bea2228c84fb06e54f2500e0
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 12:35:40 2025 +0200
+
+    add labels to hosts (IPs are so bad to remember)
+
+commit 80ee18c57651e08cdee46712f27c2781a3fb6417
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 12:30:08 2025 +0200
+
+    fix viewport
+
+commit 190e51096e2cc4bf7ab6d3e196a8efef86cf8287
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 12:27:18 2025 +0200
+
+    implement audit logging
+
+commit c6538958297b9627dccd8a8f1a6e051ecb1d5488
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 12:10:48 2025 +0200
+
+    Make linter happy
+
+commit 4589cc3ac993d8b5eed9c739a17c1e97d6770b94
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 11:58:34 2025 +0200
+
+    let's try the other version
+
+commit 242b373ddbd9c37a96b2f10733e71b0495fbe16e
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 11:46:38 2025 +0200
+
+    try fixing agents on linux
+
+commit a7821938cb10e4fd58661710f4239bd7b71d41f6
+Merge: 3cb514a ef2c3af
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 11:35:37 2025 +0200
+
+    Merge branch 'main' of github.com:ToeiRei/Keymaster
+
+commit 3cb514a3676de228877608f95ae4c97dd556d19b
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 11:34:56 2025 +0200
+
+    fix install and make things a little more portable
+
+commit 8021616dfac9132c5ce96f7b79575a95e37e48d9
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 11:27:14 2025 +0200
+
+    implement remote importing via ssh
+
+commit ef2c3afa13ce613236a44153a62e2c487818e1d7
+Author: ToeiRei <ToeiRei@users.noreply.github.com>
+Date:   Mon Sep 22 11:01:52 2025 +0200
+
+    Delete TODO.txt
+
+commit 7959b4a699077c39267cc93728856f7eb96b95a7
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 11:00:20 2025 +0200
+
+    ignore my plans
+
+commit 0e339617253b2f37f1a5a533e38ca69a7a92be79
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 10:56:30 2025 +0200
+
+    Ignorance is bliss.
+
+commit 142a28197b582f5d285a06e6bc5ad03ebaa57d82
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 10:40:45 2025 +0200
+
+    Repo Readme
+
+commit d58e1fb255c7a82a396f687075c3a64a536c954f
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 10:32:37 2025 +0200
+
+    Warn on weak host keys
+
+commit 6e44f69df45db7c240d127cd4461b363a594580c
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 10:20:53 2025 +0200
+
+    deploy using local agent if found
+
+commit e7f80559ae11e759c450021f57807d656b430955
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 10:15:29 2025 +0200
+
+    allow rotation to take a 'no'
+
+commit ef3508d03bd0924a924483d6fcfbf3bcdb14c89a
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 10:04:31 2025 +0200
+
+    implement a little audit
+
+commit 95a2c2d22cecf40ae5d107a1a117588f9cbace5d
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 09:56:09 2025 +0200
+
+    get host keys logic
+
+commit 17bcea0f338701cce77f9ef2ddb859da3b6e448c
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 09:52:56 2025 +0200
+
+    implement known_hosts logic
+
+commit fe633acf4caea385b8fb97881907cdc433046e37
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 09:45:41 2025 +0200
+
+    cli work, ui default
+
+commit 38c6dce56a01797c3bd78b7179b518117510c8ff
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 09:40:44 2025 +0200
+
+    Summary on fleet deployment
+
+commit 4a754e18885b94758dafa9d5c9025574ff50c0dd
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 09:37:37 2025 +0200
+
+    Fleet Deployment (loop)
+
+commit 629c5104456fef7302dcc1cb39b59095e97dd3d1
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 09:28:39 2025 +0200
+
+    enable rotation (cheap shot now)
+
+commit d74904b9253d68e22f4940fe54c4817a428a2ae6
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 09:23:30 2025 +0200
+
+    implement single host deployment
+
+commit 8603de12851d50271fdc84c082ba573c4477d039
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 09:04:40 2025 +0200
+
+    is_active for accounts. We want to keep some things
+
+commit d8d23b7e62f9704423fa636bb4b810a76809dd0a
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 08:53:34 2025 +0200
+
+    fix authorized_keys brainfart: if we just prompt, we do not need to check serials
+
+commit 7ac845a83fa7bfe57a2900b17ae110d53ef5a430
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 08:51:43 2025 +0200
+
+    implement deployment submenu
+
+commit 254109f7022d33e6534e05d35b719e4e2405f5df
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 08:44:13 2025 +0200
+
+    key generation on our own side (system key)
+
+commit 782de945c844542e3df3f6343b33487b6463ee0f
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 08:22:53 2025 +0200
+
+    go bites again. Move parser
+
+commit f49cf3a598177785e3f7ef5e45309c80da2d5916
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 08:20:18 2025 +0200
+
+    add importing of authorized_keys
+
+commit 662da76e00552ddf1c06bc1e02598b20daf0f29b
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 08:14:53 2025 +0200
+
+    add assigning keys to hosts
+
+commit 93044bbf6e46e2b75cc51a362be4b45f23d8fcac
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 08:09:13 2025 +0200
+
+    wire in key management
+
+commit 6c6df0248b7e483079f1db0d69277cd34cec4f5f
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Mon Sep 22 08:03:52 2025 +0200
+
+    add key db
+
+commit 59b0ca10423b7128f13f1bd8cab2c83ce053d6cc
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 23:52:36 2025 +0200
+
+    use the @ as middle anchor for the accounts: user@host
+
+commit b1382d79dc2b33de11be79ee02a7c5d1846e31b7
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 23:49:02 2025 +0200
+
+    input form styling
+
+commit 14dd7c9341cbd400335acf2bc057bf96d57082ae
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 23:43:44 2025 +0200
+
+    add accounts/hosts form
+
+commit c168798d09c8d5e9682227a5eb84db52d58d618e
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 23:37:56 2025 +0200
+
+    some ignorance
+
+commit 5b78e8f5dd75887f2993c777da707b7c04cb5b7f
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 23:34:05 2025 +0200
+
+    swap out sqlite driver
+
+commit e7aeedd38b5d860627573e64100b8a36b528aa91
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 23:32:33 2025 +0200
+
+    add serial to accounts
+
+commit 8d746a7db4fccac2cf5fdb4f4e1c74df4168973d
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 23:31:53 2025 +0200
+
+    shifting files around
+
+commit 50b9c51f7dbbb390fbd2bbcd7977900ec9309a3c
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 23:26:45 2025 +0200
+
+    add sqlite and accounts page
+
+commit 765270d94fa06e2b3abf2c6f08af87573d4c8283
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 23:19:29 2025 +0200
+
+    ui refresh on lipstick
+
+commit d342da7801b2fbed4cbffc89fe32be195b32cf86
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 23:18:13 2025 +0200
+
+    yeet empty file
+
+commit 0b02222f5ab850ff2c1d541b801ffa93d2412bba
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 23:12:04 2025 +0200
+
+    run tidy
+
+commit dad7d89cf7f59a364827ca2f8816c829278a7289
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 23:11:26 2025 +0200
+
+    some fixes along the way
+
+commit 849980d17a0ec51ff90e01ecfa41b743d2e99953
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 23:06:47 2025 +0200
+
+    implement tui draft
+
+commit 6cf1c3d1430a9ff8ff5769d564e10c5d1382e92e
+Author: ToeiRei <vbauer@stargazer.at>
+Date:   Sun Sep 21 22:59:50 2025 +0200
+
+    init draft
