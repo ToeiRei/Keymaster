@@ -25,19 +25,20 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 	// Build our list of authentication methods.
 	var authMethods []ssh.AuthMethod
 
-	// 1. Try to use a running SSH agent. This is great for bootstrapping.
-	// The getSSHAgent function is platform-specific, implemented using build tags.
-	if agentClient := getSSHAgent(); agentClient != nil {
-		authMethods = append(authMethods, ssh.PublicKeysCallback(agentClient.Signers))
-	}
-
-	// 2. If a specific Keymaster system key is provided, add it as a reliable fallback.
+	// If a specific Keymaster system key is provided, use it exclusively.
+	// This ensures deployments are deterministic and use the correct key.
 	if privateKey != "" {
 		signer, err := ssh.ParsePrivateKey([]byte(privateKey))
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse private key: %w", err)
 		}
 		authMethods = append(authMethods, ssh.PublicKeys(signer))
+	} else {
+		// As a fallback for bootstrapping (e.g., initial key import),
+		// try to use a running SSH agent.
+		if agentClient := getSSHAgent(); agentClient != nil {
+			authMethods = append(authMethods, ssh.PublicKeysCallback(agentClient.Signers))
+		}
 	}
 
 	if len(authMethods) == 0 {
@@ -46,7 +47,6 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 
 	config := &ssh.ClientConfig{
 		User: user,
-		// The client will try each auth method in order (agent, then key).
 		Auth: authMethods,
 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 			// The hostname passed to the callback can include the port. We need to strip it
