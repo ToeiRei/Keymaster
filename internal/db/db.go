@@ -136,11 +136,9 @@ func DeleteAccount(id int) error {
 	return err
 }
 
-// IncrementAccountSerial increments the serial for a given account ID.
-// This will be called after a successful deployment to an account's host.
-func IncrementAccountSerial(id int) error {
-	// We increment directly in SQL to avoid race conditions.
-	_, err := db.Exec("UPDATE accounts SET serial = serial + 1 WHERE id = ?", id)
+// UpdateAccountSerial sets the serial for a given account ID to a specific value.
+func UpdateAccountSerial(id, serial int) error {
+	_, err := db.Exec("UPDATE accounts SET serial = ? WHERE id = ?", serial, id)
 	return err
 }
 
