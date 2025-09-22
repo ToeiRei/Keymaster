@@ -45,13 +45,18 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		// Go back to the keys list.
 		case "esc":
-			return m, func() tea.Msg { return backToKeysMsg{} }
+			return m, func() tea.Msg { return backToListMsg{} }
 
 		case "enter":
 			rawKey := m.input.Value()
 			alg, keyData, comment, err := sshkey.Parse(rawKey)
 			if err != nil {
 				m.err = err
+				return m, nil
+			}
+
+			if comment == "" {
+				m.err = fmt.Errorf("key must have a comment")
 				return m, nil
 			}
 

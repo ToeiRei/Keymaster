@@ -9,24 +9,23 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
-// A message to signal that we should go back to the keys list from the form.
-type backToKeysMsg struct{}
-
 type publicKeysViewState int
 
 const (
-	keysListView publicKeysViewState = iota
-	keysFormView
+	publicKeysListView publicKeysViewState = iota
+	publicKeysFormView
+	publicKeysUsageView
 )
 
-// publicKeysModel is the model for the public key management view.
 type publicKeysModel struct {
-	state  publicKeysViewState
-	form   publicKeyFormModel
-	keys   []model.PublicKey
-	cursor int
-	status string
-	err    error
+	state            publicKeysViewState
+	form             publicKeyFormModel
+	keys             []model.PublicKey
+	cursor           int
+	status           string
+	err              error
+	usageReportKey   model.PublicKey
+	usageReportAccts []model.Account
 }
 
 func newPublicKeysModel() publicKeysModel {
@@ -46,43 +45,56 @@ func (m publicKeysModel) Init() tea.Cmd {
 func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	// Delegate updates to the form if it's active.
-	if m.state == keysFormView {
+	if m.state == publicKeysFormView {
 		if _, ok := msg.(publicKeyCreatedMsg); ok {
-			m.state = keysListView
+			m.state = publicKeysListView
 			m.status = "Successfully added new public key."
 			m.keys, m.err = db.GetAllPublicKeys()
 			return m, nil
 		}
-		if _, ok := msg.(backToKeysMsg); ok {
-			m.state = keysListView
+		if _, ok := msg.(backToListMsg); ok {
+			m.state = publicKeysListView
 			m.status = ""
 			return m, nil
 		}
-
 		var newFormModel tea.Model
 		newFormModel, cmd = m.form.Update(msg)
 		m.form = newFormModel.(publicKeyFormModel)
 		return m, cmd
 	}
 
-	// --- This is the list view update logic ---
+	if m.state == publicKeysUsageView {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "q", "esc":
+				m.state = publicKeysListView
+				m.status = ""
+				return m, nil
+			}
+		}
+		return m, nil
+	}
+
+	// List view logic
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg { return backToMenuMsg{} }
-
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
 			}
-
 		case "down", "j":
 			if m.cursor < len(m.keys)-1 {
 				m.cursor++
 			}
-
+		case "a":
+			m.state = publicKeysFormView
+			m.form = newPublicKeyFormModel()
+			m.status = ""
+			return m, m.form.Init()
 		case "d", "delete":
 			if len(m.keys) > 0 {
 				keyToDelete := m.keys[m.cursor]
@@ -97,33 +109,45 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
-
-		case "a":
-			m.state = keysFormView
-			m.form = newPublicKeyFormModel()
-			m.status = ""
-			return m, m.form.Init()
+		case "u": // Usage report
+			if len(m.keys) > 0 {
+				m.usageReportKey = m.keys[m.cursor]
+				accounts, err := db.GetAccountsForKey(m.usageReportKey.ID)
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+				m.usageReportAccts = accounts
+				m.state = publicKeysUsageView
+				m.status = ""
+			}
+			return m, nil
 		}
 	}
 	return m, nil
 }
 
 func (m publicKeysModel) View() string {
-	if m.state == keysFormView {
-		return m.form.View()
+	if m.err != nil {
+		return fmt.Sprintf("Error: %v\n", m.err)
 	}
 
+	switch m.state {
+	case publicKeysFormView:
+		return m.form.View()
+	case publicKeysUsageView:
+		return m.viewUsageReport()
+	default: // publicKeysListView
+		return m.viewKeyList()
+	}
+}
+
+func (m publicKeysModel) viewKeyList() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("🔑 Manage Public Keys"))
 	b.WriteString("\n\n")
 
-	if m.err != nil {
-		b.WriteString(fmt.Sprintf("Error: %v\n", m.err))
-		return b.String()
-	}
-
 	for i, key := range m.keys {
-		// Displaying as "Comment (Algorithm)"
 		line := fmt.Sprintf("%s (%s)", key.Comment, key.Algorithm)
 		if m.cursor == i {
 			b.WriteString(selectedItemStyle.Render("» " + line))
@@ -137,10 +161,30 @@ func (m publicKeysModel) View() string {
 		b.WriteString(helpStyle.Render("No public keys found. Press 'a' to add one."))
 	}
 
-	b.WriteString(helpStyle.Render("\n(a)dd, (d)elete, (q)uit to menu"))
+	b.WriteString(helpStyle.Render("\n(a)dd, (d)elete, (u)sage report, (q)uit"))
 	if m.status != "" {
 		b.WriteString(helpStyle.Render("\n\n" + m.status))
 	}
 
+	return b.String()
+}
+
+func (m publicKeysModel) viewUsageReport() string {
+	var b strings.Builder
+	title := fmt.Sprintf("📜 Key Usage Report for: %s", m.usageReportKey.Comment)
+	b.WriteString(titleStyle.Render(title))
+	b.WriteString("\n\n")
+
+	if len(m.usageReportAccts) == 0 {
+		b.WriteString(helpStyle.Render("This key is not assigned to any accounts."))
+	} else {
+		b.WriteString("This key is assigned to the following accounts:\n\n")
+		for _, acc := range m.usageReportAccts {
+			b.WriteString(itemStyle.Render("- " + acc.String()))
+			b.WriteString("\n")
+		}
+	}
+
+	b.WriteString(helpStyle.Render("\n(esc or q to go back)"))
 	return b.String()
 }

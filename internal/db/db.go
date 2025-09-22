@@ -519,6 +519,35 @@ func GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
 	return keys, nil
 }
 
+// GetAccountsForKey retrieves all accounts that have a specific public key assigned.
+func GetAccountsForKey(keyID int) ([]model.Account, error) {
+	query := `
+		SELECT a.id, a.username, a.hostname, a.label, a.serial, a.is_active
+		FROM accounts a
+		JOIN account_keys ak ON a.id = ak.account_id
+		WHERE ak.key_id = ?
+		ORDER BY a.label, a.hostname, a.username`
+	rows, err := db.Query(query, keyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var accounts []model.Account
+	for rows.Next() {
+		var acc model.Account
+		var label sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
+			return nil, err
+		}
+		if label.Valid {
+			acc.Label = label.String
+		}
+		accounts = append(accounts, acc)
+	}
+	return accounts, nil
+}
+
 // GetAllAuditLogEntries retrieves all entries from the audit log, most recent first.
 func GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
 	rows, err := db.Query("SELECT id, timestamp, username, action, details FROM audit_log ORDER BY timestamp DESC")
