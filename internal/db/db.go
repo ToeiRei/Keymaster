@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/toeirei/keymaster/internal/model"
 )
@@ -16,12 +17,21 @@ var (
 // For now, it defaults to SQLite. In the future, this could read a config
 // to determine the correct database driver and connection string.
 func InitDB(dataSourceName string) error {
-	// Currently, we only support sqlite.
-	sqliteStore, err := NewSqliteStore(dataSourceName)
-	if err != nil {
-		return fmt.Errorf("failed to initialize sqlite store: %w", err)
+	var err error
+	// This is a simple way to select the driver. A more robust solution
+	// might parse the DSN scheme (e.g., postgresql://, mysql://).
+	if strings.HasPrefix(dataSourceName, "postgres") {
+		// Placeholder for future PostgreSQL support
+		// store, err = NewPostgresStore(dataSourceName)
+		return fmt.Errorf("postgresql is not yet supported")
+	} else {
+		// Default to SQLite for file paths
+		store, err = NewSqliteStore(dataSourceName)
 	}
-	store = sqliteStore
+
+	if err != nil {
+		return fmt.Errorf("failed to initialize store: %w", err)
+	}
 	return nil
 }
 

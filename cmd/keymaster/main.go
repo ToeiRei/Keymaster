@@ -22,6 +22,7 @@ import (
 )
 
 var version = "dev" // this will be set by the linker
+var cfgFile string
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
@@ -65,10 +66,6 @@ If an account (user@host) is specified, deploys only to that account.
 If no account is specified, deploys to all active accounts in the database.`,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := db.InitDB("./keymaster.db"); err != nil {
-			log.Fatalf("Error initializing database: %v", err)
-		}
-
 		allAccounts, err := db.GetAllActiveAccounts()
 		if err != nil {
 			log.Fatalf("Error getting accounts: %v", err)
@@ -137,10 +134,6 @@ var rotateKeyCmd = &cobra.Command{
 The previous key is kept for accessing hosts that have not yet been updated.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("⚙️  Rotating system key...")
-		if err := db.InitDB("./keymaster.db"); err != nil {
-			log.Fatalf("Error initializing database: %v", err)
-		}
-
 		pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
 		if err != nil {
 			log.Fatalf("Error generating key pair: %v", err)
@@ -174,10 +167,6 @@ var auditCmd = &cobra.Command{
 	Short: "Audit hosts for configuration drift",
 	Long:  `Connects to all active hosts and checks if their deployed authorized_keys file has the expected Keymaster serial number.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := db.InitDB("./keymaster.db"); err != nil {
-			log.Fatalf("Error initializing database: %v", err)
-		}
-
 		accounts, err := db.GetAllActiveAccounts()
 		if err != nil {
 			log.Fatalf("Error getting accounts: %v", err)
@@ -229,11 +218,6 @@ var importCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
 		fmt.Printf("🔑 Importing keys from %s...\n", filePath)
-
-		// Initialize the database.
-		if err := db.InitDB("./keymaster.db"); err != nil {
-			log.Fatalf("Error initializing database: %v", err)
-		}
 
 		file, err := os.Open(filePath)
 		if err != nil {
@@ -339,10 +323,6 @@ and prompts the user to save it to the database. This is a required
 step before Keymaster can manage a new host.`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := db.InitDB("./keymaster.db"); err != nil {
-			log.Fatalf("Error initializing database: %v", err)
-		}
-
 		target := args[0]
 		parts := strings.Split(target, "@")
 		if len(parts) != 2 {

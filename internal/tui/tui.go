@@ -7,7 +7,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toeirei/keymaster/internal/db"
 )
 
 // --- STYLING ---
@@ -278,13 +277,6 @@ func (m menuModel) View() string {
 
 // Run is the entrypoint for the TUI.
 func Run() {
-	// Initialize the database. A file named keymaster.db will be created if it doesn't exist.
-	err := db.InitDB("./keymaster.db")
-	if err != nil {
-		fmt.Printf("Error initializing database: %v\n", err)
-		os.Exit(1)
-	}
-
 	// Create a new Bubble Tea program.
 	p := tea.NewProgram(initialModel())
 
