@@ -16,3 +16,4 @@ vendor/
 .vscode/
 .idea/
 TODO.txt
+.keymaster.yaml
