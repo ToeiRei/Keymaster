@@ -52,7 +52,8 @@ func runMySQLMigrations(db *sql.DB) error {
 			id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,
 			algorithm VARCHAR(255) NOT NULL,
 			key_data TEXT NOT NULL,
-			comment VARCHAR(255) NOT NULL UNIQUE
+			comment VARCHAR(255) NOT NULL UNIQUE,
+			is_global BOOLEAN NOT NULL DEFAULT FALSE
 		);`,
 		`CREATE TABLE IF NOT EXISTS account_keys (
 			account_id INTEGER NOT NULL,
@@ -211,15 +212,15 @@ func (s *MySQLStore) GetAllActiveAccounts() ([]model.Account, error) {
 	}
 	return accounts, nil
 }
-func (s *MySQLStore) AddPublicKey(algorithm, keyData, comment string) error {
-	_, err := s.db.Exec("INSERT INTO public_keys(algorithm, key_data, comment) VALUES(?, ?, ?)", algorithm, keyData, comment)
+func (s *MySQLStore) AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error {
+	_, err := s.db.Exec("INSERT INTO public_keys(algorithm, key_data, comment, is_global) VALUES(?, ?, ?, ?)", algorithm, keyData, comment, isGlobal)
 	if err == nil {
 		_ = s.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
 	}
 	return err
 }
 func (s *MySQLStore) GetAllPublicKeys() ([]model.PublicKey, error) {
-	rows, err := s.db.Query("SELECT id, algorithm, key_data, comment FROM public_keys ORDER BY comment")
+	rows, err := s.db.Query("SELECT id, algorithm, key_data, comment, is_global FROM public_keys ORDER BY comment")
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +229,7 @@ func (s *MySQLStore) GetAllPublicKeys() ([]model.PublicKey, error) {
 	var keys []model.PublicKey
 	for rows.Next() {
 		var key model.PublicKey
-		if err := rows.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment); err != nil {
+		if err := rows.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment, &key.IsGlobal); err != nil {
 			return nil, err
 		}
 		keys = append(keys, key)
@@ -236,15 +237,15 @@ func (s *MySQLStore) GetAllPublicKeys() ([]model.PublicKey, error) {
 	return keys, nil
 }
 func (s *MySQLStore) GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
-	row := s.db.QueryRow("SELECT id, algorithm, key_data, comment FROM public_keys WHERE comment = ?", comment)
+	row := s.db.QueryRow("SELECT id, algorithm, key_data, comment, is_global FROM public_keys WHERE comment = ?", comment)
 	var key model.PublicKey
-	err := row.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment)
+	err := row.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment, &key.IsGlobal)
 	if err != nil {
 		return nil, err // This will be sql.ErrNoRows if not found
 	}
 	return &key, nil
 }
-func (s *MySQLStore) AddPublicKeyAndGetModel(algorithm, keyData, comment string) (*model.PublicKey, error) {
+func (s *MySQLStore) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) {
 	// First, check if it exists to avoid constraint errors.
 	existing, err := s.GetPublicKeyByComment(comment)
 	if err != nil && err != sql.ErrNoRows {
@@ -254,7 +255,7 @@ func (s *MySQLStore) AddPublicKeyAndGetModel(algorithm, keyData, comment string)
 		return nil, nil // Key already exists, return nil model and nil error
 	}
 
-	result, err := s.db.Exec("INSERT INTO public_keys (algorithm, key_data, comment) VALUES (?, ?, ?)", algorithm, keyData, comment)
+	result, err := s.db.Exec("INSERT INTO public_keys (algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?)", algorithm, keyData, comment, isGlobal)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +265,31 @@ func (s *MySQLStore) AddPublicKeyAndGetModel(algorithm, keyData, comment string)
 	}
 	_ = s.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
 
-	return &model.PublicKey{ID: int(id), Algorithm: algorithm, KeyData: keyData, Comment: comment}, nil
+	return &model.PublicKey{ID: int(id), Algorithm: algorithm, KeyData: keyData, Comment: comment, IsGlobal: isGlobal}, nil
+}
+func (s *MySQLStore) TogglePublicKeyGlobal(id int) error {
+	_, err := s.db.Exec("UPDATE public_keys SET is_global = NOT is_global WHERE id = ?", id)
+	if err == nil {
+		_ = s.LogAction("TOGGLE_KEY_GLOBAL", fmt.Sprintf("key_id: %d", id))
+	}
+	return err
+}
+func (s *MySQLStore) GetGlobalPublicKeys() ([]model.PublicKey, error) {
+	rows, err := s.db.Query("SELECT id, algorithm, key_data, comment, is_global FROM public_keys WHERE is_global = TRUE ORDER BY comment")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []model.PublicKey
+	for rows.Next() {
+		var key model.PublicKey
+		if err := rows.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment, &key.IsGlobal); err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
 }
 func (s *MySQLStore) DeletePublicKey(id int) error {
 	// Get key comment before deleting for logging.

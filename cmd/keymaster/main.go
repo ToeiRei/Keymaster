@@ -338,7 +338,7 @@ var importCmd = &cobra.Command{
 				continue
 			}
 
-			if err := db.AddPublicKey(alg, keyData, comment); err != nil {
+			if err := db.AddPublicKey(alg, keyData, comment, false); err != nil {
 				if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 					fmt.Printf("  - Skipping duplicate key (comment exists): %s\n", comment)
 				} else {

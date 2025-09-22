@@ -24,7 +24,21 @@ func GenerateKeysContent(accountID int) (string, error) {
 	b.WriteString(systemKey.PublicKey)
 	b.WriteString("\n\n")
 
-	// 2. Add all user-assigned public keys
+	// 2. Add all global public keys
+	globalKeys, err := db.GetGlobalPublicKeys()
+	if err != nil {
+		return "", fmt.Errorf("failed to get global keys: %w", err)
+	}
+	if len(globalKeys) > 0 {
+		b.WriteString("# Global Public Keys\n")
+		for _, key := range globalKeys {
+			b.WriteString(key.String())
+			b.WriteString("\n")
+		}
+		b.WriteString("\n")
+	}
+
+	// 3. Add all user-assigned public keys
 	userKeys, err := db.GetKeysForAccount(accountID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get user keys for account %d: %w", accountID, err)

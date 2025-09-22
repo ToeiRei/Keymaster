@@ -14,8 +14,10 @@ import (
 type publicKeyCreatedMsg struct{}
 
 type publicKeyFormModel struct {
-	input textinput.Model
-	err   error
+	focusIndex int // 0 for input, 1 for checkbox
+	input      textinput.Model
+	isGlobal   bool
+	err        error
 }
 
 func newPublicKeyFormModel() publicKeyFormModel {
@@ -29,7 +31,8 @@ func newPublicKeyFormModel() publicKeyFormModel {
 	ti.Cursor.Style = focusedStyle
 
 	return publicKeyFormModel{
-		input: ti,
+		focusIndex: 0,
+		input:      ti,
 	}
 }
 
@@ -42,12 +45,27 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle focus and global events first
 		switch msg.String() {
-		// Go back to the keys list.
 		case "esc":
 			return m, func() tea.Msg { return backToListMsg{} }
+		case "tab", "shift+tab", "up", "down":
+			if m.focusIndex == 0 {
+				m.focusIndex = 1
+				m.input.Blur()
+			} else {
+				m.focusIndex = 0
+				cmd = m.input.Focus()
+			}
+			return m, cmd
 
 		case "enter":
+			// If checkbox is focused, it's a toggle.
+			if m.focusIndex == 1 {
+				m.isGlobal = !m.isGlobal
+				return m, nil
+			}
+			// If input is focused, it's a submit.
 			rawKey := m.input.Value()
 			alg, keyData, comment, err := sshkey.Parse(rawKey)
 			if err != nil {
@@ -60,16 +78,23 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			if err := db.AddPublicKey(alg, keyData, comment); err != nil {
+			if err := db.AddPublicKey(alg, keyData, comment, m.isGlobal); err != nil {
 				m.err = err
 				return m, nil
 			}
-			// Signal that we're done.
 			return m, func() tea.Msg { return publicKeyCreatedMsg{} }
 		}
 	}
 
-	m.input, cmd = m.input.Update(msg)
+	// Update the focused component
+	if m.focusIndex == 0 {
+		m.input, cmd = m.input.Update(msg)
+	} else {
+		// The checkbox is toggled with space when focused
+		if key, ok := msg.(tea.KeyMsg); ok && key.String() == " " {
+			m.isGlobal = !m.isGlobal
+		}
+	}
 	return m, cmd
 }
 
@@ -79,12 +104,24 @@ func (m publicKeyFormModel) View() string {
 	b.WriteString(titleStyle.Render("✨ Add New Public Key"))
 	b.WriteString("\n\n")
 	b.WriteString(m.input.View())
+	b.WriteString("\n\n")
+
+	checkbox := "[ ] Set as Global Key (will be deployed to all accounts)"
+	if m.isGlobal {
+		checkbox = "[x] Set as Global Key (will be deployed to all accounts)"
+	}
+
+	if m.focusIndex == 1 {
+		b.WriteString(selectedItemStyle.Render(checkbox))
+	} else {
+		b.WriteString(itemStyle.Render(checkbox))
+	}
 
 	if m.err != nil {
 		b.WriteString(helpStyle.Render(fmt.Sprintf("\n\nError: %v", m.err)))
 	}
 
-	b.WriteString(helpStyle.Render("\n\n(paste key and press enter to submit, esc to cancel)"))
+	b.WriteString(helpStyle.Render("\n\n(tab to navigate, space/enter to toggle checkbox, enter on input to submit, esc to cancel)"))
 
 	return b.String()
 }

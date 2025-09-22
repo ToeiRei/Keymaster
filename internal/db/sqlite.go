@@ -50,7 +50,8 @@ func runMigrations(db *sql.DB) error {
 			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 			algorithm TEXT NOT NULL,
 			key_data TEXT NOT NULL,
-			comment TEXT NOT NULL UNIQUE
+			comment TEXT NOT NULL UNIQUE,
+			is_global BOOLEAN NOT NULL DEFAULT 0
 		);`,
 		`CREATE TABLE IF NOT EXISTS account_keys (
 			account_id INTEGER NOT NULL,
@@ -90,6 +91,7 @@ func runMigrations(db *sql.DB) error {
 		"ALTER TABLE accounts ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1;",
 		"ALTER TABLE accounts ADD COLUMN label TEXT;",
 		"ALTER TABLE accounts ADD COLUMN tags TEXT;",
+		"ALTER TABLE public_keys ADD COLUMN is_global BOOLEAN NOT NULL DEFAULT 0;",
 	}
 
 	for _, migrationSQL := range migrations {
@@ -230,8 +232,8 @@ func (s *SqliteStore) GetAllActiveAccounts() ([]model.Account, error) {
 }
 
 // AddPublicKey adds a new public key to the database.
-func (s *SqliteStore) AddPublicKey(algorithm, keyData, comment string) error {
-	_, err := s.db.Exec("INSERT INTO public_keys(algorithm, key_data, comment) VALUES(?, ?, ?)", algorithm, keyData, comment)
+func (s *SqliteStore) AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error {
+	_, err := s.db.Exec("INSERT INTO public_keys(algorithm, key_data, comment, is_global) VALUES(?, ?, ?, ?)", algorithm, keyData, comment, isGlobal)
 	if err == nil {
 		_ = s.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
 	}
@@ -240,7 +242,7 @@ func (s *SqliteStore) AddPublicKey(algorithm, keyData, comment string) error {
 
 // GetAllPublicKeys retrieves all public keys from the database.
 func (s *SqliteStore) GetAllPublicKeys() ([]model.PublicKey, error) {
-	rows, err := s.db.Query("SELECT id, algorithm, key_data, comment FROM public_keys ORDER BY comment")
+	rows, err := s.db.Query("SELECT id, algorithm, key_data, comment, is_global FROM public_keys ORDER BY comment")
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +251,7 @@ func (s *SqliteStore) GetAllPublicKeys() ([]model.PublicKey, error) {
 	var keys []model.PublicKey
 	for rows.Next() {
 		var key model.PublicKey
-		if err := rows.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment); err != nil {
+		if err := rows.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment, &key.IsGlobal); err != nil {
 			return nil, err
 		}
 		keys = append(keys, key)
@@ -259,9 +261,9 @@ func (s *SqliteStore) GetAllPublicKeys() ([]model.PublicKey, error) {
 
 // GetPublicKeyByComment retrieves a single public key by its unique comment.
 func (s *SqliteStore) GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
-	row := s.db.QueryRow("SELECT id, algorithm, key_data, comment FROM public_keys WHERE comment = ?", comment)
+	row := s.db.QueryRow("SELECT id, algorithm, key_data, comment, is_global FROM public_keys WHERE comment = ?", comment)
 	var key model.PublicKey
-	err := row.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment)
+	err := row.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment, &key.IsGlobal)
 	if err != nil {
 		return nil, err // This will be sql.ErrNoRows if not found
 	}
@@ -271,7 +273,7 @@ func (s *SqliteStore) GetPublicKeyByComment(comment string) (*model.PublicKey, e
 // AddPublicKeyAndGetModel adds a public key to the database if it doesn't already
 // exist (based on the comment) and returns the full key model.
 // It returns (nil, nil) if the key is a duplicate.
-func (s *SqliteStore) AddPublicKeyAndGetModel(algorithm, keyData, comment string) (*model.PublicKey, error) {
+func (s *SqliteStore) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) {
 	// First, check if it exists to avoid constraint errors.
 	existing, err := s.GetPublicKeyByComment(comment)
 	if err != nil && err != sql.ErrNoRows {
@@ -281,7 +283,7 @@ func (s *SqliteStore) AddPublicKeyAndGetModel(algorithm, keyData, comment string
 		return nil, nil // Key already exists, return nil model and nil error
 	}
 
-	result, err := s.db.Exec("INSERT INTO public_keys (algorithm, key_data, comment) VALUES (?, ?, ?)", algorithm, keyData, comment)
+	result, err := s.db.Exec("INSERT INTO public_keys (algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?)", algorithm, keyData, comment, isGlobal)
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +293,35 @@ func (s *SqliteStore) AddPublicKeyAndGetModel(algorithm, keyData, comment string
 	}
 	_ = s.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
 
-	return &model.PublicKey{ID: int(id), Algorithm: algorithm, KeyData: keyData, Comment: comment}, nil
+	return &model.PublicKey{ID: int(id), Algorithm: algorithm, KeyData: keyData, Comment: comment, IsGlobal: isGlobal}, nil
+}
+
+// TogglePublicKeyGlobal flips the 'is_global' status of a public key.
+func (s *SqliteStore) TogglePublicKeyGlobal(id int) error {
+	_, err := s.db.Exec("UPDATE public_keys SET is_global = NOT is_global WHERE id = ?", id)
+	if err == nil {
+		_ = s.LogAction("TOGGLE_KEY_GLOBAL", fmt.Sprintf("key_id: %d", id))
+	}
+	return err
+}
+
+// GetGlobalPublicKeys retrieves all keys marked as global.
+func (s *SqliteStore) GetGlobalPublicKeys() ([]model.PublicKey, error) {
+	rows, err := s.db.Query("SELECT id, algorithm, key_data, comment, is_global FROM public_keys WHERE is_global = 1 ORDER BY comment")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []model.PublicKey
+	for rows.Next() {
+		var key model.PublicKey
+		if err := rows.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment, &key.IsGlobal); err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
 }
 
 // GetKnownHostKey retrieves the trusted public key for a given hostname.

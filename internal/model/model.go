@@ -29,6 +29,7 @@ type PublicKey struct {
 	Algorithm string
 	KeyData   string
 	Comment   string
+	IsGlobal  bool
 }
 
 // String returns the full public key line suitable for an authorized_keys file.

@@ -78,8 +78,8 @@ func GetAllActiveAccounts() ([]model.Account, error) {
 }
 
 // AddPublicKey adds a new public key to the database.
-func AddPublicKey(algorithm, keyData, comment string) error {
-	return store.AddPublicKey(algorithm, keyData, comment)
+func AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error {
+	return store.AddPublicKey(algorithm, keyData, comment, isGlobal)
 }
 
 // GetAllPublicKeys retrieves all public keys from the database.
@@ -95,8 +95,18 @@ func GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
 // AddPublicKeyAndGetModel adds a public key to the database if it doesn't already
 // exist (based on the comment) and returns the full key model.
 // It returns (nil, nil) if the key is a duplicate.
-func AddPublicKeyAndGetModel(algorithm, keyData, comment string) (*model.PublicKey, error) {
-	return store.AddPublicKeyAndGetModel(algorithm, keyData, comment)
+func AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) {
+	return store.AddPublicKeyAndGetModel(algorithm, keyData, comment, isGlobal)
+}
+
+// TogglePublicKeyGlobal flips the 'is_global' status of a public key.
+func TogglePublicKeyGlobal(id int) error {
+	return store.TogglePublicKeyGlobal(id)
+}
+
+// GetGlobalPublicKeys retrieves all keys marked as global.
+func GetGlobalPublicKeys() ([]model.PublicKey, error) {
+	return store.GetGlobalPublicKeys()
 }
 
 // GetKnownHostKey retrieves the trusted public key for a given hostname.

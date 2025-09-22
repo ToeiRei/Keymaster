@@ -109,6 +109,18 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
+		case "g": // Toggle global status
+			if len(m.keys) > 0 {
+				keyToToggle := m.keys[m.cursor]
+				if err := db.TogglePublicKeyGlobal(keyToToggle.ID); err != nil {
+					m.err = err
+				} else {
+					m.status = fmt.Sprintf("Toggled global status for key: %s", keyToToggle.Comment)
+					// Refresh the list to show the new status
+					m.keys, m.err = db.GetAllPublicKeys()
+				}
+			}
+			return m, nil
 		case "u": // Usage report
 			if len(m.keys) > 0 {
 				m.usageReportKey = m.keys[m.cursor]
@@ -148,7 +160,11 @@ func (m publicKeysModel) viewKeyList() string {
 	b.WriteString("\n\n")
 
 	for i, key := range m.keys {
-		line := fmt.Sprintf("%s (%s)", key.Comment, key.Algorithm)
+		var globalMarker string
+		if key.IsGlobal {
+			globalMarker = "🌐 "
+		}
+		line := fmt.Sprintf("%s%s (%s)", globalMarker, key.Comment, key.Algorithm)
 		if m.cursor == i {
 			b.WriteString(selectedItemStyle.Render("» " + line))
 		} else {
@@ -161,7 +177,7 @@ func (m publicKeysModel) viewKeyList() string {
 		b.WriteString(helpStyle.Render("No public keys found. Press 'a' to add one."))
 	}
 
-	b.WriteString(helpStyle.Render("\n(a)dd, (d)elete, (u)sage report, (q)uit"))
+	b.WriteString(helpStyle.Render("\n(a)dd, (d)elete, (g)lobal toggle, (u)sage report, (q)uit"))
 	if m.status != "" {
 		b.WriteString(helpStyle.Render("\n\n" + m.status))
 	}

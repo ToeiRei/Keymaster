@@ -16,10 +16,12 @@ type Store interface {
 	GetAllActiveAccounts() ([]model.Account, error)
 
 	// Public Key methods
-	AddPublicKey(algorithm, keyData, comment string) error
+	AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error
 	GetAllPublicKeys() ([]model.PublicKey, error)
 	GetPublicKeyByComment(comment string) (*model.PublicKey, error)
-	AddPublicKeyAndGetModel(algorithm, keyData, comment string) (*model.PublicKey, error)
+	AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error)
+	TogglePublicKeyGlobal(id int) error
+	GetGlobalPublicKeys() ([]model.PublicKey, error)
 	DeletePublicKey(id int) error
 
 	// Host Key methods
