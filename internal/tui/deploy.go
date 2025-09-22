@@ -197,17 +197,17 @@ func (m deployModel) View() string {
 func (m *deployModel) generateAuthorizedKeysContent() string {
 	var b strings.Builder
 
-	// 1. Add the Keymaster system key (based on account's serial)
-	systemKey, err := db.GetSystemKeyBySerial(m.selectedAccount.Serial)
+	// 1. Add the *active* Keymaster system key. This shows the ideal state.
+	systemKey, err := db.GetActiveSystemKey()
 	if err != nil {
-		m.err = fmt.Errorf("failed to get system key for serial %d: %w", m.selectedAccount.Serial, err)
+		m.err = fmt.Errorf("failed to get active system key: %w", err)
 		return ""
 	}
 	if systemKey == nil {
-		m.err = fmt.Errorf("no system key found for serial %d. Please generate one or rotate.", m.selectedAccount.Serial)
+		m.err = fmt.Errorf("no active system key found. Please generate one via the 'Rotate System Keys' menu.")
 		return ""
 	}
-	b.WriteString(fmt.Sprintf("# Keymaster System Key (Serial: %d)\n", systemKey.Serial))
+	b.WriteString(fmt.Sprintf("# Keymaster System Key (Active Serial: %d)\n", systemKey.Serial))
 	b.WriteString(systemKey.PublicKey)
 	b.WriteString("\n\n")
 
