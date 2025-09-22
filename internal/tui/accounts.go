@@ -30,6 +30,7 @@ type remoteKeysImportedMsg struct {
 	accountID    int
 	importedKeys []model.PublicKey
 	skippedCount int
+	warning      string
 	err          error
 }
 
@@ -134,18 +135,26 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case remoteKeysImportedMsg:
 		if msg.err != nil {
 			m.status = fmt.Sprintf("Import failed: %v", msg.err)
-			return m, nil
-		}
-		if len(msg.importedKeys) == 0 {
-			m.status = fmt.Sprintf("No new keys found to import. Skipped %d duplicates.", msg.skippedCount)
+			if msg.warning != "" {
+				m.status += "\n" + msg.warning
+			}
 			return m, nil
 		}
 
-		// We have keys, move to confirmation state
-		m.state = accountsImportConfirmView
-		m.pendingImportAccountID = msg.accountID
-		m.pendingImportKeys = msg.importedKeys
-		m.status = fmt.Sprintf("Assign these %d new keys to this account? (y/n)", len(m.pendingImportKeys))
+		// Handle success case
+		if len(msg.importedKeys) == 0 {
+			m.status = fmt.Sprintf("No new keys found to import. Skipped %d duplicates.", msg.skippedCount)
+		} else {
+			// We have keys, move to confirmation state
+			m.state = accountsImportConfirmView
+			m.pendingImportAccountID = msg.accountID
+			m.pendingImportKeys = msg.importedKeys
+			m.status = fmt.Sprintf("Assign these %d new keys to this account? (y/n)", len(m.pendingImportKeys))
+		}
+
+		if msg.warning != "" {
+			m.status += "\n" + msg.warning
+		}
 		return m, nil
 	}
 
@@ -330,7 +339,7 @@ func verifyHostKeyCmd(hostname string) tea.Cmd {
 // importRemoteKeysCmd is a tea.Cmd that fetches keys from a remote host and imports them.
 func importRemoteKeysCmd(account model.Account) tea.Cmd {
 	return func() tea.Msg {
-		imported, skipped, err := deploy.ImportRemoteKeys(account)
-		return remoteKeysImportedMsg{accountID: account.ID, importedKeys: imported, skippedCount: skipped, err: err}
+		imported, skipped, warning, err := deploy.ImportRemoteKeys(account)
+		return remoteKeysImportedMsg{accountID: account.ID, importedKeys: imported, skippedCount: skipped, warning: warning, err: err}
 	}
 }
