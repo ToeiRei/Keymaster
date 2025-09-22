@@ -40,16 +40,18 @@ const (
 	menuView viewState = iota
 	accountsView
 	publicKeysView
+	assignKeysView
 )
 
 // mainModel is the top-level model for the TUI. It manages which view is currently active.
 type mainModel struct {
-	state    viewState
-	menu     menuModel
-	keys     publicKeysModel
-	accounts accountsModel
-	db       *sql.DB
-	err      error
+	state      viewState
+	menu       menuModel
+	assignment assignKeysModel
+	keys       publicKeysModel
+	accounts   accountsModel
+	db         *sql.DB
+	err        error
 }
 
 // menuModel holds the state for the main menu.
@@ -117,6 +119,16 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var newKeysModel tea.Model
 		newKeysModel, cmd = m.keys.Update(msg)
 		m.keys = newKeysModel.(publicKeysModel)
+
+	case assignKeysView:
+		// If we received a "back" message, switch the state.
+		if _, ok := msg.(backToMenuMsg); ok {
+			m.state = menuView
+			return m, nil
+		}
+		var newAssignmentModel tea.Model
+		newAssignmentModel, cmd = m.assignment.Update(msg)
+		m.assignment = newAssignmentModel.(assignKeysModel)
 	default: // menuView
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -140,6 +152,10 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case 1: // Manage Public Keys
 					m.state = publicKeysView
 					m.keys = newPublicKeysModel()
+					return m, nil
+				case 2: // Assign Keys to Accounts
+					m.state = assignKeysView
+					m.assignment = newAssignKeysModel()
 					return m, nil
 				default:
 					// For now, other options just quit.
@@ -165,6 +181,8 @@ func (m mainModel) View() string {
 		return m.accounts.View()
 	case publicKeysView:
 		return m.keys.View()
+	case assignKeysView:
+		return m.assignment.View()
 	default: // menuView
 		return m.menu.View()
 	}
