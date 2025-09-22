@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/model"
@@ -55,6 +56,11 @@ type accountsModel struct {
 	pendingImportKeys      []model.PublicKey
 	filter                 string
 	isFiltering            bool
+	// For delete confirmation
+	isConfirmingDelete bool
+	accountToDelete    model.Account
+	confirmCursor      int // 0 for No, 1 for Yes
+	width, height      int
 }
 
 func newAccountsModel() accountsModel {
@@ -101,6 +107,12 @@ func (m *accountsModel) rebuildDisplayedAccounts() {
 
 func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
+	// Handle window size messages first, as they affect layout.
+	if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
+		m.width = sizeMsg.Width
+		m.height = sizeMsg.Height
+	}
 
 	// Delegate updates to the form if it's active.
 	if m.state == accountsFormView {
@@ -151,6 +163,40 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.state = accountsListView
 				m.pendingImportAccountID = 0
 				m.pendingImportKeys = nil
+				return m, nil
+			}
+		}
+		return m, nil
+	}
+
+	// Handle delete confirmation
+	if m.isConfirmingDelete {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "y":
+				// Fallthrough to confirm
+			case "n", "q", "esc":
+				m.isConfirmingDelete = false
+				m.status = "Deletion cancelled."
+				return m, nil
+			case "right", "tab", "l":
+				m.confirmCursor = 1 // Yes
+				return m, nil
+			case "left", "shift+tab", "h":
+				m.confirmCursor = 0 // No
+				return m, nil
+			case "enter":
+				if m.confirmCursor == 1 { // Yes is selected
+					if err := db.DeleteAccount(m.accountToDelete.ID); err != nil {
+						m.err = err
+					} else {
+						m.status = fmt.Sprintf("Deleted account: %s", m.accountToDelete.String())
+						m.accounts, m.err = db.GetAllAccounts()
+						m.rebuildDisplayedAccounts()
+					}
+				}
+				m.isConfirmingDelete = false
 				return m, nil
 			}
 		}
@@ -251,16 +297,9 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Delete an account.
 		case "d", "delete":
 			if len(m.displayedAccounts) > 0 {
-				accToDelete := m.displayedAccounts[m.cursor]
-				if err := db.DeleteAccount(accToDelete.ID); err != nil {
-					m.err = err
-				} else {
-					// Refresh the list after deletion.
-					m.status = fmt.Sprintf("Deleted account: %s", accToDelete.String())
-					m.accounts, m.err = db.GetAllAccounts()
-					// Make sure cursor is not out of bounds.
-					m.rebuildDisplayedAccounts()
-				}
+				m.accountToDelete = m.displayedAccounts[m.cursor]
+				m.isConfirmingDelete = true
+				m.confirmCursor = 0 // Default to No
 			}
 			return m, nil
 
@@ -340,6 +379,37 @@ func (m accountsModel) View() string {
 
 		b.WriteString(helpStyle.Render(fmt.Sprintf("\n%s", m.status)))
 		return b.String()
+	}
+
+	// If we are confirming a delete, render the modal instead of the list.
+	if m.isConfirmingDelete {
+		var b strings.Builder
+		b.WriteString(titleStyle.Render("🗑️ Confirm Deletion"))
+		b.WriteString("\n\n")
+
+		question := fmt.Sprintf("Are you sure you want to delete the account\n\n%s?", m.accountToDelete.String())
+		b.WriteString(question)
+		b.WriteString("\n\n")
+
+		var yesButton, noButton string
+		if m.confirmCursor == 1 { // Yes
+			yesButton = activeButtonStyle.Render("Yes, Delete")
+			noButton = buttonStyle.Render("No, Cancel")
+		} else { // No
+			yesButton = buttonStyle.Render("Yes, Delete")
+			noButton = activeButtonStyle.Render("No, Cancel")
+		}
+
+		buttons := lipgloss.JoinHorizontal(lipgloss.Top, noButton, "  ", yesButton)
+		b.WriteString(buttons)
+
+		b.WriteString("\n" + helpStyle.Render("\n(left/right to navigate, enter to confirm, esc to cancel)"))
+
+		// Center the whole dialog
+		return lipgloss.Place(m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			dialogBoxStyle.Render(b.String()),
+		)
 	}
 
 	// --- This is the list view rendering ---

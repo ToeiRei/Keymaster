@@ -6,32 +6,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-)
-
-// --- STYLING ---
-var (
-	// The main title style
-	titleStyle = lipgloss.NewStyle().
-			MarginLeft(2).
-			Foreground(lipgloss.Color("170")). // A nice purple
-			Bold(true)
-
-	// Style for a regular menu item
-	itemStyle = lipgloss.NewStyle().PaddingLeft(4)
-
-	// Style for the selected menu item
-	selectedItemStyle = lipgloss.NewStyle().
-				PaddingLeft(2).
-				Foreground(lipgloss.Color("170"))
-
-	// Style for an inactive/disabled item
-	inactiveItemStyle = itemStyle.Strikethrough(true).Foreground(lipgloss.Color("240"))
-
-	// Style for the help text at the bottom
-	helpStyle = lipgloss.NewStyle().
-			MarginLeft(4).
-			Foreground(lipgloss.Color("240")) // A muted gray
 )
 
 // viewState represents which part of the UI is currently active.
@@ -250,45 +224,47 @@ func (m mainModel) View() string {
 		return fmt.Sprintf("Error: %v\n", m.err)
 	}
 
+	var view string
 	// Delegate rendering to the active view.
 	switch m.state {
 	case accountsView:
-		return m.accounts.View()
+		view = m.accounts.View()
 	case publicKeysView:
-		return m.keys.View()
+		view = m.keys.View()
 	case assignKeysView:
-		return m.assignment.View()
+		view = m.assignment.View()
 	case deployView:
-		return m.deployer.View()
+		view = m.deployer.View()
 	case rotateKeyView:
-		return m.rotator.View()
+		view = m.rotator.View()
 	case auditLogView:
-		return m.auditLog.View()
+		view = m.auditLog.View()
 	case tagsView:
-		return m.tags.View()
+		view = m.tags.View()
 	default: // menuView
-		return m.menu.View()
+		view = m.menu.View()
 	}
+	return docStyle.Render(view)
 }
 
 func (m menuModel) View() string {
 	var b strings.Builder
 
 	// Title
-	b.WriteString(titleStyle.Render("🔑 Keymaster TUI"))
+	b.WriteString(titleStyle.Render("🔑 Keymaster"))
 	b.WriteString("\n\n")
 
 	for i, choice := range m.choices {
 		if m.cursor == i {
-			b.WriteString(selectedItemStyle.Render("» " + choice))
+			b.WriteString(selectedItemStyle.PaddingLeft(2).Render("» " + choice))
 		} else {
-			b.WriteString(itemStyle.Render(choice))
+			b.WriteString(itemStyle.PaddingLeft(4).Render(choice))
 		}
 		b.WriteString("\n")
 	}
 
 	// The footer.
-	b.WriteString(helpStyle.Render("\n(j/k or up/down to navigate, enter to select, q to quit)"))
+	b.WriteString("\n" + helpStyle.Render("(j/k or up/down to navigate, enter to select, q to quit)"))
 
 	// Send the UI for rendering.
 	return b.String()

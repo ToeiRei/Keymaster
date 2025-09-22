@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
 )
@@ -30,6 +31,10 @@ type rotateKeyModel struct {
 	newPublicKey string
 	newKeySerial int
 	err          error
+	// For confirmation modal
+	isConfirmingRotate bool
+	confirmCursor      int
+	width, height      int
 }
 
 func newRotateKeyModel() rotateKeyModel {
@@ -54,6 +59,42 @@ func (m rotateKeyModel) Init() tea.Cmd {
 
 func (m rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+	}
+
+	// Handle confirmation modal
+	if m.isConfirmingRotate {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "y":
+				// Fallthrough to confirm
+			case "n", "q", "esc":
+				m.isConfirmingRotate = false
+				return m, nil
+			case "right", "tab", "l":
+				m.confirmCursor = 1 // Yes
+				return m, nil
+			case "left", "shift+tab", "h":
+				m.confirmCursor = 0 // No
+				return m, nil
+			case "enter":
+				if m.confirmCursor == 1 { // Yes is selected
+					m.state = rotateStateRotating
+					m.isConfirmingRotate = false
+					return m, performRotation
+				}
+				// No was selected
+				m.isConfirmingRotate = false
+				return m, nil
+			}
+		}
+		return m, nil
+	}
+
+	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "esc":
@@ -73,8 +114,9 @@ func (m rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, generateInitialKey
 			}
 			if m.state == rotateStateReadyToRotate {
-				m.state = rotateStateRotating
-				return m, performRotation
+				m.isConfirmingRotate = true
+				m.confirmCursor = 0 // Default to No
+				return m, nil
 			}
 		}
 	// This message is sent by the generateInitialKey command on completion
@@ -92,6 +134,10 @@ func (m rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m rotateKeyModel) View() string {
+	if m.isConfirmingRotate {
+		return m.viewConfirmation()
+	}
+
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("🔑 System Key Management"))
 	b.WriteString("\n\n")
@@ -130,6 +176,36 @@ func (m rotateKeyModel) View() string {
 	}
 
 	return b.String()
+}
+
+func (m rotateKeyModel) viewConfirmation() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("⚙️ Confirm Key Rotation"))
+	b.WriteString("\n\n")
+
+	question := "Are you sure you want to rotate the system key?\n\nThis will deactivate the current key and create a new one.\nHosts will need to be redeployed to get the new key."
+	b.WriteString(question)
+	b.WriteString("\n\n")
+
+	var yesButton, noButton string
+	if m.confirmCursor == 1 { // Yes
+		yesButton = activeButtonStyle.Render("Yes, Rotate")
+		noButton = buttonStyle.Render("No, Cancel")
+	} else { // No
+		yesButton = buttonStyle.Render("Yes, Rotate")
+		noButton = activeButtonStyle.Render("No, Cancel")
+	}
+
+	buttons := lipgloss.JoinHorizontal(lipgloss.Top, noButton, "  ", yesButton)
+	b.WriteString(buttons)
+
+	b.WriteString("\n" + helpStyle.Render("\n(left/right to navigate, enter to confirm, esc to cancel)"))
+
+	// Center the whole dialog
+	return lipgloss.Place(m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		dialogBoxStyle.Render(b.String()),
+	)
 }
 
 // --- Commands and Messages ---

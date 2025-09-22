@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 )
@@ -29,6 +30,11 @@ type publicKeysModel struct {
 	usageReportAccts []model.Account
 	filter           string
 	isFiltering      bool
+	// For delete confirmation
+	isConfirmingDelete bool
+	keyToDelete        model.PublicKey
+	confirmCursor      int // 0 for No, 1 for Yes
+	width, height      int
 }
 
 func newPublicKeysModel() publicKeysModel {
@@ -73,6 +79,12 @@ func (m *publicKeysModel) rebuildDisplayedKeys() {
 func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
+	// Handle window size messages first, as they affect layout.
+	if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
+		m.width = sizeMsg.Width
+		m.height = sizeMsg.Height
+	}
+
 	if m.state == publicKeysFormView {
 		if _, ok := msg.(publicKeyCreatedMsg); ok {
 			m.state = publicKeysListView
@@ -108,6 +120,37 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// List view logic
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle delete confirmation
+		if m.isConfirmingDelete {
+			switch msg.String() {
+			case "y":
+				// Fallthrough to confirm
+			case "n", "q", "esc":
+				m.isConfirmingDelete = false
+				m.status = "Deletion cancelled."
+				return m, nil
+			case "right", "tab", "l":
+				m.confirmCursor = 1 // Yes
+				return m, nil
+			case "left", "shift+tab", "h":
+				m.confirmCursor = 0 // No
+				return m, nil
+			case "enter":
+				if m.confirmCursor == 1 { // Yes is selected
+					if err := db.DeletePublicKey(m.keyToDelete.ID); err != nil {
+						m.err = err
+					} else {
+						m.status = fmt.Sprintf("Deleted key: %s", m.keyToDelete.Comment)
+						m.keys, m.err = db.GetAllPublicKeys()
+						m.rebuildDisplayedKeys()
+					}
+				}
+				m.isConfirmingDelete = false
+				return m, nil
+			}
+			return m, nil
+		}
+
 		// If we are in filtering mode, capture all input for the filter.
 		if m.isFiltering {
 			switch msg.Type {
@@ -158,14 +201,9 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.form.Init()
 		case "d", "delete":
 			if len(m.displayedKeys) > 0 {
-				keyToDelete := m.displayedKeys[m.cursor]
-				if err := db.DeletePublicKey(keyToDelete.ID); err != nil {
-					m.err = err
-				} else {
-					m.status = fmt.Sprintf("Deleted key: %s", keyToDelete.Comment)
-					m.keys, m.err = db.GetAllPublicKeys()
-					m.rebuildDisplayedKeys()
-				}
+				m.keyToDelete = m.displayedKeys[m.cursor]
+				m.isConfirmingDelete = true
+				m.confirmCursor = 0 // Default to No
 			}
 			return m, nil
 		case "g": // Toggle global status
@@ -212,6 +250,37 @@ func (m publicKeysModel) View() string {
 	default: // publicKeysListView
 		return m.viewKeyList()
 	}
+}
+
+func (m publicKeysModel) viewConfirmation() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("🗑️ Confirm Deletion"))
+	b.WriteString("\n\n")
+
+	question := fmt.Sprintf("Are you sure you want to delete the public key\n\n%s?", m.keyToDelete.Comment)
+	b.WriteString(question)
+	b.WriteString("\n\nThis will remove it from all accounts it is assigned to.")
+	b.WriteString("\n\n")
+
+	var yesButton, noButton string
+	if m.confirmCursor == 1 { // Yes
+		yesButton = activeButtonStyle.Render("Yes, Delete")
+		noButton = buttonStyle.Render("No, Cancel")
+	} else { // No
+		yesButton = buttonStyle.Render("Yes, Delete")
+		noButton = activeButtonStyle.Render("No, Cancel")
+	}
+
+	buttons := lipgloss.JoinHorizontal(lipgloss.Top, noButton, "  ", yesButton)
+	b.WriteString(buttons)
+
+	b.WriteString("\n" + helpStyle.Render("\n(left/right to navigate, enter to confirm, esc to cancel)"))
+
+	// Center the whole dialog
+	return lipgloss.Place(m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		dialogBoxStyle.Render(b.String()),
+	)
 }
 
 func (m publicKeysModel) viewKeyList() string {
