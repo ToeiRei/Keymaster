@@ -123,6 +123,14 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.accounts, m.err = db.GetAllAccounts()
 			m.rebuildDisplayedAccounts()
 
+			// Find the new/edited account in the list and set the cursor
+			for i, acc := range m.displayedAccounts {
+				if acc.Username == am.username && acc.Hostname == am.hostname {
+					m.cursor = i
+					break
+				}
+			}
+
 			// If it was a new account, automatically try to trust the host.
 			if am.isNew && am.hostname != "" {
 				m.status += fmt.Sprintf("\nAttempting to trust host %s...", am.hostname)
