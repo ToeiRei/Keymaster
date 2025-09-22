@@ -8,6 +8,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/sshkey"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -20,6 +21,7 @@ type backToAccountsMsg struct{}
 // A message to signal that a host key has been verified.
 type hostKeyVerifiedMsg struct {
 	hostname string
+	warning  string
 	err      error
 }
 
@@ -86,6 +88,9 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = fmt.Sprintf("Failed to verify host %s: %v", msg.hostname, msg.err)
 		} else {
 			m.status = fmt.Sprintf("Successfully trusted host key for %s.", msg.hostname)
+			if msg.warning != "" {
+				m.status += fmt.Sprintf("\n%s", msg.warning)
+			}
 		}
 		return m, nil
 	}
@@ -222,8 +227,11 @@ func verifyHostKeyCmd(hostname string) tea.Cmd {
 	return func() tea.Msg {
 		key, err := deploy.GetRemoteHostKey(hostname)
 		if err != nil {
-			return hostKeyVerifiedMsg{hostname: hostname, err: err}
+			return hostKeyVerifiedMsg{hostname: hostname, err: err, warning: ""}
 		}
+
+		// Check for weak algorithms.
+		warning := sshkey.CheckHostKeyAlgorithm(key)
 
 		// Convert to string format for storage.
 		keyStr := string(ssh.MarshalAuthorizedKey(key))
@@ -231,9 +239,9 @@ func verifyHostKeyCmd(hostname string) tea.Cmd {
 		// Store in DB.
 		err = db.AddKnownHostKey(hostname, keyStr)
 		if err != nil {
-			return hostKeyVerifiedMsg{hostname: hostname, err: fmt.Errorf("failed to save key to database: %w", err)}
+			return hostKeyVerifiedMsg{hostname: hostname, err: fmt.Errorf("failed to save key to database: %w", err), warning: warning}
 		}
 
-		return hostKeyVerifiedMsg{hostname: hostname, err: nil}
+		return hostKeyVerifiedMsg{hostname: hostname, err: nil, warning: warning}
 	}
 }

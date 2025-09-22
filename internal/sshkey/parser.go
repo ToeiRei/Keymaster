@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"golang.org/x/crypto/ssh"
 )
 
 // Parse splits a raw public key string (like one from an authorized_keys file)
@@ -63,4 +65,18 @@ func ParseSerial(line string) (int, error) {
 		return 0, fmt.Errorf("failed to parse serial number '%s': %w", matches[1], err)
 	}
 	return serial, nil
+}
+
+// CheckHostKeyAlgorithm inspects the public key's algorithm and returns a warning
+// if it's considered weak or deprecated.
+func CheckHostKeyAlgorithm(key ssh.PublicKey) string {
+	keyType := key.Type()
+	switch keyType {
+	case ssh.KeyAlgoDSA:
+		return "SECURITY WARNING: Host key uses deprecated and insecure ssh-dss (DSA) algorithm."
+	case ssh.KeyAlgoRSA:
+		return "SECURITY WARNING: Host key uses ssh-rsa, which is disabled by default in modern OpenSSH. Consider upgrading the host's keys."
+	default:
+		return ""
+	}
 }

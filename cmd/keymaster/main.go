@@ -350,6 +350,11 @@ step before Keymaster can manage a new host.`,
 		fingerprint := ssh.FingerprintSHA256(key)
 		fmt.Printf("\nThe authenticity of host '%s' can't be established.\n", hostname)
 		fmt.Printf("%s key fingerprint is %s.\n", key.Type(), fingerprint)
+
+		if warning := sshkey.CheckHostKeyAlgorithm(key); warning != "" {
+			fmt.Printf("\n%s\n", warning)
+		}
+
 		fmt.Print("Are you sure you want to continue connecting (yes/no)? ")
 
 		reader := bufio.NewReader(os.Stdin)
