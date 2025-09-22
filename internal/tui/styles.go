@@ -30,6 +30,9 @@ var (
 	// Success messages
 	successStyle = lipgloss.NewStyle().Foreground(colorSuccess)
 
+	// Special attention messages (e.g., destructive actions)
+	specialStyle = lipgloss.NewStyle().Foreground(colorSpecial)
+
 	// Main title on the dashboard
 	mainTitleStyle = lipgloss.NewStyle().
 			Foreground(colorHighlight).
