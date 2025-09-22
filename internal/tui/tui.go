@@ -277,11 +277,7 @@ func (m menuModel) View() string {
 
 // Run is the entrypoint for the TUI.
 func Run() {
-	// Create a new Bubble Tea program.
-	p := tea.NewProgram(initialModel())
-
-	// Run the program.
-	if _, err := p.Run(); err != nil {
+	if _, err := tea.NewProgram(initialModel()).Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}

@@ -13,24 +13,24 @@ var (
 	store Store
 )
 
-// InitDB initializes the database connection and creates tables if they don't exist.
-// For now, it defaults to SQLite. In the future, this could read a config
-// to determine the correct database driver and connection string.
-func InitDB(dataSourceName string) error {
+// InitDB initializes the database connection based on the provided type and DSN.
+// It creates tables if they don't exist.
+func InitDB(dbType, dsn string) error {
 	var err error
-	// This is a simple way to select the driver. A more robust solution
-	// might parse the DSN scheme (e.g., postgresql://, mysql://).
-	if strings.HasPrefix(dataSourceName, "postgres") {
+
+	switch strings.ToLower(dbType) {
+	case "sqlite":
+		store, err = NewSqliteStore(dsn)
+	case "postgres":
 		// Placeholder for future PostgreSQL support
-		// store, err = NewPostgresStore(dataSourceName)
+		// store, err = NewPostgresStore(dsn)
 		return fmt.Errorf("postgresql is not yet supported")
-	} else {
-		// Default to SQLite for file paths
-		store, err = NewSqliteStore(dataSourceName)
+	default:
+		return fmt.Errorf("unsupported database type: '%s'", dbType)
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to initialize store: %w", err)
+		return fmt.Errorf("failed to initialize %s store: %w", dbType, err)
 	}
 	return nil
 }
