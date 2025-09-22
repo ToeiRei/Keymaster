@@ -22,9 +22,8 @@ func InitDB(dbType, dsn string) error {
 	case "sqlite":
 		store, err = NewSqliteStore(dsn)
 	case "postgres":
-		// Placeholder for future PostgreSQL support
-		// store, err = NewPostgresStore(dsn)
-		return fmt.Errorf("postgresql is not yet supported")
+		// The pgx driver is imported in postgres.go
+		store, err = NewPostgresStore(dsn)
 	default:
 		return fmt.Errorf("unsupported database type: '%s'", dbType)
 	}

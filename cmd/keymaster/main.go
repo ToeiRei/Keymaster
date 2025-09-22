@@ -116,8 +116,8 @@ func initConfig() {
 # You can modify these settings to configure Keymaster.
 
 database:
-  # The type of database to use. Supported values: "sqlite".
-  # "postgres" is planned for future versions.
+  # The type of database to use. Supported values: "sqlite", "postgres".
+  # Note: PostgreSQL support is experimental.
   type: sqlite
 
   # The Data Source Name (DSN) for the database connection.
