@@ -3,8 +3,10 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"os/user"
+	"strings"
 
-	"github.com/go-sql-driver/mysql" // MySQL driver
+	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -65,10 +67,13 @@ func runMySQLMigrations(db *sql.DB) error {
 			private_key TEXT NOT NULL,
 			is_active BOOLEAN NOT NULL DEFAULT FALSE
 		);`,
-		`CREATE TABLE IF NOT EXISTS known_hosts (
-			hostname VARCHAR(255) NOT NULL PRIMARY KEY,
-			key TEXT NOT NULL
-		);`,
+		// Use a double-quoted string to avoid conflict between Go's raw string literal
+		// syntax and MySQL's identifier quoting syntax.
+		"CREATE TABLE IF NOT EXISTS known_hosts (\n" +
+			"\tid INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,\n" +
+			"\thostname VARCHAR(255) NOT NULL UNIQUE,\n" +
+			"\t`key` TEXT NOT NULL\n" +
+			");",
 		`CREATE TABLE IF NOT EXISTS audit_log (
 			id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,
 			timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -84,70 +89,194 @@ func runMySQLMigrations(db *sql.DB) error {
 		}
 	}
 
-	// Simple migrations, ignoring "duplicate column" errors.
-	// MySQL does not support `ADD COLUMN IF NOT EXISTS`.
-	migrations := []string{
-		"ALTER TABLE accounts ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE;",
-		"ALTER TABLE accounts ADD COLUMN label VARCHAR(255);",
-	}
-
-	for _, migrationSQL := range migrations {
-		_, err := db.Exec(migrationSQL)
-		if err != nil {
-			// MySQL error number for duplicate column is 1060.
-			if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == 1060 {
-				continue // Ignore duplicate column error
-			}
-			return err
-		}
-	}
-
 	return nil
 }
 
 // --- Stubbed Methods ---
 
 func (s *MySQLStore) GetAllAccounts() ([]model.Account, error) {
-	return nil, fmt.Errorf("not implemented for mysql")
+	rows, err := s.db.Query("SELECT id, username, hostname, label, serial, is_active FROM accounts ORDER BY label, hostname, username")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var accounts []model.Account
+	for rows.Next() {
+		var acc model.Account
+		// MySQL driver can scan NULL strings into a string pointer or sql.NullString.
+		// Using sql.NullString is more explicit and portable.
+		var label sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
+			return nil, err
+		}
+		if label.Valid {
+			acc.Label = label.String
+		}
+		accounts = append(accounts, acc)
+	}
+	return accounts, nil
 }
+
 func (s *MySQLStore) AddAccount(username, hostname, label string) error {
-	return fmt.Errorf("not implemented for mysql")
+	_, err := s.db.Exec("INSERT INTO accounts(username, hostname, label) VALUES(?, ?, ?)", username, hostname, label)
+	if err == nil {
+		_ = s.LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
+	}
+	return err
 }
+
 func (s *MySQLStore) DeleteAccount(id int) error {
-	return fmt.Errorf("not implemented for mysql")
+	// Get account details before deleting for logging.
+	var username, hostname string
+	err := s.db.QueryRow("SELECT username, hostname FROM accounts WHERE id = ?", id).Scan(&username, &hostname)
+	details := fmt.Sprintf("id: %d", id)
+	if err == nil {
+		details = fmt.Sprintf("account: %s@%s", username, hostname)
+	}
+
+	_, err = s.db.Exec("DELETE FROM accounts WHERE id = ?", id)
+	if err == nil {
+		_ = s.LogAction("DELETE_ACCOUNT", details)
+	}
+	return err
 }
+
 func (s *MySQLStore) UpdateAccountSerial(id, serial int) error {
-	return fmt.Errorf("not implemented for mysql")
+	_, err := s.db.Exec("UPDATE accounts SET serial = ? WHERE id = ?", serial, id)
+	// This is called during deployment, which is logged at a higher level.
+	// No need for a separate log action here.
+	return err
 }
+
 func (s *MySQLStore) ToggleAccountStatus(id int) error {
-	return fmt.Errorf("not implemented for mysql")
+	// Get account details before toggling for logging.
+	var username, hostname string
+	var isActive bool
+	err := s.db.QueryRow("SELECT username, hostname, is_active FROM accounts WHERE id = ?", id).Scan(&username, &hostname, &isActive)
+	if err != nil {
+		return err // If we can't find it, we can't toggle it.
+	}
+
+	// In MySQL, NOT is a logical operator. `is_active = NOT is_active` works.
+	_, err = s.db.Exec("UPDATE accounts SET is_active = NOT is_active WHERE id = ?", id)
+	if err == nil {
+		details := fmt.Sprintf("account: %s@%s, new_status: %t", username, hostname, !isActive)
+		_ = s.LogAction("TOGGLE_ACCOUNT_STATUS", details)
+	}
+	return err
 }
+
 func (s *MySQLStore) UpdateAccountLabel(id int, label string) error {
-	return fmt.Errorf("not implemented for mysql")
+	_, err := s.db.Exec("UPDATE accounts SET label = ? WHERE id = ?", label, id)
+	if err == nil {
+		_ = s.LogAction("UPDATE_ACCOUNT_LABEL", fmt.Sprintf("account_id: %d, new_label: '%s'", id, label))
+	}
+	return err
 }
 func (s *MySQLStore) GetAllActiveAccounts() ([]model.Account, error) {
-	return nil, fmt.Errorf("not implemented for mysql")
+	rows, err := s.db.Query("SELECT id, username, hostname, label, serial, is_active FROM accounts WHERE is_active = TRUE ORDER BY label, hostname, username")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var accounts []model.Account
+	for rows.Next() {
+		var acc model.Account
+		var label sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
+			return nil, err
+		}
+		if label.Valid {
+			acc.Label = label.String
+		}
+		accounts = append(accounts, acc)
+	}
+	return accounts, nil
 }
 func (s *MySQLStore) AddPublicKey(algorithm, keyData, comment string) error {
-	return fmt.Errorf("not implemented for mysql")
+	_, err := s.db.Exec("INSERT INTO public_keys(algorithm, key_data, comment) VALUES(?, ?, ?)", algorithm, keyData, comment)
+	if err == nil {
+		_ = s.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
+	}
+	return err
 }
 func (s *MySQLStore) GetAllPublicKeys() ([]model.PublicKey, error) {
-	return nil, fmt.Errorf("not implemented for mysql")
+	rows, err := s.db.Query("SELECT id, algorithm, key_data, comment FROM public_keys ORDER BY comment")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []model.PublicKey
+	for rows.Next() {
+		var key model.PublicKey
+		if err := rows.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment); err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
 }
 func (s *MySQLStore) GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
-	return nil, fmt.Errorf("not implemented for mysql")
+	row := s.db.QueryRow("SELECT id, algorithm, key_data, comment FROM public_keys WHERE comment = ?", comment)
+	var key model.PublicKey
+	err := row.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment)
+	if err != nil {
+		return nil, err // This will be sql.ErrNoRows if not found
+	}
+	return &key, nil
 }
 func (s *MySQLStore) AddPublicKeyAndGetModel(algorithm, keyData, comment string) (*model.PublicKey, error) {
-	return nil, fmt.Errorf("not implemented for mysql")
+	// First, check if it exists to avoid constraint errors.
+	existing, err := s.GetPublicKeyByComment(comment)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err // A real DB error
+	}
+	if existing != nil {
+		return nil, nil // Key already exists, return nil model and nil error
+	}
+
+	result, err := s.db.Exec("INSERT INTO public_keys (algorithm, key_data, comment) VALUES (?, ?, ?)", algorithm, keyData, comment)
+	if err != nil {
+		return nil, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	_ = s.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
+
+	return &model.PublicKey{ID: int(id), Algorithm: algorithm, KeyData: keyData, Comment: comment}, nil
 }
 func (s *MySQLStore) DeletePublicKey(id int) error {
-	return fmt.Errorf("not implemented for mysql")
+	// Get key comment before deleting for logging.
+	var comment string
+	err := s.db.QueryRow("SELECT comment FROM public_keys WHERE id = ?", id).Scan(&comment)
+	details := fmt.Sprintf("id: %d", id)
+	if err == nil {
+		details = fmt.Sprintf("comment: %s", comment)
+	}
+
+	_, err = s.db.Exec("DELETE FROM public_keys WHERE id = ?", id)
+	if err == nil {
+		_ = s.LogAction("DELETE_PUBLIC_KEY", details)
+	}
+	return err
 }
 func (s *MySQLStore) GetKnownHostKey(hostname string) (string, error) {
 	return "", fmt.Errorf("not implemented for mysql")
 }
+
 func (s *MySQLStore) AddKnownHostKey(hostname, key string) error {
-	return fmt.Errorf("not implemented for mysql")
+	// INSERT ... ON DUPLICATE KEY UPDATE will add the key if it doesn't exist,
+	// or update it if it does. This is useful if a host is legitimately re-provisioned.
+	_, err := s.db.Exec("INSERT INTO known_hosts (hostname, `key`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `key` = VALUES(`key`)", hostname, key)
+	if err == nil {
+		_ = s.LogAction("TRUST_HOST", fmt.Sprintf("hostname: %s", hostname))
+	}
+	return err
 }
 func (s *MySQLStore) CreateSystemKey(publicKey, privateKey string) (int, error) {
 	return 0, fmt.Errorf("not implemented for mysql")
@@ -165,10 +294,29 @@ func (s *MySQLStore) HasSystemKeys() (bool, error) {
 	return false, fmt.Errorf("not implemented for mysql")
 }
 func (s *MySQLStore) AssignKeyToAccount(keyID, accountID int) error {
-	return fmt.Errorf("not implemented for mysql")
+	_, err := s.db.Exec("INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, accountID)
+	if err == nil {
+		// Get details for logging, ignoring errors as this is best-effort.
+		var keyComment, accUser, accHost string
+		_ = s.db.QueryRow("SELECT comment FROM public_keys WHERE id = ?", keyID).Scan(&keyComment)
+		_ = s.db.QueryRow("SELECT username, hostname FROM accounts WHERE id = ?", accountID).Scan(&accUser, &accHost)
+		details := fmt.Sprintf("key: '%s' to account: %s@%s", keyComment, accUser, accHost)
+		_ = s.LogAction("ASSIGN_KEY", details)
+	}
+	return err
 }
 func (s *MySQLStore) UnassignKeyFromAccount(keyID, accountID int) error {
-	return fmt.Errorf("not implemented for mysql")
+	// Get details before unassigning for logging.
+	var keyComment, accUser, accHost string
+	_ = s.db.QueryRow("SELECT comment FROM public_keys WHERE id = ?", keyID).Scan(&keyComment)
+	_ = s.db.QueryRow("SELECT username, hostname FROM accounts WHERE id = ?", accountID).Scan(&accUser, &accHost)
+	details := fmt.Sprintf("key: '%s' from account: %s@%s", keyComment, accUser, accHost)
+
+	_, err := s.db.Exec("DELETE FROM account_keys WHERE key_id = ? AND account_id = ?", keyID, accountID)
+	if err == nil {
+		_ = s.LogAction("UNASSIGN_KEY", details)
+	}
+	return err
 }
 func (s *MySQLStore) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
 	return nil, fmt.Errorf("not implemented for mysql")
@@ -179,6 +327,20 @@ func (s *MySQLStore) GetAccountsForKey(keyID int) ([]model.Account, error) {
 func (s *MySQLStore) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
 	return nil, fmt.Errorf("not implemented for mysql")
 }
+
 func (s *MySQLStore) LogAction(action string, details string) error {
-	return fmt.Errorf("not implemented for mysql")
+	// Get current OS user
+	currentUser, err := user.Current()
+	username := "unknown"
+	if err == nil {
+		// On Windows, username might be "domain\user", let's just take the user part.
+		if parts := strings.Split(currentUser.Username, `\`); len(parts) > 1 {
+			username = parts[1]
+		} else {
+			username = currentUser.Username
+		}
+	}
+
+	_, err = s.db.Exec("INSERT INTO audit_log (username, action, details) VALUES (?, ?, ?)", username, action, details)
+	return err
 }
