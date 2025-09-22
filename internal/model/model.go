@@ -15,3 +15,16 @@ type Account struct {
 func (a Account) String() string {
 	return fmt.Sprintf("%s@%s", a.Username, a.Hostname)
 }
+
+// PublicKey represents a single SSH public key stored in the database.
+type PublicKey struct {
+	ID        int
+	Algorithm string
+	KeyData   string
+	Comment   string
+}
+
+// String returns the full public key line suitable for an authorized_keys file.
+func (k PublicKey) String() string {
+	return fmt.Sprintf("%s %s %s", k.Algorithm, k.KeyData, k.Comment)
+}

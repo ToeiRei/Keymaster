@@ -24,7 +24,12 @@ func InitDB(dataSourceName string) (*sql.DB, error) {
 			return
 		}
 
-		createTableSQL := `
+		// Enable foreign key support, which is required for ON DELETE CASCADE.
+		if _, err = db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
+			return
+		}
+
+		accountsTableSQL := `
 		CREATE TABLE IF NOT EXISTS accounts (
 			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 			username TEXT NOT NULL,
@@ -32,9 +37,32 @@ func InitDB(dataSourceName string) (*sql.DB, error) {
 			serial INTEGER NOT NULL DEFAULT 0,
 			UNIQUE(username, hostname)
 		);`
-		// TODO: Add tables for keys and associations later.
+		if _, err = db.Exec(accountsTableSQL); err != nil {
+			return
+		}
 
-		_, err = db.Exec(createTableSQL)
+		publicKeysTableSQL := `
+		CREATE TABLE IF NOT EXISTS public_keys (
+			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+			algorithm TEXT NOT NULL,
+			key_data TEXT NOT NULL,
+			comment TEXT NOT NULL UNIQUE
+		);`
+		if _, err = db.Exec(publicKeysTableSQL); err != nil {
+			return
+		}
+
+		accountKeysTableSQL := `
+		CREATE TABLE IF NOT EXISTS account_keys (
+			account_id INTEGER NOT NULL,
+			key_id INTEGER NOT NULL,
+			PRIMARY KEY (account_id, key_id),
+			FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE,
+			FOREIGN KEY (key_id) REFERENCES public_keys (id) ON DELETE CASCADE
+		);`
+		if _, err = db.Exec(accountKeysTableSQL); err != nil {
+			return
+		}
 	})
 
 	if err != nil {
@@ -81,4 +109,73 @@ func IncrementAccountSerial(id int) error {
 	// We increment directly in SQL to avoid race conditions.
 	_, err := db.Exec("UPDATE accounts SET serial = serial + 1 WHERE id = ?", id)
 	return err
+}
+
+// AddPublicKey adds a new public key to the database.
+func AddPublicKey(algorithm, keyData, comment string) error {
+	_, err := db.Exec("INSERT INTO public_keys(algorithm, key_data, comment) VALUES(?, ?, ?)", algorithm, keyData, comment)
+	return err
+}
+
+// GetAllPublicKeys retrieves all public keys from the database.
+func GetAllPublicKeys() ([]model.PublicKey, error) {
+	rows, err := db.Query("SELECT id, algorithm, key_data, comment FROM public_keys ORDER BY comment")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []model.PublicKey
+	for rows.Next() {
+		var key model.PublicKey
+		if err := rows.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment); err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
+}
+
+// DeletePublicKey removes a public key and all its associations.
+// The ON DELETE CASCADE constraint handles the associations in account_keys.
+func DeletePublicKey(id int) error {
+	_, err := db.Exec("DELETE FROM public_keys WHERE id = ?", id)
+	return err
+}
+
+// AssignKeyToAccount creates an association between a key and an account.
+func AssignKeyToAccount(keyID, accountID int) error {
+	_, err := db.Exec("INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, accountID)
+	return err
+}
+
+// UnassignKeyFromAccount removes an association between a key and an account.
+func UnassignKeyFromAccount(keyID, accountID int) error {
+	_, err := db.Exec("DELETE FROM account_keys WHERE key_id = ? AND account_id = ?", keyID, accountID)
+	return err
+}
+
+// GetKeysForAccount retrieves all public keys assigned to a specific account.
+func GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
+	query := `
+		SELECT pk.id, pk.algorithm, pk.key_data, pk.comment
+		FROM public_keys pk
+		JOIN account_keys ak ON pk.id = ak.key_id
+		WHERE ak.account_id = ?
+		ORDER BY pk.comment`
+	rows, err := db.Query(query, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []model.PublicKey
+	for rows.Next() {
+		var key model.PublicKey
+		if err := rows.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment); err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
 }
