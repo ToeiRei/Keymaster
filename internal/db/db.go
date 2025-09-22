@@ -218,6 +218,15 @@ func ToggleAccountStatus(id int) error {
 	return err
 }
 
+// UpdateAccountLabel updates the label for a given account.
+func UpdateAccountLabel(id int, label string) error {
+	_, err := db.Exec("UPDATE accounts SET label = ? WHERE id = ?", label, id)
+	if err == nil {
+		_ = LogAction("UPDATE_ACCOUNT_LABEL", fmt.Sprintf("account_id: %d, new_label: '%s'", id, label))
+	}
+	return err
+}
+
 // GetAllActiveAccounts retrieves all active accounts from the database.
 func GetAllActiveAccounts() ([]model.Account, error) {
 	rows, err := db.Query("SELECT id, username, hostname, label, serial, is_active FROM accounts WHERE is_active = 1 ORDER BY label, hostname, username")

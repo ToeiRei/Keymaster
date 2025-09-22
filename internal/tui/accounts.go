@@ -15,8 +15,8 @@ import (
 // A message to signal that we should go back to the main menu.
 type backToMenuMsg struct{}
 
-// A message to signal that we should go back to the accounts list from the form.
-type backToAccountsMsg struct{}
+// A message to signal that we should go back to the list from the form.
+type backToListMsg struct{}
 
 // A message to signal that a host key has been verified.
 type hostKeyVerifiedMsg struct {
@@ -73,14 +73,14 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Delegate updates to the form if it's active.
 	if m.state == accountsFormView {
 		// If the form signals an account was created, switch back to the list and refresh.
-		if _, ok := msg.(accountCreatedMsg); ok {
+		if _, ok := msg.(accountModifiedMsg); ok {
 			m.state = accountsListView
-			m.status = "Successfully added new account."
+			m.status = "Successfully modified account."
 			m.accounts, m.err = db.GetAllAccounts()
 			return m, nil
 		}
 		// If the form signals to go back, just switch the view.
-		if _, ok := msg.(backToAccountsMsg); ok {
+		if _, ok := msg.(backToListMsg); ok {
 			m.state = accountsListView
 			m.status = "" // Clear any status
 			return m, nil
@@ -187,6 +187,17 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		// Edit an account's label.
+		case "e":
+			if len(m.accounts) > 0 {
+				accToEdit := m.accounts[m.cursor]
+				m.state = accountsFormView
+				m.form = newAccountFormModel(&accToEdit)
+				m.status = ""
+				return m, m.form.Init()
+			}
+			return m, nil
+
 		// Toggle active status.
 		case "t":
 			if len(m.accounts) > 0 {
@@ -213,7 +224,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Switch to the form view to add a new account.
 		case "a":
 			m.state = accountsFormView
-			m.form = newAccountFormModel()
+			m.form = newAccountFormModel(nil)
 			m.status = "" // Clear status before showing form
 			return m, m.form.Init()
 
@@ -284,7 +295,7 @@ func (m accountsModel) View() string {
 		b.WriteString(helpStyle.Render("No accounts found. Press 'a' to add one."))
 	}
 
-	b.WriteString(helpStyle.Render("\n(a)dd, (d)elete, (t)oggle, (v)erify, (i)mport, (q)uit"))
+	b.WriteString(helpStyle.Render("\n(a)dd, (e)dit, (d)elete, (t)oggle, (v)erify, (i)mport, (q)uit"))
 	if m.status != "" {
 		b.WriteString(helpStyle.Render("\n\n" + m.status))
 	}

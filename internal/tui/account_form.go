@@ -8,21 +8,24 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/model"
 )
 
 // A simple style for focused text inputs.
 var focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("170"))
+var disabledStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 
-// A message to signal that an account was created and we should go back to the list.
-type accountCreatedMsg struct{}
+// A message to signal that an account was modified (created or updated).
+type accountModifiedMsg struct{}
 
 type accountFormModel struct {
-	focusIndex int
-	inputs     []textinput.Model // 0: user, 1: host, 2: label
-	err        error
+	focusIndex     int
+	inputs         []textinput.Model // 0: user, 1: host, 2: label
+	err            error
+	editingAccount *model.Account // If not nil, we are in edit mode.
 }
 
-func newAccountFormModel() accountFormModel {
+func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 	m := accountFormModel{
 		inputs: make([]textinput.Model, 3),
 	}
@@ -37,9 +40,7 @@ func newAccountFormModel() accountFormModel {
 		switch i {
 		case 0:
 			t.Prompt = "Username: "
-			t.Placeholder = "user" // A more descriptive placeholder
-			t.Focus()
-			t.TextStyle = focusedStyle
+			t.Placeholder = "user"
 		case 1:
 			t.Prompt = "Hostname: "
 			t.Placeholder = "www.example.com"
@@ -49,6 +50,24 @@ func newAccountFormModel() accountFormModel {
 		}
 		m.inputs[i] = t
 	}
+
+	if accountToEdit != nil {
+		m.editingAccount = accountToEdit
+		m.inputs[0].SetValue(accountToEdit.Username)
+		m.inputs[0].PromptStyle = disabledStyle
+		m.inputs[0].TextStyle = disabledStyle
+		m.inputs[1].SetValue(accountToEdit.Hostname)
+		m.inputs[1].PromptStyle = disabledStyle
+		m.inputs[1].TextStyle = disabledStyle
+		m.inputs[2].SetValue(accountToEdit.Label)
+		m.inputs[2].Focus()
+		m.inputs[2].TextStyle = focusedStyle
+		m.focusIndex = 2
+	} else {
+		m.inputs[0].Focus()
+		m.inputs[0].TextStyle = focusedStyle
+	}
+
 	return m
 }
 
@@ -62,7 +81,7 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		// Go back to the accounts list.
 		case "esc":
-			return m, func() tea.Msg { return backToAccountsMsg{} }
+			return m, func() tea.Msg { return backToListMsg{} }
 
 		// Set focus to next input
 		case "tab", "shift+tab", "enter", "up", "down":
@@ -71,34 +90,59 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Did the user press enter while the submit button was focused?
 			// If so, create the account.
 			if s == "enter" && m.focusIndex == len(m.inputs) {
-				username := m.inputs[0].Value()
-				hostname := m.inputs[1].Value()
-				label := m.inputs[2].Value()
+				if m.editingAccount != nil {
+					// Update existing account
+					label := m.inputs[2].Value()
+					if err := db.UpdateAccountLabel(m.editingAccount.ID, label); err != nil {
+						m.err = err
+						return m, nil
+					}
+				} else {
+					// Add new account
+					username := m.inputs[0].Value()
+					hostname := m.inputs[1].Value()
+					label := m.inputs[2].Value()
 
-				if username == "" || hostname == "" {
-					m.err = fmt.Errorf("username and hostname cannot be empty")
-					return m, nil
-				}
+					if username == "" || hostname == "" {
+						m.err = fmt.Errorf("username and hostname cannot be empty")
+						return m, nil
+					}
 
-				if err := db.AddAccount(username, hostname, label); err != nil {
-					m.err = err
-					return m, nil
+					if err := db.AddAccount(username, hostname, label); err != nil {
+						m.err = err
+						return m, nil
+					}
 				}
 				// Signal that we're done.
-				return m, func() tea.Msg { return accountCreatedMsg{} }
+				return m, func() tea.Msg { return accountModifiedMsg{} }
 			}
 
 			// Cycle focus
-			if s == "up" || s == "shift+tab" {
-				m.focusIndex--
+			if m.editingAccount != nil {
+				// In edit mode, only cycle between label and submit button
+				if s == "up" || s == "shift+tab" {
+					m.focusIndex--
+					if m.focusIndex < 2 {
+						m.focusIndex = len(m.inputs)
+					}
+				} else {
+					m.focusIndex++
+					if m.focusIndex > len(m.inputs) {
+						m.focusIndex = 2
+					}
+				}
 			} else {
-				m.focusIndex++
-			}
-
-			if m.focusIndex > len(m.inputs) {
-				m.focusIndex = 0
-			} else if m.focusIndex < 0 {
-				m.focusIndex = len(m.inputs)
+				// In add mode, cycle through all fields
+				if s == "up" || s == "shift+tab" {
+					m.focusIndex--
+				} else {
+					m.focusIndex++
+				}
+				if m.focusIndex > len(m.inputs) {
+					m.focusIndex = 0
+				} else if m.focusIndex < 0 {
+					m.focusIndex = len(m.inputs)
+				}
 			}
 
 			cmds := make([]tea.Cmd, len(m.inputs))
@@ -106,6 +150,9 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if i == m.focusIndex {
 					cmds[i] = m.inputs[i].Focus()
 					m.inputs[i].TextStyle = focusedStyle
+					if m.editingAccount != nil && i < 2 {
+						m.inputs[i].TextStyle = disabledStyle
+					}
 					continue
 				}
 				m.inputs[i].Blur()
@@ -132,7 +179,11 @@ func (m *accountFormModel) updateInputs(msg tea.Msg) tea.Cmd {
 func (m accountFormModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(titleStyle.Render("✨ Add New Account"))
+	if m.editingAccount != nil {
+		b.WriteString(titleStyle.Render("✏️ Edit Account"))
+	} else {
+		b.WriteString(titleStyle.Render("✨ Add New Account"))
+	}
 	b.WriteString("\n\n")
 
 	for i := range m.inputs {
