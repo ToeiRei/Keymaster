@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/pem"
@@ -393,10 +394,22 @@ func runAuditForAccount(account model.Account) error {
 		return fmt.Errorf("could not read remote authorized_keys: %w", err)
 	}
 
-	firstLine := strings.Split(string(remoteContent), "\n")[0]
-	remoteSerial, err := sshkey.ParseSerial(firstLine)
-	if err != nil {
-		return fmt.Errorf("could not parse serial from remote file: %w", err)
+	// Scan the entire file for the Keymaster serial comment, which is more robust
+	// than just checking the first line.
+	var remoteSerial = -1 // Use a value that can't be a valid serial
+	scanner := bufio.NewScanner(bytes.NewReader(remoteContent))
+	for scanner.Scan() {
+		line := scanner.Text()
+		serial, err := sshkey.ParseSerial(line)
+		if err == nil {
+			// Found it!
+			remoteSerial = serial
+			break
+		}
+	}
+
+	if remoteSerial == -1 {
+		return fmt.Errorf("Keymaster serial comment not found in remote file")
 	}
 
 	if remoteSerial != account.Serial {

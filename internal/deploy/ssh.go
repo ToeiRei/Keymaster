@@ -33,24 +33,31 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 			ssh.PublicKeys(signer),
 		},
 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			// The hostname passed to the callback can include the port. We need to strip it
+			// to ensure we're looking up the correct key in our database.
+			host, _, err := net.SplitHostPort(hostname)
+			if err != nil {
+				// If SplitHostPort fails, it means there was no port, so we use the original string.
+				host = hostname
+			}
+
 			// The key is presented in the format "ssh-ed25519 AAA..."
 			presentedKey := string(ssh.MarshalAuthorizedKey(key))
 
 			// Check if we have a trusted key for this host in our database.
-			knownKey, err := db.GetKnownHostKey(hostname)
+			knownKey, err := db.GetKnownHostKey(host)
 			if err != nil {
 				return fmt.Errorf("failed to query known_hosts database: %w", err)
 			}
 
 			// If we don't have a key, this is the first connection.
-			// For now, we fail securely. A 'trust-host' command will be needed.
 			if knownKey == "" {
-				return fmt.Errorf("unknown host key for %s. run 'keymaster trust-host' to add it", hostname)
+				return fmt.Errorf("unknown host key for %s. run 'keymaster trust-host' to add it", host)
 			}
 
 			// If the key exists, it must match exactly.
 			if knownKey != presentedKey {
-				return fmt.Errorf("!!! HOST KEY MISMATCH FOR %s !!!\nRemote key presented: %s\nThis could be a man-in-the-middle attack.", hostname, presentedKey)
+				return fmt.Errorf("!!! HOST KEY MISMATCH FOR %s !!!\nRemote key presented: %s\nThis could be a man-in-the-middle attack.", host, presentedKey)
 			}
 
 			return nil // Host key is trusted.
