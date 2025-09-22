@@ -1,2 +1,17 @@
+# Local database file
 keymaster.db
+
+# Compiled binary for different OSs
+keymaster
 keymaster.exe
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Dependency directory (if you use 'go mod vendor')
+vendor/
+
+# Common editor/IDE folders
+.vscode/
+.idea/
