@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
@@ -26,7 +27,7 @@ var cfgFile string
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		// The error is already printed by Cobra on failure.
 		os.Exit(1)
 	}
 }
@@ -40,15 +41,29 @@ system key per account and uses it as a foothold to rewrite and
 version-control access. A database becomes the source of truth.
 
 Running without a subcommand will launch the interactive TUI.`,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Initialize the database for all commands.
+		// Viper has already read the config by this point.
+		dsn := viper.GetString("database.dsn")
+		if err := db.InitDB(dsn); err != nil {
+			return fmt.Errorf("error initializing database: %w", err)
+		}
+		return nil
+	},
 	Run: func(cmd *cobra.Command, args []string) {
+		// The database is already initialized by PersistentPreRunE.
 		tui.Run()
 	},
 }
 
 func init() {
+	cobra.OnInitialize(initConfig)
+
 	rootCmd.Version = version
-	// Here we will define our flags and configuration settings.
-	// Example: rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keymaster.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keymaster.yaml or ./keymaster.yaml)")
+	rootCmd.PersistentFlags().String("database", "./keymaster.db", "database connection string (DSN)")
+	viper.BindPFlag("database.dsn", rootCmd.PersistentFlags().Lookup("database"))
+	viper.SetDefault("database.dsn", "./keymaster.db")
 
 	// Add commands
 	rootCmd.AddCommand(deployCmd)
@@ -56,6 +71,30 @@ func init() {
 	rootCmd.AddCommand(auditCmd)
 	rootCmd.AddCommand(importCmd)
 	rootCmd.AddCommand(trustHostCmd)
+}
+
+// initConfig reads in config file and ENV variables if set.
+func initConfig() {
+	if cfgFile != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(cfgFile)
+	} else {
+		// Find home directory.
+		home, err := os.UserHomeDir()
+		cobra.CheckErr(err)
+
+		// Search config in home directory and current directory with name ".keymaster" (without extension).
+		viper.AddConfigPath(home)
+		viper.AddConfigPath(".")
+		viper.SetConfigType("yaml")
+		viper.SetConfigName(".keymaster")
+	}
+
+	viper.SetEnvPrefix("KEYMASTER")
+	viper.AutomaticEnv() // read in environment variables that match
+
+	// If a config file is found, read it in.
+	_ = viper.ReadInConfig() // We can ignore the error if the file doesn't exist.
 }
 
 var deployCmd = &cobra.Command{
@@ -66,6 +105,7 @@ If an account (user@host) is specified, deploys only to that account.
 If no account is specified, deploys to all active accounts in the database.`,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		// DB is initialized in PersistentPreRunE
 		allAccounts, err := db.GetAllActiveAccounts()
 		if err != nil {
 			log.Fatalf("Error getting accounts: %v", err)
@@ -134,6 +174,7 @@ var rotateKeyCmd = &cobra.Command{
 The previous key is kept for accessing hosts that have not yet been updated.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("⚙️  Rotating system key...")
+		// DB is initialized in PersistentPreRunE
 		pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
 		if err != nil {
 			log.Fatalf("Error generating key pair: %v", err)
@@ -167,6 +208,7 @@ var auditCmd = &cobra.Command{
 	Short: "Audit hosts for configuration drift",
 	Long:  `Connects to all active hosts and checks if their deployed authorized_keys file has the expected Keymaster serial number.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// DB is initialized in PersistentPreRunE
 		accounts, err := db.GetAllActiveAccounts()
 		if err != nil {
 			log.Fatalf("Error getting accounts: %v", err)
@@ -217,6 +259,7 @@ var importCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1), // Ensures we get exactly one file path
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
+		// DB is initialized in PersistentPreRunE
 		fmt.Printf("🔑 Importing keys from %s...\n", filePath)
 
 		file, err := os.Open(filePath)
@@ -323,6 +366,7 @@ and prompts the user to save it to the database. This is a required
 step before Keymaster can manage a new host.`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		// DB is initialized in PersistentPreRunE
 		target := args[0]
 		parts := strings.Split(target, "@")
 		if len(parts) != 2 {
