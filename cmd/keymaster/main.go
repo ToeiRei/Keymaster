@@ -21,6 +21,8 @@ import (
 	"github.com/toeirei/keymaster/internal/tui"
 )
 
+var version = "dev" // this will be set by the linker
+
 func main() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -43,6 +45,7 @@ Running without a subcommand will launch the interactive TUI.`,
 }
 
 func init() {
+	rootCmd.Version = version
 	// Here we will define our flags and configuration settings.
 	// Example: rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keymaster.yaml)")
 

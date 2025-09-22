@@ -202,6 +202,42 @@ func GetAllPublicKeys() ([]model.PublicKey, error) {
 	return keys, nil
 }
 
+// GetPublicKeyByComment retrieves a single public key by its unique comment.
+func GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
+	row := db.QueryRow("SELECT id, algorithm, key_data, comment FROM public_keys WHERE comment = ?", comment)
+	var key model.PublicKey
+	err := row.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment)
+	if err != nil {
+		return nil, err // This will be sql.ErrNoRows if not found
+	}
+	return &key, nil
+}
+
+// AddPublicKeyAndGetModel adds a public key to the database if it doesn't already
+// exist (based on the comment) and returns the full key model.
+// It returns (nil, nil) if the key is a duplicate.
+func AddPublicKeyAndGetModel(algorithm, keyData, comment string) (*model.PublicKey, error) {
+	// First, check if it exists to avoid constraint errors.
+	existing, err := GetPublicKeyByComment(comment)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err // A real DB error
+	}
+	if existing != nil {
+		return nil, nil // Key already exists, return nil model and nil error
+	}
+
+	result, err := db.Exec("INSERT INTO public_keys (algorithm, key_data, comment) VALUES (?, ?, ?)", algorithm, keyData, comment)
+	if err != nil {
+		return nil, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.PublicKey{ID: int(id), Algorithm: algorithm, KeyData: keyData, Comment: comment}, nil
+}
+
 // GetKnownHostKey retrieves the trusted public key for a given hostname.
 func GetKnownHostKey(hostname string) (string, error) {
 	var key string

@@ -25,21 +25,32 @@ type hostKeyVerifiedMsg struct {
 	err      error
 }
 
+// A message to signal that a remote key import has finished.
+type remoteKeysImportedMsg struct {
+	accountID    int
+	importedKeys []model.PublicKey
+	skippedCount int
+	err          error
+}
+
 type accountsViewState int
 
 const (
 	accountsListView accountsViewState = iota
 	accountsFormView
+	accountsImportConfirmView
 )
 
 // accountsModel is the model for the account management view.
 type accountsModel struct {
-	state    accountsViewState
-	form     accountFormModel
-	accounts []model.Account
-	cursor   int
-	status   string // For showing status messages like "Deleted..."
-	err      error
+	state                  accountsViewState
+	form                   accountFormModel
+	accounts               []model.Account
+	cursor                 int
+	status                 string // For showing status messages like "Deleted..."
+	err                    error
+	pendingImportAccountID int
+	pendingImportKeys      []model.PublicKey
 }
 
 func newAccountsModel() accountsModel {
@@ -81,6 +92,33 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
+	// Handle updates for the import confirmation view
+	if m.state == accountsImportConfirmView {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "y":
+				// Assign the keys
+				for _, key := range m.pendingImportKeys {
+					_ = db.AssignKeyToAccount(m.pendingImportAccountID, key.ID)
+				}
+				m.status = fmt.Sprintf("Assigned %d imported keys.", len(m.pendingImportKeys))
+				m.state = accountsListView
+				m.pendingImportAccountID = 0
+				m.pendingImportKeys = nil
+				return m, nil
+			case "n", "q", "esc":
+				// Don't assign, just go back
+				m.status = fmt.Sprintf("Imported %d new keys without assigning.", len(m.pendingImportKeys))
+				m.state = accountsListView
+				m.pendingImportAccountID = 0
+				m.pendingImportKeys = nil
+				return m, nil
+			}
+		}
+		return m, nil
+	}
+
 	// Handle async messages for the list view
 	switch msg := msg.(type) {
 	case hostKeyVerifiedMsg:
@@ -92,6 +130,22 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.status += fmt.Sprintf("\n%s", msg.warning)
 			}
 		}
+		return m, nil
+	case remoteKeysImportedMsg:
+		if msg.err != nil {
+			m.status = fmt.Sprintf("Import failed: %v", msg.err)
+			return m, nil
+		}
+		if len(msg.importedKeys) == 0 {
+			m.status = fmt.Sprintf("No new keys found to import. Skipped %d duplicates.", msg.skippedCount)
+			return m, nil
+		}
+
+		// We have keys, move to confirmation state
+		m.state = accountsImportConfirmView
+		m.pendingImportAccountID = msg.accountID
+		m.pendingImportKeys = msg.importedKeys
+		m.status = fmt.Sprintf("Assign these %d new keys to this account? (y/n)", len(m.pendingImportKeys))
 		return m, nil
 	}
 
@@ -162,6 +216,15 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.form = newAccountFormModel()
 			m.status = "" // Clear status before showing form
 			return m, m.form.Init()
+
+		// Import keys from remote host.
+		case "i":
+			if len(m.accounts) > 0 {
+				accToImportFrom := m.accounts[m.cursor]
+				m.status = fmt.Sprintf("Importing keys from %s...", accToImportFrom.String())
+				return m, importRemoteKeysCmd(accToImportFrom)
+			}
+			return m, nil
 		}
 	}
 	return m, nil
@@ -171,6 +234,23 @@ func (m accountsModel) View() string {
 	// If we're in the form view, render that instead.
 	if m.state == accountsFormView {
 		return m.form.View()
+	}
+
+	// If we're in the import confirmation view, just show the status.
+	if m.state == accountsImportConfirmView {
+		var b strings.Builder
+		b.WriteString(titleStyle.Render("✨ Remote Import Confirmation"))
+		b.WriteString("\n\n")
+		b.WriteString(fmt.Sprintf("Found %d new public keys on the remote host:\n\n", len(m.pendingImportKeys)))
+
+		for _, key := range m.pendingImportKeys {
+			line := fmt.Sprintf("- %s (%s)", key.Comment, key.Algorithm)
+			b.WriteString(itemStyle.Render(line))
+			b.WriteString("\n")
+		}
+
+		b.WriteString(helpStyle.Render(fmt.Sprintf("\n%s", m.status)))
+		return b.String()
 	}
 
 	// --- This is the list view rendering ---
@@ -214,7 +294,7 @@ func (m accountsModel) View() string {
 		b.WriteString(helpStyle.Render("No accounts found. Press 'a' to add one."))
 	}
 
-	b.WriteString(helpStyle.Render("\n(a)dd, (d)elete, (t)oggle active, (v)erify host key, (q)uit"))
+	b.WriteString(helpStyle.Render("\n(a)dd, (d)elete, (t)oggle, (v)erify, (i)mport, (q)uit"))
 	if m.status != "" {
 		b.WriteString(helpStyle.Render("\n\n" + m.status))
 	}
@@ -243,5 +323,13 @@ func verifyHostKeyCmd(hostname string) tea.Cmd {
 		}
 
 		return hostKeyVerifiedMsg{hostname: hostname, err: nil, warning: warning}
+	}
+}
+
+// importRemoteKeysCmd is a tea.Cmd that fetches keys from a remote host and imports them.
+func importRemoteKeysCmd(account model.Account) tea.Cmd {
+	return func() tea.Msg {
+		imported, skipped, err := deploy.ImportRemoteKeys(account)
+		return remoteKeysImportedMsg{accountID: account.ID, importedKeys: imported, skippedCount: skipped, err: err}
 	}
 }
