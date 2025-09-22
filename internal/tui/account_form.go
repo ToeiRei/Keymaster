@@ -42,13 +42,13 @@ func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 
 		switch i {
 		case 0:
-			t.Prompt = "Username: "
+			t.Prompt = "Username:               "
 			t.Placeholder = "user"
 		case 1:
-			t.Prompt = "Hostname: "
+			t.Prompt = "Hostname:               "
 			t.Placeholder = "www.example.com"
 		case 2:
-			t.Prompt = "Label (optional): "
+			t.Prompt = "Label (optional):       "
 			t.Placeholder = "prod-web-01"
 		case 3:
 			t.Prompt = "Tags (comma-separated): "
@@ -192,30 +192,31 @@ func (m *accountFormModel) updateInputs(msg tea.Msg) tea.Cmd {
 }
 
 func (m accountFormModel) View() string {
-	var b strings.Builder
+	var viewItems []string
 
 	if m.editingAccount != nil {
-		b.WriteString(titleStyle.Render("✏️ Edit Account"))
+		viewItems = append(viewItems, titleStyle.Render("✏️ Edit Account"))
 	} else {
-		b.WriteString(titleStyle.Render("✨ Add New Account"))
+		viewItems = append(viewItems, titleStyle.Render("✨ Add New Account"))
 	}
 
+	// The title's padding adds a newline, so we add one more for a blank line.
+	viewItems = append(viewItems, "")
 	for i := range m.inputs {
-		b.WriteString(m.inputs[i].View())
-		b.WriteString("\n")
+		viewItems = append(viewItems, m.inputs[i].View())
 	}
 
 	button := formItemStyle.Render("[ Submit ]")
 	if m.focusIndex == len(m.inputs) {
 		button = formSelectedItemStyle.Render("[ Submit ]")
 	}
-	b.WriteString(fmt.Sprintf("\n%s\n", button))
+	viewItems = append(viewItems, "", button) // Blank line before button
 
 	if m.err != nil {
-		b.WriteString(helpStyle.Render(fmt.Sprintf("\n\nError: %v", m.err)))
+		viewItems = append(viewItems, "", helpStyle.Render(fmt.Sprintf("Error: %v", m.err)))
 	}
 
-	b.WriteString(helpStyle.Render("\n(tab to navigate, enter to submit, esc to cancel)"))
+	viewItems = append(viewItems, "", helpStyle.Render("(tab to navigate, enter to submit, esc to cancel)"))
 
-	return b.String()
+	return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
 }
