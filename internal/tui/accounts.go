@@ -109,6 +109,20 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		// Toggle active status.
+		case "t":
+			if len(m.accounts) > 0 {
+				accToToggle := m.accounts[m.cursor]
+				if err := db.ToggleAccountStatus(accToToggle.ID); err != nil {
+					m.err = err
+				} else {
+					// Refresh the list after toggling.
+					m.status = fmt.Sprintf("Toggled status for: %s", accToToggle.String())
+					m.accounts, m.err = db.GetAllAccounts()
+				}
+			}
+			return m, nil
+
 		// Switch to the form view to add a new account.
 		case "a":
 			m.state = accountsFormView
@@ -150,14 +164,15 @@ func (m accountsModel) View() string {
 		hostPart := fmt.Sprintf("@%s", acc.Hostname)
 
 		if m.cursor == i {
-			// For the selected line, we include the cursor in the string to be rendered
-			// so that the entire line, including the cursor, gets the highlight color.
 			line := "» " + userPart + hostPart
 			b.WriteString(selectedItemStyle.Render(line))
 		} else {
-			// For unselected lines, the style provides the necessary padding to align with the selected line.
 			line := userPart + hostPart
-			b.WriteString(itemStyle.Render(line))
+			if acc.IsActive {
+				b.WriteString(itemStyle.Render(line))
+			} else {
+				b.WriteString(inactiveItemStyle.Render(line))
+			}
 		}
 		b.WriteString("\n")
 	}
@@ -166,7 +181,7 @@ func (m accountsModel) View() string {
 		b.WriteString(helpStyle.Render("No accounts found. Press 'a' to add one."))
 	}
 
-	b.WriteString(helpStyle.Render("\n(a)dd, (d)elete, (q)uit to menu"))
+	b.WriteString(helpStyle.Render("\n(a)dd, (d)elete, (t)oggle active, (q)uit to menu"))
 	if m.status != "" {
 		b.WriteString(helpStyle.Render("\n\n" + m.status))
 	}

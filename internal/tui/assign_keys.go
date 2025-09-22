@@ -35,7 +35,8 @@ func newAssignKeysModel() assignKeysModel {
 	}
 
 	var err error
-	m.accounts, err = db.GetAllAccounts()
+	// Only show active accounts for assignment.
+	m.accounts, err = db.GetAllActiveAccounts()
 	if err != nil {
 		m.err = err
 		return m
@@ -173,7 +174,7 @@ func (m assignKeysModel) viewAccountSelection() string {
 	b.WriteString("\n\n")
 
 	if len(m.accounts) == 0 {
-		b.WriteString(helpStyle.Render("No accounts found. Please add one first."))
+		b.WriteString(helpStyle.Render("No active accounts found. Please add one or enable an existing one."))
 	} else {
 		// Using the same alignment logic from accounts.go
 		maxUserLen := 0

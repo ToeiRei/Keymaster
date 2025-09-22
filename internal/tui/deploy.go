@@ -79,7 +79,8 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case 2: // Get authorized_keys for Account
 				var err error
-				m.accounts, err = db.GetAllAccounts()
+				// Only allow deploying to or viewing keys for active accounts.
+				m.accounts, err = db.GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -161,7 +162,7 @@ func (m deployModel) View() string {
 		b.WriteString(titleStyle.Render("🚀 Deploy: Select Account"))
 		b.WriteString("\n\n")
 		if len(m.accounts) == 0 {
-			b.WriteString(helpStyle.Render("No accounts found. Please add one first."))
+			b.WriteString(helpStyle.Render("No active accounts found. Please add one or enable an existing one."))
 		} else {
 			maxUserLen := 0
 			for _, acc := range m.accounts {

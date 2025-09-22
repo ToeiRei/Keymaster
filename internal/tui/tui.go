@@ -27,6 +27,9 @@ var (
 				PaddingLeft(2).
 				Foreground(lipgloss.Color("170"))
 
+	// Style for an inactive/disabled item
+	inactiveItemStyle = itemStyle.Copy().Strikethrough(true).Foreground(lipgloss.Color("240"))
+
 	// Style for the help text at the bottom
 	helpStyle = lipgloss.NewStyle().
 			MarginLeft(4).

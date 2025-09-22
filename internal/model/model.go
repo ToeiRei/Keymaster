@@ -9,6 +9,7 @@ type Account struct {
 	Username string
 	Hostname string
 	Serial   int
+	IsActive bool
 }
 
 // String returns the user@host representation.

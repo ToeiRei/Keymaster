@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/toeirei/keymaster/internal/model"
@@ -35,6 +36,7 @@ func InitDB(dataSourceName string) (*sql.DB, error) {
 			username TEXT NOT NULL,
 			hostname TEXT NOT NULL,
 			serial INTEGER NOT NULL DEFAULT 0,
+			is_active BOOLEAN NOT NULL DEFAULT 1,
 			UNIQUE(username, hostname)
 		);`
 		if _, err = db.Exec(accountsTableSQL); err != nil {
@@ -75,6 +77,25 @@ func InitDB(dataSourceName string) (*sql.DB, error) {
 		if _, err = db.Exec(systemKeysTableSQL); err != nil {
 			return
 		}
+
+		// --- Simple Migration ---
+		// This block ensures that older databases are updated with the new is_active column
+		// without requiring the user to delete their database file.
+		migrationErr := func() error {
+			_, alterErr := db.Exec("ALTER TABLE accounts ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1;")
+			if alterErr != nil {
+				// If the error indicates the column already exists, we can safely ignore it.
+				if strings.Contains(alterErr.Error(), "duplicate column name") {
+					return nil
+				}
+				return alterErr
+			}
+			return nil
+		}()
+		if migrationErr != nil {
+			err = migrationErr
+			return
+		}
 	})
 
 	if err != nil {
@@ -85,7 +106,7 @@ func InitDB(dataSourceName string) (*sql.DB, error) {
 
 // GetAllAccounts retrieves all accounts from the database.
 func GetAllAccounts() ([]model.Account, error) {
-	rows, err := db.Query("SELECT id, username, hostname, serial FROM accounts ORDER BY hostname, username")
+	rows, err := db.Query("SELECT id, username, hostname, serial, is_active FROM accounts ORDER BY hostname, username")
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +115,7 @@ func GetAllAccounts() ([]model.Account, error) {
 	var accounts []model.Account
 	for rows.Next() {
 		var acc model.Account
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &acc.Serial); err != nil {
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &acc.Serial, &acc.IsActive); err != nil {
 			return nil, err
 		}
 		accounts = append(accounts, acc)
@@ -121,6 +142,32 @@ func IncrementAccountSerial(id int) error {
 	// We increment directly in SQL to avoid race conditions.
 	_, err := db.Exec("UPDATE accounts SET serial = serial + 1 WHERE id = ?", id)
 	return err
+}
+
+// ToggleAccountStatus flips the active status of an account.
+func ToggleAccountStatus(id int) error {
+	// SQLite uses 0 and 1 for booleans. `NOT` works as expected.
+	_, err := db.Exec("UPDATE accounts SET is_active = NOT is_active WHERE id = ?", id)
+	return err
+}
+
+// GetAllActiveAccounts retrieves all active accounts from the database.
+func GetAllActiveAccounts() ([]model.Account, error) {
+	rows, err := db.Query("SELECT id, username, hostname, serial, is_active FROM accounts WHERE is_active = 1 ORDER BY hostname, username")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var accounts []model.Account
+	for rows.Next() {
+		var acc model.Account
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &acc.Serial, &acc.IsActive); err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, acc)
+	}
+	return accounts, nil
 }
 
 // AddPublicKey adds a new public key to the database.
