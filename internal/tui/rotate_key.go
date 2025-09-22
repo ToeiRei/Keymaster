@@ -20,6 +20,8 @@ const (
 	rotateStateReadyToRotate
 	rotateStateGenerating
 	rotateStateGenerated
+	rotateStateRotating
+	rotateStateRotated
 )
 
 type rotateKeyModel struct {
@@ -56,8 +58,8 @@ func (m rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "esc":
-			// Allow quitting from any state except during generation
-			if m.state != rotateStateGenerating {
+			// Allow quitting from any state except during generation/rotation
+			if m.state != rotateStateGenerating && m.state != rotateStateRotating {
 				return m, func() tea.Msg { return backToMenuMsg{} }
 			}
 		case "y":
@@ -66,12 +68,20 @@ func (m rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Return a command to perform the generation
 				return m, generateInitialKey
 			}
+			if m.state == rotateStateReadyToRotate {
+				m.state = rotateStateRotating
+				return m, performRotation
+			}
 		}
 	// This message is sent by the generateInitialKey command on completion
 	case initialKeyGeneratedMsg:
 		m.state = rotateStateGenerated
 		m.err = msg.err
 		m.newPublicKey = msg.publicKey
+		m.newKeySerial = msg.serial
+	case keyRotatedMsg:
+		m.state = rotateStateRotated
+		m.err = msg.err
 		m.newKeySerial = msg.serial
 	}
 	return m, nil
@@ -95,8 +105,9 @@ func (m rotateKeyModel) View() string {
 		b.WriteString("Would you like to generate the initial system key now? (y/n)")
 	case rotateStateReadyToRotate:
 		b.WriteString("An active system key already exists.\n\n")
-		b.WriteString(helpStyle.Render("Key rotation is a multi-step process and is not yet fully implemented.\n"))
-		b.WriteString(helpStyle.Render("Press 'q' to return to the main menu."))
+		b.WriteString("Rotating the system key will deactivate the current key and create a new one.\n")
+		b.WriteString("Hosts will be updated to use the new key upon their next deployment.\n\n")
+		b.WriteString("Are you sure you want to rotate the system key? (y/n)")
 	case rotateStateGenerating:
 		b.WriteString("Generating new ed25519 key pair, please wait...")
 	case rotateStateGenerated:
@@ -105,6 +116,12 @@ func (m rotateKeyModel) View() string {
 		b.WriteString("You must now manually add the following public key to the authorized_keys file\n")
 		b.WriteString("for every account you intend to manage with Keymaster:\n\n")
 		b.WriteString(fmt.Sprintf("    %s\n\n", m.newPublicKey))
+		b.WriteString(helpStyle.Render("Press 'q' to return to the main menu."))
+	case rotateStateRotating:
+		b.WriteString("Rotating system key, please wait...")
+	case rotateStateRotated:
+		b.WriteString(fmt.Sprintf("✅ Successfully rotated system key. The new active key is serial #%d.\n\n", m.newKeySerial))
+		b.WriteString("Deploy to your fleet to apply the new key.\n")
 		b.WriteString(helpStyle.Render("Press 'q' to return to the main menu."))
 	}
 
@@ -117,6 +134,11 @@ type initialKeyGeneratedMsg struct {
 	publicKey string
 	serial    int
 	err       error
+}
+
+type keyRotatedMsg struct {
+	serial int
+	err    error
 }
 
 // generateInitialKey is a tea.Cmd that performs the key generation and DB write.
@@ -145,4 +167,32 @@ func generateInitialKey() tea.Msg {
 	}
 
 	return initialKeyGeneratedMsg{publicKey: publicKeyString, serial: serial}
+}
+
+// performRotation is a tea.Cmd that generates a new key and performs the DB rotation.
+func performRotation() tea.Msg {
+	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return keyRotatedMsg{err: fmt.Errorf("failed to generate key pair: %w", err)}
+	}
+
+	sshPubKey, err := ssh.NewPublicKey(pubKey)
+	if err != nil {
+		return keyRotatedMsg{err: fmt.Errorf("failed to create SSH public key: %w", err)}
+	}
+	pubKeyBytes := ssh.MarshalAuthorizedKey(sshPubKey)
+	publicKeyString := fmt.Sprintf("%s keymaster-system-key", strings.TrimSpace(string(pubKeyBytes)))
+
+	pemBlock, err := ssh.MarshalEd25519PrivateKey(privKey, "")
+	if err != nil {
+		return keyRotatedMsg{err: fmt.Errorf("failed to marshal private key: %w", err)}
+	}
+	privateKeyString := string(pem.EncodeToMemory(pemBlock))
+
+	serial, err := db.RotateSystemKey(publicKeyString, privateKeyString)
+	if err != nil {
+		return keyRotatedMsg{err: fmt.Errorf("failed to save rotated system key to database: %w", err)}
+	}
+
+	return keyRotatedMsg{serial: serial}
 }
