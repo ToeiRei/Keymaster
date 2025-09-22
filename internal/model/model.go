@@ -39,3 +39,12 @@ type SystemKey struct {
 	PrivateKey string // Note: Storing private keys requires secure handling.
 	IsActive   bool
 }
+
+// AuditLogEntry represents a single event in the audit log.
+type AuditLogEntry struct {
+	ID        int
+	Timestamp string // Using string for simplicity in display
+	Username  string
+	Action    string
+	Details   string
+}

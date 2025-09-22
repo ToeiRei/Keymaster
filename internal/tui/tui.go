@@ -46,6 +46,7 @@ const (
 	assignKeysView
 	rotateKeyView
 	deployView
+	auditLogView
 )
 
 // mainModel is the top-level model for the TUI. It manages which view is currently active.
@@ -57,6 +58,7 @@ type mainModel struct {
 	assignment assignKeysModel
 	keys       publicKeysModel
 	accounts   accountsModel
+	auditLog   auditLogModel
 	db         *sql.DB
 	err        error
 }
@@ -78,6 +80,7 @@ func initialModel(db *sql.DB) mainModel {
 				"Assign Keys to Accounts",
 				"Rotate System Keys",
 				"Deploy to Fleet",
+				"View Audit Log",
 			},
 		},
 		db: db,
@@ -156,6 +159,16 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var newDeployerModel tea.Model
 		newDeployerModel, cmd = m.deployer.Update(msg)
 		m.deployer = newDeployerModel.(deployModel)
+
+	case auditLogView:
+		// If we received a "back" message, switch the state.
+		if _, ok := msg.(backToMenuMsg); ok {
+			m.state = menuView
+			return m, nil
+		}
+		var newAuditLogModel tea.Model
+		newAuditLogModel, cmd = m.auditLog.Update(msg)
+		m.auditLog = newAuditLogModel.(auditLogModel)
 	default: // menuView
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -192,6 +205,10 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.state = deployView
 					m.deployer = newDeployModel()
 					return m, nil
+				case 5: // View Audit Log
+					m.state = auditLogView
+					m.auditLog = newAuditLogModel()
+					return m, nil
 				default:
 					// For now, other options just quit.
 					return m, tea.Quit
@@ -222,6 +239,8 @@ func (m mainModel) View() string {
 		return m.deployer.View()
 	case rotateKeyView:
 		return m.rotator.View()
+	case auditLogView:
+		return m.auditLog.View()
 	default: // menuView
 		return m.menu.View()
 	}

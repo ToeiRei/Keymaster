@@ -107,10 +107,13 @@ If no account is specified, deploys to all active accounts in the database.`,
 			go func(account model.Account) {
 				defer wg.Done()
 				err := runDeploymentForAccount(account)
+				details := fmt.Sprintf("account: %s", account.String())
 				if err != nil {
 					results <- fmt.Sprintf("💥 Failed to deploy to %s: %v", account.String(), err)
+					_ = db.LogAction("DEPLOY_FAIL", fmt.Sprintf("%s, error: %v", details, err))
 				} else {
 					results <- fmt.Sprintf("✅ Successfully deployed to %s", account.String())
+					_ = db.LogAction("DEPLOY_SUCCESS", details)
 				}
 			}(acc)
 		}
@@ -195,10 +198,13 @@ var auditCmd = &cobra.Command{
 			go func(account model.Account) {
 				defer wg.Done()
 				err := runAuditForAccount(account)
+				details := fmt.Sprintf("account: %s", account.String())
 				if err != nil {
 					results <- fmt.Sprintf("🚨 Drift detected on %s: %v", account.String(), err)
+					_ = db.LogAction("AUDIT_FAIL", fmt.Sprintf("%s, error: %v", details, err))
 				} else {
 					results <- fmt.Sprintf("✅ OK: %s", account.String())
+					_ = db.LogAction("AUDIT_SUCCESS", details)
 				}
 			}(acc)
 		}
