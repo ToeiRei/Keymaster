@@ -62,6 +62,11 @@ func (m rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.state != rotateStateGenerating && m.state != rotateStateRotating {
 				return m, func() tea.Msg { return backToMenuMsg{} }
 			}
+		case "n":
+			// If we're at a confirmation prompt, 'n' should go back to the menu.
+			if m.state == rotateStateReadyToGenerate || m.state == rotateStateReadyToRotate {
+				return m, func() tea.Msg { return backToMenuMsg{} }
+			}
 		case "y":
 			if m.state == rotateStateReadyToGenerate {
 				m.state = rotateStateGenerating
