@@ -169,7 +169,25 @@ func (s *PostgresStore) UpdateAccountLabel(id int, label string) error {
 }
 
 func (s *PostgresStore) GetAllActiveAccounts() ([]model.Account, error) {
-	return nil, fmt.Errorf("not implemented for postgres")
+	rows, err := s.db.Query("SELECT id, username, hostname, label, serial, is_active FROM accounts WHERE is_active = TRUE ORDER BY label, hostname, username")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var accounts []model.Account
+	for rows.Next() {
+		var acc model.Account
+		var label sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
+			return nil, err
+		}
+		if label.Valid {
+			acc.Label = label.String
+		}
+		accounts = append(accounts, acc)
+	}
+	return accounts, nil
 }
 
 func (s *PostgresStore) AddPublicKey(algorithm, keyData, comment string) error {
@@ -247,7 +265,16 @@ func (s *PostgresStore) DeletePublicKey(id int) error {
 	return err
 }
 func (s *PostgresStore) GetKnownHostKey(hostname string) (string, error) {
-	return "", fmt.Errorf("not implemented for postgres")
+	var key string
+	// Note the double quotes around "key" because it's a reserved keyword in some contexts.
+	err := s.db.QueryRow(`SELECT "key" FROM known_hosts WHERE hostname = $1`, hostname).Scan(&key)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil // No key found is not an error, it's a state.
+		}
+		return "", err
+	}
+	return key, nil
 }
 
 func (s *PostgresStore) AddKnownHostKey(hostname, key string) error {
@@ -264,34 +291,193 @@ func (s *PostgresStore) AddKnownHostKey(hostname, key string) error {
 }
 
 func (s *PostgresStore) CreateSystemKey(publicKey, privateKey string) (int, error) {
-	return 0, fmt.Errorf("not implemented for postgres")
+	var maxSerial sql.NullInt64
+	err := s.db.QueryRow("SELECT MAX(serial) FROM system_keys").Scan(&maxSerial)
+	if err != nil && err != sql.ErrNoRows {
+		return 0, err
+	}
+
+	newSerial := 1
+	if maxSerial.Valid {
+		newSerial = int(maxSerial.Int64) + 1
+	}
+
+	_, err = s.db.Exec(
+		"INSERT INTO system_keys(serial, public_key, private_key, is_active) VALUES($1, $2, $3, $4)",
+		newSerial, publicKey, privateKey, true,
+	)
+	if err != nil {
+		return 0, err
+	}
+	_ = s.LogAction("CREATE_SYSTEM_KEY", fmt.Sprintf("serial: %d", newSerial))
+
+	return newSerial, nil
 }
+
 func (s *PostgresStore) RotateSystemKey(publicKey, privateKey string) (int, error) {
-	return 0, fmt.Errorf("not implemented for postgres")
+	tx, err := s.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec("UPDATE system_keys SET is_active = FALSE"); err != nil {
+		return 0, fmt.Errorf("failed to deactivate old system keys: %w", err)
+	}
+
+	var maxSerial sql.NullInt64
+	err = tx.QueryRow("SELECT MAX(serial) FROM system_keys").Scan(&maxSerial)
+	if err != nil && err != sql.ErrNoRows {
+		return 0, err
+	}
+	newSerial := int(maxSerial.Int64) + 1
+
+	_, err = tx.Exec(
+		"INSERT INTO system_keys(serial, public_key, private_key, is_active) VALUES($1, $2, $3, $4)",
+		newSerial, publicKey, privateKey, true,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert new system key: %w", err)
+	}
+
+	err = tx.Commit()
+	if err == nil {
+		_ = s.LogAction("ROTATE_SYSTEM_KEY", fmt.Sprintf("new_serial: %d", newSerial))
+	}
+
+	return newSerial, err
 }
+
 func (s *PostgresStore) GetActiveSystemKey() (*model.SystemKey, error) {
-	return nil, fmt.Errorf("not implemented for postgres")
+	row := s.db.QueryRow("SELECT id, serial, public_key, private_key, is_active FROM system_keys WHERE is_active = TRUE")
+
+	var key model.SystemKey
+	err := row.Scan(&key.ID, &key.Serial, &key.PublicKey, &key.PrivateKey, &key.IsActive)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No active key found, not necessarily an error.
+		}
+		return nil, err
+	}
+	return &key, nil
 }
+
 func (s *PostgresStore) GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
-	return nil, fmt.Errorf("not implemented for postgres")
+	row := s.db.QueryRow("SELECT id, serial, public_key, private_key, is_active FROM system_keys WHERE serial = $1", serial)
+
+	var key model.SystemKey
+	err := row.Scan(&key.ID, &key.Serial, &key.PublicKey, &key.PrivateKey, &key.IsActive)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No key found with that serial.
+		}
+		return nil, err
+	}
+	return &key, nil
 }
+
 func (s *PostgresStore) HasSystemKeys() (bool, error) {
-	return false, fmt.Errorf("not implemented for postgres")
+	var count int
+	err := s.db.QueryRow("SELECT COUNT(id) FROM system_keys").Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
+
 func (s *PostgresStore) AssignKeyToAccount(keyID, accountID int) error {
-	return fmt.Errorf("not implemented for postgres")
+	_, err := s.db.Exec("INSERT INTO account_keys(key_id, account_id) VALUES($1, $2)", keyID, accountID)
+	if err == nil {
+		var keyComment, accUser, accHost string
+		_ = s.db.QueryRow("SELECT comment FROM public_keys WHERE id = $1", keyID).Scan(&keyComment)
+		_ = s.db.QueryRow("SELECT username, hostname FROM accounts WHERE id = $1", accountID).Scan(&accUser, &accHost)
+		details := fmt.Sprintf("key: '%s' to account: %s@%s", keyComment, accUser, accHost)
+		_ = s.LogAction("ASSIGN_KEY", details)
+	}
+	return err
 }
+
 func (s *PostgresStore) UnassignKeyFromAccount(keyID, accountID int) error {
-	return fmt.Errorf("not implemented for postgres")
+	var keyComment, accUser, accHost string
+	_ = s.db.QueryRow("SELECT comment FROM public_keys WHERE id = $1", keyID).Scan(&keyComment)
+	_ = s.db.QueryRow("SELECT username, hostname FROM accounts WHERE id = $1", accountID).Scan(&accUser, &accHost)
+	details := fmt.Sprintf("key: '%s' from account: %s@%s", keyComment, accUser, accHost)
+
+	_, err := s.db.Exec("DELETE FROM account_keys WHERE key_id = $1 AND account_id = $2", keyID, accountID)
+	if err == nil {
+		_ = s.LogAction("UNASSIGN_KEY", details)
+	}
+	return err
 }
+
 func (s *PostgresStore) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
-	return nil, fmt.Errorf("not implemented for postgres")
+	query := `
+		SELECT pk.id, pk.algorithm, pk.key_data, pk.comment
+		FROM public_keys pk
+		JOIN account_keys ak ON pk.id = ak.key_id
+		WHERE ak.account_id = $1
+		ORDER BY pk.comment`
+	rows, err := s.db.Query(query, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []model.PublicKey
+	for rows.Next() {
+		var key model.PublicKey
+		if err := rows.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment); err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
 }
+
 func (s *PostgresStore) GetAccountsForKey(keyID int) ([]model.Account, error) {
-	return nil, fmt.Errorf("not implemented for postgres")
+	query := `
+		SELECT a.id, a.username, a.hostname, a.label, a.serial, a.is_active
+		FROM accounts a
+		JOIN account_keys ak ON a.id = ak.account_id
+		WHERE ak.key_id = $1
+		ORDER BY a.label, a.hostname, a.username`
+	rows, err := s.db.Query(query, keyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var accounts []model.Account
+	for rows.Next() {
+		var acc model.Account
+		var label sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
+			return nil, err
+		}
+		if label.Valid {
+			acc.Label = label.String
+		}
+		accounts = append(accounts, acc)
+	}
+	return accounts, nil
 }
+
 func (s *PostgresStore) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
-	return nil, fmt.Errorf("not implemented for postgres")
+	rows, err := s.db.Query("SELECT id, timestamp, username, action, details FROM audit_log ORDER BY timestamp DESC")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []model.AuditLogEntry
+	for rows.Next() {
+		var entry model.AuditLogEntry
+		if err := rows.Scan(&entry.ID, &entry.Timestamp, &entry.Username, &entry.Action, &entry.Details); err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	return entries, nil
 }
 
 func (s *PostgresStore) LogAction(action string, details string) error {
