@@ -22,11 +22,6 @@ type Deployer struct {
 
 // NewDeployer creates a new SSH connection and returns a Deployer.
 func NewDeployer(host, user, privateKey string) (*Deployer, error) {
-	signer, err := ssh.ParsePrivateKey([]byte(privateKey))
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse private key: %w", err)
-	}
-
 	// Build our list of authentication methods.
 	var authMethods []ssh.AuthMethod
 
@@ -36,8 +31,18 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 		authMethods = append(authMethods, ssh.PublicKeysCallback(agentClient.Signers))
 	}
 
-	// 2. Always include the specific Keymaster system key as a reliable fallback.
-	authMethods = append(authMethods, ssh.PublicKeys(signer))
+	// 2. If a specific Keymaster system key is provided, add it as a reliable fallback.
+	if privateKey != "" {
+		signer, err := ssh.ParsePrivateKey([]byte(privateKey))
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse private key: %w", err)
+		}
+		authMethods = append(authMethods, ssh.PublicKeys(signer))
+	}
+
+	if len(authMethods) == 0 {
+		return nil, fmt.Errorf("no authentication method available (no ssh agent and no system key provided)")
+	}
 
 	config := &ssh.ClientConfig{
 		User: user,
