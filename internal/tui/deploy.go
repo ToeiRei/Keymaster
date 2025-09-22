@@ -281,16 +281,8 @@ func (m deployModel) View() string {
 		if len(m.accounts) == 0 {
 			b.WriteString(helpStyle.Render("No active accounts found. Please add one or enable an existing one."))
 		} else {
-			maxUserLen := 0
-			for _, acc := range m.accounts {
-				if len(acc.Username) > maxUserLen {
-					maxUserLen = len(acc.Username)
-				}
-			}
 			for i, acc := range m.accounts {
-				userPart := fmt.Sprintf("%*s", maxUserLen, acc.Username)
-				hostPart := fmt.Sprintf("@%s", acc.Hostname)
-				line := userPart + hostPart
+				line := acc.String()
 				if m.accountCursor == i {
 					b.WriteString(selectedItemStyle.Render("» " + line))
 				} else {

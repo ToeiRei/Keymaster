@@ -36,6 +36,7 @@ func InitDB(dataSourceName string) (*sql.DB, error) {
 			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 			username TEXT NOT NULL,
 			hostname TEXT NOT NULL,
+			label TEXT,
 			serial INTEGER NOT NULL DEFAULT 0,
 			is_active BOOLEAN NOT NULL DEFAULT 1,
 			UNIQUE(username, hostname)
@@ -118,6 +119,22 @@ func InitDB(dataSourceName string) (*sql.DB, error) {
 			err = migrationErr
 			return
 		}
+
+		// Migration for the 'label' column
+		labelMigrationErr := func() error {
+			_, alterErr := db.Exec("ALTER TABLE accounts ADD COLUMN label TEXT;")
+			if alterErr != nil {
+				if strings.Contains(alterErr.Error(), "duplicate column name") {
+					return nil
+				}
+				return alterErr
+			}
+			return nil
+		}()
+		if labelMigrationErr != nil {
+			err = labelMigrationErr
+			return
+		}
 	})
 
 	if err != nil {
@@ -128,7 +145,7 @@ func InitDB(dataSourceName string) (*sql.DB, error) {
 
 // GetAllAccounts retrieves all accounts from the database.
 func GetAllAccounts() ([]model.Account, error) {
-	rows, err := db.Query("SELECT id, username, hostname, serial, is_active FROM accounts ORDER BY hostname, username")
+	rows, err := db.Query("SELECT id, username, hostname, label, serial, is_active FROM accounts ORDER BY label, hostname, username")
 	if err != nil {
 		return nil, err
 	}
@@ -137,8 +154,12 @@ func GetAllAccounts() ([]model.Account, error) {
 	var accounts []model.Account
 	for rows.Next() {
 		var acc model.Account
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &acc.Serial, &acc.IsActive); err != nil {
+		var label sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
 			return nil, err
+		}
+		if label.Valid {
+			acc.Label = label.String
 		}
 		accounts = append(accounts, acc)
 	}
@@ -146,8 +167,8 @@ func GetAllAccounts() ([]model.Account, error) {
 }
 
 // AddAccount adds a new account to the database.
-func AddAccount(username, hostname string) error {
-	_, err := db.Exec("INSERT INTO accounts(username, hostname) VALUES(?, ?)", username, hostname)
+func AddAccount(username, hostname, label string) error {
+	_, err := db.Exec("INSERT INTO accounts(username, hostname, label) VALUES(?, ?, ?)", username, hostname, label)
 	if err == nil {
 		_ = LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
 	}
@@ -199,7 +220,7 @@ func ToggleAccountStatus(id int) error {
 
 // GetAllActiveAccounts retrieves all active accounts from the database.
 func GetAllActiveAccounts() ([]model.Account, error) {
-	rows, err := db.Query("SELECT id, username, hostname, serial, is_active FROM accounts WHERE is_active = 1 ORDER BY hostname, username")
+	rows, err := db.Query("SELECT id, username, hostname, label, serial, is_active FROM accounts WHERE is_active = 1 ORDER BY label, hostname, username")
 	if err != nil {
 		return nil, err
 	}
@@ -208,8 +229,12 @@ func GetAllActiveAccounts() ([]model.Account, error) {
 	var accounts []model.Account
 	for rows.Next() {
 		var acc model.Account
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &acc.Serial, &acc.IsActive); err != nil {
+		var label sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
 			return nil, err
+		}
+		if label.Valid {
+			acc.Label = label.String
 		}
 		accounts = append(accounts, acc)
 	}

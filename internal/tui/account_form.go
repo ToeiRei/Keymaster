@@ -18,13 +18,13 @@ type accountCreatedMsg struct{}
 
 type accountFormModel struct {
 	focusIndex int
-	inputs     []textinput.Model
+	inputs     []textinput.Model // 0: user, 1: host, 2: label
 	err        error
 }
 
 func newAccountFormModel() accountFormModel {
 	m := accountFormModel{
-		inputs: make([]textinput.Model, 2),
+		inputs: make([]textinput.Model, 3),
 	}
 
 	var t textinput.Model
@@ -43,6 +43,9 @@ func newAccountFormModel() accountFormModel {
 		case 1:
 			t.Prompt = "Hostname: "
 			t.Placeholder = "www.example.com"
+		case 2:
+			t.Prompt = "Label (optional): "
+			t.Placeholder = "prod-web-01"
 		}
 		m.inputs[i] = t
 	}
@@ -70,13 +73,14 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if s == "enter" && m.focusIndex == len(m.inputs) {
 				username := m.inputs[0].Value()
 				hostname := m.inputs[1].Value()
+				label := m.inputs[2].Value()
 
 				if username == "" || hostname == "" {
 					m.err = fmt.Errorf("username and hostname cannot be empty")
 					return m, nil
 				}
 
-				if err := db.AddAccount(username, hostname); err != nil {
+				if err := db.AddAccount(username, hostname, label); err != nil {
 					m.err = err
 					return m, nil
 				}

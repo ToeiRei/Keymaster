@@ -264,23 +264,13 @@ func (m accountsModel) View() string {
 		return b.String()
 	}
 
-	// Find the longest username for alignment purposes.
-	maxUserLen := 0
-	for _, acc := range m.accounts {
-		if len(acc.Username) > maxUserLen {
-			maxUserLen = len(acc.Username)
-		}
-	}
-
 	for i, acc := range m.accounts {
-		userPart := fmt.Sprintf("%*s", maxUserLen, acc.Username)
-		hostPart := fmt.Sprintf("@%s", acc.Hostname)
+		line := acc.String()
 
 		if m.cursor == i {
-			line := "» " + userPart + hostPart
+			line = "» " + line
 			b.WriteString(selectedItemStyle.Render(line))
 		} else {
-			line := userPart + hostPart
 			if acc.IsActive {
 				b.WriteString(itemStyle.Render(line))
 			} else {

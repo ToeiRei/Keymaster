@@ -8,13 +8,18 @@ type Account struct {
 	ID       int
 	Username string
 	Hostname string
+	Label    string // A user-friendly alias for the account.
 	Serial   int
 	IsActive bool
 }
 
-// String returns the user@host representation.
+// String returns the user@host representation, prefixed with the label if it exists.
 func (a Account) String() string {
-	return fmt.Sprintf("%s@%s", a.Username, a.Hostname)
+	base := fmt.Sprintf("%s@%s", a.Username, a.Hostname)
+	if a.Label != "" {
+		return fmt.Sprintf("%s (%s)", a.Label, base)
+	}
+	return base
 }
 
 // PublicKey represents a single SSH public key stored in the database.
