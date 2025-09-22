@@ -45,6 +45,7 @@ const (
 	rotateKeyView
 	deployView
 	auditLogView
+	tagsView
 )
 
 // mainModel is the top-level model for the TUI. It manages which view is currently active.
@@ -57,6 +58,7 @@ type mainModel struct {
 	keys       publicKeysModel
 	accounts   accountsModel
 	auditLog   auditLogModel
+	tags       tagsViewModel
 	width      int
 	height     int
 	err        error
@@ -80,6 +82,7 @@ func initialModel() mainModel {
 				"Rotate System Keys",
 				"Deploy to Fleet",
 				"View Audit Log",
+				"View Accounts by Tag",
 			},
 		},
 	}
@@ -170,6 +173,16 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var newAuditLogModel tea.Model
 		newAuditLogModel, cmd = m.auditLog.Update(msg)
 		m.auditLog = newAuditLogModel.(auditLogModel)
+
+	case tagsView:
+		if _, ok := msg.(backToMenuMsg); ok {
+			m.state = menuView
+			return m, nil
+		}
+		var newTagsModel tea.Model
+		newTagsModel, cmd = m.tags.Update(msg)
+		m.tags = newTagsModel.(tagsViewModel)
+
 	default: // menuView
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -215,6 +228,10 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					newAuditLogModel, cmd = m.auditLog.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
 					m.auditLog = newAuditLogModel.(auditLogModel)
 					return m, cmd
+				case 6: // View Accounts by Tag
+					m.state = tagsView
+					m.tags = newTagsViewModel()
+					return m, nil
 				default:
 					// For now, other options just quit.
 					return m, tea.Quit
@@ -247,6 +264,8 @@ func (m mainModel) View() string {
 		return m.rotator.View()
 	case auditLogView:
 		return m.auditLog.View()
+	case tagsView:
+		return m.tags.View()
 	default: // menuView
 		return m.menu.View()
 	}
