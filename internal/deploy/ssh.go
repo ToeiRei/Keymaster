@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/pkg/sftp"
+	"github.com/toeirei/keymaster/internal/db"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -30,10 +31,30 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
-		// In a production tool, you would implement a proper host key verification
-		// (e.g., checking against a known_hosts file).
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         10 * time.Second,
+		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			// The key is presented in the format "ssh-ed25519 AAA..."
+			presentedKey := string(ssh.MarshalAuthorizedKey(key))
+
+			// Check if we have a trusted key for this host in our database.
+			knownKey, err := db.GetKnownHostKey(hostname)
+			if err != nil {
+				return fmt.Errorf("failed to query known_hosts database: %w", err)
+			}
+
+			// If we don't have a key, this is the first connection.
+			// For now, we fail securely. A 'trust-host' command will be needed.
+			if knownKey == "" {
+				return fmt.Errorf("unknown host key for %s. run 'keymaster trust-host' to add it", hostname)
+			}
+
+			// If the key exists, it must match exactly.
+			if knownKey != presentedKey {
+				return fmt.Errorf("!!! HOST KEY MISMATCH FOR %s !!!\nRemote key presented: %s\nThis could be a man-in-the-middle attack.", hostname, presentedKey)
+			}
+
+			return nil // Host key is trusted.
+		},
+		Timeout: 10 * time.Second,
 	}
 
 	// Add port 22 if not specified.

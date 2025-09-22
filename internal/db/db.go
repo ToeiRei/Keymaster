@@ -78,6 +78,15 @@ func InitDB(dataSourceName string) (*sql.DB, error) {
 			return
 		}
 
+		knownHostsTableSQL := `
+		CREATE TABLE IF NOT EXISTS known_hosts (
+			hostname TEXT NOT NULL PRIMARY KEY,
+			key TEXT NOT NULL
+		);`
+		if _, err = db.Exec(knownHostsTableSQL); err != nil {
+			return
+		}
+
 		// --- Simple Migration ---
 		// This block ensures that older databases are updated with the new is_active column
 		// without requiring the user to delete their database file.
@@ -191,6 +200,27 @@ func GetAllPublicKeys() ([]model.PublicKey, error) {
 		keys = append(keys, key)
 	}
 	return keys, nil
+}
+
+// GetKnownHostKey retrieves the trusted public key for a given hostname.
+func GetKnownHostKey(hostname string) (string, error) {
+	var key string
+	err := db.QueryRow("SELECT key FROM known_hosts WHERE hostname = ?", hostname).Scan(&key)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil // No key found is not an error, it's a state.
+		}
+		return "", err
+	}
+	return key, nil
+}
+
+// AddKnownHostKey adds a new trusted host key to the database.
+func AddKnownHostKey(hostname, key string) error {
+	// INSERT OR REPLACE will add the key if it doesn't exist, or update it if it does.
+	// This is useful if a host is legitimately re-provisioned.
+	_, err := db.Exec("INSERT OR REPLACE INTO known_hosts (hostname, key) VALUES (?, ?)", hostname, key)
+	return err
 }
 
 // CreateSystemKey adds a new system key to the database. It determines the correct serial automatically.
