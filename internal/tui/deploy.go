@@ -66,30 +66,6 @@ func (m deployModel) Init() tea.Cmd {
 }
 
 func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case deploymentResultMsg:
-		if m.state == deployStateInProgress { // Single deployment finished
-			m.state = deployStateComplete
-			if msg.err != nil {
-				m.err = msg.err
-			} else {
-				activeKey, err := db.GetActiveSystemKey()
-				if err != nil {
-					m.err = fmt.Errorf("deployment succeeded, but could not get new serial for status message: %w", err)
-				} else {
-					m.status = fmt.Sprintf("Successfully deployed to %s and updated serial to #%d.", m.selectedAccount.String(), activeKey.Serial)
-				}
-			}
-		} else if m.state == deployStateFleetInProgress { // One fleet member finished
-			m.fleetResults[msg.account.ID] = msg.err
-			if len(m.fleetResults) == len(m.accountsInFleet) {
-				m.state = deployStateComplete
-				m.status = "Fleet deployment complete."
-			}
-		}
-		return m, nil
-	}
-
 	switch m.state {
 	case deployStateMenu:
 		return m.updateMenu(msg)
@@ -98,9 +74,31 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case deployStateShowAuthorizedKeys:
 		return m.updateShowAuthorizedKeys(msg)
 	case deployStateFleetInProgress:
-		// No input handled while fleet deployment is running
+		if res, ok := msg.(deploymentResultMsg); ok {
+			m.fleetResults[res.account.ID] = res.err
+			if len(m.fleetResults) == len(m.accountsInFleet) {
+				m.state = deployStateComplete
+				m.status = "Fleet deployment complete."
+			}
+		}
+		// No other input handled while fleet deployment is running
+		return m, nil
 	case deployStateInProgress:
-		return m, nil // Don't process input while deployment is running
+		if res, ok := msg.(deploymentResultMsg); ok {
+			m.state = deployStateComplete
+			if res.err != nil {
+				m.err = res.err
+			} else {
+				activeKey, err := db.GetActiveSystemKey()
+				if err != nil {
+					m.err = fmt.Errorf("deployment succeeded, but could not get new serial for status message: %w", err)
+				} else {
+					m.status = fmt.Sprintf("Successfully deployed to %s and updated serial to #%d.", m.selectedAccount.String(), activeKey.Serial)
+				}
+			}
+		}
+		// Don't process other input while deployment is running
+		return m, nil
 	case deployStateComplete:
 		return m.updateComplete(msg)
 	}
@@ -250,12 +248,6 @@ func (m deployModel) updateComplete(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m deployModel) setErr(err error) {
-	m.state = deployStateComplete
-	m.err = err
-	m.status = "Deployment failed."
-}
-
 func (m deployModel) View() string {
 	var b strings.Builder
 
@@ -380,7 +372,7 @@ func performDeploymentCmd(account model.Account) tea.Cmd {
 				return deploymentResultMsg{account: account, err: fmt.Errorf("failed to get active system key for bootstrap: %w", err)}
 			}
 			if connectKey == nil {
-				return deploymentResultMsg{account: account, err: fmt.Errorf("no active system key found for bootstrap. Please generate one.")}
+				return deploymentResultMsg{account: account, err: fmt.Errorf("no active system key found for bootstrap. Please generate one")}
 			}
 		} else {
 			// Normal deployment: use the key matching the account's current serial.

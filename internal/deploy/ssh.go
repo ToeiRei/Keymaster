@@ -68,7 +68,7 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 
 			// If the key exists, it must match exactly.
 			if knownKey != presentedKey {
-				return fmt.Errorf("!!! HOST KEY MISMATCH FOR %s !!!\nRemote key presented: %s\nThis could be a man-in-the-middle attack.", host, presentedKey)
+				return fmt.Errorf("!!! HOST KEY MISMATCH FOR %s !!!\nRemote key presented: %s\nThis could be a man-in-the-middle attack", host, presentedKey)
 			}
 
 			return nil // Host key is trusted.

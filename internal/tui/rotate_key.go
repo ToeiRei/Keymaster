@@ -29,7 +29,6 @@ type rotateKeyModel struct {
 	hasSystemKey bool
 	newPublicKey string
 	newKeySerial int
-	status       string
 	err          error
 }
 
