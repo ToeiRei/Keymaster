@@ -32,8 +32,7 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 
 	// 1. Try to use a running SSH agent. This is great for bootstrapping.
 	// The getSSHAgent function is platform-specific, implemented using build tags.
-	agentClient := getSSHAgent()
-	if agentClient != nil {
+	if agentClient := getSSHAgent(); agentClient != nil {
 		authMethods = append(authMethods, ssh.PublicKeysCallback(agentClient.Signers))
 	}
 
