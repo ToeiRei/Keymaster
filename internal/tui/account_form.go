@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -26,11 +27,18 @@ type accountFormModel struct {
 	inputs         []textinput.Model // 0: user, 1: host, 2: label, 3: tags
 	err            error
 	editingAccount *model.Account // If not nil, we are in edit mode.
+
+	// For tag autocompletion
+	allTags          []string
+	suggestions      []string
+	suggestionCursor int
+	isSuggesting     bool
 }
 
 func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 	m := accountFormModel{
-		inputs: make([]textinput.Model, 4),
+		inputs:       make([]textinput.Model, 4),
+		isSuggesting: false,
 	}
 
 	var t textinput.Model
@@ -75,6 +83,30 @@ func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 		m.inputs[0].TextStyle = focusedStyle
 	}
 
+	// --- Populate tags for autocompletion ---
+	allAccounts, err := db.GetAllAccounts()
+	if err != nil {
+		// Not a fatal error for the form, just no autocomplete.
+		// We could log this or handle it more gracefully.
+	}
+	tagSet := make(map[string]struct{})
+	for _, acc := range allAccounts {
+		if acc.Tags != "" {
+			tags := strings.Split(acc.Tags, ",")
+			for _, tag := range tags {
+				trimmedTag := strings.TrimSpace(tag)
+				if trimmedTag != "" {
+					tagSet[trimmedTag] = struct{}{}
+				}
+			}
+		}
+	}
+	m.allTags = make([]string, 0, len(tagSet))
+	for tag := range tagSet {
+		m.allTags = append(m.allTags, tag)
+	}
+	sort.Strings(m.allTags) // Keep them sorted for predictable display
+
 	return m
 }
 
@@ -85,6 +117,30 @@ func (m accountFormModel) Init() tea.Cmd {
 func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// If we are suggesting tags, handle that first.
+		if m.isSuggesting {
+			switch msg.String() {
+			case "up":
+				if m.suggestionCursor > 0 {
+					m.suggestionCursor--
+				}
+				return m, nil
+			case "down":
+				if m.suggestionCursor < len(m.suggestions)-1 {
+					m.suggestionCursor++
+				}
+				return m, nil
+			case "tab", "enter":
+				m.applySuggestion()
+				m.updateSuggestions()
+				return m, nil
+			case "esc":
+				m.isSuggesting = false
+				m.suggestions = nil
+				return m, nil
+			}
+		}
+
 		switch msg.String() {
 		// Go back to the accounts list.
 		case "esc":
@@ -93,6 +149,14 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Set focus to next input
 		case "tab", "shift+tab", "enter", "up", "down":
 			s := msg.String()
+
+			// If we are on the tags input and press down, and there are suggestions,
+			// enter suggestion mode instead of cycling focus.
+			if m.focusIndex == 3 && s == "down" && len(m.suggestions) > 0 && !m.isSuggesting {
+				m.isSuggesting = true
+				m.suggestionCursor = 0
+				return m, nil
+			}
 
 			// Did the user press enter while the submit button was focused?
 			// If so, create the account.
@@ -179,16 +243,28 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle character input and blinking
-	cmd := m.updateInputs(msg)
+	oldVal := ""
+	if m.focusIndex == 3 {
+		oldVal = m.inputs[3].Value()
+	}
+
+	var cmd tea.Cmd
+	m, cmd = m.updateInputs(msg)
+
+	// If tag input changed, update suggestions
+	if m.focusIndex == 3 && m.inputs[3].Value() != oldVal {
+		m.updateSuggestions()
+	}
+
 	return m, cmd
 }
 
-func (m *accountFormModel) updateInputs(msg tea.Msg) tea.Cmd {
+func (m accountFormModel) updateInputs(msg tea.Msg) (accountFormModel, tea.Cmd) {
 	cmds := make([]tea.Cmd, len(m.inputs))
 	for i := range m.inputs {
 		m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
 	}
-	return tea.Batch(cmds...)
+	return m, tea.Batch(cmds...)
 }
 
 func (m accountFormModel) View() string {
@@ -204,6 +280,22 @@ func (m accountFormModel) View() string {
 	viewItems = append(viewItems, "")
 	for i := range m.inputs {
 		viewItems = append(viewItems, m.inputs[i].View())
+		// If this is the tags input, add suggestions right after it.
+		if i == 3 && len(m.suggestions) > 0 {
+			var suggestionLines []string
+			for i, s := range m.suggestions {
+				if i == m.suggestionCursor {
+					suggestionLines = append(suggestionLines, selectedItemStyle.Render("▸ "+s))
+				} else {
+					suggestionLines = append(suggestionLines, "  "+s)
+				}
+			}
+			// Align the suggestions box with the start of the text input area.
+			suggestionsBox := lipgloss.NewStyle().
+				PaddingLeft(len(m.inputs[i].Prompt) + 1).
+				Render(lipgloss.JoinVertical(lipgloss.Left, suggestionLines...))
+			viewItems = append(viewItems, suggestionsBox)
+		}
 	}
 
 	button := formItemStyle.Render("[ Submit ]")
@@ -219,4 +311,60 @@ func (m accountFormModel) View() string {
 	viewItems = append(viewItems, "", helpStyle.Render("(tab to navigate, enter to submit, esc to cancel)"))
 
 	return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
+}
+
+// updateSuggestions calculates a new list of suggestions based on the current input.
+func (m *accountFormModel) updateSuggestions() {
+	if m.focusIndex != 3 {
+		m.suggestions = nil
+		m.isSuggesting = false
+		return
+	}
+
+	currentVal := m.inputs[3].Value()
+	parts := strings.Split(currentVal, ",")
+	if len(parts) == 0 {
+		m.suggestions = nil
+		return
+	}
+
+	lastPart := strings.TrimSpace(parts[len(parts)-1])
+	if lastPart == "" {
+		m.suggestions = nil
+		m.isSuggesting = false
+		return
+	}
+
+	m.suggestions = []string{}
+	for _, tag := range m.allTags {
+		if strings.HasPrefix(strings.ToLower(tag), strings.ToLower(lastPart)) {
+			// Also check if the tag is already in the input
+			isAlreadyPresent := false
+			for i := 0; i < len(parts)-1; i++ {
+				if strings.TrimSpace(parts[i]) == tag {
+					isAlreadyPresent = true
+					break
+				}
+			}
+			if !isAlreadyPresent {
+				m.suggestions = append(m.suggestions, tag)
+			}
+		}
+	}
+
+	m.suggestionCursor = 0
+}
+
+// applySuggestion replaces the last typed tag with the selected suggestion.
+func (m *accountFormModel) applySuggestion() {
+	if !m.isSuggesting || m.suggestionCursor >= len(m.suggestions) {
+		return
+	}
+	selectedSuggestion := m.suggestions[m.suggestionCursor]
+	currentVal := m.inputs[3].Value()
+	parts := strings.Split(currentVal, ",")
+	parts[len(parts)-1] = selectedSuggestion
+	newValue := strings.Join(parts, ", ") + ", "
+	m.inputs[3].SetValue(newValue)
+	m.inputs[3].SetCursor(len(newValue))
 }
