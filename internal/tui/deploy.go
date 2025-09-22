@@ -410,9 +410,11 @@ func (m deployModel) View() string {
 		viewItems = append(viewItems, "", helpStyle.Render("(enter to select, esc to go back)"))
 		b.WriteString(lipgloss.JoinVertical(lipgloss.Left, viewItems...))
 	case deployStateShowAuthorizedKeys:
-		b.WriteString(titleStyle.Render(fmt.Sprintf("📄 authorized_keys for %s", m.selectedAccount.String())))
-		b.WriteString(m.authorizedKeys)
-		b.WriteString(helpStyle.Render("\n(esc to go back)"))
+		var viewItems []string
+		viewItems = append(viewItems, titleStyle.Render(fmt.Sprintf("📄 authorized_keys for %s", m.selectedAccount.String())))
+		viewItems = append(viewItems, m.authorizedKeys)
+		viewItems = append(viewItems, "", helpStyle.Render("(esc to go back)"))
+		b.WriteString(lipgloss.JoinVertical(lipgloss.Left, viewItems...))
 	case deployStateFleetInProgress:
 		b.WriteString(titleStyle.Render("🚀 Deploying to Fleet..."))
 		for _, acc := range m.accountsInFleet {
