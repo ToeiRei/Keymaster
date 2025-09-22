@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/sshkey"
 )
 
 // A message to signal that a key was created and we should go back to the list.
@@ -36,29 +37,6 @@ func (m publicKeyFormModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// parsePublicKey splits a raw public key string into its components.
-func parsePublicKey(rawKey string) (algorithm, keyData, comment string, err error) {
-	parts := strings.Fields(rawKey)
-	if len(parts) < 2 {
-		err = fmt.Errorf("invalid public key format: must have at least algorithm and key data")
-		return
-	}
-
-	algorithm = parts[0]
-	keyData = parts[1]
-	if len(parts) > 2 {
-		comment = strings.Join(parts[2:], " ")
-	}
-
-	// Basic validation
-	if !strings.HasPrefix(algorithm, "ssh-") && !strings.HasPrefix(algorithm, "ecdsa-") {
-		err = fmt.Errorf("invalid key type: does not look like a valid SSH key algorithm")
-		return
-	}
-
-	return
-}
-
 func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -71,7 +49,7 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			rawKey := m.input.Value()
-			alg, keyData, comment, err := parsePublicKey(rawKey)
+			alg, keyData, comment, err := sshkey.Parse(rawKey)
 			if err != nil {
 				m.err = err
 				return m, nil

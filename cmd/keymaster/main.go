@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/sshkey"
 	"github.com/toeirei/keymaster/internal/tui"
 )
 
@@ -33,6 +37,7 @@ func init() {
 	rootCmd.AddCommand(rotateKeyCmd)
 	rootCmd.AddCommand(auditCmd)
 	rootCmd.AddCommand(uiCmd)
+	rootCmd.AddCommand(importCmd)
 }
 
 var deployCmd = &cobra.Command{
@@ -92,5 +97,69 @@ var uiCmd = &cobra.Command{
 	Long:  `Starts a terminal-based user interface for managing hosts, users, and keys interactively.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		tui.Run()
+	},
+}
+
+var importCmd = &cobra.Command{
+	Use:   "import [authorized_keys_file]",
+	Short: "Import public keys from an authorized_keys file",
+	Long:  `Reads a standard authorized_keys file and imports the public keys into the Keymaster database.`,
+	Args:  cobra.ExactArgs(1), // Ensures we get exactly one file path
+	Run: func(cmd *cobra.Command, args []string) {
+		filePath := args[0]
+		fmt.Printf("🔑 Importing keys from %s...\n", filePath)
+
+		// Initialize the database.
+		if _, err := db.InitDB("./keymaster.db"); err != nil {
+			fmt.Printf("Error initializing database: %v\n", err)
+			os.Exit(1)
+		}
+
+		file, err := os.Open(filePath)
+		if err != nil {
+			fmt.Printf("Error opening file: %v\n", err)
+			os.Exit(1)
+		}
+		defer file.Close()
+
+		scanner := bufio.NewScanner(file)
+		importedCount := 0
+		skippedCount := 0
+
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+
+			// Skip empty lines or comments
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+
+			alg, keyData, comment, err := sshkey.Parse(line)
+			if err != nil {
+				skippedCount++
+				continue
+			}
+
+			if comment == "" {
+				fmt.Printf("  - Skipping key with empty comment: %.20s...\n", keyData)
+				skippedCount++
+				continue
+			}
+
+			if err := db.AddPublicKey(alg, keyData, comment); err != nil {
+				if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+					fmt.Printf("  - Skipping duplicate key (comment exists): %s\n", comment)
+				} else {
+					fmt.Printf("  - Error adding key '%s': %v\n", comment, err)
+				}
+				skippedCount++
+				continue
+			}
+
+			fmt.Printf("  + Imported key: %s\n", comment)
+			importedCount++
+		}
+
+		fmt.Printf("\n✅ Import complete. Imported %d keys, skipped %d.\n", importedCount, skippedCount)
 	},
 }
