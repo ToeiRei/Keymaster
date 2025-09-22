@@ -20,12 +20,14 @@ const (
 type publicKeysModel struct {
 	state            publicKeysViewState
 	form             publicKeyFormModel
-	keys             []model.PublicKey
+	keys             []model.PublicKey // Master list
+	displayedKeys    []model.PublicKey // Filtered list
 	cursor           int
 	status           string
 	err              error
 	usageReportKey   model.PublicKey
 	usageReportAccts []model.Account
+	filter           string
 }
 
 func newPublicKeysModel() publicKeysModel {
@@ -35,11 +37,36 @@ func newPublicKeysModel() publicKeysModel {
 	if err != nil {
 		m.err = err
 	}
+	m.rebuildDisplayedKeys()
 	return m
 }
 
 func (m publicKeysModel) Init() tea.Cmd {
 	return nil
+}
+
+func (m *publicKeysModel) rebuildDisplayedKeys() {
+	if m.filter == "" {
+		m.displayedKeys = m.keys
+	} else {
+		m.displayedKeys = []model.PublicKey{}
+		lowerFilter := strings.ToLower(m.filter)
+		for _, key := range m.keys {
+			if strings.Contains(strings.ToLower(key.Comment), lowerFilter) ||
+				strings.Contains(strings.ToLower(key.Algorithm), lowerFilter) {
+				m.displayedKeys = append(m.displayedKeys, key)
+			}
+		}
+	}
+
+	// Reset cursor if it's out of bounds
+	if m.cursor >= len(m.displayedKeys) {
+		if len(m.displayedKeys) > 0 {
+			m.cursor = len(m.displayedKeys) - 1
+		} else {
+			m.cursor = 0
+		}
+	}
 }
 
 func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -50,6 +77,7 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = publicKeysListView
 			m.status = "Successfully added new public key."
 			m.keys, m.err = db.GetAllPublicKeys()
+			m.rebuildDisplayedKeys()
 			return m, nil
 		}
 		if _, ok := msg.(backToListMsg); ok {
@@ -79,15 +107,41 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// List view logic
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.state == publicKeysListView {
+			switch msg.Type {
+			case tea.KeyBackspace:
+				if len(m.filter) > 0 {
+					m.filter = m.filter[:len(m.filter)-1]
+					m.rebuildDisplayedKeys()
+				}
+				return m, nil
+			case tea.KeyRunes:
+				key := string(msg.Runes)
+				switch key {
+				case "q", "a", "d", "g", "u":
+					// It's a command, fall through
+				default:
+					m.filter += key
+					m.rebuildDisplayedKeys()
+					return m, nil
+				}
+			}
+		}
+
 		switch msg.String() {
 		case "q", "esc":
+			if m.filter != "" {
+				m.filter = ""
+				m.rebuildDisplayedKeys()
+				return m, nil
+			}
 			return m, func() tea.Msg { return backToMenuMsg{} }
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
 			}
 		case "down", "j":
-			if m.cursor < len(m.keys)-1 {
+			if m.cursor < len(m.displayedKeys)-1 {
 				m.cursor++
 			}
 		case "a":
@@ -96,34 +150,33 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = ""
 			return m, m.form.Init()
 		case "d", "delete":
-			if len(m.keys) > 0 {
-				keyToDelete := m.keys[m.cursor]
+			if len(m.displayedKeys) > 0 {
+				keyToDelete := m.displayedKeys[m.cursor]
 				if err := db.DeletePublicKey(keyToDelete.ID); err != nil {
 					m.err = err
 				} else {
 					m.status = fmt.Sprintf("Deleted key: %s", keyToDelete.Comment)
 					m.keys, m.err = db.GetAllPublicKeys()
-					if m.cursor >= len(m.keys) && len(m.keys) > 0 {
-						m.cursor = len(m.keys) - 1
-					}
+					m.rebuildDisplayedKeys()
 				}
 			}
 			return m, nil
 		case "g": // Toggle global status
-			if len(m.keys) > 0 {
-				keyToToggle := m.keys[m.cursor]
+			if len(m.displayedKeys) > 0 {
+				keyToToggle := m.displayedKeys[m.cursor]
 				if err := db.TogglePublicKeyGlobal(keyToToggle.ID); err != nil {
 					m.err = err
 				} else {
 					m.status = fmt.Sprintf("Toggled global status for key: %s", keyToToggle.Comment)
 					// Refresh the list to show the new status
 					m.keys, m.err = db.GetAllPublicKeys()
+					m.rebuildDisplayedKeys()
 				}
 			}
 			return m, nil
 		case "u": // Usage report
-			if len(m.keys) > 0 {
-				m.usageReportKey = m.keys[m.cursor]
+			if len(m.displayedKeys) > 0 {
+				m.usageReportKey = m.displayedKeys[m.cursor]
 				accounts, err := db.GetAccountsForKey(m.usageReportKey.ID)
 				if err != nil {
 					m.err = err
@@ -159,7 +212,7 @@ func (m publicKeysModel) viewKeyList() string {
 	b.WriteString(titleStyle.Render("🔑 Manage Public Keys"))
 	b.WriteString("\n\n")
 
-	for i, key := range m.keys {
+	for i, key := range m.displayedKeys {
 		var globalMarker string
 		if key.IsGlobal {
 			globalMarker = "🌐 "
@@ -173,11 +226,20 @@ func (m publicKeysModel) viewKeyList() string {
 		b.WriteString("\n")
 	}
 
-	if len(m.keys) == 0 {
+	if len(m.displayedKeys) == 0 && m.filter == "" {
 		b.WriteString(helpStyle.Render("No public keys found. Press 'a' to add one."))
+	} else if len(m.displayedKeys) == 0 && m.filter != "" {
+		b.WriteString(helpStyle.Render("No keys match your filter."))
 	}
 
-	b.WriteString(helpStyle.Render("\n(a)dd, (d)elete, (g)lobal toggle, (u)sage report, (q)uit"))
+	var filterStatus string
+	if m.filter != "" {
+		filterStatus = fmt.Sprintf("Filter: %s█", m.filter)
+	} else {
+		filterStatus = "Type to filter..."
+	}
+
+	b.WriteString(helpStyle.Render(fmt.Sprintf("\n(a)dd, (d)elete, (g)lobal toggle, (u)sage report, (q)uit\n%s", filterStatus)))
 	if m.status != "" {
 		b.WriteString(helpStyle.Render("\n\n" + m.status))
 	}

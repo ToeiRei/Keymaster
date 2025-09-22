@@ -46,12 +46,14 @@ const (
 type accountsModel struct {
 	state                  accountsViewState
 	form                   accountFormModel
-	accounts               []model.Account
+	accounts               []model.Account // The master list
+	displayedAccounts      []model.Account // The filtered list for display
 	cursor                 int
 	status                 string // For showing status messages like "Deleted..."
 	err                    error
 	pendingImportAccountID int
 	pendingImportKeys      []model.PublicKey
+	filter                 string
 }
 
 func newAccountsModel() accountsModel {
@@ -61,11 +63,39 @@ func newAccountsModel() accountsModel {
 	if err != nil {
 		m.err = err
 	}
+	m.rebuildDisplayedAccounts()
 	return m
 }
 
 func (m accountsModel) Init() tea.Cmd {
 	return nil
+}
+
+func (m *accountsModel) rebuildDisplayedAccounts() {
+	if m.filter == "" {
+		m.displayedAccounts = m.accounts
+	} else {
+		m.displayedAccounts = []model.Account{}
+		lowerFilter := strings.ToLower(m.filter)
+		for _, acc := range m.accounts {
+			// Check against username, hostname, label, and tags
+			if strings.Contains(strings.ToLower(acc.Username), lowerFilter) ||
+				strings.Contains(strings.ToLower(acc.Hostname), lowerFilter) ||
+				strings.Contains(strings.ToLower(acc.Label), lowerFilter) ||
+				strings.Contains(strings.ToLower(acc.Tags), lowerFilter) {
+				m.displayedAccounts = append(m.displayedAccounts, acc)
+			}
+		}
+	}
+
+	// Reset cursor if it's out of bounds
+	if m.cursor >= len(m.displayedAccounts) {
+		if len(m.displayedAccounts) > 0 {
+			m.cursor = len(m.displayedAccounts) - 1
+		} else {
+			m.cursor = 0
+		}
+	}
 }
 
 func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -167,9 +197,37 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// --- This is the list view update logic ---
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle filtering keys first when in list view
+		if m.state == accountsListView {
+			switch msg.Type {
+			case tea.KeyBackspace:
+				if len(m.filter) > 0 {
+					m.filter = m.filter[:len(m.filter)-1]
+					m.rebuildDisplayedAccounts()
+				}
+				return m, nil
+			case tea.KeyRunes:
+				// Don't add single-key commands to the filter
+				key := string(msg.Runes)
+				switch key {
+				case "q", "k", "j", "a", "d", "e", "t", "v", "i":
+					// It's a command, fall through to the main switch
+				default:
+					m.filter += key
+					m.rebuildDisplayedAccounts()
+					return m, nil
+				}
+			}
+		}
+
 		switch msg.String() {
 		// Go back to the main menu.
 		case "q", "esc":
+			if m.filter != "" {
+				m.filter = ""
+				m.rebuildDisplayedAccounts()
+				return m, nil
+			}
 			return m, func() tea.Msg { return backToMenuMsg{} }
 
 		// Navigate up.
@@ -180,14 +238,14 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Navigate down.
 		case "down", "j":
-			if m.cursor < len(m.accounts)-1 {
+			if m.cursor < len(m.displayedAccounts)-1 {
 				m.cursor++
 			}
 
 		// Delete an account.
 		case "d", "delete":
-			if len(m.accounts) > 0 {
-				accToDelete := m.accounts[m.cursor]
+			if len(m.displayedAccounts) > 0 {
+				accToDelete := m.displayedAccounts[m.cursor]
 				if err := db.DeleteAccount(accToDelete.ID); err != nil {
 					m.err = err
 				} else {
@@ -195,17 +253,15 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.status = fmt.Sprintf("Deleted account: %s", accToDelete.String())
 					m.accounts, m.err = db.GetAllAccounts()
 					// Make sure cursor is not out of bounds.
-					if m.cursor >= len(m.accounts) && len(m.accounts) > 0 {
-						m.cursor = len(m.accounts) - 1
-					}
+					m.rebuildDisplayedAccounts()
 				}
 			}
 			return m, nil
 
 		// Edit an account's label.
 		case "e":
-			if len(m.accounts) > 0 {
-				accToEdit := m.accounts[m.cursor]
+			if len(m.displayedAccounts) > 0 {
+				accToEdit := m.displayedAccounts[m.cursor]
 				m.state = accountsFormView
 				m.form = newAccountFormModel(&accToEdit)
 				m.status = ""
@@ -215,22 +271,23 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Toggle active status.
 		case "t":
-			if len(m.accounts) > 0 {
-				accToToggle := m.accounts[m.cursor]
+			if len(m.displayedAccounts) > 0 {
+				accToToggle := m.displayedAccounts[m.cursor]
 				if err := db.ToggleAccountStatus(accToToggle.ID); err != nil {
 					m.err = err
 				} else {
 					// Refresh the list after toggling.
 					m.status = fmt.Sprintf("Toggled status for: %s", accToToggle.String())
 					m.accounts, m.err = db.GetAllAccounts()
+					m.rebuildDisplayedAccounts()
 				}
 			}
 			return m, nil
 
 		// Verify/Trust host key.
 		case "v":
-			if len(m.accounts) > 0 {
-				accToTrust := m.accounts[m.cursor]
+			if len(m.displayedAccounts) > 0 {
+				accToTrust := m.displayedAccounts[m.cursor]
 				m.status = fmt.Sprintf("Verifying host key for %s...", accToTrust.Hostname)
 				return m, verifyHostKeyCmd(accToTrust.Hostname)
 			}
@@ -245,8 +302,8 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Import keys from remote host.
 		case "i":
-			if len(m.accounts) > 0 {
-				accToImportFrom := m.accounts[m.cursor]
+			if len(m.displayedAccounts) > 0 {
+				accToImportFrom := m.displayedAccounts[m.cursor]
 				m.status = fmt.Sprintf("Importing keys from %s...", accToImportFrom.String())
 				return m, importRemoteKeysCmd(accToImportFrom)
 			}
@@ -290,7 +347,7 @@ func (m accountsModel) View() string {
 		return b.String()
 	}
 
-	for i, acc := range m.accounts {
+	for i, acc := range m.displayedAccounts {
 		line := acc.String()
 		if acc.Tags != "" {
 			// Show tags in a muted color
@@ -310,11 +367,20 @@ func (m accountsModel) View() string {
 		b.WriteString("\n")
 	}
 
-	if len(m.accounts) == 0 {
+	if len(m.displayedAccounts) == 0 && m.filter == "" {
 		b.WriteString(helpStyle.Render("No accounts found. Press 'a' to add one."))
+	} else if len(m.displayedAccounts) == 0 && m.filter != "" {
+		b.WriteString(helpStyle.Render("No accounts match your filter."))
 	}
 
-	b.WriteString(helpStyle.Render("\n(a)dd, (e)dit, (d)elete, (t)oggle, (v)erify, (i)mport, (q)uit"))
+	var filterStatus string
+	if m.filter != "" {
+		filterStatus = fmt.Sprintf("Filter: %s█", m.filter)
+	} else {
+		filterStatus = "Type to filter..."
+	}
+
+	b.WriteString(helpStyle.Render(fmt.Sprintf("\n(a)dd, (e)dit, (d)elete, (t)oggle, (v)erify, (i)mport, (q)uit\n%s", filterStatus)))
 	if m.status != "" {
 		b.WriteString(helpStyle.Render("\n\n" + m.status))
 	}
