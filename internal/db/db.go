@@ -225,6 +225,21 @@ func GetActiveSystemKey() (*model.SystemKey, error) {
 	return &key, nil
 }
 
+// GetSystemKeyBySerial retrieves a system key by its serial number.
+func GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
+	row := db.QueryRow("SELECT id, serial, public_key, private_key, is_active FROM system_keys WHERE serial = ?", serial)
+
+	var key model.SystemKey
+	err := row.Scan(&key.ID, &key.Serial, &key.PublicKey, &key.PrivateKey, &key.IsActive)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No key found with that serial.
+		}
+		return nil, err
+	}
+	return &key, nil
+}
+
 // HasSystemKeys checks if any system keys exist in the database.
 func HasSystemKeys() (bool, error) {
 	var count int

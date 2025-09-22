@@ -42,12 +42,14 @@ const (
 	publicKeysView
 	assignKeysView
 	rotateKeyView
+	deployView
 )
 
 // mainModel is the top-level model for the TUI. It manages which view is currently active.
 type mainModel struct {
 	state      viewState
 	menu       menuModel
+	deployer   deployModel
 	rotator    rotateKeyModel
 	assignment assignKeysModel
 	keys       publicKeysModel
@@ -141,6 +143,16 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var newRotatorModel tea.Model
 		newRotatorModel, cmd = m.rotator.Update(msg)
 		m.rotator = newRotatorModel.(rotateKeyModel)
+
+	case deployView:
+		// If we received a "back" message, switch the state.
+		if _, ok := msg.(backToMenuMsg); ok {
+			m.state = menuView
+			return m, nil
+		}
+		var newDeployerModel tea.Model
+		newDeployerModel, cmd = m.deployer.Update(msg)
+		m.deployer = newDeployerModel.(deployModel)
 	default: // menuView
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -173,6 +185,10 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.state = rotateKeyView
 					m.rotator = newRotateKeyModel()
 					return m, nil
+				case 4: // Deploy to Fleet
+					m.state = deployView
+					m.deployer = newDeployModel()
+					return m, nil
 				default:
 					// For now, other options just quit.
 					return m, tea.Quit
@@ -199,6 +215,8 @@ func (m mainModel) View() string {
 		return m.keys.View()
 	case assignKeysView:
 		return m.assignment.View()
+	case deployView:
+		return m.deployer.View()
 	case rotateKeyView:
 		return m.rotator.View()
 	default: // menuView
