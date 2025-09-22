@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,6 +16,7 @@ type deployState int
 const (
 	deployStateMenu deployState = iota
 	deployStateSelectAccount
+	deployStateSelectTag
 	deployStateShowAuthorizedKeys
 	deployStateFleetInProgress
 	deployStateInProgress
@@ -39,10 +41,12 @@ type deployModel struct {
 	action          deployAction
 	menuCursor      int
 	accountCursor   int
+	tagCursor       int
 	accounts        []model.Account
 	accountsInFleet []model.Account // Keep order for display
 	fleetResults    map[int]error   // map account ID to error for quick lookup
 	selectedAccount model.Account
+	tags            []string
 	authorizedKeys  string // The generated authorized_keys content
 	status          string
 	err             error
@@ -56,6 +60,7 @@ func newDeployModel() deployModel {
 		menuChoices: []string{
 			"Deploy to Fleet (fully automatic)",
 			"Deploy to Single Account",
+			"Deploy to Tag",
 			"Get authorized_keys for Account",
 		},
 	}
@@ -71,6 +76,8 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateMenu(msg)
 	case deployStateSelectAccount:
 		return m.updateAccountSelection(msg)
+	case deployStateSelectTag:
+		return m.updateSelectTag(msg)
 	case deployStateShowAuthorizedKeys:
 		return m.updateShowAuthorizedKeys(msg)
 	case deployStateFleetInProgress:
@@ -140,6 +147,32 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds[i] = performDeploymentCmd(acc)
 				}
 				return m, tea.Batch(cmds...)
+			case 2: // Deploy to Tag
+				m.state = deployStateSelectTag
+				allAccounts, err := db.GetAllAccounts()
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+				uniqueTags := make(map[string]struct{})
+				for _, acc := range allAccounts {
+					if acc.Tags != "" {
+						for _, tag := range strings.Split(acc.Tags, ",") {
+							trimmedTag := strings.TrimSpace(tag)
+							if trimmedTag != "" {
+								uniqueTags[trimmedTag] = struct{}{}
+							}
+						}
+					}
+				}
+				m.tags = make([]string, 0, len(uniqueTags))
+				for tag := range uniqueTags {
+					m.tags = append(m.tags, tag)
+				}
+				sort.Strings(m.tags)
+				m.tagCursor = 0
+				m.status = ""
+				return m, nil
 			case 1: // Deploy to Single Account
 				m.action = actionDeploySingle
 				var err error
@@ -152,7 +185,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.accountCursor = 0
 				m.status = ""
 				return m, nil
-			case 2: // Get authorized_keys for Account
+			case 3: // Get authorized_keys for Account
 				m.action = actionGetKeys
 				var err error
 				// Only allow deploying to or viewing keys for active accounts.
@@ -209,6 +242,67 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, performDeploymentCmd(m.selectedAccount)
 			}
 			return m, nil
+		}
+	}
+	return m, nil
+}
+
+func (m deployModel) updateSelectTag(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "esc":
+			m.status = ""
+			m.state = deployStateMenu
+			m.err = nil
+			return m, nil
+		case "up", "k":
+			if m.tagCursor > 0 {
+				m.tagCursor--
+			}
+		case "down", "j":
+			if m.tagCursor < len(m.tags)-1 {
+				m.tagCursor++
+			}
+		case "enter":
+			if len(m.tags) == 0 {
+				return m, nil
+			}
+			selectedTag := m.tags[m.tagCursor]
+
+			// Filter accounts by this tag
+			allAccounts, err := db.GetAllActiveAccounts()
+			if err != nil {
+				m.err = err
+				return m, nil
+			}
+
+			var taggedAccounts []model.Account
+			for _, acc := range allAccounts {
+				accountTags := make(map[string]struct{})
+				for _, t := range strings.Split(acc.Tags, ",") {
+					accountTags[strings.TrimSpace(t)] = struct{}{}
+				}
+				if _, ok := accountTags[selectedTag]; ok {
+					taggedAccounts = append(taggedAccounts, acc)
+				}
+			}
+
+			// Now use the fleet deployment logic with these accounts
+			m.state = deployStateFleetInProgress
+			m.accountsInFleet = taggedAccounts
+			if len(m.accountsInFleet) == 0 {
+				m.status = fmt.Sprintf("No active accounts with tag '%s' to deploy to.", selectedTag)
+				m.state = deployStateMenu // go back to menu
+				return m, nil
+			}
+			m.fleetResults = make(map[int]error, len(m.accountsInFleet))
+			m.status = fmt.Sprintf("Starting deployment to tag '%s'...", selectedTag)
+			cmds := make([]tea.Cmd, len(m.accountsInFleet))
+			for i, acc := range m.accountsInFleet {
+				cmds[i] = performDeploymentCmd(acc)
+			}
+			return m, tea.Batch(cmds...)
 		}
 	}
 	return m, nil
@@ -287,6 +381,22 @@ func (m deployModel) View() string {
 					b.WriteString(selectedItemStyle.Render("» " + line))
 				} else {
 					b.WriteString(itemStyle.Render(line))
+				}
+				b.WriteString("\n")
+			}
+		}
+		b.WriteString(helpStyle.Render("\n(enter to select, esc to go back)"))
+	case deployStateSelectTag:
+		b.WriteString(titleStyle.Render("🚀 Deploy: Select Tag"))
+		b.WriteString("\n\n")
+		if len(m.tags) == 0 {
+			b.WriteString(helpStyle.Render("No tags found in any accounts."))
+		} else {
+			for i, tag := range m.tags {
+				if m.tagCursor == i {
+					b.WriteString(selectedItemStyle.Render("» " + tag))
+				} else {
+					b.WriteString(itemStyle.Render(tag))
 				}
 				b.WriteString("\n")
 			}
