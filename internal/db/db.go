@@ -24,6 +24,9 @@ func InitDB(dbType, dsn string) error {
 	case "postgres":
 		// The pgx driver is imported in postgres.go
 		store, err = NewPostgresStore(dsn)
+	case "mysql":
+		// The mysql driver is imported in mysql.go
+		store, err = NewMySQLStore(dsn)
 	default:
 		return fmt.Errorf("unsupported database type: '%s'", dbType)
 	}

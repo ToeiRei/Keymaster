@@ -116,8 +116,8 @@ func initConfig() {
 # You can modify these settings to configure Keymaster.
 
 database:
-  # The type of database to use. Supported values: "sqlite", "postgres".
-  # Note: PostgreSQL support is experimental.
+  # The type of database to use. Supported values: "sqlite", "postgres", "mysql".
+  # Note: PostgreSQL and MySQL support is experimental.
   type: sqlite
 
   # The Data Source Name (DSN) for the database connection.
@@ -128,6 +128,11 @@ database:
 # database:
 #   type: postgres
 #   dsn: "host=localhost user=keymaster password=secret dbname=keymaster port=5432 sslmode=disable"
+
+# Example for future MySQL configuration:
+# database:
+#   type: mysql
+#   dsn: "keymaster:password@tcp(127.0.0.1:3306)/keymaster?parseTime=true"
 `
 			// If writing fails (e.g., due to permissions), we don't treat it as a
 			// fatal error. The app will simply run with the default values set in memory.
