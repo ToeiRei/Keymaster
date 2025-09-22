@@ -341,7 +341,27 @@ func (m deployModel) View() string {
 		b.WriteString(titleStyle.Render("✅ Deployment Complete"))
 		b.WriteString("\n\n")
 		b.WriteString(m.status)
-		b.WriteString(helpStyle.Render("\n(press enter or esc to continue)"))
+		// If it was a fleet deployment, show a detailed summary
+		if len(m.fleetResults) > 0 {
+			successCount := 0
+			var failedAccounts []string
+			for _, acc := range m.accountsInFleet {
+				if err, ok := m.fleetResults[acc.ID]; ok {
+					if err == nil {
+						successCount++
+					} else {
+						failedAccounts = append(failedAccounts, fmt.Sprintf("  - %s: %v", acc.String(), err))
+					}
+				}
+			}
+			b.WriteString(fmt.Sprintf("\n\nSummary: %d successful, %d failed.", successCount, len(failedAccounts)))
+
+			if len(failedAccounts) > 0 {
+				b.WriteString("\n\nFailed Deployments:\n")
+				b.WriteString(strings.Join(failedAccounts, "\n"))
+			}
+		}
+		b.WriteString(helpStyle.Render("\n\n(press enter or esc to continue)"))
 	}
 
 	return b.String()
