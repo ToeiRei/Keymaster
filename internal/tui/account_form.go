@@ -199,16 +199,15 @@ func (m accountFormModel) View() string {
 	} else {
 		b.WriteString(titleStyle.Render("✨ Add New Account"))
 	}
-	b.WriteString("\n\n")
 
 	for i := range m.inputs {
 		b.WriteString(m.inputs[i].View())
 		b.WriteString("\n")
 	}
 
-	button := itemStyle.Render("[ Submit ]")
+	button := formItemStyle.Render("[ Submit ]")
 	if m.focusIndex == len(m.inputs) {
-		button = selectedItemStyle.Render("[ Submit ]")
+		button = formSelectedItemStyle.Render("[ Submit ]")
 	}
 	b.WriteString(fmt.Sprintf("\n%s\n", button))
 

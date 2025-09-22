@@ -366,26 +366,23 @@ func (m accountsModel) View() string {
 
 	// If we're in the import confirmation view, just show the status.
 	if m.state == accountsImportConfirmView {
-		var b strings.Builder
-		b.WriteString(titleStyle.Render("✨ Remote Import Confirmation"))
-		b.WriteString("\n\n")
-		b.WriteString(fmt.Sprintf("Found %d new public keys on the remote host:\n\n", len(m.pendingImportKeys)))
+		var viewItems []string
+		viewItems = append(viewItems, titleStyle.Render("✨ Remote Import Confirmation"))
+		viewItems = append(viewItems, fmt.Sprintf("Found %d new public keys on the remote host:", len(m.pendingImportKeys)), "")
 
 		for _, key := range m.pendingImportKeys {
 			line := fmt.Sprintf("- %s (%s)", key.Comment, key.Algorithm)
-			b.WriteString(itemStyle.Render(line))
-			b.WriteString("\n")
+			viewItems = append(viewItems, itemStyle.Render(line))
 		}
 
-		b.WriteString(helpStyle.Render(fmt.Sprintf("\n%s", m.status)))
-		return b.String()
+		viewItems = append(viewItems, "", helpStyle.Render(m.status))
+		return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
 	}
 
 	// If we are confirming a delete, render the modal instead of the list.
 	if m.isConfirmingDelete {
 		var b strings.Builder
 		b.WriteString(titleStyle.Render("🗑️ Confirm Deletion"))
-		b.WriteString("\n\n")
 
 		question := fmt.Sprintf("Are you sure you want to delete the account\n\n%s?", m.accountToDelete.String())
 		b.WriteString(question)
@@ -413,16 +410,15 @@ func (m accountsModel) View() string {
 	}
 
 	// --- This is the list view rendering ---
-	var b strings.Builder
-
-	b.WriteString(titleStyle.Render("🔑 Manage Accounts"))
-	b.WriteString("\n\n")
+	var viewItems []string
+	viewItems = append(viewItems, titleStyle.Render("🔑 Manage Accounts"))
 
 	if m.err != nil {
-		b.WriteString(fmt.Sprintf("Error: %v\n", m.err))
-		return b.String()
+		viewItems = append(viewItems, fmt.Sprintf("Error: %v", m.err))
+		return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
 	}
 
+	var listItems []string
 	for i, acc := range m.displayedAccounts {
 		line := acc.String()
 		if acc.Tags != "" {
@@ -431,23 +427,29 @@ func (m accountsModel) View() string {
 		}
 
 		if m.cursor == i {
-			line = "» " + line
-			b.WriteString(selectedItemStyle.Render(line))
+			line = "▸ " + line
+			if acc.IsActive {
+				listItems = append(listItems, selectedItemStyle.Render(line))
+			} else {
+				// Keep strikethrough for inactive selected items
+				listItems = append(listItems, selectedItemStyle.Copy().Strikethrough(true).Render(line))
+			}
 		} else {
 			if acc.IsActive {
-				b.WriteString(itemStyle.Render(line))
+				listItems = append(listItems, itemStyle.Render("  "+line))
 			} else {
-				b.WriteString(inactiveItemStyle.Render(line))
+				listItems = append(listItems, inactiveItemStyle.Render("  "+line))
 			}
 		}
-		b.WriteString("\n")
 	}
+	viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
 
 	if len(m.displayedAccounts) == 0 && m.filter == "" {
-		b.WriteString(helpStyle.Render("No accounts found. Press 'a' to add one."))
+		viewItems = append(viewItems, helpStyle.Render("No accounts found. Press 'a' to add one."))
 	} else if len(m.displayedAccounts) == 0 && m.filter != "" {
-		b.WriteString(helpStyle.Render("No accounts match your filter."))
+		viewItems = append(viewItems, helpStyle.Render("No accounts match your filter."))
 	}
+	viewItems = append(viewItems, "") // Spacer
 
 	var filterStatus string
 	if m.isFiltering {
@@ -458,12 +460,12 @@ func (m accountsModel) View() string {
 		filterStatus = "Press / to filter..."
 	}
 
-	b.WriteString(helpStyle.Render(fmt.Sprintf("\n(a)dd, (e)dit, (d)elete, (t)oggle, (v)erify, (i)mport, (q)uit\n%s", filterStatus)))
+	viewItems = append(viewItems, helpStyle.Render(fmt.Sprintf("(a)dd (e)dit (d)elete (t)oggle (v)erify (i)mport (q)uit\n%s", filterStatus)))
 	if m.status != "" {
-		b.WriteString(helpStyle.Render("\n\n" + m.status))
+		viewItems = append(viewItems, "", statusMessageStyle.Render(m.status))
 	}
 
-	return b.String()
+	return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
 }
 
 // verifyHostKeyCmd is a tea.Cmd that fetches a host's public key and saves it.

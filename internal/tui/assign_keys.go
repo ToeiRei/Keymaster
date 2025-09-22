@@ -2,9 +2,9 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 )
@@ -169,60 +169,57 @@ func (m assignKeysModel) View() string {
 }
 
 func (m assignKeysModel) viewAccountSelection() string {
-	var b strings.Builder
-	b.WriteString(titleStyle.Render("🔑 Assign Keys: Select an Account"))
-	b.WriteString("\n\n")
+	var viewItems []string
+	viewItems = append(viewItems, titleStyle.Render("🔑 Assign Keys: Select an Account"))
 
+	var listItems []string
 	if len(m.accounts) == 0 {
-		b.WriteString(helpStyle.Render("No active accounts found. Please add one or enable an existing one."))
+		listItems = append(listItems, helpStyle.Render("No active accounts found. Please add one or enable an existing one."))
 	} else {
 		for i, acc := range m.accounts {
 			line := acc.String()
-
 			if m.accountCursor == i {
-				b.WriteString(selectedItemStyle.Render("» " + line))
+				listItems = append(listItems, selectedItemStyle.Render("▸ "+line))
 			} else {
-				b.WriteString(itemStyle.Render(line))
+				listItems = append(listItems, itemStyle.Render("  "+line))
 			}
-			b.WriteString("\n")
 		}
 	}
-
-	b.WriteString(helpStyle.Render("\n(enter to select, q to quit to menu)"))
-	return b.String()
+	viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
+	viewItems = append(viewItems, "", helpStyle.Render("(enter to select, q to quit to menu)"))
+	return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
 }
 
 func (m assignKeysModel) viewKeySelection() string {
-	var b strings.Builder
+	var viewItems []string
 	title := fmt.Sprintf("🔑 Assign Keys for: %s", m.selectedAccount.String())
-	b.WriteString(titleStyle.Render(title))
-	b.WriteString("\n\n")
+	viewItems = append(viewItems, titleStyle.Render(title))
 
+	var listItems []string
 	if len(m.keys) == 0 {
-		b.WriteString(helpStyle.Render("No public keys found. Please add one first."))
+		listItems = append(listItems, helpStyle.Render("No public keys found. Please add one first."))
 	} else {
 		for i, key := range m.keys {
 			_, isAssigned := m.assignedKeys[key.ID]
-			checkbox := "[ ]"
+			checkbox := helpStyle.Render("○")
 			if isAssigned {
-				checkbox = "[x]"
+				checkbox = successStyle.Render("✔")
 			}
-
 			line := fmt.Sprintf("%s %s (%s)", checkbox, key.Comment, key.Algorithm)
 
 			if m.keyCursor == i {
-				b.WriteString(selectedItemStyle.Render("» " + line))
+				listItems = append(listItems, selectedItemStyle.Render("▸ "+line))
 			} else {
-				b.WriteString(itemStyle.Render(line))
+				listItems = append(listItems, itemStyle.Render("  "+line))
 			}
-			b.WriteString("\n")
 		}
 	}
+	viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
 
-	b.WriteString(helpStyle.Render("\n(space/enter to toggle, esc to go back)"))
+	viewItems = append(viewItems, "", helpStyle.Render("(space/enter to toggle, esc to go back)"))
 	if m.status != "" {
-		b.WriteString(helpStyle.Render("\n\n" + m.status))
+		viewItems = append(viewItems, "", statusMessageStyle.Render(m.status))
 	}
 
-	return b.String()
+	return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
 }

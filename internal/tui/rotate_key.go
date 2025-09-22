@@ -140,7 +140,6 @@ func (m rotateKeyModel) View() string {
 
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("🔑 System Key Management"))
-	b.WriteString("\n\n")
 
 	if m.err != nil {
 		return fmt.Sprintf("Error: %v\n", m.err)
@@ -161,16 +160,23 @@ func (m rotateKeyModel) View() string {
 	case rotateStateGenerating:
 		b.WriteString("Generating new ed25519 key pair, please wait...")
 	case rotateStateGenerated:
-		b.WriteString(fmt.Sprintf("✅ Successfully generated and saved system key with serial #%d.\n\n", m.newKeySerial))
-		b.WriteString(selectedItemStyle.Render("🚨 BOOTSTRAP ACTION REQUIRED 🚨\n\n"))
-		b.WriteString("You must now manually add the following public key to the authorized_keys file\n")
-		b.WriteString("for every account you intend to manage with Keymaster:\n\n")
-		b.WriteString(fmt.Sprintf("    %s\n\n", m.newPublicKey))
-		b.WriteString(helpStyle.Render("Press 'q' to return to the main menu."))
+		b.WriteString(successStyle.Render(fmt.Sprintf("✅ Successfully generated and saved system key with serial #%d.", m.newKeySerial)))
+		b.WriteString("\n\n")
+
+		var box strings.Builder
+		box.WriteString(lipgloss.NewStyle().Foreground(colorSpecial).Bold(true).Render("🚨 BOOTSTRAP ACTION REQUIRED 🚨"))
+		box.WriteString("\n\n")
+		box.WriteString("You must now manually add the following public key to the `authorized_keys` file for every account you intend to manage with Keymaster:\n\n")
+		box.WriteString(lipgloss.NewStyle().Background(lipgloss.Color("235")).Padding(0, 1).Render(m.newPublicKey))
+
+		b.WriteString(lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorSpecial).Padding(1).Render(box.String()))
+
+		b.WriteString("\n\n" + helpStyle.Render("Press 'q' to return to the main menu."))
 	case rotateStateRotating:
 		b.WriteString("Rotating system key, please wait...")
 	case rotateStateRotated:
-		b.WriteString(fmt.Sprintf("✅ Successfully rotated system key. The new active key is serial #%d.\n\n", m.newKeySerial))
+		b.WriteString(successStyle.Render(fmt.Sprintf("✅ Successfully rotated system key. The new active key is serial #%d.", m.newKeySerial)))
+		b.WriteString("\n\n")
 		b.WriteString("Deploy to your fleet to apply the new key.\n")
 		b.WriteString(helpStyle.Render("Press 'q' to return to the main menu."))
 	}
@@ -181,7 +187,6 @@ func (m rotateKeyModel) View() string {
 func (m rotateKeyModel) viewConfirmation() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("⚙️ Confirm Key Rotation"))
-	b.WriteString("\n\n")
 
 	question := "Are you sure you want to rotate the system key?\n\nThis will deactivate the current key and create a new one.\nHosts will need to be redeployed to get the new key."
 	b.WriteString(question)

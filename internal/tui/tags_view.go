@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 )
@@ -178,33 +179,33 @@ func (m tagsViewModel) View() string {
 		return fmt.Sprintf("Error: %v\n", m.err)
 	}
 
-	var b strings.Builder
-	b.WriteString(titleStyle.Render("🏷️  View Accounts by Tag"))
-	b.WriteString("\n\n")
+	var viewItems []string
+	viewItems = append(viewItems, titleStyle.Render("🏷️  View Accounts by Tag"))
 
+	var listItems []string
 	if len(m.lines) == 0 {
-		b.WriteString(helpStyle.Render("No accounts found."))
-	}
-
-	for i, lineItem := range m.lines {
-		var lineStr string
-		if tag, ok := lineItem.(string); ok {
-			marker := "▶" // Collapsed
-			if m.expanded[tag] {
-				marker = "▼" // Expanded
+		listItems = append(listItems, helpStyle.Render("No accounts found."))
+	} else {
+		for i, lineItem := range m.lines {
+			var lineStr string
+			if tag, ok := lineItem.(string); ok {
+				marker := "▶"                          // Collapsed
+				if m.expanded[tag] || m.filter != "" { // Always expand when filtering
+					marker = "▼" // Expanded
+				}
+				lineStr = fmt.Sprintf("%s %s (%d accounts)", marker, tag, len(m.accountsByTag[tag]))
+			} else if acc, ok := lineItem.(model.Account); ok {
+				lineStr = "   • " + acc.String()
 			}
-			lineStr = fmt.Sprintf("%s %s (%d accounts)", marker, tag, len(m.accountsByTag[tag]))
-		} else if acc, ok := lineItem.(model.Account); ok {
-			lineStr = "  • " + acc.String()
-		}
 
-		if m.cursor == i {
-			b.WriteString(selectedItemStyle.Render("» " + lineStr))
-		} else {
-			b.WriteString(itemStyle.Render(lineStr))
+			if m.cursor == i {
+				listItems = append(listItems, selectedItemStyle.Render("▸ "+lineStr))
+			} else {
+				listItems = append(listItems, itemStyle.Render("  "+lineStr))
+			}
 		}
-		b.WriteString("\n")
 	}
+	viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
 
 	var filterStatus string
 	if m.isFiltering {
@@ -215,6 +216,7 @@ func (m tagsViewModel) View() string {
 		filterStatus = "Press / to filter tags..."
 	}
 
-	b.WriteString(helpStyle.Render(fmt.Sprintf("\n(enter to expand/collapse, q to quit)\n%s", filterStatus)))
-	return b.String()
+	viewItems = append(viewItems, "", helpStyle.Render(fmt.Sprintf("(enter to expand/collapse, q to quit)\n%s", filterStatus)))
+
+	return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
 }

@@ -80,5 +80,5 @@ func (m auditLogModel) View() string {
 	}
 
 	header := titleStyle.Render("📜 Audit Log")
-	return fmt.Sprintf("%s\n\n%s", header, m.viewport.View())
+	return fmt.Sprintf("%s\n%s", header, m.viewport.View())
 }

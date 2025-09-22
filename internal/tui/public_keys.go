@@ -242,6 +242,10 @@ func (m publicKeysModel) View() string {
 		return fmt.Sprintf("Error: %v\n", m.err)
 	}
 
+	if m.isConfirmingDelete {
+		return m.viewConfirmation()
+	}
+
 	switch m.state {
 	case publicKeysFormView:
 		return m.form.View()
@@ -255,7 +259,6 @@ func (m publicKeysModel) View() string {
 func (m publicKeysModel) viewConfirmation() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("🗑️ Confirm Deletion"))
-	b.WriteString("\n\n")
 
 	question := fmt.Sprintf("Are you sure you want to delete the public key\n\n%s?", m.keyToDelete.Comment)
 	b.WriteString(question)
@@ -284,10 +287,10 @@ func (m publicKeysModel) viewConfirmation() string {
 }
 
 func (m publicKeysModel) viewKeyList() string {
-	var b strings.Builder
-	b.WriteString(titleStyle.Render("🔑 Manage Public Keys"))
-	b.WriteString("\n\n")
+	var viewItems []string
+	viewItems = append(viewItems, titleStyle.Render("🔑 Manage Public Keys"))
 
+	var listItems []string
 	for i, key := range m.displayedKeys {
 		var globalMarker string
 		if key.IsGlobal {
@@ -295,18 +298,19 @@ func (m publicKeysModel) viewKeyList() string {
 		}
 		line := fmt.Sprintf("%s%s (%s)", globalMarker, key.Comment, key.Algorithm)
 		if m.cursor == i {
-			b.WriteString(selectedItemStyle.Render("» " + line))
+			listItems = append(listItems, selectedItemStyle.Render("▸ "+line))
 		} else {
-			b.WriteString(itemStyle.Render(line))
+			listItems = append(listItems, itemStyle.Render("  "+line))
 		}
-		b.WriteString("\n")
 	}
+	viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
 
 	if len(m.displayedKeys) == 0 && m.filter == "" {
-		b.WriteString(helpStyle.Render("No public keys found. Press 'a' to add one."))
+		viewItems = append(viewItems, helpStyle.Render("No public keys found. Press 'a' to add one."))
 	} else if len(m.displayedKeys) == 0 && m.filter != "" {
-		b.WriteString(helpStyle.Render("No keys match your filter."))
+		viewItems = append(viewItems, helpStyle.Render("No keys match your filter."))
 	}
+	viewItems = append(viewItems, "") // Spacer
 
 	var filterStatus string
 	if m.isFiltering {
@@ -317,27 +321,25 @@ func (m publicKeysModel) viewKeyList() string {
 		filterStatus = "Press / to filter..."
 	}
 
-	b.WriteString(helpStyle.Render(fmt.Sprintf("\n(a)dd, (d)elete, (g)lobal toggle, (u)sage report, (q)uit\n%s", filterStatus)))
+	viewItems = append(viewItems, helpStyle.Render(fmt.Sprintf("(a)dd (d)elete (g)lobal toggle (u)sage (q)uit\n%s", filterStatus)))
 	if m.status != "" {
-		b.WriteString(helpStyle.Render("\n\n" + m.status))
+		viewItems = append(viewItems, "", statusMessageStyle.Render(m.status))
 	}
 
-	return b.String()
+	return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
 }
 
 func (m publicKeysModel) viewUsageReport() string {
 	var b strings.Builder
 	title := fmt.Sprintf("📜 Key Usage Report for: %s", m.usageReportKey.Comment)
 	b.WriteString(titleStyle.Render(title))
-	b.WriteString("\n\n")
 
 	if len(m.usageReportAccts) == 0 {
 		b.WriteString(helpStyle.Render("This key is not assigned to any accounts."))
 	} else {
 		b.WriteString("This key is assigned to the following accounts:\n\n")
 		for _, acc := range m.usageReportAccts {
-			b.WriteString(itemStyle.Render("- " + acc.String()))
-			b.WriteString("\n")
+			b.WriteString(itemStyle.Render("- "+acc.String()) + "\n")
 		}
 	}
 

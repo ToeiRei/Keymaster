@@ -102,7 +102,6 @@ func (m publicKeyFormModel) View() string {
 	var b strings.Builder
 
 	b.WriteString(titleStyle.Render("✨ Add New Public Key"))
-	b.WriteString("\n\n")
 	b.WriteString(m.input.View())
 	b.WriteString("\n\n")
 
@@ -112,9 +111,9 @@ func (m publicKeyFormModel) View() string {
 	}
 
 	if m.focusIndex == 1 {
-		b.WriteString(selectedItemStyle.Render(checkbox))
+		b.WriteString(formSelectedItemStyle.Render(checkbox))
 	} else {
-		b.WriteString(itemStyle.Render(checkbox))
+		b.WriteString(formItemStyle.Render(checkbox))
 	}
 
 	if m.err != nil {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/model"
@@ -355,61 +356,65 @@ func (m deployModel) View() string {
 
 	switch m.state {
 	case deployStateMenu:
-		b.WriteString(titleStyle.Render("🚀 Deploy to Fleet"))
-		b.WriteString("\n\n")
+		var viewItems []string
+		viewItems = append(viewItems, titleStyle.Render("🚀 Deploy to Fleet"))
+		var listItems []string
 		for i, choice := range m.menuChoices {
 			if m.menuCursor == i {
-				b.WriteString(selectedItemStyle.Render("» " + choice))
+				listItems = append(listItems, selectedItemStyle.Render("▸ "+choice))
 			} else {
-				b.WriteString(itemStyle.Render(choice))
+				listItems = append(listItems, itemStyle.Render("  "+choice))
 			}
-			b.WriteString("\n")
 		}
-		b.WriteString(helpStyle.Render("\n(j/k or up/down, enter to select, q to quit)"))
+		viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
+		viewItems = append(viewItems, "", helpStyle.Render("(j/k or up/down, enter to select, q to quit)"))
 		if m.status != "" {
-			b.WriteString(helpStyle.Render("\n\n" + m.status))
+			viewItems = append(viewItems, "", helpStyle.Render(m.status))
 		}
+		b.WriteString(lipgloss.JoinVertical(lipgloss.Left, viewItems...))
 	case deployStateSelectAccount:
-		b.WriteString(titleStyle.Render("🚀 Deploy: Select Account"))
-		b.WriteString("\n\n")
+		var viewItems []string
+		viewItems = append(viewItems, titleStyle.Render("🚀 Deploy: Select Account"))
+		var listItems []string
 		if len(m.accounts) == 0 {
-			b.WriteString(helpStyle.Render("No active accounts found. Please add one or enable an existing one."))
+			listItems = append(listItems, helpStyle.Render("No active accounts found. Please add one or enable an existing one."))
 		} else {
 			for i, acc := range m.accounts {
 				line := acc.String()
 				if m.accountCursor == i {
-					b.WriteString(selectedItemStyle.Render("» " + line))
+					listItems = append(listItems, selectedItemStyle.Render("▸ "+line))
 				} else {
-					b.WriteString(itemStyle.Render(line))
+					listItems = append(listItems, itemStyle.Render("  "+line))
 				}
-				b.WriteString("\n")
 			}
 		}
-		b.WriteString(helpStyle.Render("\n(enter to select, esc to go back)"))
+		viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
+		viewItems = append(viewItems, "", helpStyle.Render("(enter to select, esc to go back)"))
+		b.WriteString(lipgloss.JoinVertical(lipgloss.Left, viewItems...))
 	case deployStateSelectTag:
-		b.WriteString(titleStyle.Render("🚀 Deploy: Select Tag"))
-		b.WriteString("\n\n")
+		var viewItems []string
+		viewItems = append(viewItems, titleStyle.Render("🚀 Deploy: Select Tag"))
+		var listItems []string
 		if len(m.tags) == 0 {
-			b.WriteString(helpStyle.Render("No tags found in any accounts."))
+			listItems = append(listItems, helpStyle.Render("No tags found in any accounts."))
 		} else {
 			for i, tag := range m.tags {
 				if m.tagCursor == i {
-					b.WriteString(selectedItemStyle.Render("» " + tag))
+					listItems = append(listItems, selectedItemStyle.Render("▸ "+tag))
 				} else {
-					b.WriteString(itemStyle.Render(tag))
+					listItems = append(listItems, itemStyle.Render("  "+tag))
 				}
-				b.WriteString("\n")
 			}
 		}
-		b.WriteString(helpStyle.Render("\n(enter to select, esc to go back)"))
+		viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
+		viewItems = append(viewItems, "", helpStyle.Render("(enter to select, esc to go back)"))
+		b.WriteString(lipgloss.JoinVertical(lipgloss.Left, viewItems...))
 	case deployStateShowAuthorizedKeys:
 		b.WriteString(titleStyle.Render(fmt.Sprintf("📄 authorized_keys for %s", m.selectedAccount.String())))
-		b.WriteString("\n\n")
 		b.WriteString(m.authorizedKeys)
 		b.WriteString(helpStyle.Render("\n(esc to go back)"))
 	case deployStateFleetInProgress:
 		b.WriteString(titleStyle.Render("🚀 Deploying to Fleet..."))
-		b.WriteString("\n\n")
 		for _, acc := range m.accountsInFleet {
 			res, ok := m.fleetResults[acc.ID]
 			var status string
@@ -418,7 +423,7 @@ func (m deployModel) View() string {
 			} else if res != nil {
 				status = "💥 " + helpStyle.Render("failed")
 			} else {
-				status = "✅ " + selectedItemStyle.Render("success")
+				status = "✅ " + successStyle.Render("success")
 			}
 			b.WriteString(fmt.Sprintf("  %s %s\n", acc.String(), status))
 		}
@@ -429,11 +434,9 @@ func (m deployModel) View() string {
 
 	case deployStateInProgress:
 		b.WriteString(titleStyle.Render("🚀 Deploying..."))
-		b.WriteString("\n\n")
 		b.WriteString(m.status)
 	case deployStateComplete:
 		b.WriteString(titleStyle.Render("✅ Deployment Complete"))
-		b.WriteString("\n\n")
 		b.WriteString(m.status)
 		// If it was a fleet deployment, show a detailed summary
 		if len(m.fleetResults) > 0 {
