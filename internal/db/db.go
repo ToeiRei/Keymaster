@@ -43,8 +43,8 @@ func GetAllAccounts() ([]model.Account, error) {
 }
 
 // AddAccount adds a new account to the database.
-func AddAccount(username, hostname, label string) error {
-	return store.AddAccount(username, hostname, label)
+func AddAccount(username, hostname, label, tags string) error {
+	return store.AddAccount(username, hostname, label, tags)
 }
 
 // DeleteAccount removes an account from the database by its ID.
@@ -65,6 +65,11 @@ func ToggleAccountStatus(id int) error {
 // UpdateAccountLabel updates the label for a given account.
 func UpdateAccountLabel(id int, label string) error {
 	return store.UpdateAccountLabel(id, label)
+}
+
+// UpdateAccountTags updates the tags for a given account.
+func UpdateAccountTags(id int, tags string) error {
+	return store.UpdateAccountTags(id, tags)
 }
 
 // GetAllActiveAccounts retrieves all active accounts from the database.

@@ -7,11 +7,12 @@ import "github.com/toeirei/keymaster/internal/model"
 type Store interface {
 	// Account methods
 	GetAllAccounts() ([]model.Account, error)
-	AddAccount(username, hostname, label string) error
+	AddAccount(username, hostname, label, tags string) error
 	DeleteAccount(id int) error
 	UpdateAccountSerial(id, serial int) error
 	ToggleAccountStatus(id int) error
 	UpdateAccountLabel(id int, label string) error
+	UpdateAccountTags(id int, tags string) error
 	GetAllActiveAccounts() ([]model.Account, error)
 
 	// Public Key methods

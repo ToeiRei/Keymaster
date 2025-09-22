@@ -9,6 +9,7 @@ type Account struct {
 	Username string
 	Hostname string
 	Label    string // A user-friendly alias for the account.
+	Tags     string // Comma-separated key:value pairs.
 	Serial   int
 	IsActive bool
 }

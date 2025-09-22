@@ -43,6 +43,7 @@ func runMySQLMigrations(db *sql.DB) error {
 			username VARCHAR(255) NOT NULL,
 			hostname VARCHAR(255) NOT NULL,
 			label VARCHAR(255),
+			tags TEXT,
 			serial INTEGER NOT NULL DEFAULT 0,
 			is_active BOOLEAN NOT NULL DEFAULT TRUE,
 			UNIQUE(username, hostname)
@@ -95,7 +96,7 @@ func runMySQLMigrations(db *sql.DB) error {
 // --- Stubbed Methods ---
 
 func (s *MySQLStore) GetAllAccounts() ([]model.Account, error) {
-	rows, err := s.db.Query("SELECT id, username, hostname, label, serial, is_active FROM accounts ORDER BY label, hostname, username")
+	rows, err := s.db.Query("SELECT id, username, hostname, label, tags, serial, is_active FROM accounts ORDER BY label, hostname, username")
 	if err != nil {
 		return nil, err
 	}
@@ -107,19 +108,23 @@ func (s *MySQLStore) GetAllAccounts() ([]model.Account, error) {
 		// MySQL driver can scan NULL strings into a string pointer or sql.NullString.
 		// Using sql.NullString is more explicit and portable.
 		var label sql.NullString
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
+		var tags sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &tags, &acc.Serial, &acc.IsActive); err != nil {
 			return nil, err
 		}
 		if label.Valid {
 			acc.Label = label.String
+		}
+		if tags.Valid {
+			acc.Tags = tags.String
 		}
 		accounts = append(accounts, acc)
 	}
 	return accounts, nil
 }
 
-func (s *MySQLStore) AddAccount(username, hostname, label string) error {
-	_, err := s.db.Exec("INSERT INTO accounts(username, hostname, label) VALUES(?, ?, ?)", username, hostname, label)
+func (s *MySQLStore) AddAccount(username, hostname, label, tags string) error {
+	_, err := s.db.Exec("INSERT INTO accounts(username, hostname, label, tags) VALUES(?, ?, ?, ?)", username, hostname, label, tags)
 	if err == nil {
 		_ = s.LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
 	}
@@ -174,8 +179,15 @@ func (s *MySQLStore) UpdateAccountLabel(id int, label string) error {
 	}
 	return err
 }
+func (s *MySQLStore) UpdateAccountTags(id int, tags string) error {
+	_, err := s.db.Exec("UPDATE accounts SET tags = ? WHERE id = ?", tags, id)
+	if err == nil {
+		_ = s.LogAction("UPDATE_ACCOUNT_TAGS", fmt.Sprintf("account_id: %d, new_tags: '%s'", id, tags))
+	}
+	return err
+}
 func (s *MySQLStore) GetAllActiveAccounts() ([]model.Account, error) {
-	rows, err := s.db.Query("SELECT id, username, hostname, label, serial, is_active FROM accounts WHERE is_active = TRUE ORDER BY label, hostname, username")
+	rows, err := s.db.Query("SELECT id, username, hostname, label, tags, serial, is_active FROM accounts WHERE is_active = TRUE ORDER BY label, hostname, username")
 	if err != nil {
 		return nil, err
 	}
@@ -185,11 +197,15 @@ func (s *MySQLStore) GetAllActiveAccounts() ([]model.Account, error) {
 	for rows.Next() {
 		var acc model.Account
 		var label sql.NullString
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
+		var tags sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &tags, &acc.Serial, &acc.IsActive); err != nil {
 			return nil, err
 		}
 		if label.Valid {
 			acc.Label = label.String
+		}
+		if tags.Valid {
+			acc.Tags = tags.String
 		}
 		accounts = append(accounts, acc)
 	}
@@ -412,13 +428,75 @@ func (s *MySQLStore) UnassignKeyFromAccount(keyID, accountID int) error {
 	return err
 }
 func (s *MySQLStore) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
-	return nil, fmt.Errorf("not implemented for mysql")
+	query := `
+		SELECT pk.id, pk.algorithm, pk.key_data, pk.comment
+		FROM public_keys pk
+		JOIN account_keys ak ON pk.id = ak.key_id
+		WHERE ak.account_id = ?
+		ORDER BY pk.comment`
+	rows, err := s.db.Query(query, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []model.PublicKey
+	for rows.Next() {
+		var key model.PublicKey
+		if err := rows.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment); err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
 }
 func (s *MySQLStore) GetAccountsForKey(keyID int) ([]model.Account, error) {
-	return nil, fmt.Errorf("not implemented for mysql")
+	query := `
+		SELECT a.id, a.username, a.hostname, a.label, a.tags, a.serial, a.is_active
+		FROM accounts a
+		JOIN account_keys ak ON a.id = ak.account_id
+		WHERE ak.key_id = ?
+		ORDER BY a.label, a.hostname, a.username`
+	rows, err := s.db.Query(query, keyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var accounts []model.Account
+	for rows.Next() {
+		var acc model.Account
+		var label sql.NullString
+		var tags sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &tags, &acc.Serial, &acc.IsActive); err != nil {
+			return nil, err
+		}
+		if label.Valid {
+			acc.Label = label.String
+		}
+		if tags.Valid {
+			acc.Tags = tags.String
+		}
+		accounts = append(accounts, acc)
+	}
+	return accounts, nil
 }
 func (s *MySQLStore) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
-	return nil, fmt.Errorf("not implemented for mysql")
+	rows, err := s.db.Query("SELECT id, timestamp, username, action, details FROM audit_log ORDER BY timestamp DESC")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []model.AuditLogEntry
+	for rows.Next() {
+		var entry model.AuditLogEntry
+		if err := rows.Scan(&entry.ID, &entry.Timestamp, &entry.Username, &entry.Action, &entry.Details); err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	return entries, nil
 }
 
 func (s *MySQLStore) LogAction(action string, details string) error {

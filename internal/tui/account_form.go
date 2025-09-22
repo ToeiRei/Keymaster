@@ -23,14 +23,14 @@ type accountModifiedMsg struct {
 
 type accountFormModel struct {
 	focusIndex     int
-	inputs         []textinput.Model // 0: user, 1: host, 2: label
+	inputs         []textinput.Model // 0: user, 1: host, 2: label, 3: tags
 	err            error
 	editingAccount *model.Account // If not nil, we are in edit mode.
 }
 
 func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 	m := accountFormModel{
-		inputs: make([]textinput.Model, 3),
+		inputs: make([]textinput.Model, 4),
 	}
 
 	var t textinput.Model
@@ -50,6 +50,9 @@ func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 		case 2:
 			t.Prompt = "Label (optional): "
 			t.Placeholder = "prod-web-01"
+		case 3:
+			t.Prompt = "Tags (comma-separated): "
+			t.Placeholder = "role:db,dc:nyc"
 		}
 		m.inputs[i] = t
 	}
@@ -63,9 +66,10 @@ func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 		m.inputs[1].PromptStyle = disabledStyle
 		m.inputs[1].TextStyle = disabledStyle
 		m.inputs[2].SetValue(accountToEdit.Label)
-		m.inputs[2].Focus()
+		m.inputs[3].SetValue(accountToEdit.Tags)
+		m.inputs[2].Focus() // Start focus on label
 		m.inputs[2].TextStyle = focusedStyle
-		m.focusIndex = 2
+		m.focusIndex = 2 // Start focus on label
 	} else {
 		m.inputs[0].Focus()
 		m.inputs[0].TextStyle = focusedStyle
@@ -96,7 +100,12 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.editingAccount != nil {
 					// Update existing account
 					label := m.inputs[2].Value()
+					tags := m.inputs[3].Value()
 					if err := db.UpdateAccountLabel(m.editingAccount.ID, label); err != nil {
+						m.err = err
+						return m, nil
+					}
+					if err := db.UpdateAccountTags(m.editingAccount.ID, tags); err != nil {
 						m.err = err
 						return m, nil
 					}
@@ -107,13 +116,14 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					username := m.inputs[0].Value()
 					hostname := m.inputs[1].Value()
 					label := m.inputs[2].Value()
+					tags := m.inputs[3].Value()
 
 					if username == "" || hostname == "" {
 						m.err = fmt.Errorf("username and hostname cannot be empty")
 						return m, nil
 					}
 
-					if err := db.AddAccount(username, hostname, label); err != nil {
+					if err := db.AddAccount(username, hostname, label, tags); err != nil {
 						m.err = err
 						return m, nil
 					}
@@ -123,16 +133,16 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			// Cycle focus
-			if m.editingAccount != nil {
-				// In edit mode, only cycle between label and submit button
+			if m.editingAccount != nil { // In edit mode
+				// Cycle between label, tags, and submit button
 				if s == "up" || s == "shift+tab" {
 					m.focusIndex--
-					if m.focusIndex < 2 {
+					if m.focusIndex < 2 { // 2 is the first editable field (label)
 						m.focusIndex = len(m.inputs)
 					}
 				} else {
 					m.focusIndex++
-					if m.focusIndex > len(m.inputs) {
+					if m.focusIndex > len(m.inputs) { // len(m.inputs) is the submit button
 						m.focusIndex = 2
 					}
 				}

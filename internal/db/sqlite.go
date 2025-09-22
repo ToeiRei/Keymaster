@@ -41,6 +41,7 @@ func runMigrations(db *sql.DB) error {
 			username TEXT NOT NULL,
 			hostname TEXT NOT NULL,
 			label TEXT,
+			tags TEXT,
 			serial INTEGER NOT NULL DEFAULT 0,
 			is_active BOOLEAN NOT NULL DEFAULT 1,
 			UNIQUE(username, hostname)
@@ -88,6 +89,7 @@ func runMigrations(db *sql.DB) error {
 	migrations := []string{
 		"ALTER TABLE accounts ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1;",
 		"ALTER TABLE accounts ADD COLUMN label TEXT;",
+		"ALTER TABLE accounts ADD COLUMN tags TEXT;",
 	}
 
 	for _, migrationSQL := range migrations {
@@ -105,7 +107,7 @@ func runMigrations(db *sql.DB) error {
 
 // GetAllAccounts retrieves all accounts from the database.
 func (s *SqliteStore) GetAllAccounts() ([]model.Account, error) {
-	rows, err := s.db.Query("SELECT id, username, hostname, label, serial, is_active FROM accounts ORDER BY label, hostname, username")
+	rows, err := s.db.Query("SELECT id, username, hostname, label, tags, serial, is_active FROM accounts ORDER BY label, hostname, username")
 	if err != nil {
 		return nil, err
 	}
@@ -115,11 +117,15 @@ func (s *SqliteStore) GetAllAccounts() ([]model.Account, error) {
 	for rows.Next() {
 		var acc model.Account
 		var label sql.NullString
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
+		var tags sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &tags, &acc.Serial, &acc.IsActive); err != nil {
 			return nil, err
 		}
 		if label.Valid {
 			acc.Label = label.String
+		}
+		if tags.Valid {
+			acc.Tags = tags.String
 		}
 		accounts = append(accounts, acc)
 	}
@@ -127,8 +133,8 @@ func (s *SqliteStore) GetAllAccounts() ([]model.Account, error) {
 }
 
 // AddAccount adds a new account to the database.
-func (s *SqliteStore) AddAccount(username, hostname, label string) error {
-	_, err := s.db.Exec("INSERT INTO accounts(username, hostname, label) VALUES(?, ?, ?)", username, hostname, label)
+func (s *SqliteStore) AddAccount(username, hostname, label, tags string) error {
+	_, err := s.db.Exec("INSERT INTO accounts(username, hostname, label, tags) VALUES(?, ?, ?, ?)", username, hostname, label, tags)
 	if err == nil {
 		_ = s.LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
 	}
@@ -187,9 +193,18 @@ func (s *SqliteStore) UpdateAccountLabel(id int, label string) error {
 	return err
 }
 
+// UpdateAccountTags updates the tags for a given account.
+func (s *SqliteStore) UpdateAccountTags(id int, tags string) error {
+	_, err := s.db.Exec("UPDATE accounts SET tags = ? WHERE id = ?", tags, id)
+	if err == nil {
+		_ = s.LogAction("UPDATE_ACCOUNT_TAGS", fmt.Sprintf("account_id: %d, new_tags: '%s'", id, tags))
+	}
+	return err
+}
+
 // GetAllActiveAccounts retrieves all active accounts from the database.
 func (s *SqliteStore) GetAllActiveAccounts() ([]model.Account, error) {
-	rows, err := s.db.Query("SELECT id, username, hostname, label, serial, is_active FROM accounts WHERE is_active = 1 ORDER BY label, hostname, username")
+	rows, err := s.db.Query("SELECT id, username, hostname, label, tags, serial, is_active FROM accounts WHERE is_active = 1 ORDER BY label, hostname, username")
 	if err != nil {
 		return nil, err
 	}
@@ -199,11 +214,15 @@ func (s *SqliteStore) GetAllActiveAccounts() ([]model.Account, error) {
 	for rows.Next() {
 		var acc model.Account
 		var label sql.NullString
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
+		var tags sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &tags, &acc.Serial, &acc.IsActive); err != nil {
 			return nil, err
 		}
 		if label.Valid {
 			acc.Label = label.String
+		}
+		if tags.Valid {
+			acc.Tags = tags.String
 		}
 		accounts = append(accounts, acc)
 	}
@@ -482,7 +501,7 @@ func (s *SqliteStore) GetKeysForAccount(accountID int) ([]model.PublicKey, error
 // GetAccountsForKey retrieves all accounts that have a specific public key assigned.
 func (s *SqliteStore) GetAccountsForKey(keyID int) ([]model.Account, error) {
 	query := `
-		SELECT a.id, a.username, a.hostname, a.label, a.serial, a.is_active
+		SELECT a.id, a.username, a.hostname, a.label, a.tags, a.serial, a.is_active
 		FROM accounts a
 		JOIN account_keys ak ON a.id = ak.account_id
 		WHERE ak.key_id = ?
@@ -497,11 +516,15 @@ func (s *SqliteStore) GetAccountsForKey(keyID int) ([]model.Account, error) {
 	for rows.Next() {
 		var acc model.Account
 		var label sql.NullString
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
+		var tags sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &tags, &acc.Serial, &acc.IsActive); err != nil {
 			return nil, err
 		}
 		if label.Valid {
 			acc.Label = label.String
+		}
+		if tags.Valid {
+			acc.Tags = tags.String
 		}
 		accounts = append(accounts, acc)
 	}

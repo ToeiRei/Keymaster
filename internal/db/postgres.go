@@ -40,6 +40,7 @@ func runPostgresMigrations(db *sql.DB) error {
 			username TEXT NOT NULL,
 			hostname TEXT NOT NULL,
 			label TEXT,
+			tags TEXT,
 			serial INTEGER NOT NULL DEFAULT 0,
 			is_active BOOLEAN NOT NULL DEFAULT TRUE,
 			UNIQUE(username, hostname)
@@ -90,7 +91,7 @@ func runPostgresMigrations(db *sql.DB) error {
 // --- Stubbed Methods ---
 
 func (s *PostgresStore) GetAllAccounts() ([]model.Account, error) {
-	rows, err := s.db.Query("SELECT id, username, hostname, label, serial, is_active FROM accounts ORDER BY label, hostname, username")
+	rows, err := s.db.Query("SELECT id, username, hostname, label, tags, serial, is_active FROM accounts ORDER BY label, hostname, username")
 	if err != nil {
 		return nil, err
 	}
@@ -100,20 +101,24 @@ func (s *PostgresStore) GetAllAccounts() ([]model.Account, error) {
 	for rows.Next() {
 		var acc model.Account
 		var label sql.NullString
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
+		var tags sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &tags, &acc.Serial, &acc.IsActive); err != nil {
 			return nil, err
 		}
 		if label.Valid {
 			acc.Label = label.String
+		}
+		if tags.Valid {
+			acc.Tags = tags.String
 		}
 		accounts = append(accounts, acc)
 	}
 	return accounts, nil
 }
 
-func (s *PostgresStore) AddAccount(username, hostname, label string) error {
+func (s *PostgresStore) AddAccount(username, hostname, label, tags string) error {
 	// Postgres uses $1, $2, etc. for placeholders.
-	_, err := s.db.Exec("INSERT INTO accounts(username, hostname, label) VALUES($1, $2, $3)", username, hostname, label)
+	_, err := s.db.Exec("INSERT INTO accounts(username, hostname, label, tags) VALUES($1, $2, $3, $4)", username, hostname, label, tags)
 	if err == nil {
 		_ = s.LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
 	}
@@ -168,8 +173,16 @@ func (s *PostgresStore) UpdateAccountLabel(id int, label string) error {
 	return err
 }
 
+func (s *PostgresStore) UpdateAccountTags(id int, tags string) error {
+	_, err := s.db.Exec("UPDATE accounts SET tags = $1 WHERE id = $2", tags, id)
+	if err == nil {
+		_ = s.LogAction("UPDATE_ACCOUNT_TAGS", fmt.Sprintf("account_id: %d, new_tags: '%s'", id, tags))
+	}
+	return err
+}
+
 func (s *PostgresStore) GetAllActiveAccounts() ([]model.Account, error) {
-	rows, err := s.db.Query("SELECT id, username, hostname, label, serial, is_active FROM accounts WHERE is_active = TRUE ORDER BY label, hostname, username")
+	rows, err := s.db.Query("SELECT id, username, hostname, label, tags, serial, is_active FROM accounts WHERE is_active = TRUE ORDER BY label, hostname, username")
 	if err != nil {
 		return nil, err
 	}
@@ -179,11 +192,15 @@ func (s *PostgresStore) GetAllActiveAccounts() ([]model.Account, error) {
 	for rows.Next() {
 		var acc model.Account
 		var label sql.NullString
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
+		var tags sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &tags, &acc.Serial, &acc.IsActive); err != nil {
 			return nil, err
 		}
 		if label.Valid {
 			acc.Label = label.String
+		}
+		if tags.Valid {
+			acc.Tags = tags.String
 		}
 		accounts = append(accounts, acc)
 	}
@@ -436,7 +453,7 @@ func (s *PostgresStore) GetKeysForAccount(accountID int) ([]model.PublicKey, err
 
 func (s *PostgresStore) GetAccountsForKey(keyID int) ([]model.Account, error) {
 	query := `
-		SELECT a.id, a.username, a.hostname, a.label, a.serial, a.is_active
+		SELECT a.id, a.username, a.hostname, a.label, a.tags, a.serial, a.is_active
 		FROM accounts a
 		JOIN account_keys ak ON a.id = ak.account_id
 		WHERE ak.key_id = $1
@@ -451,11 +468,15 @@ func (s *PostgresStore) GetAccountsForKey(keyID int) ([]model.Account, error) {
 	for rows.Next() {
 		var acc model.Account
 		var label sql.NullString
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &acc.Serial, &acc.IsActive); err != nil {
+		var tags sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &tags, &acc.Serial, &acc.IsActive); err != nil {
 			return nil, err
 		}
 		if label.Valid {
 			acc.Label = label.String
+		}
+		if tags.Valid {
+			acc.Tags = tags.String
 		}
 		accounts = append(accounts, acc)
 	}

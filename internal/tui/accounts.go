@@ -292,6 +292,10 @@ func (m accountsModel) View() string {
 
 	for i, acc := range m.accounts {
 		line := acc.String()
+		if acc.Tags != "" {
+			// Show tags in a muted color
+			line += " " + helpStyle.Render(fmt.Sprintf("[%s]", acc.Tags))
+		}
 
 		if m.cursor == i {
 			line = "» " + line
