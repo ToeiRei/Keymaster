@@ -9,8 +9,6 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 )
 
-const useHighPerformanceRenderer = false
-
 type auditLogModel struct {
 	viewport viewport.Model
 	ready    bool
@@ -38,7 +36,6 @@ func newAuditLogModel() auditLogModel {
 
 	m.viewport = viewport.New(80, 20) // Placeholder size, will be updated on WindowSizeMsg
 	m.viewport.SetContent(b.String())
-	m.viewport.HighPerformanceRendering = useHighPerformanceRenderer
 
 	return m
 }
