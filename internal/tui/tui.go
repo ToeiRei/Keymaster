@@ -305,8 +305,8 @@ func (m menuModel) View(data dashboardData, width int) string {
 	}
 	dashboardItems = append(dashboardItems, lipgloss.JoinVertical(lipgloss.Left,
 		fmt.Sprintf("Managed Accounts: %d (%d active)", data.accountCount, data.activeAccountCount),
-		fmt.Sprintf("   Public Keys: %d (%d global)", data.publicKeyCount, data.globalKeyCount),
-		fmt.Sprintf("    System Key: %s", sysKeyStatus),
+		fmt.Sprintf("     Public Keys: %d (%d global)", data.publicKeyCount, data.globalKeyCount),
+		fmt.Sprintf("      System Key: %s", sysKeyStatus),
 	))
 
 	// Recent Activity
