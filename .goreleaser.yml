@@ -1,0 +1,50 @@
+# .goreleaser.yml
+# Build configuration for GoReleaser
+# See https://goreleaser.com/customization/ for all options
+
+project_name: keymaster
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: keymaster
+    # Statically compiled binaries for maximum portability.
+    env:
+      - CGO_ENABLED=0
+    # The main entrypoint for your application.
+    main: ./cmd/keymaster
+    # Create builds for the most common platforms.
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    # Inject the version number into the binary.
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  # Skip automatic changelog generation, as you maintain it manually.
+  # GoReleaser will use the text from your git tag annotation for the release notes.
+  skip: true
