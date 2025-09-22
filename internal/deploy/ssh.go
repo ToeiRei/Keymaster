@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/pkg/sftp"
@@ -143,4 +144,41 @@ func (d *Deployer) GetAuthorizedKeys() ([]byte, error) {
 		return nil, fmt.Errorf("failed to read from remote file %s: %w", finalPath, err)
 	}
 	return content, nil
+}
+
+// GetRemoteHostKey connects to a host just to retrieve its public key.
+func GetRemoteHostKey(host string) (ssh.PublicKey, error) {
+	keyChan := make(chan ssh.PublicKey, 1)
+
+	config := &ssh.ClientConfig{
+		// We don't need to authenticate for this, just start the handshake.
+		User: "keymaster-probe",
+		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			// We got the key, send it back on the channel.
+			keyChan <- key
+			// Return a specific error to gracefully stop the handshake.
+			return fmt.Errorf("keymaster: successfully retrieved host key")
+		},
+		Timeout: 5 * time.Second,
+	}
+
+	addr := host
+	if _, _, err := net.SplitHostPort(host); err != nil {
+		addr = net.JoinHostPort(host, "22")
+	}
+
+	// We expect ssh.Dial to fail with our specific error.
+	_, err := ssh.Dial("tcp", addr, config)
+	if err != nil {
+		// Check if it's our specific error.
+		if strings.Contains(err.Error(), "keymaster: successfully retrieved host key") {
+			// Success, the key is in the channel.
+			return <-keyChan, nil
+		}
+		// It's a different, real error (e.g., connection refused).
+		return nil, fmt.Errorf("failed to connect to %s: %w", host, err)
+	}
+
+	// This case should ideally not be reached if the callback returns an error.
+	return nil, fmt.Errorf("ssh.Dial succeeded unexpectedly, could not retrieve key")
 }

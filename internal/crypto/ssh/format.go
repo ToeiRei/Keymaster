@@ -11,6 +11,7 @@ import (
 // Re-export for convenience from golang.org/x/crypto/ssh
 var NewPublicKey = ssh.NewPublicKey
 var MarshalAuthorizedKey = ssh.MarshalAuthorizedKey
+var FingerprintSHA256 = ssh.FingerprintSHA256
 
 // MarshalEd25519PrivateKey converts an ed25519 private key to PEM format.
 // It wraps the functionality from golang.org/x/crypto/ssh to produce

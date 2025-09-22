@@ -50,6 +50,7 @@ func init() {
 	rootCmd.AddCommand(rotateKeyCmd)
 	rootCmd.AddCommand(auditCmd)
 	rootCmd.AddCommand(importCmd)
+	rootCmd.AddCommand(trustHostCmd)
 }
 
 var deployCmd = &cobra.Command{
@@ -318,6 +319,54 @@ func runDeploymentForAccount(account model.Account) error {
 	}
 
 	return nil
+}
+
+var trustHostCmd = &cobra.Command{
+	Use:   "trust-host <user@host>",
+	Short: "Adds a host's public key to the list of known hosts",
+	Long: `Connects to a host for the first time, retrieves its public key,
+and prompts the user to save it to the database. This is a required
+step before Keymaster can manage a new host.`,
+	Args: cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		if _, err := db.InitDB("./keymaster.db"); err != nil {
+			log.Fatalf("Error initializing database: %v", err)
+		}
+
+		target := args[0]
+		parts := strings.Split(target, "@")
+		if len(parts) != 2 {
+			log.Fatalf("Invalid account format. Expected user@host.")
+		}
+		hostname := parts[1]
+
+		fmt.Printf("Attempting to retrieve host key from %s...\n", hostname)
+		key, err := deploy.GetRemoteHostKey(hostname)
+		if err != nil {
+			log.Fatalf("Could not get host key: %v", err)
+		}
+
+		fingerprint := ssh.FingerprintSHA256(key)
+		fmt.Printf("\nThe authenticity of host '%s' can't be established.\n", hostname)
+		fmt.Printf("%s key fingerprint is %s.\n", key.Type(), fingerprint)
+		fmt.Print("Are you sure you want to continue connecting (yes/no)? ")
+
+		reader := bufio.NewReader(os.Stdin)
+		answer, _ := reader.ReadString('\n')
+		answer = strings.TrimSpace(strings.ToLower(answer))
+
+		if answer != "yes" {
+			fmt.Println("Host key not trusted. Aborting.")
+			os.Exit(1)
+		}
+
+		keyStr := string(ssh.MarshalAuthorizedKey(key))
+		if err := db.AddKnownHostKey(hostname, keyStr); err != nil {
+			log.Fatalf("Failed to save host key to database: %v", err)
+		}
+
+		fmt.Printf("Warning: Permanently added '%s' (type %s) to the list of known hosts.\n", hostname, key.Type())
+	},
 }
 
 func runAuditForAccount(account model.Account) error {

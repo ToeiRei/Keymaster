@@ -6,7 +6,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/model"
+	"golang.org/x/crypto/ssh"
 )
 
 // A message to signal that we should go back to the main menu.
@@ -14,6 +16,12 @@ type backToMenuMsg struct{}
 
 // A message to signal that we should go back to the accounts list from the form.
 type backToAccountsMsg struct{}
+
+// A message to signal that a host key has been verified.
+type hostKeyVerifiedMsg struct {
+	hostname string
+	err      error
+}
 
 type accountsViewState int
 
@@ -71,6 +79,17 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
+	// Handle async messages for the list view
+	switch msg := msg.(type) {
+	case hostKeyVerifiedMsg:
+		if msg.err != nil {
+			m.status = fmt.Sprintf("Failed to verify host %s: %v", msg.hostname, msg.err)
+		} else {
+			m.status = fmt.Sprintf("Successfully trusted host key for %s.", msg.hostname)
+		}
+		return m, nil
+	}
+
 	// --- This is the list view update logic ---
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -120,6 +139,15 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.status = fmt.Sprintf("Toggled status for: %s", accToToggle.String())
 					m.accounts, m.err = db.GetAllAccounts()
 				}
+			}
+			return m, nil
+
+		// Verify/Trust host key.
+		case "v":
+			if len(m.accounts) > 0 {
+				accToTrust := m.accounts[m.cursor]
+				m.status = fmt.Sprintf("Verifying host key for %s...", accToTrust.Hostname)
+				return m, verifyHostKeyCmd(accToTrust.Hostname)
 			}
 			return m, nil
 
@@ -181,10 +209,31 @@ func (m accountsModel) View() string {
 		b.WriteString(helpStyle.Render("No accounts found. Press 'a' to add one."))
 	}
 
-	b.WriteString(helpStyle.Render("\n(a)dd, (d)elete, (t)oggle active, (q)uit to menu"))
+	b.WriteString(helpStyle.Render("\n(a)dd, (d)elete, (t)oggle active, (v)erify host key, (q)uit"))
 	if m.status != "" {
 		b.WriteString(helpStyle.Render("\n\n" + m.status))
 	}
 
 	return b.String()
+}
+
+// verifyHostKeyCmd is a tea.Cmd that fetches a host's public key and saves it.
+func verifyHostKeyCmd(hostname string) tea.Cmd {
+	return func() tea.Msg {
+		key, err := deploy.GetRemoteHostKey(hostname)
+		if err != nil {
+			return hostKeyVerifiedMsg{hostname: hostname, err: err}
+		}
+
+		// Convert to string format for storage.
+		keyStr := string(ssh.MarshalAuthorizedKey(key))
+
+		// Store in DB.
+		err = db.AddKnownHostKey(hostname, keyStr)
+		if err != nil {
+			return hostKeyVerifiedMsg{hostname: hostname, err: fmt.Errorf("failed to save key to database: %w", err)}
+		}
+
+		return hostKeyVerifiedMsg{hostname: hostname, err: nil}
+	}
 }
