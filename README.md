@@ -21,7 +21,7 @@ Keymaster centralizes control of your `authorized_keys` files. Fed up with compl
 
 1.  **Installation:**
     ```sh
-    go install github.com/toeirei/keymaster@latest
+    go install github.com/toeirei/keymaster/cmd/keymaster@latest
     ```
 
 2.  **Initialize the Database:**
