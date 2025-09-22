@@ -60,6 +60,8 @@ type mainModel struct {
 	accounts   accountsModel
 	auditLog   auditLogModel
 	db         *sql.DB
+	width      int
+	height     int
 	err        error
 }
 
@@ -106,6 +108,9 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		}
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 	}
 
 	// Delegate updates to the currently active view.
@@ -208,7 +213,12 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case 5: // View Audit Log
 					m.state = auditLogView
 					m.auditLog = newAuditLogModel()
-					return m, nil
+					// Manually update the new sub-model with the current window size
+					// to ensure the viewport is initialized correctly.
+					var newAuditLogModel tea.Model
+					newAuditLogModel, cmd = m.auditLog.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+					m.auditLog = newAuditLogModel.(auditLogModel)
+					return m, cmd
 				default:
 					// For now, other options just quit.
 					return m, tea.Quit
