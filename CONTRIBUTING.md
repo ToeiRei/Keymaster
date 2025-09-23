@@ -2,6 +2,8 @@
 
 First off, thank you for considering contributing to Keymaster! It’s people like you that make open source such a great community. We're excited to see what you bring to the project.
 
+By contributing, you agree that your contributions will be licensed under the project's MIT License.
+
 
 This document outlines the development process and conventions we follow. Please help us keep the codebase clean, maintainable, and easy to navigate for everyone.
 

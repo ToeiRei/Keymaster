@@ -100,6 +100,12 @@ You are now ready to manage this host with Keymaster!
   keymaster import /path/to/authorized_keys
   ```
 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+### Third-Party Licenses
+
+Keymaster utilizes several third-party libraries, each with its own license. All dependency licenses are permissive and compatible with the MIT License. For a detailed list of dependencies and their license texts, please see the `NOTICE.md` file.
+
 ## The Keymaster Philosophy
 
 This tool was born out of frustration. Existing solutions for SSH key management often felt like using a sledgehammer to crack a nut—requiring complex configuration, server daemons, and constant management.
