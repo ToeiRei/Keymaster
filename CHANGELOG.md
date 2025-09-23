@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Audit Logic:** The `audit` command now performs a full content comparison of the remote `authorized_keys` file against the expected state, instead of only checking the serial number. This provides a much more accurate and reliable drift detection.
+- **Import Command:** The `import` command now provides more detailed feedback, reporting errors for invalid key lines instead of skipping them silently.
 
 ### Fixed
 - **Deployment Compatibility:** The SFTP deployment logic now uses a backup-and-rename strategy, improving compatibility with SFTP servers that do not support atomic overwrites (e.g., on Windows).

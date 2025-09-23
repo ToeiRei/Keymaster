@@ -267,8 +267,7 @@ var importCmd = &cobra.Command{
 
 		file, err := os.Open(filePath)
 		if err != nil {
-			fmt.Printf("Error opening file: %v\n", err)
-			os.Exit(1)
+			log.Fatalf("Error opening file: %v", err)
 		}
 		defer file.Close()
 
@@ -286,6 +285,7 @@ var importCmd = &cobra.Command{
 
 			alg, keyData, comment, err := sshkey.Parse(line)
 			if err != nil {
+				fmt.Printf("  - Skipping invalid key line: %v\n", err)
 				skippedCount++
 				continue
 			}

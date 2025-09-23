@@ -15,7 +15,7 @@ Keymaster centralizes control of your `authorized_keys` files. Fed up with compl
 - **Fleet-Wide Operations:** Deploy key changes or audit your entire fleet of active hosts with a single command.
 - **Drift Detection:** The `audit` command quickly checks all hosts to ensure their deployed keys match the central database state.
 - **Scriptable CLI:** All core features are available as command-line arguments, making Keymaster perfect for automation.
-- **SSH Agent Integration:** Seamlessly uses your running SSH agent (including Pageant/gpg-agent on Windows) to bootstrap new hosts without manual key copying.
+- **SSH Agent Integration:** Can use a running SSH agent (including Pageant/gpg-agent on Windows) for authentication for certain features, like remote key importing.
 
 ## A New Look
 

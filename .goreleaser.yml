@@ -2,6 +2,8 @@
 # Build configuration for GoReleaser
 # See https://goreleaser.com/customization/ for all options
 
+version: 2
+
 project_name: keymaster
 
 before:
