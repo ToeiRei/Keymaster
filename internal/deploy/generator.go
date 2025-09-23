@@ -30,7 +30,6 @@ func GenerateKeysContent(accountID int) (string, error) {
 	// Prepend restrictions to the system key.
 	restrictedSystemKey := fmt.Sprintf("%s %s", SystemKeyRestrictions, activeKey.PublicKey)
 	content.WriteString(restrictedSystemKey)
-	content.WriteString("\n\n")
 
 	// 2. Get all global public keys.
 	globalKeys, err := db.GetGlobalPublicKeys()
@@ -75,12 +74,15 @@ func GenerateKeysContent(accountID int) (string, error) {
 
 	// 5. Add user keys to the content.
 	if len(sortedKeys) > 0 {
-		content.WriteString("# User Keys\n")
+		content.WriteString("\n\n# User Keys\n")
+		var keyLines []string
 		for _, key := range sortedKeys {
-			content.WriteString(key.line)
-			content.WriteString("\n")
+			keyLines = append(keyLines, key.line)
 		}
+		content.WriteString(strings.Join(keyLines, "\n"))
 	}
 
-	return strings.TrimSpace(content.String()), nil
+	content.WriteString("\n")
+
+	return content.String(), nil
 }
