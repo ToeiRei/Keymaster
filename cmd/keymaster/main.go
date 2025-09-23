@@ -162,7 +162,13 @@ If no account is specified, deploys to all active accounts in the database.`,
 			found := false
 			for _, acc := range allAccounts {
 				// Compare against the canonical user@host, not the pretty-printed string which includes the label.
-				if fmt.Sprintf("%s@%s", acc.Username, acc.Hostname) == target {
+				// Hostnames are case-insensitive, so we should compare them as such.
+				targetUser, targetHost, found := strings.Cut(target, "@")
+				if !found {
+					log.Fatalf("Invalid account format: %s. Expected user@host.", target)
+				}
+
+				if acc.Username == targetUser && strings.EqualFold(acc.Hostname, targetHost) {
 					targetAccounts = append(targetAccounts, acc)
 					found = true
 					break
