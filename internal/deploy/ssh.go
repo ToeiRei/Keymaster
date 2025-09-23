@@ -129,9 +129,10 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 	}, nil
 }
 
-// DeployAuthorizedKeys uploads the new authorized_keys content and moves it into place atomically.
+// DeployAuthorizedKeys uploads the new authorized_keys content and moves it into place.
 // This function uses a pure-SFTP method to be compatible with restricted keys
-// (e.g., command="internal-sftp").
+// (e.g., command="internal-sftp"). It uses a backup-and-rename strategy for
+// compatibility with SFTP servers that don't support atomic overwrites (e.g., on Windows).
 func (d *Deployer) DeployAuthorizedKeys(content string) error {
 	// 1. Ensure .ssh directory exists with correct permissions.
 	sshDir := ".ssh"
@@ -160,12 +161,28 @@ func (d *Deployer) DeployAuthorizedKeys(content string) error {
 		return fmt.Errorf("failed to chmod temporary file: %w", err)
 	}
 
-	// 4. Atomically move the file into place.
+	// 4. Move the file into place using a backup-and-rename strategy.
 	finalPath := path.Join(sshDir, "authorized_keys")
+	backupPath := finalPath + ".keymaster-bak"
+
+	// Step A: Remove any old backup file from a previous failed run.
+	_ = d.sftp.Remove(backupPath)
+
+	// Step B: Rename the current file to a backup. We ignore the error, as
+	// the file may not exist on the first deployment.
+	_ = d.sftp.Rename(finalPath, backupPath)
+
+	// Step C: Rename the new file to the final destination.
 	if err := d.sftp.Rename(tmpPath, finalPath); err != nil {
+		// If the rename fails, try to restore the backup to leave the system in a stable state.
+		_ = d.sftp.Rename(backupPath, finalPath)
+		// Clean up the temp file regardless.
 		_ = d.sftp.Remove(tmpPath)
-		return fmt.Errorf("failed to atomically rename authorized_keys file: %w", err)
+		return fmt.Errorf("failed to rename authorized_keys file into place: %w", err)
 	}
+
+	// Step D: Success. Clean up the backup file.
+	_ = d.sftp.Remove(backupPath)
 
 	return nil
 }
