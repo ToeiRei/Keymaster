@@ -1,6 +1,7 @@
-// removed stray brace
-
-package tui
+// package tui provides the terminal user interface for Keymaster.
+// This file contains the logic for the key assignment view, which allows
+// users to manage the many-to-many relationship between accounts and public keys.
+package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
@@ -13,17 +14,23 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
+// filterStyle is used for the filter input bar.
 var (
 	filterStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Italic(true)
 )
 
+// assignState represents the current focus of the assignment view.
 type assignState int
 
 const (
+	// assignStateSelectAccount means the user is selecting an account from the left pane.
 	assignStateSelectAccount assignState = iota
+	// assignStateSelectKeys means the user is selecting keys for the chosen account in the right pane.
 	assignStateSelectKeys
 )
 
+// assignKeysModel holds the state for the key assignment view.
+// It manages the two-pane layout for selecting an account and then assigning keys to it.
 type assignKeysModel struct {
 	state           assignState
 	accounts        []model.Account
@@ -40,6 +47,7 @@ type assignKeysModel struct {
 	isFilteringKey  bool
 }
 
+// newAssignKeysModel creates a new model for the key assignment view, pre-loading accounts and keys.
 func newAssignKeysModel() assignKeysModel {
 	m := assignKeysModel{
 		state:        assignStateSelectAccount,
@@ -61,10 +69,12 @@ func newAssignKeysModel() assignKeysModel {
 	return m
 }
 
+// Init initializes the model.
 func (m assignKeysModel) Init() tea.Cmd {
 	return nil
 }
 
+// Update handles messages and updates the model's state.
 func (m assignKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.state {
 	case assignStateSelectAccount:
@@ -142,7 +152,7 @@ func (m assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd
 	return m, nil
 }
 
-// Filtered account list
+// filteredAccounts returns a slice of accounts that match the current filter text.
 func (m assignKeysModel) filteredAccounts() []model.Account {
 	if m.accountFilter == "" {
 		return m.accounts
@@ -156,7 +166,7 @@ func (m assignKeysModel) filteredAccounts() []model.Account {
 	return filtered
 }
 
-// Filtered key list
+// filteredKeys returns a slice of public keys that match the current filter text.
 func (m assignKeysModel) filteredKeys() []model.PublicKey {
 	if m.keyFilter == "" {
 		return m.keys
@@ -170,6 +180,7 @@ func (m assignKeysModel) filteredKeys() []model.PublicKey {
 	return filtered
 }
 
+// containsIgnoreCase is a helper function for case-insensitive string searching.
 func containsIgnoreCase(s, substr string) bool {
 	if substr == "" {
 		return true
@@ -248,6 +259,7 @@ func (m assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// viewAccountList renders the left pane containing the list of accounts.
 func (m assignKeysModel) viewAccountList() string {
 	var listItems []string
 	accounts := m.filteredAccounts()
@@ -276,6 +288,7 @@ func (m assignKeysModel) viewAccountList() string {
 	return paneStyle.Width(40).Render(listPane)
 }
 
+// viewKeySelection renders the right pane containing the list of keys for assignment.
 func (m assignKeysModel) viewKeySelection() string {
 	var listItems []string
 	keys := m.filteredKeys()
@@ -321,6 +334,7 @@ func (m assignKeysModel) viewKeySelection() string {
 	return paneStyle.Width(60).Render(listPane)
 }
 
+// View renders the entire key assignment UI.
 func (m assignKeysModel) View() string {
 	left := m.viewAccountList()
 	right := ""

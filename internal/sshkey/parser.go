@@ -1,4 +1,7 @@
-package sshkey
+// package sshkey provides utilities for parsing and validating SSH key data.
+// It includes functions to parse authorized_keys lines, extract Keymaster-specific
+// metadata, and check for weak cryptographic algorithms.
+package sshkey // import "github.com/toeirei/keymaster/internal/sshkey"
 
 import (
 	"fmt"
@@ -46,12 +49,13 @@ func Parse(rawKey string) (algorithm, keyData, comment string, err error) {
 	return
 }
 
-// ParseSerial extracts the Keymaster serial number from a comment line.
+// ParseSerial extracts the Keymaster serial number from the header comment line
+// of a Keymaster-managed authorized_keys file.
 func ParseSerial(line string) (int, error) {
-	// Expected format: # Keymaster System Key (Serial: 123)
+	// Expected format: # Keymaster Managed Keys (Serial: 123)
 	line = strings.TrimSpace(line)
-	if !strings.HasPrefix(line, "# Keymaster System Key") {
-		return 0, fmt.Errorf("not a keymaster key comment line")
+	if !strings.HasPrefix(line, "# Keymaster Managed Keys") {
+		return 0, fmt.Errorf("not a keymaster managed keys header line")
 	}
 
 	re := regexp.MustCompile(`Serial: (\d+)`)
@@ -68,7 +72,7 @@ func ParseSerial(line string) (int, error) {
 }
 
 // CheckHostKeyAlgorithm inspects the public key's algorithm and returns a warning
-// if it's considered weak or deprecated.
+// message if the algorithm is considered weak or deprecated.
 func CheckHostKeyAlgorithm(key ssh.PublicKey) string {
 	keyType := key.Type()
 	switch keyType {

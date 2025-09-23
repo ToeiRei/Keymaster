@@ -1,4 +1,7 @@
-package tui
+// package tui provides the terminal user interface for Keymaster.
+// This file contains the logic for the deployment view, which allows users
+// to deploy keys to single accounts, tags, or the entire fleet.
+package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
@@ -13,6 +16,7 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
+// deployState represents the current view within the deployment workflow.
 type deployState int
 
 const (
@@ -25,6 +29,8 @@ const (
 	deployStateComplete
 )
 
+// deployAction differentiates between different actions that can be taken
+// on a selected account.
 type deployAction int
 
 const (
@@ -32,12 +38,14 @@ const (
 	actionDeploySingle
 )
 
-// A message to signal deployment is complete.
+// deploymentResultMsg is a message to signal deployment is complete for one account.
 type deploymentResultMsg struct {
 	account model.Account
 	err     error
 }
 
+// deployModel represents the state of the deployment view.
+// It manages menus, account selection, and the status of deployment operations.
 type deployModel struct {
 	state              deployState
 	action             deployAction
@@ -57,6 +65,7 @@ type deployModel struct {
 	isFilteringAccount bool
 }
 
+// newDeployModel creates a new model for the deployment view.
 func newDeployModel() deployModel {
 	return deployModel{
 		state:        deployStateMenu,
@@ -70,10 +79,12 @@ func newDeployModel() deployModel {
 	}
 }
 
+// Init initializes the deploy model.
 func (m deployModel) Init() tea.Cmd {
 	return nil
 }
 
+// Update handles messages and updates the deploy model's state.
 func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.state {
 	case deployStateMenu:
@@ -116,6 +127,7 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// updateMenu handles input when the main deployment menu is active.
 func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -208,6 +220,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// updateAccountSelection handles input when the user is selecting an account.
 func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -283,6 +296,7 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// updateSelectTag handles input when the user is selecting a tag.
 func (m deployModel) updateSelectTag(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -344,6 +358,7 @@ func (m deployModel) updateSelectTag(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// updateShowAuthorizedKeys handles input when viewing the generated keys.
 func (m deployModel) updateShowAuthorizedKeys(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -358,6 +373,7 @@ func (m deployModel) updateShowAuthorizedKeys(msg tea.Msg) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
+// updateComplete handles input after a deployment operation has finished.
 func (m deployModel) updateComplete(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -378,6 +394,7 @@ func (m deployModel) updateComplete(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// View renders the deployment UI based on the current model state.
 func (m deployModel) View() string {
 	// ...existing code...
 

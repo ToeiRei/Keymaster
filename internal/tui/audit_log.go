@@ -1,4 +1,7 @@
-package tui
+// package tui provides the terminal user interface for Keymaster.
+// This file contains the logic for the audit log view, which displays a
+// filterable, color-coded table of all actions taken within the application.
+package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
@@ -12,7 +15,7 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
-// --- Risk-based color styles for audit log actions ---
+// Risk-based color styles for audit log actions.
 var (
 	auditHighRiskStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("196")) // Bright Red
 	auditMediumRiskStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("220")) // Amber/Yellow
@@ -20,7 +23,8 @@ var (
 	auditInfoStyle       = lipgloss.NewStyle().Foreground(colorSubtle)           // Gray
 )
 
-// Returns the style for a given action name
+// auditActionStyle returns a specific color-coded style for an audit log action
+// based on its perceived risk level (e.g., destructive actions are red).
 func auditActionStyle(action string) lipgloss.Style {
 	switch {
 	// High risk (destructive)
@@ -48,6 +52,8 @@ func auditActionStyle(action string) lipgloss.Style {
 	}
 }
 
+// auditLogModel holds the state for the audit log view.
+// It manages the table, filtering, and custom rendering logic.
 type auditLogModel struct {
 	table       table.Model
 	styles      table.Styles
@@ -58,6 +64,7 @@ type auditLogModel struct {
 	err         error
 }
 
+// newAuditLogModel creates a new model for the audit log view, loading entries from the database.
 func newAuditLogModel() *auditLogModel {
 	m := &auditLogModel{}
 	entries, err := db.GetAllAuditLogEntries()
@@ -106,7 +113,8 @@ func newAuditLogModel() *auditLogModel {
 	return m
 }
 
-// Rebuilds the table rows based on current filter and data
+// rebuildTableRows constructs the table rows from the master list of entries,
+// applying the current filter.
 func (m *auditLogModel) rebuildTableRows() {
 	var rows []table.Row
 	lowerFilter := strings.ToLower(m.filter)
@@ -140,6 +148,7 @@ func (m *auditLogModel) rebuildTableRows() {
 	m.table.SetRows(rows)
 }
 
+// padCell is a helper to pad a string to a certain width for table layout.
 func padCell(s string, width int) string {
 	if len([]rune(s)) >= width {
 		return string([]rune(s)[:width])
@@ -147,10 +156,12 @@ func padCell(s string, width int) string {
 	return s + strings.Repeat(" ", width-len([]rune(s)))
 }
 
+// Init initializes the model.
 func (m *auditLogModel) Init() tea.Cmd {
 	return nil
 }
 
+// Update handles messages and updates the model's state.
 func (m *auditLogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
@@ -210,6 +221,7 @@ func (m *auditLogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// View renders the audit log UI.
 func (m *auditLogModel) View() string {
 	if m.err != nil {
 		return errorStyle.Render(fmt.Sprintf("Error loading audit log: %v", m.err))
@@ -228,6 +240,7 @@ func (m *auditLogModel) View() string {
 	return b.String()
 }
 
+// footerLine generates the dynamic help/status line for the footer.
 func (m *auditLogModel) footerLine() string {
 	var filterStatus string
 	colNames := []string{
@@ -248,6 +261,9 @@ func (m *auditLogModel) footerLine() string {
 	return fmt.Sprintf("%s  %s", i18n.T("audit_log.footer"), filterStatus)
 }
 
+// renderAuditLogTable provides a custom rendering implementation for the table.
+// This is necessary to apply custom row-level styling (e.g., color-coding actions)
+// which the standard bubbletea table does not support directly.
 func (m *auditLogModel) renderAuditLogTable() string {
 	var out strings.Builder
 	rows := m.table.Rows()

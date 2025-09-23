@@ -1,4 +1,7 @@
-package tui
+// package tui provides the terminal user interface for Keymaster.
+// This file contains the logic for the account creation and editing form,
+// including input handling, validation, and tag autocompletion.
+package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
@@ -13,11 +16,13 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
-// A simple style for focused text inputs.
+// focusedStyle is a simple style for focused text inputs.
 var focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("170"))
+
+// disabledStyle is a simple style for disabled text inputs.
 var disabledStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 
-// A message to signal that an account was modified (created or updated).
+// accountModifiedMsg is a message to signal that an account was modified (created or updated).
 type accountModifiedMsg struct {
 	isNew    bool
 	username string
@@ -25,6 +30,8 @@ type accountModifiedMsg struct {
 }
 
 type accountFormModel struct {
+	// focusIndex determines which input or button is currently active.
+	// 0: user, 1: host, 2: label, 3: tags, 4: submit button.
 	focusIndex     int
 	inputs         []textinput.Model // 0: user, 1: host, 2: label, 3: tags
 	err            error
@@ -37,6 +44,8 @@ type accountFormModel struct {
 	isSuggesting     bool
 }
 
+// newAccountFormModel creates a new form model, either for a new account
+// or pre-filled to edit an existing one.
 func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 	m := accountFormModel{
 		inputs:       make([]textinput.Model, 4),
@@ -112,10 +121,12 @@ func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 	return m
 }
 
+// Init initializes the form model, returning a command to start the cursor blinking.
 func (m accountFormModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
+// Update handles messages and updates the form model's state.
 func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -263,6 +274,7 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// updateInputs passes messages to the underlying text input models.
 func (m accountFormModel) updateInputs(msg tea.Msg) (accountFormModel, tea.Cmd) {
 	cmds := make([]tea.Cmd, len(m.inputs))
 	for i := range m.inputs {
@@ -271,6 +283,7 @@ func (m accountFormModel) updateInputs(msg tea.Msg) (accountFormModel, tea.Cmd) 
 	return m, tea.Batch(cmds...)
 }
 
+// View renders the account form UI based on the current model state.
 func (m accountFormModel) View() string {
 	var viewItems []string
 
