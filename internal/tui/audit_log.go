@@ -221,14 +221,14 @@ func (m *auditLogModel) View() string {
 	} else {
 		b.WriteString(m.renderAuditLogTable())
 	}
-	// Always show the styled help line/footer at the bottom
-	b.WriteString("\n")
+	// Always show the styled help line/footer at the bottom, single line, styled
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
-	b.WriteString(footerStyle.Render(m.footerView()))
+	b.WriteString("\n")
+	b.WriteString(footerStyle.Render(m.footerLine()))
 	return b.String()
 }
 
-func (m *auditLogModel) footerView() string {
+func (m *auditLogModel) footerLine() string {
 	var filterStatus string
 	colNames := []string{
 		i18n.T("all"),
@@ -238,13 +238,14 @@ func (m *auditLogModel) footerView() string {
 		i18n.T("audit_log.header.details"),
 	}
 	if m.isFiltering {
-		filterStatus = fmt.Sprintf("Filter [%s]: %s█ (tab to change column)", colNames[m.filterCol], m.filter)
+		filterStatus = fmt.Sprintf(i18n.T("audit_log.filtering"), colNames[m.filterCol], m.filter)
 	} else if m.filter != "" {
-		filterStatus = fmt.Sprintf("Filter [%s]: %s (press 'esc' to clear)", colNames[m.filterCol], m.filter)
+		filterStatus = fmt.Sprintf(i18n.T("audit_log.filter_active"), colNames[m.filterCol], m.filter)
 	} else {
-		filterStatus = "Press / to filter..."
+		filterStatus = i18n.T("audit_log.filter_hint")
 	}
-	return helpStyle.Render(fmt.Sprintf("\n(↑/↓ to scroll, tab: column, q to quit) %s", filterStatus))
+	// Single line: help and filter status
+	return fmt.Sprintf("%s  %s", i18n.T("audit_log.footer"), filterStatus)
 }
 
 func (m *auditLogModel) renderAuditLogTable() string {
