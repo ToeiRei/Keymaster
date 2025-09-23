@@ -1,7 +1,6 @@
 package deploy
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -130,40 +129,42 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 	}, nil
 }
 
-// DeployAuthorizedKeys uploads the new authorized_keys content and moves it into place.
+// DeployAuthorizedKeys uploads the new authorized_keys content and moves it into place atomically.
+// This function uses a pure-SFTP method to be compatible with restricted keys
+// (e.g., command="internal-sftp").
 func (d *Deployer) DeployAuthorizedKeys(content string) error {
 	// 1. Ensure .ssh directory exists with correct permissions.
-	_ = d.sftp.Mkdir(".ssh") // Ignore error if it already exists.
-	if err := d.sftp.Chmod(".ssh", 0700); err != nil {
+	sshDir := ".ssh"
+	_ = d.sftp.Mkdir(sshDir) // Ignore error if it already exists.
+	if err := d.sftp.Chmod(sshDir, 0700); err != nil {
 		return fmt.Errorf("failed to chmod .ssh directory: %w", err)
 	}
 
-	// 2. Upload to a temporary file.
-	tmpPath := path.Join("/tmp", fmt.Sprintf("authorized_keys.keymaster.%d", time.Now().UnixNano()))
+	// 2. Upload to a temporary file within the .ssh directory for atomic rename.
+	tmpPath := path.Join(sshDir, fmt.Sprintf("authorized_keys.keymaster.%d", time.Now().UnixNano()))
 	f, err := d.sftp.Create(tmpPath)
 	if err != nil {
 		return fmt.Errorf("failed to create temporary file on remote: %w", err)
 	}
 	if _, err := f.Write([]byte(content)); err != nil {
 		f.Close()
+		// Best effort to clean up the failed upload
+		_ = d.sftp.Remove(tmpPath)
 		return fmt.Errorf("failed to write to temporary file on remote: %w", err)
 	}
 	f.Close()
 
-	// 3. Move the file into place atomically and set permissions.
-	finalPath := ".ssh/authorized_keys"
-	cmd := fmt.Sprintf("mv %s %s && chmod 600 %s", tmpPath, finalPath, finalPath)
-
-	session, err := d.client.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed to create session for mv command: %w", err)
+	// 3. Set permissions on the temporary file before moving.
+	if err := d.sftp.Chmod(tmpPath, 0600); err != nil {
+		_ = d.sftp.Remove(tmpPath)
+		return fmt.Errorf("failed to chmod temporary file: %w", err)
 	}
-	defer session.Close()
 
-	var stderr bytes.Buffer
-	session.Stderr = &stderr
-	if err := session.Run(cmd); err != nil {
-		return fmt.Errorf("failed to move authorized_keys file (err: %v, stderr: %s)", err, stderr.String())
+	// 4. Atomically move the file into place.
+	finalPath := path.Join(sshDir, "authorized_keys")
+	if err := d.sftp.Rename(tmpPath, finalPath); err != nil {
+		_ = d.sftp.Remove(tmpPath)
+		return fmt.Errorf("failed to atomically rename authorized_keys file: %w", err)
 	}
 
 	return nil

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2024-09-24
+
+### Security
+- **Automatic System Key Hardening:** Keymaster now automatically prepends restrictive options (`command="internal-sftp"`, `no-port-forwarding`, etc.) to its system key during every deployment. This significantly hardens security by default, ensuring the system key can only be used for SFTP operations and not for interactive shells, even if compromised.
+
+---
+
 ## [1.2.0] - 2024-09-23
 
 This release introduces a massive overhaul of the user interface, migrating to a modern, responsive TUI.

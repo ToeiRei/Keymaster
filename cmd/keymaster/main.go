@@ -14,12 +14,13 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/toeirei/keymaster/internal/crypto/ssh"
+	internalkey "github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
 	"github.com/toeirei/keymaster/internal/tui"
+	"golang.org/x/crypto/ssh"
 )
 
 var version = "dev" // this will be set by the linker
@@ -225,14 +226,14 @@ The previous key is kept for accessing hosts that have not yet been updated.`,
 			log.Fatalf("Error generating key pair: %v", err)
 		}
 
-		sshPubKey, err := ssh.NewPublicKey(pubKey)
+		sshPubKey, err := ssh.NewPublicKey(pubKey) // Use standard ssh package
 		if err != nil {
 			log.Fatalf("Error creating SSH public key: %v", err)
 		}
-		pubKeyBytes := ssh.MarshalAuthorizedKey(sshPubKey)
+		pubKeyBytes := ssh.MarshalAuthorizedKey(sshPubKey) // Use standard ssh package
 		publicKeyString := fmt.Sprintf("%s keymaster-system-key", strings.TrimSpace(string(pubKeyBytes)))
 
-		pemBlock, err := ssh.MarshalEd25519PrivateKey(privKey, "")
+		pemBlock, err := internalkey.MarshalEd25519PrivateKey(privKey, "") // Use aliased internal package
 		if err != nil {
 			log.Fatalf("Error marshaling private key: %v", err)
 		}
@@ -425,7 +426,7 @@ step before Keymaster can manage a new host.`,
 			log.Fatalf("Could not get host key: %v", err)
 		}
 
-		fingerprint := ssh.FingerprintSHA256(key)
+		fingerprint := ssh.FingerprintSHA256(key) // Use standard ssh package
 		fmt.Printf("\nThe authenticity of host '%s' can't be established.\n", hostname)
 		fmt.Printf("%s key fingerprint is %s.\n", key.Type(), fingerprint)
 
@@ -444,7 +445,7 @@ step before Keymaster can manage a new host.`,
 			os.Exit(1)
 		}
 
-		keyStr := string(ssh.MarshalAuthorizedKey(key))
+		keyStr := string(ssh.MarshalAuthorizedKey(key)) // Use standard ssh package
 		if err := db.AddKnownHostKey(hostname, keyStr); err != nil {
 			log.Fatalf("Failed to save host key to database: %v", err)
 		}

@@ -120,3 +120,22 @@ Here's how it works and what it means for security:
 *   **What's the risk?** The primary security consideration is the database file itself. If an attacker gains read access to your `keymaster.db` (or the equivalent in Postgres/MySQL), they will have the private key that grants access to all managed accounts.
 
 **Treat your `keymaster.db` file as you would any sensitive secret, like a private key itself.** Ensure it has strict file permissions (e.g., `0600`) and is stored in a secure location. This trade-off—storing one private key for the sake of simplicity—is central to the Keymaster model.
+
+### Automatic System Key Hardening
+
+To minimize risk, Keymaster automatically applies strict restrictions to its system key upon every deployment. This prevents the key from being used for interactive shell access or other unintended purposes, even if the private key is compromised.
+
+When deployed, the Keymaster system key in the remote `authorized_keys` file will look like this:
+
+```
+# Keymaster Managed Keys (Serial: 1)
+command="internal-sftp",no-port-forwarding,no-x11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAA... keymaster-system-key
+```
+
+This is not something you need to configure; Keymaster handles it for you to enforce the principle of least privilege.
+
+**What these options do:**
+
+*   `command="internal-sftp"`: This is the most important restriction. It forces the key to only be used for SFTP sessions and prevents shell command execution. Keymaster's deployment and audit logic is designed to work with this restriction.
+*   `no-port-forwarding`, `no-x11-forwarding`, `no-agent-forwarding`: These disable various forms of SSH tunneling, further reducing the key's capabilities.
+*   `no-pty`: Prevents the allocation of a terminal, which is not needed for SFTP.
