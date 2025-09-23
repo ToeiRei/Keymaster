@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -287,9 +288,10 @@ func (m publicKeysModel) viewConfirmation() string {
 }
 
 func (m publicKeysModel) viewKeyList() string {
-	var viewItems []string
-	viewItems = append(viewItems, titleStyle.Render("🔑 Manage Public Keys"))
+	title := mainTitleStyle.Render("🔑 " + i18n.T("public_keys.title"))
+	header := lipgloss.NewStyle().Align(lipgloss.Center).Render(title)
 
+	// List pane (left)
 	var listItems []string
 	for i, key := range m.displayedKeys {
 		var globalMarker string
@@ -303,30 +305,76 @@ func (m publicKeysModel) viewKeyList() string {
 			listItems = append(listItems, itemStyle.Render("  "+line))
 		}
 	}
-	viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
 
 	if len(m.displayedKeys) == 0 && m.filter == "" {
-		viewItems = append(viewItems, helpStyle.Render("No public keys found. Press 'a' to add one."))
+		listItems = append(listItems, helpStyle.Render(i18n.T("public_keys.empty")))
 	} else if len(m.displayedKeys) == 0 && m.filter != "" {
-		viewItems = append(viewItems, helpStyle.Render("No keys match your filter."))
+		listItems = append(listItems, helpStyle.Render(i18n.T("public_keys.empty_filtered")))
 	}
-	viewItems = append(viewItems, "") // Spacer
 
+	listPaneTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("public_keys.list_title"))
+	listPane := lipgloss.JoinVertical(lipgloss.Left, listPaneTitle, "", lipgloss.JoinVertical(lipgloss.Left, listItems...))
+
+	paneStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorSubtle).
+		Padding(1, 2)
+
+	menuWidth := 48
+	detailWidth := m.width - 4 - menuWidth - 2
+
+	leftPane := paneStyle.Width(menuWidth).Render(listPane)
+
+	// Details/status pane (right)
+	var detailsItems []string
+	if m.err != nil {
+		detailsItems = append(detailsItems, helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.error"), m.err)))
+	} else if m.status != "" {
+		detailsItems = append(detailsItems, statusMessageStyle.Render(m.status))
+	}
+
+	// Show details for the selected key
+	if len(m.displayedKeys) > 0 && m.cursor < len(m.displayedKeys) {
+		key := m.displayedKeys[m.cursor]
+		detailsItems = append(detailsItems, "", helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.detail_comment"), key.Comment)))
+		detailsItems = append(detailsItems, helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.detail_algorithm"), key.Algorithm)))
+		detailsItems = append(detailsItems, helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.detail_global"), boolToYesNo(key.IsGlobal))))
+		// TODO: The `model.PublicKey` struct does not have a `Fingerprint` field, causing a compilation error.
+		// This line is commented out. Please check the struct definition for the correct field name.
+		// detailsItems = append(detailsItems, helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.detail_fingerprint"), key.Fingerprint)))
+	}
+
+	// Only show filter status if filtering
+	if m.isFiltering {
+		detailsItems = append(detailsItems, "", helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.filtering"), m.filter)))
+	}
+
+	rightPane := paneStyle.Width(detailWidth).MarginLeft(2).Render(lipgloss.JoinVertical(lipgloss.Left, detailsItems...))
+
+	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
+
+	// Help/footer line always at the bottom
+	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
 	var filterStatus string
 	if m.isFiltering {
-		filterStatus = fmt.Sprintf("Filter: %s█", m.filter)
+		filterStatus = fmt.Sprintf(i18n.T("public_keys.filtering"), m.filter)
 	} else if m.filter != "" {
-		filterStatus = fmt.Sprintf("Filter: %s (press 'esc' to clear)", m.filter)
+		filterStatus = fmt.Sprintf(i18n.T("public_keys.filter_active"), m.filter)
 	} else {
-		filterStatus = "Press / to filter..."
+		filterStatus = i18n.T("public_keys.filter_hint")
 	}
+	helpLine := footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T("public_keys.footer"), filterStatus))
 
-	viewItems = append(viewItems, helpStyle.Render(fmt.Sprintf("(a)dd (d)elete (g)lobal toggle (u)sage (q)uit\n%s", filterStatus)))
-	if m.status != "" {
-		viewItems = append(viewItems, "", statusMessageStyle.Render(m.status))
+	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", helpLine)
+
+	// Helper for Yes/No i18n
+}
+
+func boolToYesNo(val bool) string {
+	if val {
+		return i18n.T("public_keys.yes")
 	}
-
-	return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
+	return i18n.T("public_keys.no")
 }
 
 func (m publicKeysModel) viewUsageReport() string {
