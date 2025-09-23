@@ -18,7 +18,7 @@ We encourage all users to run the latest version of the software by updating wit
 
 If you believe you have found a security vulnerability in Keymaster, please **do not** open a public issue on GitHub.
 
-Instead, we ask you to send a private email to **security@example.com**.
+Instead, we ask you to send a private email to **security@stargazer.at**.
 
 Please include the following details in your report:
 
