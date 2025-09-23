@@ -1,3 +1,5 @@
+# General
+all: "Alle"
 # German translations for Keymaster
 menu.manage_accounts: "Konten verwalten"
 menu.manage_public_keys: "Öffentliche Schlüssel verwalten"
@@ -151,3 +153,11 @@ deploy.help_failed: "esc: zurück"
 deploy.filtering: "Filter: %s█"
 deploy.filter_active: "Filter: %s (mit 'esc' löschen)"
 deploy.filter_hint: "Mit / filtern..."
+
+# Audit log table headers
+audit_log.title: "Audit-Log"
+audit_log.empty: "Keine Audit-Log-Einträge gefunden."
+audit_log.header.timestamp: "Zeitstempel"
+audit_log.header.user: "Benutzer"
+audit_log.header.action: "Aktion"
+audit_log.header.details: "Details"

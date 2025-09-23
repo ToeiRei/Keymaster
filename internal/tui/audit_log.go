@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -15,6 +16,7 @@ type auditLogModel struct {
 	table       table.Model
 	allEntries  []model.AuditLogEntry // Master list of all log entries
 	filter      string
+	filterCol   int // 0=all, 1=timestamp, 2=user, 3=action, 4=details
 	isFiltering bool
 	err         error
 }
@@ -29,10 +31,10 @@ func newAuditLogModel() auditLogModel {
 	m.allEntries = entries
 
 	columns := []table.Column{
-		{Title: "Timestamp", Width: 20},
-		{Title: "User", Width: 15},
-		{Title: "Action", Width: 25},
-		{Title: "Details", Width: 60},
+		{Title: i18n.T("audit_log.header.timestamp"), Width: 20},
+		{Title: i18n.T("audit_log.header.user"), Width: 15},
+		{Title: i18n.T("audit_log.header.action"), Width: 25},
+		{Title: i18n.T("audit_log.header.details"), Width: 60},
 	}
 
 	t := table.New(
@@ -65,18 +67,35 @@ func (m *auditLogModel) rebuildTableRows() {
 	lowerFilter := strings.ToLower(m.filter)
 
 	for _, entry := range m.allEntries {
-		// If filtering, check if any field contains the filter text.
-		if m.filter != "" {
-			if !strings.Contains(strings.ToLower(entry.Timestamp), lowerFilter) &&
-				!strings.Contains(strings.ToLower(entry.Username), lowerFilter) &&
-				!strings.Contains(strings.ToLower(entry.Action), lowerFilter) &&
-				!strings.Contains(strings.ToLower(entry.Details), lowerFilter) {
-				continue // Skip this row if it doesn't match
-			}
+		match := false
+		switch m.filterCol {
+		case 0: // all
+			match = strings.Contains(strings.ToLower(entry.Timestamp), lowerFilter) ||
+				strings.Contains(strings.ToLower(entry.Username), lowerFilter) ||
+				strings.Contains(strings.ToLower(entry.Action), lowerFilter) ||
+				strings.Contains(strings.ToLower(entry.Details), lowerFilter)
+		case 1:
+			match = strings.Contains(strings.ToLower(entry.Timestamp), lowerFilter)
+		case 2:
+			match = strings.Contains(strings.ToLower(entry.Username), lowerFilter)
+		case 3:
+			match = strings.Contains(strings.ToLower(entry.Action), lowerFilter)
+		case 4:
+			match = strings.Contains(strings.ToLower(entry.Details), lowerFilter)
+		}
+		if m.filter != "" && !match {
+			continue // Skip this row if it doesn't match
 		}
 
-		// --- Color Code the Action ---
+		ts := entry.Timestamp
+		if len(ts) > 19 {
+			ts = ts[:19] // Truncate fractional seconds for cleaner display
+		}
+
+		// Color-code only if not selected (selection is handled by table styles)
 		actionCell := entry.Action
+		// The table component will highlight the selected row, so we only color-code non-selected rows here.
+		// We can't know the selected row index here, so we must color all, but the table's Selected style will override.
 		switch {
 		case strings.HasPrefix(entry.Action, "ADD"),
 			strings.HasPrefix(entry.Action, "CREATE"),
@@ -90,11 +109,6 @@ func (m *auditLogModel) rebuildTableRows() {
 		case strings.HasPrefix(entry.Action, "TOGGLE_"),
 			strings.HasPrefix(entry.Action, "UPDATE_"):
 			actionCell = helpStyle.Render(entry.Action)
-		}
-
-		ts := entry.Timestamp
-		if len(ts) > 19 {
-			ts = ts[:19] // Truncate fractional seconds for cleaner display
 		}
 
 		rows = append(rows, table.Row{ts, entry.Username, actionCell, entry.Details})
@@ -142,6 +156,12 @@ func (m auditLogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyRunes:
 				m.filter += string(msg.Runes)
 				m.rebuildTableRows()
+			case tea.KeyTab:
+				m.filterCol = (m.filterCol + 1) % 5
+				m.rebuildTableRows()
+			case tea.KeyShiftTab:
+				m.filterCol = (m.filterCol + 4) % 5
+				m.rebuildTableRows()
 			}
 			return m, nil
 		}
@@ -171,13 +191,20 @@ func (m auditLogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m auditLogModel) View() string {
-	var b strings.Builder
 	if m.err != nil {
-		b.WriteString(fmt.Sprintf("Error loading audit log: %v", m.err))
+		return errorStyle.Render(fmt.Sprintf("Error loading audit log: %v", m.err))
+	}
+
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("📜 "+i18n.T("audit_log.title")) + "\n\n")
+
+	if len(m.table.Rows()) == 0 {
+		b.WriteString(helpStyle.Render(i18n.T("audit_log.empty")))
+		b.WriteString(m.footerView())
 		return b.String()
 	}
 
-	b.WriteString(titleStyle.Render("📜 Audit Log") + "\n")
+	// Render the table with headers
 	b.WriteString(m.table.View())
 	b.WriteString(m.footerView())
 	return b.String()
@@ -185,12 +212,19 @@ func (m auditLogModel) View() string {
 
 func (m auditLogModel) footerView() string {
 	var filterStatus string
+	colNames := []string{
+		i18n.T("all"),
+		i18n.T("audit_log.header.timestamp"),
+		i18n.T("audit_log.header.user"),
+		i18n.T("audit_log.header.action"),
+		i18n.T("audit_log.header.details"),
+	}
 	if m.isFiltering {
-		filterStatus = fmt.Sprintf("Filter: %s█", m.filter)
+		filterStatus = fmt.Sprintf("Filter [%s]: %s█ (tab to change column)", colNames[m.filterCol], m.filter)
 	} else if m.filter != "" {
-		filterStatus = fmt.Sprintf("Filter: %s (press 'esc' to clear)", m.filter)
+		filterStatus = fmt.Sprintf("Filter [%s]: %s (press 'esc' to clear)", colNames[m.filterCol], m.filter)
 	} else {
 		filterStatus = "Press / to filter..."
 	}
-	return helpStyle.Render(fmt.Sprintf("\n(↑/↓ to scroll, q to quit) %s", filterStatus))
+	return helpStyle.Render(fmt.Sprintf("\n(↑/↓ to scroll, tab: column, q to quit) %s", filterStatus))
 }
