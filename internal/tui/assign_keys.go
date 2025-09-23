@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 // package tui provides the terminal user interface for Keymaster.
 // This file contains the logic for the key assignment view, which allows
 // users to manage the many-to-many relationship between accounts and public keys.

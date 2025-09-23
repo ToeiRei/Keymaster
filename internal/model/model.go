@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 // package model defines the core data structures used throughout Keymaster.
 // These structs represent the entities stored in the database and used by
 // the application logic, such as accounts, keys, and audit logs.

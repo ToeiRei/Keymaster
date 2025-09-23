@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 // package tui provides the terminal user interface for Keymaster.
 // This file contains the logic for the audit log view, which displays a
 // filterable, color-coded table of all actions taken within the application.

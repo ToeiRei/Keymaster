@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 // main.go sets up the command-line interface (CLI) for the Keymaster
 // application using the Cobra library. It defines the root command,
 // subcommands (like deploy, audit, rotate-key), flags, and the main

@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 // package db provides the data access layer for Keymaster.
 // It abstracts the underlying database (e.g., SQLite, PostgreSQL) behind a
 // consistent interface, allowing the rest of the application to interact with

@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 // package tui provides the terminal user interface for Keymaster.
 // This file contains the logic for the system key rotation view, which handles
 // both the initial generation of a system key and the rotation of an existing one.
