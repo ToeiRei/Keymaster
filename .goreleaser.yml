@@ -44,7 +44,7 @@ checksum:
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
 
-changelog:
-  # Skip automatic changelog generation, as you maintain it manually.
-  # GoReleaser will use the text from your git tag annotation for the release notes.
-  skip: true
+release:
+  # Use the release-notes.md file generated in the GitHub Actions workflow
+  # as the content for the GitHub release.
+  notes_file: "release-notes.md"

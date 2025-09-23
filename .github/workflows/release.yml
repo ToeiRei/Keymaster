@@ -20,6 +20,15 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
 
+      - name: Extract Release Notes
+        run: |
+          # The tag is in the format vX.Y.Z. We need to extract X.Y.Z.
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          # Use awk to find the section for the current version and print its content
+          # until we hit the separator for the next version ('---').
+          # This extracts the body of the latest changelog entry for the release notes.
+          awk -v ver="## [$VERSION]" '$0 ~ ver {p=1; next} p && /^---/ {exit} p' CHANGELOG.md > release-notes.md
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
         with:
