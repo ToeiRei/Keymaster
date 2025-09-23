@@ -9,6 +9,7 @@ Keymaster centralizes control of your `authorized_keys` files. Fed up with compl
 ## Core Features
 
 - **Modern Interactive TUI:** A beautiful and responsive terminal UI built with `lipgloss`. Features a main dashboard, filterable lists, color-coded tables, and a consistent, professional design.
+- **Multi-Language Support:** The TUI is fully internationalized, with initial support for English and German.
 - **Centralized Management:** A single SQLite database (`keymaster.db`) acts as the source of truth for all public keys and account assignments.
 - **Agentless Deployment:** Uses standard SSH/SFTP to connect to hosts and manage `authorized_keys` files. No remote agents required.
 - **Safe Key Rotation:** Features a robust system key rotation mechanism. Old keys are retained to ensure you can always regain access to hosts that were offline during a rotation.
