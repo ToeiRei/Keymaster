@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
+	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -344,40 +345,55 @@ func (m deployModel) updateComplete(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m deployModel) View() string {
-	var b strings.Builder
+	// ...existing code...
+
+	paneStyle := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorSubtle).Padding(1, 2)
+	helpFooterStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
 
 	if m.err != nil {
-		b.WriteString(titleStyle.Render("💥 Deployment Failed"))
-		b.WriteString("\n\n")
-		b.WriteString(fmt.Sprintf("Error: %v", m.err))
-		b.WriteString(helpStyle.Render("\n(esc to go back)"))
-		return b.String()
+		title := titleStyle.Render(i18n.T("deploy.failed"))
+		help := helpFooterStyle.Render(i18n.T("deploy.help_failed"))
+		content := fmt.Sprintf(i18n.T("account_form.error"), m.err)
+		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", content))
+		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 	}
 
 	switch m.state {
 	case deployStateMenu:
-		var viewItems []string
-		viewItems = append(viewItems, titleStyle.Render("🚀 Deploy to Fleet"))
+		title := titleStyle.Render(i18n.T("deploy.title"))
 		var listItems []string
 		for i, choice := range m.menuChoices {
+			var label string
+			switch i {
+			case 0:
+				label = i18n.T("deploy.menu.deploy_fleet")
+			case 1:
+				label = i18n.T("deploy.menu.deploy_single")
+			case 2:
+				label = i18n.T("deploy.menu.deploy_tag")
+			case 3:
+				label = i18n.T("deploy.menu.get_keys")
+			default:
+				label = choice
+			}
 			if m.menuCursor == i {
-				listItems = append(listItems, selectedItemStyle.Render("▸ "+choice))
+				listItems = append(listItems, selectedItemStyle.Render("▸ "+label))
 			} else {
-				listItems = append(listItems, itemStyle.Render("  "+choice))
+				listItems = append(listItems, itemStyle.Render("  "+label))
 			}
 		}
-		viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
-		viewItems = append(viewItems, "", helpStyle.Render("(j/k or up/down, enter to select, q to quit)"))
+		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, listItems...)))
+		help := helpFooterStyle.Render(i18n.T("deploy.help_menu"))
 		if m.status != "" {
-			viewItems = append(viewItems, "", helpStyle.Render(m.status))
+			mainPane += "\n" + helpFooterStyle.Render(m.status)
 		}
-		b.WriteString(lipgloss.JoinVertical(lipgloss.Left, viewItems...))
+		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+
 	case deployStateSelectAccount:
-		var viewItems []string
-		viewItems = append(viewItems, titleStyle.Render("🚀 Deploy: Select Account"))
+		title := titleStyle.Render(i18n.T("deploy.select_account"))
 		var listItems []string
 		if len(m.accounts) == 0 {
-			listItems = append(listItems, helpStyle.Render("No active accounts found. Please add one or enable an existing one."))
+			listItems = append(listItems, helpStyle.Render(i18n.T("deploy.no_accounts")))
 		} else {
 			for i, acc := range m.accounts {
 				line := acc.String()
@@ -388,15 +404,15 @@ func (m deployModel) View() string {
 				}
 			}
 		}
-		viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
-		viewItems = append(viewItems, "", helpStyle.Render("(enter to select, esc to go back)"))
-		b.WriteString(lipgloss.JoinVertical(lipgloss.Left, viewItems...))
+		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, listItems...)))
+		help := helpFooterStyle.Render(i18n.T("deploy.help_select"))
+		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+
 	case deployStateSelectTag:
-		var viewItems []string
-		viewItems = append(viewItems, titleStyle.Render("🚀 Deploy: Select Tag"))
+		title := titleStyle.Render(i18n.T("deploy.select_tag"))
 		var listItems []string
 		if len(m.tags) == 0 {
-			listItems = append(listItems, helpStyle.Render("No tags found in any accounts."))
+			listItems = append(listItems, helpStyle.Render(i18n.T("deploy.no_tags")))
 		} else {
 			for i, tag := range m.tags {
 				if m.tagCursor == i {
@@ -406,40 +422,46 @@ func (m deployModel) View() string {
 				}
 			}
 		}
-		viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
-		viewItems = append(viewItems, "", helpStyle.Render("(enter to select, esc to go back)"))
-		b.WriteString(lipgloss.JoinVertical(lipgloss.Left, viewItems...))
+		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, listItems...)))
+		help := helpFooterStyle.Render(i18n.T("deploy.help_select"))
+		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+
 	case deployStateShowAuthorizedKeys:
-		var viewItems []string
-		viewItems = append(viewItems, titleStyle.Render(fmt.Sprintf("📄 authorized_keys for %s", m.selectedAccount.String())))
-		viewItems = append(viewItems, m.authorizedKeys)
-		viewItems = append(viewItems, "", helpStyle.Render("(esc to go back)"))
-		b.WriteString(lipgloss.JoinVertical(lipgloss.Left, viewItems...))
+		title := titleStyle.Render(fmt.Sprintf(i18n.T("deploy.show_keys"), m.selectedAccount.String()))
+		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", m.authorizedKeys))
+		help := helpFooterStyle.Render(i18n.T("deploy.help_keys"))
+		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+
 	case deployStateFleetInProgress:
-		b.WriteString(titleStyle.Render("🚀 Deploying to Fleet..."))
+		title := titleStyle.Render(i18n.T("deploy.deploying_fleet"))
+		var statusLines []string
 		for _, acc := range m.accountsInFleet {
 			res, ok := m.fleetResults[acc.ID]
 			var status string
 			if !ok {
-				status = helpStyle.Render("pending...")
+				status = helpStyle.Render(i18n.T("deploy.pending"))
 			} else if res != nil {
-				status = "💥 " + helpStyle.Render("failed")
+				status = "💥 " + helpStyle.Render(i18n.T("deploy.failed_short"))
 			} else {
-				status = "✅ " + successStyle.Render("success")
+				status = "✅ " + successStyle.Render(i18n.T("deploy.success_short"))
 			}
-			b.WriteString(fmt.Sprintf("  %s %s\n", acc.String(), status))
+			statusLines = append(statusLines, fmt.Sprintf("  %s %s", acc.String(), status))
 		}
-		b.WriteString(helpStyle.Render("\n(Please wait...)\n"))
+		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, statusLines...)))
+		help := helpFooterStyle.Render(i18n.T("deploy.help_wait"))
 		if m.status != "" {
-			b.WriteString(helpStyle.Render("\n" + m.status))
+			mainPane += "\n" + helpFooterStyle.Render(m.status)
 		}
+		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 
 	case deployStateInProgress:
-		b.WriteString(titleStyle.Render("🚀 Deploying..."))
-		b.WriteString(m.status)
+		title := titleStyle.Render(i18n.T("deploy.deploying"))
+		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", m.status))
+		return lipgloss.JoinVertical(lipgloss.Left, mainPane)
+
 	case deployStateComplete:
-		b.WriteString(titleStyle.Render("✅ Deployment Complete"))
-		b.WriteString(m.status)
+		title := titleStyle.Render(i18n.T("deploy.complete"))
+		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", m.status))
 		// If it was a fleet deployment, show a detailed summary
 		if len(m.fleetResults) > 0 {
 			successCount := 0
@@ -453,27 +475,24 @@ func (m deployModel) View() string {
 					}
 				}
 			}
-			b.WriteString(fmt.Sprintf("\n\nSummary: %d successful, %d failed.", successCount, len(failedAccounts)))
-
+			mainPane += fmt.Sprintf(i18n.T("deploy.summary"), successCount, len(failedAccounts))
 			if len(failedAccounts) > 0 {
-				b.WriteString("\n\nFailed Deployments:\n")
-				b.WriteString(strings.Join(failedAccounts, "\n"))
+				mainPane += fmt.Sprintf(i18n.T("deploy.failed_accounts"), strings.Join(failedAccounts, "\n"))
 			}
 		}
-		b.WriteString(helpStyle.Render("\n\n(press enter or esc to continue)"))
+		help := helpFooterStyle.Render(i18n.T("deploy.help_complete"))
+		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 	}
-
-	return b.String()
+	return ""
 }
 
 // performDeploymentCmd is a tea.Cmd that executes the full deployment logic for a single account.
 func performDeploymentCmd(account model.Account) tea.Cmd {
 	return func() tea.Msg {
-		// 1. Determine which system key to use for the SSH connection.
 		var connectKey *model.SystemKey
 		var err error
 		if account.Serial == 0 {
-			// Bootstrap: use the active key. The user must have placed this manually.
+			// Bootstrap: use the active system key.
 			connectKey, err = db.GetActiveSystemKey()
 			if err != nil {
 				return deploymentResultMsg{account: account, err: fmt.Errorf("failed to get active system key for bootstrap: %w", err)}
