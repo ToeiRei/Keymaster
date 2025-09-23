@@ -53,7 +53,10 @@ func GenerateKeysContent(accountID int) (string, error) {
 	allUserKeysMap := make(map[int]keyInfo)
 
 	formatKey := func(key model.PublicKey) string {
-		return fmt.Sprintf("%s %s %s", key.Algorithm, key.KeyData, key.Comment)
+		if key.Comment != "" {
+			return fmt.Sprintf("%s %s %s", key.Algorithm, key.KeyData, key.Comment)
+		}
+		return fmt.Sprintf("%s %s", key.Algorithm, key.KeyData)
 	}
 
 	for _, key := range globalKeys {
