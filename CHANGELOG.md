@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-09-23
+
+### Added
+- **Internationalization Support:** The TUI now supports multiple languages, with a language switcher and initial translations for German.
+
+### Changed
+- **UI Polish:** A comprehensive "Tender Loving Care" pass was applied to most views, including the dashboard, account/key management, deployment dialogs, and audit logs, to refine styling and improve user experience.
+- **Key Assignment Rework:** The logic for assigning keys to accounts has been improved, especially regarding the handling of global keys.
+
+### Fixed
+- **Account Filter:** Resolved a UI glitch causing "jank" when filtering the accounts list.
+- **Audit Log Layout:** Fixed a minor styling issue with the footer in the audit log view.
+
+---
+
 ## [1.2.1] - 2024-09-24
 
 ### Changed
