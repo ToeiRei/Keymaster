@@ -1,4 +1,6 @@
-package db
+// package db provides the data access layer for Keymaster.
+// This file contains the SQLite implementation of the database store.
+package db // import "github.com/toeirei/keymaster/internal/db"
 
 import (
 	"database/sql"
@@ -34,6 +36,8 @@ func NewSqliteStore(dataSourceName string) (*SqliteStore, error) {
 	return &SqliteStore{db: db}, nil
 }
 
+// runMigrations executes the necessary SQL statements to create and update the
+// database schema for SQLite. It is designed to be idempotent.
 func runMigrations(db *sql.DB) error {
 	tables := []string{
 		`CREATE TABLE IF NOT EXISTS accounts (

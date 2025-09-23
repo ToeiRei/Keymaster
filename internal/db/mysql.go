@@ -1,4 +1,7 @@
-package db
+// package db provides the data access layer for Keymaster.
+// This file contains the MySQL implementation of the database store.
+// Note: This implementation is considered experimental.
+package db // import "github.com/toeirei/keymaster/internal/db"
 
 import (
 	"database/sql"
@@ -35,6 +38,8 @@ func NewMySQLStore(dataSourceName string) (*MySQLStore, error) {
 	return &MySQLStore{db: db}, nil
 }
 
+// runMySQLMigrations executes the necessary SQL statements to create the
+// database schema for MySQL. It is designed to be idempotent.
 func runMySQLMigrations(db *sql.DB) error {
 	// In MySQL, it's better to use VARCHAR for indexed columns and specify lengths.
 	tables := []string{

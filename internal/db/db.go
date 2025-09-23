@@ -1,4 +1,8 @@
-package db
+// package db provides the data access layer for Keymaster.
+// It abstracts the underlying database (e.g., SQLite, PostgreSQL) behind a
+// consistent interface, allowing the rest of the application to interact with
+// the database in a uniform way.
+package db // import "github.com/toeirei/keymaster/internal/db"
 
 import (
 	"fmt"
@@ -14,7 +18,8 @@ var (
 )
 
 // InitDB initializes the database connection based on the provided type and DSN.
-// It creates tables if they don't exist.
+// It sets the global `store` variable to the appropriate database implementation
+// and ensures that the necessary tables are created.
 func InitDB(dbType, dsn string) error {
 	var err error
 
@@ -52,7 +57,8 @@ func DeleteAccount(id int) error {
 	return store.DeleteAccount(id)
 }
 
-// UpdateAccountSerial sets the serial for a given account ID to a specific value.
+// UpdateAccountSerial sets the system key serial for a given account ID.
+// This is typically called after a successful deployment.
 func UpdateAccountSerial(id, serial int) error {
 	return store.UpdateAccountSerial(id, serial)
 }
@@ -93,9 +99,10 @@ func GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
 }
 
 // AddPublicKeyAndGetModel adds a public key to the database if it doesn't already
-// exist (based on the comment) and returns the full key model.
-// It returns (nil, nil) if the key is a duplicate.
-func AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) {
+// exist (based on the comment) and returns the full key model. If a key with
+// the same comment already exists, it returns (nil, nil) to indicate a
+// duplicate without an error.
+func AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) { //
 	return store.AddPublicKeyAndGetModel(algorithm, keyData, comment, isGlobal)
 }
 

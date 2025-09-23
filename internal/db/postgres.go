@@ -1,4 +1,7 @@
-package db
+// package db provides the data access layer for Keymaster.
+// This file contains the PostgreSQL implementation of the database store.
+// Note: This implementation is considered experimental.
+package db // import "github.com/toeirei/keymaster/internal/db"
 
 import (
 	"database/sql"
@@ -33,6 +36,8 @@ func NewPostgresStore(dataSourceName string) (*PostgresStore, error) {
 	return &PostgresStore{db: db}, nil
 }
 
+// runPostgresMigrations executes the necessary SQL statements to create the
+// database schema for PostgreSQL. It is designed to be idempotent.
 func runPostgresMigrations(db *sql.DB) error {
 	tables := []string{
 		`CREATE TABLE IF NOT EXISTS accounts (

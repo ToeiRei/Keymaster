@@ -1,4 +1,6 @@
-package ssh
+// package ssh provides convenience wrappers around the golang.org/x/crypto/ssh package
+// for handling SSH key formatting and operations.
+package ssh // import "github.com/toeirei/keymaster/internal/crypto/ssh"
 
 import (
 	"crypto/ed25519"
@@ -8,9 +10,16 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// Re-export for convenience from golang.org/x/crypto/ssh
+// The following variables are re-exported from golang.org/x/crypto/ssh for convenience,
+// centralizing the SSH-related utilities used throughout Keymaster.
+
+// NewPublicKey creates a new ssh.PublicKey from a crypto.PublicKey.
 var NewPublicKey = ssh.NewPublicKey
+
+// MarshalAuthorizedKey serializes a public key to the authorized_keys wire format.
 var MarshalAuthorizedKey = ssh.MarshalAuthorizedKey
+
+// FingerprintSHA256 returns the SHA256 fingerprint of the public key.
 var FingerprintSHA256 = ssh.FingerprintSHA256
 
 // MarshalEd25519PrivateKey converts an ed25519 private key to PEM format.
