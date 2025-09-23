@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -70,13 +71,13 @@ func initialModel() mainModel {
 		state: menuView,
 		menu: menuModel{
 			choices: []string{
-				"Manage Accounts",
-				"Manage Public Keys",
-				"Assign Keys to Accounts",
-				"Rotate System Keys",
-				"Deploy to Fleet",
-				"View Audit Log",
-				"View Accounts by Tag",
+				i18n.T("menu.manage_accounts"),
+				i18n.T("menu.manage_public_keys"),
+				i18n.T("menu.assign_keys"),
+				i18n.T("menu.rotate_system_keys"),
+				i18n.T("menu.deploy_to_fleet"),
+				i18n.T("menu.view_audit_log"),
+				i18n.T("menu.view_accounts_by_tag"),
 			},
 		},
 	}
@@ -159,12 +160,11 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = menuView
 			return m, refreshDashboardCmd()
 		}
-		var newDeployerModel tea.Model
-		newDeployerModel, cmd = m.deployer.Update(msg)
-		m.deployer = newDeployerModel.(deployModel)
+		var newDeployModel tea.Model
+		newDeployModel, cmd = m.deployer.Update(msg)
+		m.deployer = newDeployModel.(deployModel)
 
 	case auditLogView:
-		// If we received a "back" message, switch the state.
 		if _, ok := msg.(backToMenuMsg); ok {
 			m.state = menuView
 			return m, refreshDashboardCmd()
@@ -183,9 +183,8 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.tags = newTagsModel.(tagsViewModel)
 
 	default: // menuView
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			switch keyMsg.String() {
 			case "q":
 				return m, tea.Quit
 			case "up", "k":
@@ -235,6 +234,23 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// For now, other options just quit.
 					return m, tea.Quit
 				}
+			case "L":
+				// Toggle language between English and German
+				if i18n.T("menu.manage_accounts") == "Manage Accounts" {
+					i18n.SetLang("de")
+				} else {
+					i18n.SetLang("en")
+				}
+				m.menu.choices = []string{
+					i18n.T("menu.manage_accounts"),
+					i18n.T("menu.manage_public_keys"),
+					i18n.T("menu.assign_keys"),
+					i18n.T("menu.rotate_system_keys"),
+					i18n.T("menu.deploy_to_fleet"),
+					i18n.T("menu.view_audit_log"),
+					i18n.T("menu.view_accounts_by_tag"),
+				}
+				return m, nil
 			}
 		}
 	}
@@ -242,34 +258,33 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// View is called to render the UI. It's a string that gets printed to the
-// terminal.
+// View renders the TUI. It's called after every Update.
 func (m mainModel) View() string {
 	if m.err != nil {
-		return fmt.Sprintf("Error: %v\n", m.err)
+		// A simple error view
+		errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Padding(1, 2)
+		return errorStyle.Render(fmt.Sprintf("An error occurred: %v", m.err))
 	}
 
-	var view string
-	// Delegate rendering to the active view.
+	// Delegate rendering to the currently active view.
 	switch m.state {
 	case accountsView:
-		view = m.accounts.View()
+		return m.accounts.View()
 	case publicKeysView:
-		view = m.keys.View()
+		return m.keys.View()
 	case assignKeysView:
-		view = m.assignment.View()
-	case deployView:
-		view = m.deployer.View()
+		return m.assignment.View()
 	case rotateKeyView:
-		view = m.rotator.View()
+		return m.rotator.View()
+	case deployView:
+		return m.deployer.View()
 	case auditLogView:
-		view = m.auditLog.View()
+		return m.auditLog.View()
 	case tagsView:
-		view = m.tags.View()
+		return m.tags.View()
 	default: // menuView
-		view = m.menu.View(m.dashboard, m.width)
+		return m.menu.View(m.dashboard, m.width)
 	}
-	return docStyle.Render(view)
 }
 
 func (m menuModel) View(data dashboardData, width int) string {
@@ -353,8 +368,8 @@ func (m menuModel) View(data dashboardData, width int) string {
 	}
 	dashboardContent := lipgloss.JoinVertical(lipgloss.Left, dashboardItems...)
 
-	leftPane := paneStyle.Copy().Width(menuWidth).Render(menuContent)
-	rightPane := paneStyle.Copy().Width(dashboardWidth).MarginLeft(2).Render(dashboardContent)
+	leftPane := paneStyle.Width(menuWidth).Render(menuContent)
+	rightPane := paneStyle.Width(dashboardWidth).MarginLeft(2).Render(dashboardContent)
 
 	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
 
