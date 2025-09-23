@@ -35,3 +35,13 @@ account_form.add_title: "Neues Konto hinzufügen"
 account_form.submit: "Speichern"
 account_form.help: "(tab zum Navigieren, enter zum Speichern, esc zum Abbrechen)"
 account_form.error: "Fehler: %v"
+
+# Accounts overview translations
+accounts.title: "Konten verwalten"
+accounts.error: "Fehler: %v"
+accounts.empty: "Keine Konten gefunden. Mit 'a' hinzufügen."
+accounts.empty_filtered: "Keine Konten passen zum Filter."
+accounts.filtering: "Filter: %s█"
+accounts.filter_active: "Filter: %s (mit 'esc' löschen)"
+accounts.filter_hint: "Mit / filtern..."
+accounts.footer: "(a)dd (e)dit (d)elete (t)oggle (v)erify (i)mport (q)uit\n%s"

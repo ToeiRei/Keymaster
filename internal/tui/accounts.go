@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
+	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
 	"golang.org/x/crypto/ssh"
@@ -257,9 +258,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.isFiltering {
 			switch msg.Type {
 			case tea.KeyEsc:
-				m.isFiltering = false
-				m.filter = ""
-				m.rebuildDisplayedAccounts()
+				m.isFiltering = false // Exit filter mode, but keep filter
 			case tea.KeyEnter:
 				m.isFiltering = false
 			case tea.KeyBackspace:
@@ -278,13 +277,23 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "/":
 			m.isFiltering = true
-			m.filter = "" // Start with a fresh filter
+			// Keep existing filter if present, don't clear
 			m.rebuildDisplayedAccounts()
 			return m, nil
 
-		// Go back to the main menu.
-		case "q", "esc":
+			// Go back to the main menu.
+		case "q":
 			if m.filter != "" && !m.isFiltering {
+				m.filter = ""
+				m.rebuildDisplayedAccounts()
+				return m, nil
+			}
+			return m, func() tea.Msg { return backToMenuMsg{} }
+		case "esc":
+			if m.isFiltering {
+				m.isFiltering = false // Just exit filter mode, keep filter
+				return m, nil
+			} else if m.filter != "" {
 				m.filter = ""
 				m.rebuildDisplayedAccounts()
 				return m, nil
@@ -420,10 +429,10 @@ func (m accountsModel) View() string {
 
 	// --- This is the list view rendering ---
 	var viewItems []string
-	viewItems = append(viewItems, titleStyle.Render("🔑 Manage Accounts"))
+	viewItems = append(viewItems, titleStyle.Render("🔑 "+i18n.T("accounts.title")))
 
 	if m.err != nil {
-		viewItems = append(viewItems, fmt.Sprintf("Error: %v", m.err))
+		viewItems = append(viewItems, helpStyle.Render(fmt.Sprintf(i18n.T("accounts.error"), m.err)))
 		return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
 	}
 
@@ -454,22 +463,24 @@ func (m accountsModel) View() string {
 	viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
 
 	if len(m.displayedAccounts) == 0 && m.filter == "" {
-		viewItems = append(viewItems, helpStyle.Render("No accounts found. Press 'a' to add one."))
+		viewItems = append(viewItems, helpStyle.Render(i18n.T("accounts.empty")))
 	} else if len(m.displayedAccounts) == 0 && m.filter != "" {
-		viewItems = append(viewItems, helpStyle.Render("No accounts match your filter."))
+		viewItems = append(viewItems, helpStyle.Render(i18n.T("accounts.empty_filtered")))
 	}
 	viewItems = append(viewItems, "") // Spacer
 
 	var filterStatus string
 	if m.isFiltering {
-		filterStatus = fmt.Sprintf("Filter: %s█", m.filter)
+		filterStatus = fmt.Sprintf(i18n.T("accounts.filtering"), m.filter)
 	} else if m.filter != "" {
-		filterStatus = fmt.Sprintf("Filter: %s (press 'esc' to clear)", m.filter)
+		filterStatus = fmt.Sprintf(i18n.T("accounts.filter_active"), m.filter)
 	} else {
-		filterStatus = "Press / to filter..."
+		filterStatus = i18n.T("accounts.filter_hint")
 	}
 
-	viewItems = append(viewItems, helpStyle.Render(fmt.Sprintf("(a)dd (e)dit (d)elete (t)oggle (v)erify (i)mport (q)uit\n%s", filterStatus)))
+	// Styled help/footer line
+	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
+	viewItems = append(viewItems, footerStyle.Render(fmt.Sprintf(i18n.T("accounts.footer"), filterStatus)))
 	if m.status != "" {
 		viewItems = append(viewItems, "", statusMessageStyle.Render(m.status))
 	}

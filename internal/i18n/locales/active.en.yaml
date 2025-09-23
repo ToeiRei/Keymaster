@@ -35,3 +35,13 @@ account_form.add_title: "Add New Account"
 account_form.submit: "Submit"
 account_form.help: "(tab to navigate, enter to submit, esc to cancel)"
 account_form.error: "Error: %v"
+
+# Accounts overview translations
+accounts.title: "Manage Accounts"
+accounts.error: "Error: %v"
+accounts.empty: "No accounts found. Press 'a' to add one."
+accounts.empty_filtered: "No accounts match your filter."
+accounts.filtering: "Filter: %s█"
+accounts.filter_active: "Filter: %s (press 'esc' to clear)"
+accounts.filter_hint: "Press / to filter..."
+accounts.footer: "(a)dd (e)dit (d)elete (t)oggle (v)erify (i)mport (q)uit\n%s"
