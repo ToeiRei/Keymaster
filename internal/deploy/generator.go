@@ -1,4 +1,7 @@
-package deploy
+// package deploy provides functionality for connecting to remote hosts via SSH
+// and managing their authorized_keys files. This file contains the logic for
+// generating the content of an authorized_keys file from database records.
+package deploy // import "github.com/toeirei/keymaster/internal/deploy"
 
 import (
 	"fmt"
@@ -9,9 +12,13 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
+// SystemKeyRestrictions defines the SSH options applied to the Keymaster system key.
+// These restrictions limit the key to only allow SFTP access for file management,
+// enhancing security by preventing shell access, port forwarding, etc.
 const SystemKeyRestrictions = "command=\"internal-sftp\",no-port-forwarding,no-x11-forwarding,no-agent-forwarding,no-pty"
 
 // GenerateKeysContent constructs the authorized_keys file content for a given account.
+// It combines the active system key, global user keys, and account-specific keys.
 func GenerateKeysContent(accountID int) (string, error) {
 	var content strings.Builder
 

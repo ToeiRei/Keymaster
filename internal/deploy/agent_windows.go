@@ -1,7 +1,10 @@
 //go:build windows
 // +build windows
 
-package deploy
+// package deploy provides functionality for connecting to remote hosts via SSH
+// and managing their authorized_keys files. This file contains the Windows-specific
+// implementation for locating the SSH agent.
+package deploy // import "github.com/toeirei/keymaster/internal/deploy"
 
 import (
 	"net"
@@ -13,7 +16,9 @@ import (
 )
 
 // getSSHAgent attempts to connect to a running SSH agent on Windows.
-// It tries Pageant-compatible agents first, then falls back to OpenSSH-style named pipes.
+// It first tries to connect to Pageant-compatible agents (like PuTTY's). If that
+// fails, it falls back to checking for the OpenSSH agent via named pipes, using
+// the SSH_AUTH_SOCK environment variable or a default pipe name.
 func getSSHAgent() agent.Agent {
 	// 1. Try Pageant-like agents (PuTTY, gpg-agent)
 	if pageant.Available() {

@@ -1,4 +1,7 @@
-package deploy
+// package deploy provides functionality for connecting to remote hosts via SSH
+// and managing their authorized_keys files. This file contains the core SSH and
+// SFTP client logic for connecting, authenticating, and transferring files.
+package deploy // import "github.com/toeirei/keymaster/internal/deploy"
 
 import (
 	"errors"
