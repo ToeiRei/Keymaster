@@ -64,3 +64,13 @@ public_keys.detail_global: "Global: %s"
 public_keys.detail_fingerprint: "Fingerabdruck: %s"
 public_keys.yes: "Ja"
 public_keys.no: "Nein"
+
+# Public key form translations
+public_key_form.add_title: "Neuen öffentlichen Schlüssel hinzufügen"
+public_key_form.prompt: "Öffentlichen Schlüssel einfügen: "
+public_key_form.placeholder: "ssh-ed25519 AAAA... benutzer@host"
+public_key_form.checkbox_unchecked: "[ ] Als globalen Schlüssel setzen (wird allen Konten zugewiesen)"
+public_key_form.checkbox_checked: "[x] Als globalen Schlüssel setzen (wird allen Konten zugewiesen)"
+public_key_form.help: "(tab zum Navigieren, Leertaste/Enter für Checkbox, Enter zum Speichern, esc zum Abbrechen)"
+public_key_form.error: "Fehler: %v"
+public_key_form.info: "Fügen Sie einen gültigen SSH-Öffentlichen Schlüssel ein. Sie können ihn als global setzen, um ihn allen Konten zuzuweisen."

@@ -64,3 +64,13 @@ public_keys.detail_global: "Global: %s"
 public_keys.detail_fingerprint: "Fingerprint: %s"
 public_keys.yes: "Yes"
 public_keys.no: "No"
+
+# Public key form translations
+public_key_form.add_title: "Add New Public Key"
+public_key_form.prompt: "Paste Public Key: "
+public_key_form.placeholder: "ssh-ed25519 AAAA... user@host"
+public_key_form.checkbox_unchecked: "[ ] Set as Global Key (will be deployed to all accounts)"
+public_key_form.checkbox_checked: "[x] Set as Global Key (will be deployed to all accounts)"
+public_key_form.help: "(tab to navigate, space/enter to toggle checkbox, enter on input to submit, esc to cancel)"
+public_key_form.error: "Error: %v"
+public_key_form.info: "Paste a valid SSH public key. You can set it as global to deploy to all accounts."

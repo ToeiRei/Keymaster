@@ -2,11 +2,12 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/sshkey"
 )
 
@@ -22,11 +23,11 @@ type publicKeyFormModel struct {
 
 func newPublicKeyFormModel() publicKeyFormModel {
 	ti := textinput.New()
-	ti.Placeholder = "ssh-ed25519 AAAA... user@host"
+	ti.Placeholder = i18n.T("public_key_form.placeholder")
 	ti.Focus()
 	ti.CharLimit = 1024
 	ti.Width = 80
-	ti.Prompt = "Paste Public Key: "
+	ti.Prompt = i18n.T("public_key_form.prompt")
 	ti.TextStyle = focusedStyle
 	ti.Cursor.Style = focusedStyle
 
@@ -99,28 +100,51 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m publicKeyFormModel) View() string {
-	var b strings.Builder
+	title := mainTitleStyle.Render("✨ " + i18n.T("public_key_form.add_title"))
+	header := lipgloss.NewStyle().Align(lipgloss.Center).Render(title)
 
-	b.WriteString(titleStyle.Render("✨ Add New Public Key"))
-	b.WriteString(m.input.View())
-	b.WriteString("\n\n")
+	// Left pane: input and checkbox
+	var leftItems []string
+	leftItems = append(leftItems, m.input.View())
+	leftItems = append(leftItems, "")
 
-	checkbox := "[ ] Set as Global Key (will be deployed to all accounts)"
+	checkbox := i18n.T("public_key_form.checkbox_unchecked")
 	if m.isGlobal {
-		checkbox = "[x] Set as Global Key (will be deployed to all accounts)"
+		checkbox = i18n.T("public_key_form.checkbox_checked")
 	}
-
 	if m.focusIndex == 1 {
-		b.WriteString(formSelectedItemStyle.Render(checkbox))
+		leftItems = append(leftItems, formSelectedItemStyle.Render(checkbox))
 	} else {
-		b.WriteString(formItemStyle.Render(checkbox))
+		leftItems = append(leftItems, formItemStyle.Render(checkbox))
 	}
 
+	leftPane := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorSubtle).
+		Padding(1, 2).
+		Width(60).
+		Render(lipgloss.JoinVertical(lipgloss.Left, leftItems...))
+
+	// Right pane: error/info preview
+	var rightItems []string
 	if m.err != nil {
-		b.WriteString(helpStyle.Render(fmt.Sprintf("\n\nError: %v", m.err)))
+		rightItems = append(rightItems, statusMessageStyle.Render(fmt.Sprintf(i18n.T("public_key_form.error"), m.err)))
+	} else {
+		rightItems = append(rightItems, helpStyle.Render(i18n.T("public_key_form.info")))
 	}
+	rightPane := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorSubtle).
+		Padding(1, 2).
+		Width(40).
+		MarginLeft(2).
+		Render(lipgloss.JoinVertical(lipgloss.Left, rightItems...))
 
-	b.WriteString(helpStyle.Render("\n\n(tab to navigate, space/enter to toggle checkbox, enter on input to submit, esc to cancel)"))
+	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
 
-	return b.String()
+	// Help/footer line always at the bottom
+	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
+	helpLine := footerStyle.Render(i18n.T("public_key_form.help"))
+
+	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", helpLine)
 }
