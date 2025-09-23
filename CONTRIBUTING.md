@@ -2,16 +2,23 @@
 
 First off, thank you for considering contributing to Keymaster! It’s people like you that make open source such a great community. We're excited to see what you bring to the project.
 
-This document outlines the development process and the conventions we follow. Following these guidelines helps us keep the codebase clean, maintainable, and easy to navigate for everyone.
+
+This document outlines the development process and conventions we follow. Please help us keep the codebase clean, maintainable, and easy to navigate for everyone.
+
+**Before submitting changes, always test your work manually to ensure it behaves as expected.**
 
 ## Getting Started
 
 1.  **Fork & Clone**: Fork the repository on GitHub and clone your fork locally.
-2.  **Build**: The project uses standard Go modules. You can build it by running:
+2.  **Build**: The project uses standard Go modules. Build with:
     ```sh
     go build ./cmd/keymaster
     ```
-3.  **Run**: You can run the application directly:
+3.  **Run**: Launch the TUI with:
+    ```sh
+    keymaster
+    ```
+    Or run directly:
     ```sh
     go run ./cmd/keymaster
     ```
@@ -22,7 +29,7 @@ The typical workflow is:
 
 1.  Create a new branch for your feature or bugfix from the `main` branch. Please use a descriptive branch name (e.g., `feat/add-new-widget`, `fix/login-bug`).
 2.  Make your changes. Adhere to the Coding Guidelines below.
-3.  Add or update tests for your changes.
+3.  Test your changes to confirm they work as intended.
 4.  Ensure your code is well-documented.
 5.  Commit your changes using the Commit Message Convention.
 6.  Push your branch to your fork and open a Pull Request to the main Keymaster repository.
@@ -68,6 +75,14 @@ All database interactions are abstracted through the `Store` interface in `inter
 *   In command-line functions (`cobra.Command.Run`), return errors instead of calling `log.Fatalf()`. This allows Cobra to handle error printing.
 *   In the TUI, display errors gracefully to the user within the UI. Don't `panic` or `os.Exit`.
 
+### Security Practices
+
+*   Never store user private keys in the database.
+*   Treat `keymaster.db` as a secret (restrict permissions).
+*   All system keys deployed must be SFTP-only.
+
 ---
+
+If you have questions or want to propose a feature, please open an issue or start a discussion.
 
 Thank you again for your interest in contributing! We look forward to your pull requests.
