@@ -420,11 +420,10 @@ step before Keymaster can manage a new host.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
 		target := args[0]
-		parts := strings.Split(target, "@")
-		if len(parts) != 2 {
+		_, hostname, found := strings.Cut(target, "@")
+		if !found {
 			log.Fatalf("Invalid account format. Expected user@host.")
 		}
-		hostname := parts[1]
 
 		fmt.Printf("Attempting to retrieve host key from %s...\n", hostname)
 		key, err := deploy.GetRemoteHostKey(hostname)

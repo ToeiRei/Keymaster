@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Import Command:** The `import` command now provides more detailed feedback, reporting errors for invalid key lines instead of skipping them silently.
 
 ### Fixed
+- **GoReleaser Configuration:** Corrected the `release` section in `.goreleaser.yml` to be compatible with GoReleaser v2, resolving release failures.
+- **CLI Parsing:** Improved argument parsing in the `trust-host` command for consistency and robustness.
 - **Deployment Compatibility:** The SFTP deployment logic now uses a backup-and-rename strategy, improving compatibility with SFTP servers that do not support atomic overwrites (e.g., on Windows).
 - **Build Failures:** Resolved two separate build failures: one caused by a function being redeclared, and another by a package import conflict in `main.go`.
 - **File Formatting:** Refined the `authorized_keys` file generator to ensure consistent formatting and a single trailing newline, adhering to POSIX standards.

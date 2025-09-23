@@ -49,4 +49,5 @@ snapshot:
 release:
   # Use the release-notes.md file generated in the GitHub Actions workflow
   # as the content for the GitHub release.
-  notes_file: "release-notes.md"
+  notes:
+    from_file: "release-notes.md"
