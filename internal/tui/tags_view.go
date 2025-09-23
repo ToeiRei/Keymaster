@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/toeirei/keymaster/internal/i18n"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
@@ -176,28 +178,25 @@ func (m tagsViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m tagsViewModel) View() string {
 	if m.err != nil {
-		return fmt.Sprintf("Error: %v\n", m.err)
+		return errorStyle.Render(fmt.Sprintf("Error: %v\n", m.err))
 	}
 
-	var viewItems []string
-	viewItems = append(viewItems, titleStyle.Render("🏷️  View Accounts by Tag"))
-
+	title := mainTitleStyle.Render("🏷️  " + i18n.T("tags_view.title"))
 	var listItems []string
 	if len(m.lines) == 0 {
-		listItems = append(listItems, helpStyle.Render("No accounts found."))
+		listItems = append(listItems, helpStyle.Render(i18n.T("tags_view.empty")))
 	} else {
 		for i, lineItem := range m.lines {
 			var lineStr string
 			if tag, ok := lineItem.(string); ok {
-				marker := "▶"                          // Collapsed
-				if m.expanded[tag] || m.filter != "" { // Always expand when filtering
-					marker = "▼" // Expanded
+				marker := "▶"
+				if m.expanded[tag] || m.filter != "" {
+					marker = "▼"
 				}
-				lineStr = fmt.Sprintf("%s %s (%d accounts)", marker, tag, len(m.accountsByTag[tag]))
+				lineStr = fmt.Sprintf("%s %s (%d)", marker, tag, len(m.accountsByTag[tag]))
 			} else if acc, ok := lineItem.(model.Account); ok {
 				lineStr = "   • " + acc.String()
 			}
-
 			if m.cursor == i {
 				listItems = append(listItems, selectedItemStyle.Render("▸ "+lineStr))
 			} else {
@@ -205,18 +204,20 @@ func (m tagsViewModel) View() string {
 			}
 		}
 	}
-	viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
+	paneStyle := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorSubtle).Padding(1, 2)
+	listPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, listItems...))
 
+	// Help/footer line always at the bottom
+	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
 	var filterStatus string
 	if m.isFiltering {
-		filterStatus = fmt.Sprintf("Filter: %s█", m.filter)
+		filterStatus = fmt.Sprintf(i18n.T("tags_view.filtering"), m.filter)
 	} else if m.filter != "" {
-		filterStatus = fmt.Sprintf("Filter: %s (press 'esc' to clear)", m.filter)
+		filterStatus = fmt.Sprintf(i18n.T("tags_view.filter_active"), m.filter)
 	} else {
-		filterStatus = "Press / to filter tags..."
+		filterStatus = i18n.T("tags_view.filter_hint")
 	}
+	helpLine := footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T("tags_view.footer"), filterStatus))
 
-	viewItems = append(viewItems, "", helpStyle.Render(fmt.Sprintf("(enter to expand/collapse, q to quit)\n%s", filterStatus)))
-
-	return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
+	return lipgloss.JoinVertical(lipgloss.Left, title, "", listPane, "", helpLine)
 }

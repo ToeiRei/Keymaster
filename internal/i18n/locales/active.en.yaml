@@ -105,3 +105,11 @@ rotate_key.no_cancel: "No, Cancel"
 rotate_key.yes_generate: "Yes, Generate"
 rotate_key.help_modal: "(left/right to navigate, enter to confirm, esc to cancel)"
 rotate_key.help_done: "Press 'q' to return to the main menu."
+
+# Tags view translations
+tags_view.title: "Accounts by Tag"
+tags_view.empty: "No tags or accounts found. Add tags to accounts to see them here."
+tags_view.filtering: "Filter: %s█"
+tags_view.filter_active: "Filter: %s (press 'esc' to clear)"
+tags_view.filter_hint: "Press / to filter..."
+tags_view.footer: "(enter) expand/collapse   /: filter   esc: back   q: quit"

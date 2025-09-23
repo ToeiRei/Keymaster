@@ -106,3 +106,11 @@ rotate_key.no_cancel: "Nein, abbrechen"
 rotate_key.yes_generate: "Ja, erzeugen"
 rotate_key.help_modal: "(links/rechts zum Navigieren, Enter zum Bestätigen, Esc zum Abbrechen)"
 rotate_key.help_done: "Mit 'q' zum Hauptmenü zurückkehren."
+
+# Tags view translations
+tags_view.title: "Konten nach Tag"
+tags_view.empty: "Keine Tags oder Konten gefunden. Fügen Sie Tags zu Konten hinzu, um sie hier anzuzeigen."
+tags_view.filtering: "Filter: %s█"
+tags_view.filter_active: "Filter: %s (mit 'esc' löschen)"
+tags_view.filter_hint: "Mit / filtern..."
+tags_view.footer: "(enter) auf-/zuklappen   /: filtern   esc: zurück   q: beenden"
