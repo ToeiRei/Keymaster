@@ -288,9 +288,9 @@ func (m mainModel) View() string {
 }
 
 func (m menuModel) View(data dashboardData, width int) string {
-	// Title
-	title := mainTitleStyle.Render("🔑 Keymaster")
-	subTitle := helpStyle.Render("An agentless SSH key manager that just does the job.")
+	// Title (i18n)
+	title := mainTitleStyle.Render("🔑 " + i18n.T("dashboard.title"))
+	subTitle := helpStyle.Render(i18n.T("dashboard.subtitle"))
 	titleBlock := lipgloss.JoinVertical(lipgloss.Center, title, subTitle)
 	header := lipgloss.NewStyle().Align(lipgloss.Center).Render(titleBlock)
 
@@ -299,7 +299,7 @@ func (m menuModel) View(data dashboardData, width int) string {
 
 	// Menu List (Left Pane)
 	var menuItems []string
-	menuItems = append(menuItems, paneTitleStyle.Render("Navigation"), "") // Add title and a blank line for spacing
+	menuItems = append(menuItems, paneTitleStyle.Render(i18n.T("menu.navigation")), "") // Add title and a blank line for spacing
 	for i, choice := range m.choices {
 		if m.cursor == i {
 			menuItems = append(menuItems, selectedItemStyle.Render("▸ "+choice))
@@ -311,21 +311,21 @@ func (m menuModel) View(data dashboardData, width int) string {
 
 	// Dashboard (Right Pane)
 	var dashboardItems []string
-	dashboardItems = append(dashboardItems, paneTitleStyle.Render("System Status"), "")
+	dashboardItems = append(dashboardItems, paneTitleStyle.Render(i18n.T("dashboard.system_status")), "")
 
 	// Status Items
-	sysKeyStatus := errorStyle.Render("Not Generated")
+	sysKeyStatus := errorStyle.Render(i18n.T("dashboard.system_key.not_generated"))
 	if data.systemKeySerial > 0 {
-		sysKeyStatus = successStyle.Render(fmt.Sprintf("Active (Serial #%d)", data.systemKeySerial))
+		sysKeyStatus = successStyle.Render(fmt.Sprintf(i18n.T("dashboard.system_key.active"), data.systemKeySerial))
 	}
 	dashboardItems = append(dashboardItems, lipgloss.JoinVertical(lipgloss.Left,
-		fmt.Sprintf("Managed Accounts: %d (%d active)", data.accountCount, data.activeAccountCount),
-		fmt.Sprintf("     Public Keys: %d (%d global)", data.publicKeyCount, data.globalKeyCount),
-		fmt.Sprintf("      System Key: %s", sysKeyStatus),
+		fmt.Sprintf(i18n.T("dashboard.accounts"), data.accountCount, data.activeAccountCount),
+		fmt.Sprintf(i18n.T("dashboard.public_keys"), data.publicKeyCount, data.globalKeyCount),
+		fmt.Sprintf(i18n.T("dashboard.system_key"), sysKeyStatus),
 	))
 
 	// Recent Activity
-	dashboardItems = append(dashboardItems, "", "", paneTitleStyle.Render("Recent Activity"), "")
+	dashboardItems = append(dashboardItems, "", "", paneTitleStyle.Render(i18n.T("dashboard.recent_activity")), "")
 
 	// --- Layout ---
 	paneStyle := lipgloss.NewStyle().
@@ -334,11 +334,10 @@ func (m menuModel) View(data dashboardData, width int) string {
 		Padding(1, 2)
 
 	menuWidth := 38
-	// available width = total width - docstyle margins - gap between panes
 	dashboardWidth := width - 4 - menuWidth - 2
 
 	if len(data.recentLogs) == 0 {
-		dashboardItems = append(dashboardItems, helpStyle.Render("No recent activity."))
+		dashboardItems = append(dashboardItems, helpStyle.Render(i18n.T("dashboard.no_recent_activity")))
 	} else {
 		for _, log := range data.recentLogs {
 			ts := log.Timestamp
@@ -351,10 +350,8 @@ func (m menuModel) View(data dashboardData, width int) string {
 			}
 
 			details := log.Details
-			// Truncate details based on available width in the pane
-			// Inner width = dashboardWidth - padding - border
 			innerDashboardWidth := dashboardWidth - 4 - 2
-			maxDetailsLen := innerDashboardWidth - len(ts) - maxActionLen - 2 // -2 for spaces
+			maxDetailsLen := innerDashboardWidth - len(ts) - maxActionLen - 2
 			if maxDetailsLen < 5 {
 				maxDetailsLen = 5
 			}
@@ -373,7 +370,9 @@ func (m menuModel) View(data dashboardData, width int) string {
 
 	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
 
-	footer := helpStyle.Render("j/k up/down: navigate  enter: select  q: quit")
+	// Styled footer/help line
+	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
+	footer := footerStyle.Render(i18n.T("dashboard.footer"))
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", footer)
 }
