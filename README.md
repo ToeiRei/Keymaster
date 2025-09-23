@@ -128,6 +128,8 @@ Here's how it works and what it means for security:
 
 **Treat your `keymaster.db` file as you would any sensitive secret, like a private key itself.** Ensure it has strict file permissions (e.g., `0600`) and is stored in a secure location. This trade-off—storing one private key for the sake of simplicity—is central to the Keymaster model.
 
+For details on reporting security vulnerabilities, please see our Security Policy.
+
 ### Automatic System Key Hardening
 
 To minimize risk, Keymaster automatically applies strict restrictions to its system key upon every deployment. This prevents the key from being used for interactive shell access or other unintended purposes, even if the private key is compromised.
