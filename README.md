@@ -108,3 +108,15 @@ Keymaster is different. It's built on a simple premise:
 > A tool should do the job without making you manage the tool itself.
 
 It's designed for sysadmins and developers who want a straightforward, reliable way to control SSH access without the overhead. It's powerful enough for a fleet but simple enough for a home lab.
+
+### A Note on Security & The System Key
+
+Keymaster is designed for simplicity, and part of that design involves storing its own "system" private key in the database. This is what allows Keymaster to be truly agentless—it can connect to your hosts from any machine that has access to the database, without needing a separate `~/.ssh` directory.
+
+Here's how it works and what it means for security:
+
+*   **What is stored?** The database stores the *private* key for Keymaster's system identity and the *public* keys of all your users. User private keys are **never** seen, stored, or handled by Keymaster.
+*   **What is deployed?** When you deploy, Keymaster only pushes *public* keys to the `authorized_keys` file on remote hosts.
+*   **What's the risk?** The primary security consideration is the database file itself. If an attacker gains read access to your `keymaster.db` (or the equivalent in Postgres/MySQL), they will have the private key that grants access to all managed accounts.
+
+**Treat your `keymaster.db` file as you would any sensitive secret, like a private key itself.** Ensure it has strict file permissions (e.g., `0600`) and is stored in a secure location. This trade-off—storing one private key for the sake of simplicity—is central to the Keymaster model.
