@@ -427,29 +427,19 @@ func (m accountsModel) View() string {
 		)
 	}
 
-	// --- This is the list view rendering ---
-	var viewItems []string
-	viewItems = append(viewItems, titleStyle.Render("🔑 "+i18n.T("accounts.title")))
+	// --- Styled, dashboard-like layout ---
+	title := mainTitleStyle.Render("🔑 " + i18n.T("accounts.title"))
+	header := lipgloss.NewStyle().Align(lipgloss.Center).Render(title)
 
-	if m.err != nil {
-		viewItems = append(viewItems, helpStyle.Render(fmt.Sprintf(i18n.T("accounts.error"), m.err)))
-		return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
-	}
-
+	// List pane (left)
 	var listItems []string
 	for i, acc := range m.displayedAccounts {
 		line := acc.String()
-		if acc.Tags != "" {
-			// Show tags in a muted color
-			line += " " + helpStyle.Render(fmt.Sprintf("[%s]", acc.Tags))
-		}
-
 		if m.cursor == i {
 			line = "▸ " + line
 			if acc.IsActive {
 				listItems = append(listItems, selectedItemStyle.Render(line))
 			} else {
-				// Keep strikethrough for inactive selected items
 				listItems = append(listItems, selectedItemStyle.Copy().Strikethrough(true).Render(line))
 			}
 		} else {
@@ -460,15 +450,54 @@ func (m accountsModel) View() string {
 			}
 		}
 	}
-	viewItems = append(viewItems, lipgloss.JoinVertical(lipgloss.Left, listItems...))
 
 	if len(m.displayedAccounts) == 0 && m.filter == "" {
-		viewItems = append(viewItems, helpStyle.Render(i18n.T("accounts.empty")))
+		listItems = append(listItems, helpStyle.Render(i18n.T("accounts.empty")))
 	} else if len(m.displayedAccounts) == 0 && m.filter != "" {
-		viewItems = append(viewItems, helpStyle.Render(i18n.T("accounts.empty_filtered")))
+		listItems = append(listItems, helpStyle.Render(i18n.T("accounts.empty_filtered")))
 	}
-	viewItems = append(viewItems, "") // Spacer
 
+	listPaneTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("accounts.list_title"))
+	listPane := lipgloss.JoinVertical(lipgloss.Left, listPaneTitle, "", lipgloss.JoinVertical(lipgloss.Left, listItems...))
+
+	paneStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorSubtle).
+		Padding(1, 2)
+
+	menuWidth := 48
+	detailWidth := m.width - 4 - menuWidth - 2
+
+	leftPane := paneStyle.Width(menuWidth).Render(listPane)
+
+	// Details/status pane (right)
+	var detailsItems []string
+	if m.err != nil {
+		detailsItems = append(detailsItems, helpStyle.Render(fmt.Sprintf(i18n.T("accounts.error"), m.err)))
+	} else if m.status != "" {
+		detailsItems = append(detailsItems, statusMessageStyle.Render(m.status))
+	}
+
+	// Show tags for the selected account in the detail pane
+	if len(m.displayedAccounts) > 0 && m.cursor < len(m.displayedAccounts) {
+		acc := m.displayedAccounts[m.cursor]
+		if acc.Tags != "" {
+			detailsItems = append(detailsItems, "", helpStyle.Render(fmt.Sprintf(i18n.T("accounts.tags"), acc.Tags)))
+		}
+	}
+
+	// Only show filter status if filtering
+	if m.isFiltering {
+		detailsItems = append(detailsItems, "", helpStyle.Render(fmt.Sprintf(i18n.T("accounts.filtering"), m.filter)))
+	}
+
+	rightPane := paneStyle.Width(detailWidth).MarginLeft(2).Render(lipgloss.JoinVertical(lipgloss.Left, detailsItems...))
+
+	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
+
+	// Help/footer line always at the bottom
+	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
+	// Compose help and filter status on one line
 	var filterStatus string
 	if m.isFiltering {
 		filterStatus = fmt.Sprintf(i18n.T("accounts.filtering"), m.filter)
@@ -477,15 +506,9 @@ func (m accountsModel) View() string {
 	} else {
 		filterStatus = i18n.T("accounts.filter_hint")
 	}
+	helpLine := footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T("accounts.footer"), filterStatus))
 
-	// Styled help/footer line
-	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
-	viewItems = append(viewItems, footerStyle.Render(fmt.Sprintf(i18n.T("accounts.footer"), filterStatus)))
-	if m.status != "" {
-		viewItems = append(viewItems, "", statusMessageStyle.Render(m.status))
-	}
-
-	return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
+	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", helpLine)
 }
 
 // verifyHostKeyCmd is a tea.Cmd that fetches a host's public key and saves it.
