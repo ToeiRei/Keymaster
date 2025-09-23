@@ -12,8 +12,45 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
+// --- Risk-based color styles for audit log actions ---
+var (
+	auditHighRiskStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("196")) // Bright Red
+	auditMediumRiskStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("220")) // Amber/Yellow
+	auditLowRiskStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("40"))  // Green
+	auditInfoStyle       = lipgloss.NewStyle().Foreground(colorSubtle)           // Gray
+)
+
+// Returns the style for a given action name
+func auditActionStyle(action string) lipgloss.Style {
+	switch {
+	// High risk (destructive)
+	case strings.HasPrefix(action, "DELETE_ACCOUNT"),
+		strings.HasPrefix(action, "DELETE_PUBLIC_KEY"),
+		strings.HasPrefix(action, "UNASSIGN_KEY"),
+		strings.HasPrefix(action, "ROTATE_SYSTEM_KEY"):
+		return auditHighRiskStyle
+	// Medium risk (state/privilege change)
+	case strings.HasPrefix(action, "TOGGLE_ACCOUNT_STATUS"),
+		strings.HasPrefix(action, "TOGGLE_KEY_GLOBAL"),
+		strings.HasPrefix(action, "UPDATE_ACCOUNT_LABEL"),
+		strings.HasPrefix(action, "UPDATE_ACCOUNT_TAGS"),
+		strings.HasPrefix(action, "ASSIGN_KEY"),
+		strings.HasPrefix(action, "TRUST_HOST"),
+		strings.HasPrefix(action, "CREATE_SYSTEM_KEY"):
+		return auditMediumRiskStyle
+	// Low risk (add)
+	case strings.HasPrefix(action, "ADD_ACCOUNT"),
+		strings.HasPrefix(action, "ADD_PUBLIC_KEY"):
+		return auditLowRiskStyle
+	// Info/neutral
+	default:
+		return auditInfoStyle
+	}
+}
+
 type auditLogModel struct {
 	table       table.Model
+	styles      table.Styles
 	allEntries  []model.AuditLogEntry // Master list of all log entries
 	filter      string
 	filterCol   int // 0=all, 1=timestamp, 2=user, 3=action, 4=details
@@ -21,8 +58,8 @@ type auditLogModel struct {
 	err         error
 }
 
-func newAuditLogModel() auditLogModel {
-	m := auditLogModel{}
+func newAuditLogModel() *auditLogModel {
+	m := &auditLogModel{}
 	entries, err := db.GetAllAuditLogEntries()
 	if err != nil {
 		m.err = err
@@ -50,26 +87,33 @@ func newAuditLogModel() auditLogModel {
 		BorderForeground(colorSubtle).
 		BorderBottom(true).
 		Bold(true)
-	s.Selected = s.Selected.
+	// Harden Selected style: set foreground, background, reset, and clear all attributes
+	s.Selected = lipgloss.NewStyle().
 		Foreground(colorWhite).
 		Background(colorHighlight).
-		Bold(false)
+		Bold(false).
+		Faint(false).
+		Italic(false).
+		Underline(false).
+		Strikethrough(false).
+		Blink(false).
+		Reverse(false)
 	t.SetStyles(s)
+	m.styles = s
 
 	m.table = t
 	m.rebuildTableRows()
 	return m
 }
 
-// rebuildTableRows filters the master list of entries and populates the table.
+// Rebuilds the table rows based on current filter and data
 func (m *auditLogModel) rebuildTableRows() {
 	var rows []table.Row
 	lowerFilter := strings.ToLower(m.filter)
-
 	for _, entry := range m.allEntries {
 		match := false
 		switch m.filterCol {
-		case 0: // all
+		case 0:
 			match = strings.Contains(strings.ToLower(entry.Timestamp), lowerFilter) ||
 				strings.Contains(strings.ToLower(entry.Username), lowerFilter) ||
 				strings.Contains(strings.ToLower(entry.Action), lowerFilter) ||
@@ -84,48 +128,30 @@ func (m *auditLogModel) rebuildTableRows() {
 			match = strings.Contains(strings.ToLower(entry.Details), lowerFilter)
 		}
 		if m.filter != "" && !match {
-			continue // Skip this row if it doesn't match
+			continue
 		}
-
 		ts := entry.Timestamp
 		if len(ts) > 19 {
-			ts = ts[:19] // Truncate fractional seconds for cleaner display
+			ts = ts[:19]
 		}
-
-		// Color-code only if not selected (selection is handled by table styles)
-		actionCell := entry.Action
-		// The table component will highlight the selected row, so we only color-code non-selected rows here.
-		// We can't know the selected row index here, so we must color all, but the table's Selected style will override.
-		switch {
-		case strings.HasPrefix(entry.Action, "ADD"),
-			strings.HasPrefix(entry.Action, "CREATE"),
-			strings.HasPrefix(entry.Action, "TRUST"),
-			strings.HasPrefix(entry.Action, "ASSIGN"):
-			actionCell = successStyle.Render(entry.Action)
-		case strings.HasPrefix(entry.Action, "DELETE_"),
-			strings.HasPrefix(entry.Action, "ROTATE_"),
-			strings.HasPrefix(entry.Action, "UNASSIGN"):
-			actionCell = specialStyle.Render(entry.Action)
-		case strings.HasPrefix(entry.Action, "TOGGLE_"),
-			strings.HasPrefix(entry.Action, "UPDATE_"):
-			actionCell = helpStyle.Render(entry.Action)
-		}
-
-		rows = append(rows, table.Row{ts, entry.Username, actionCell, entry.Details})
+		// Store only plain text in the row
+		rows = append(rows, table.Row{ts, entry.Username, entry.Action, entry.Details})
 	}
 	m.table.SetRows(rows)
-
-	// Go to the top of the table after filtering
-	if m.isFiltering {
-		m.table.GotoTop()
-	}
 }
 
-func (m auditLogModel) Init() tea.Cmd {
+func padCell(s string, width int) string {
+	if len([]rune(s)) >= width {
+		return string([]rune(s)[:width])
+	}
+	return s + strings.Repeat(" ", width-len([]rune(s)))
+}
+
+func (m *auditLogModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m auditLogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *auditLogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -133,13 +159,9 @@ func (m auditLogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		// Adjust table height based on window size.
-		// header(3) + filter/help(3)
 		m.table.SetHeight(msg.Height - 6)
-		m.table.SetWidth(msg.Width - 4) // Account for docStyle margins
-
+		m.table.SetWidth(msg.Width - 4)
 	case tea.KeyMsg:
-		// If filtering, handle input.
 		if m.isFiltering {
 			switch msg.Type {
 			case tea.KeyEsc:
@@ -151,10 +173,12 @@ func (m auditLogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyBackspace:
 				if len(m.filter) > 0 {
 					m.filter = m.filter[:len(m.filter)-1]
+					m.table.GotoTop()
 					m.rebuildTableRows()
 				}
 			case tea.KeyRunes:
 				m.filter += string(msg.Runes)
+				m.table.GotoTop()
 				m.rebuildTableRows()
 			case tea.KeyTab:
 				m.filterCol = (m.filterCol + 1) % 5
@@ -165,8 +189,6 @@ func (m auditLogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-
-		// Not filtering, handle commands.
 		switch msg.String() {
 		case "/":
 			m.isFiltering = true
@@ -183,34 +205,30 @@ func (m auditLogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return backToMenuMsg{} }
 		}
 	}
-
 	m.table, cmd = m.table.Update(msg)
 	cmds = append(cmds, cmd)
-
 	return m, tea.Batch(cmds...)
 }
 
-func (m auditLogModel) View() string {
+func (m *auditLogModel) View() string {
 	if m.err != nil {
 		return errorStyle.Render(fmt.Sprintf("Error loading audit log: %v", m.err))
 	}
-
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("📜 "+i18n.T("audit_log.title")) + "\n\n")
-
 	if len(m.table.Rows()) == 0 {
 		b.WriteString(helpStyle.Render(i18n.T("audit_log.empty")))
-		b.WriteString(m.footerView())
-		return b.String()
+	} else {
+		b.WriteString(m.renderAuditLogTable())
 	}
-
-	// Render the table with headers
-	b.WriteString(m.table.View())
-	b.WriteString(m.footerView())
+	// Always show the styled help line/footer at the bottom
+	b.WriteString("\n")
+	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
+	b.WriteString(footerStyle.Render(m.footerView()))
 	return b.String()
 }
 
-func (m auditLogModel) footerView() string {
+func (m *auditLogModel) footerView() string {
 	var filterStatus string
 	colNames := []string{
 		i18n.T("all"),
@@ -227,4 +245,57 @@ func (m auditLogModel) footerView() string {
 		filterStatus = "Press / to filter..."
 	}
 	return helpStyle.Render(fmt.Sprintf("\n(↑/↓ to scroll, tab: column, q to quit) %s", filterStatus))
+}
+
+func (m *auditLogModel) renderAuditLogTable() string {
+	var out strings.Builder
+	rows := m.table.Rows()
+	cursor := m.table.Cursor()
+	height := m.table.Height()
+	// Render header
+	out.WriteString(m.styles.Header.Render(
+		padCell(m.table.Columns()[0].Title, m.table.Columns()[0].Width)+
+			padCell(m.table.Columns()[1].Title, m.table.Columns()[1].Width)+
+			padCell(m.table.Columns()[2].Title, m.table.Columns()[2].Width)+
+			padCell(m.table.Columns()[3].Title, m.table.Columns()[3].Width),
+	) + "\n")
+
+	// Calculate visible window for scrolling
+	start := 0
+	if len(rows) > height {
+		// Try to keep the selected row in the middle of the viewport
+		mid := height / 2
+		if cursor > mid {
+			start = cursor - mid
+			if start+height > len(rows) {
+				start = len(rows) - height
+			}
+		}
+		if start < 0 {
+			start = 0
+		}
+	}
+	end := start + height
+	if end > len(rows) {
+		end = len(rows)
+	}
+	// Render visible rows
+	for i := start; i < end; i++ {
+		row := rows[i]
+		rendered := lipgloss.JoinHorizontal(lipgloss.Top,
+			padCell(row[0], m.table.Columns()[0].Width),
+			padCell(row[1], m.table.Columns()[1].Width),
+			padCell(row[2], m.table.Columns()[2].Width),
+			padCell(row[3], m.table.Columns()[3].Width),
+		)
+		if i == cursor {
+			// Selected row: use table's Selected style for the whole row
+			out.WriteString(m.styles.Selected.Render(rendered) + "\n")
+		} else {
+			// Non-selected: color the whole row based on action type
+			style := auditActionStyle(row[2])
+			out.WriteString(style.Render(rendered) + "\n")
+		}
+	}
+	return out.String()
 }

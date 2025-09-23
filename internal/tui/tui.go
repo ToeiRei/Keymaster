@@ -51,7 +51,7 @@ type mainModel struct {
 	assignment assignKeysModel
 	keys       publicKeysModel
 	accounts   accountsModel
-	auditLog   auditLogModel
+	auditLog   *auditLogModel
 	tags       tagsViewModel
 	dashboard  dashboardData
 	width      int
@@ -171,7 +171,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		var newAuditLogModel tea.Model
 		newAuditLogModel, cmd = m.auditLog.Update(msg)
-		m.auditLog = newAuditLogModel.(auditLogModel)
+		m.auditLog = newAuditLogModel.(*auditLogModel)
 
 	case tagsView:
 		if _, ok := msg.(backToMenuMsg); ok {
@@ -224,7 +224,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// to ensure the viewport is initialized correctly.
 					var newAuditLogModel tea.Model
 					newAuditLogModel, cmd = m.auditLog.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
-					m.auditLog = newAuditLogModel.(auditLogModel)
+					m.auditLog = newAuditLogModel.(*auditLogModel)
 					return m, cmd
 				case 6: // View Accounts by Tag
 					m.state = tagsView
