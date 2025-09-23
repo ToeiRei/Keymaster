@@ -2,9 +2,11 @@ name: Release
 
 on:
   push:
+    # This workflow will run only when you push a tag that starts with 'v'
+    # For example: v1.2.1, v1.3.0, etc.
     tags:
       - 'v*.*.*'
-
+    
 permissions:
   contents: write
   packages: write
@@ -17,7 +19,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Fetch all history so GoReleaser can generate a changelog if needed
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -36,4 +38,8 @@ jobs:
           version: '~> v2'
           args: release --clean
           release_notes: ${{ steps.extract_notes.outputs.notes_path }}
-          token: ${{ secrets.GITHUB_TOKEN }}      # <-- Explicitly pass token
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          # This token is provided by GitHub automatically and is required
+          # to create a release and upload assets.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
