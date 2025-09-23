@@ -180,41 +180,17 @@ If no account is specified, deploys to all active accounts in the database.`,
 			targetAccounts = allAccounts
 		}
 
-		if len(targetAccounts) == 0 {
-			fmt.Println("No active accounts to deploy to.")
-			return
+		deployTask := parallelTask{
+			name:       "deployment",
+			startMsg:   "🚀 Starting deployment to %d account(s)...\n",
+			successMsg: "✅ Successfully deployed to %s",
+			failMsg:    "💥 Failed to deploy to %s: %v",
+			successLog: "DEPLOY_SUCCESS",
+			failLog:    "DEPLOY_FAIL",
+			taskFunc:   runDeploymentForAccount,
 		}
 
-		var wg sync.WaitGroup
-		results := make(chan string, len(targetAccounts))
-
-		fmt.Printf("🚀 Starting deployment to %d account(s)...\n", len(targetAccounts))
-
-		for _, acc := range targetAccounts {
-			wg.Add(1)
-			go func(account model.Account) {
-				defer wg.Done()
-				err := runDeploymentForAccount(account)
-				details := fmt.Sprintf("account: %s", account.String())
-				if err != nil {
-					results <- fmt.Sprintf("💥 Failed to deploy to %s: %v", account.String(), err)
-					_ = db.LogAction("DEPLOY_FAIL", fmt.Sprintf("%s, error: %v", details, err))
-				} else {
-					results <- fmt.Sprintf("✅ Successfully deployed to %s", account.String())
-					_ = db.LogAction("DEPLOY_SUCCESS", details)
-				}
-			}(acc)
-		}
-
-		go func() {
-			wg.Wait()
-			close(results)
-		}()
-
-		for res := range results {
-			fmt.Println(res)
-		}
-		fmt.Println("\nDeployment complete.")
+		runParallelTasks(targetAccounts, deployTask)
 	},
 }
 
@@ -265,41 +241,17 @@ var auditCmd = &cobra.Command{
 			log.Fatalf("Error getting accounts: %v", err)
 		}
 
-		if len(accounts) == 0 {
-			fmt.Println("No active accounts to audit.")
-			return
+		auditTask := parallelTask{
+			name:       "audit",
+			startMsg:   "🔬 Starting audit of %d account(s)...\n",
+			successMsg: "✅ OK: %s",
+			failMsg:    "🚨 Drift detected on %s: %v",
+			successLog: "AUDIT_SUCCESS",
+			failLog:    "AUDIT_FAIL",
+			taskFunc:   runAuditForAccount,
 		}
 
-		var wg sync.WaitGroup
-		results := make(chan string, len(accounts))
-
-		fmt.Printf("🔬 Starting audit of %d account(s)...\n", len(accounts))
-
-		for _, acc := range accounts {
-			wg.Add(1)
-			go func(account model.Account) {
-				defer wg.Done()
-				err := runAuditForAccount(account)
-				details := fmt.Sprintf("account: %s", account.String())
-				if err != nil {
-					results <- fmt.Sprintf("🚨 Drift detected on %s: %v", account.String(), err)
-					_ = db.LogAction("AUDIT_FAIL", fmt.Sprintf("%s, error: %v", details, err))
-				} else {
-					results <- fmt.Sprintf("✅ OK: %s", account.String())
-					_ = db.LogAction("AUDIT_SUCCESS", details)
-				}
-			}(acc)
-		}
-
-		go func() {
-			wg.Wait()
-			close(results)
-		}()
-
-		for res := range results {
-			fmt.Println(res)
-		}
-		fmt.Println("\nAudit complete.")
+		runParallelTasks(accounts, auditTask)
 	},
 }
 
@@ -360,6 +312,55 @@ var importCmd = &cobra.Command{
 
 		fmt.Printf("\n✅ Import complete. Imported %d keys, skipped %d.\n", importedCount, skippedCount)
 	},
+}
+
+// A task to be run in parallel on an account.
+type parallelTask struct {
+	name       string // e.g., "deployment", "audit"
+	startMsg   string // e.g., "🚀 Starting deployment..."
+	successMsg string // e.g., "✅ Successfully deployed to %s"
+	failMsg    string // e.g., "💥 Failed to deploy to %s: %v"
+	successLog string // e.g., "DEPLOY_SUCCESS"
+	failLog    string // e.g., "DEPLOY_FAIL"
+	taskFunc   func(model.Account) error
+}
+
+func runParallelTasks(accounts []model.Account, task parallelTask) {
+	if len(accounts) == 0 {
+		fmt.Printf("No active accounts for %s.\n", task.name)
+		return
+	}
+
+	var wg sync.WaitGroup
+	results := make(chan string, len(accounts))
+
+	fmt.Printf(task.startMsg, len(accounts))
+
+	for _, acc := range accounts {
+		wg.Add(1)
+		go func(account model.Account) {
+			defer wg.Done()
+			err := task.taskFunc(account)
+			details := fmt.Sprintf("account: %s", account.String())
+			if err != nil {
+				results <- fmt.Sprintf(task.failMsg, account.String(), err)
+				_ = db.LogAction(task.failLog, fmt.Sprintf("%s, error: %v", details, err))
+			} else {
+				results <- fmt.Sprintf(task.successMsg, account.String())
+				_ = db.LogAction(task.successLog, details)
+			}
+		}(acc)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	for res := range results {
+		fmt.Println(res)
+	}
+	fmt.Printf("\n%s complete.\n", strings.Title(task.name))
 }
 
 func runDeploymentForAccount(account model.Account) error {
