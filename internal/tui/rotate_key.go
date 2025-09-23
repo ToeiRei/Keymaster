@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/i18n"
 )
 
 type rotateState int
@@ -37,8 +38,8 @@ type rotateKeyModel struct {
 	width, height        int
 }
 
-func newRotateKeyModel() rotateKeyModel {
-	m := rotateKeyModel{state: rotateStateChecking, confirmCursor: 0} // Default to No
+func newRotateKeyModel() *rotateKeyModel {
+	m := &rotateKeyModel{state: rotateStateChecking, confirmCursor: 0} // Default to No
 	hasKey, err := db.HasSystemKeys()
 	if err != nil {
 		m.err = err
@@ -53,11 +54,11 @@ func newRotateKeyModel() rotateKeyModel {
 	return m
 }
 
-func (m rotateKeyModel) Init() tea.Cmd {
+func (m *rotateKeyModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -122,7 +123,61 @@ func (m rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m rotateKeyModel) View() string {
+func (m *rotateKeyModel) viewConfirmationRotate() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render(i18n.T("rotate_key.confirm_rotate_title")))
+	b.WriteString("\n\n")
+	b.WriteString(specialStyle.Render(i18n.T("rotate_key.confirm_rotate_question")))
+	b.WriteString("\n\n")
+
+	var yesButton, noButton string
+	if m.confirmCursor == 1 { // Yes
+		yesButton = activeButtonStyle.Render(i18n.T("rotate_key.yes_rotate"))
+		noButton = buttonStyle.Render(i18n.T("rotate_key.no_cancel"))
+	} else { // No
+		yesButton = buttonStyle.Render(i18n.T("rotate_key.yes_rotate"))
+		noButton = activeButtonStyle.Render(i18n.T("rotate_key.no_cancel"))
+	}
+
+	buttons := lipgloss.JoinHorizontal(lipgloss.Top, noButton, "  ", yesButton)
+	b.WriteString(buttons)
+
+	b.WriteString("\n" + helpStyle.Render(i18n.T("rotate_key.help_modal")))
+
+	return lipgloss.Place(m.width, m.height,
+		lipgloss.Left, lipgloss.Center,
+		dialogBoxStyle.Render(b.String()),
+	)
+}
+
+func (m *rotateKeyModel) viewConfirmationGenerate() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render(i18n.T("rotate_key.confirm_generate_title")))
+	b.WriteString("\n\n")
+	b.WriteString(specialStyle.Render(i18n.T("rotate_key.confirm_generate_question")))
+	b.WriteString("\n\n")
+
+	var yesButton, noButton string
+	if m.confirmCursor == 1 { // Yes
+		yesButton = activeButtonStyle.Render(i18n.T("rotate_key.yes_generate"))
+		noButton = buttonStyle.Render(i18n.T("rotate_key.no_cancel"))
+	} else { // No
+		yesButton = buttonStyle.Render(i18n.T("rotate_key.yes_generate"))
+		noButton = activeButtonStyle.Render(i18n.T("rotate_key.no_cancel"))
+	}
+
+	buttons := lipgloss.JoinHorizontal(lipgloss.Top, noButton, "  ", yesButton)
+	b.WriteString(buttons)
+
+	b.WriteString("\n" + helpStyle.Render(i18n.T("rotate_key.help_modal")))
+
+	return lipgloss.Place(m.width, m.height,
+		lipgloss.Left, lipgloss.Center,
+		dialogBoxStyle.Render(b.String()),
+	)
+}
+
+func (m *rotateKeyModel) View() string {
 	if m.isConfirmingGenerate {
 		return m.viewConfirmationGenerate()
 	}
@@ -131,99 +186,40 @@ func (m rotateKeyModel) View() string {
 	}
 
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("🔑 System Key Management"))
+	b.WriteString(titleStyle.Render("🔑 " + i18n.T("rotate_key.title")))
 
 	if m.err != nil {
-		return fmt.Sprintf("Error: %v\n", m.err)
+		return errorStyle.Render(fmt.Sprintf(i18n.T("rotate_key.error"), m.err))
 	}
 
 	switch m.state {
-	// This state is now so brief it will likely never be seen.
 	case rotateStateChecking:
 		b.WriteString("Checking for existing system key...")
 	case rotateStateGenerating:
-		b.WriteString("Generating new ed25519 key pair, please wait...")
+		b.WriteString(specialStyle.Render(i18n.T("rotate_key.generating")))
 	case rotateStateGenerated:
-		b.WriteString(successStyle.Render(fmt.Sprintf("✅ Successfully generated and saved system key with serial #%d.", m.newKeySerial)))
+		b.WriteString(successStyle.Render(fmt.Sprintf(i18n.T("rotate_key.generated"), m.newKeySerial)))
 		b.WriteString("\n\n")
 
 		var box strings.Builder
-		box.WriteString(lipgloss.NewStyle().Foreground(colorSpecial).Bold(true).Render("🚨 BOOTSTRAP ACTION REQUIRED 🚨"))
+		box.WriteString(lipgloss.NewStyle().Foreground(colorSpecial).Bold(true).Render(i18n.T("rotate_key.bootstrap_header")))
 		box.WriteString("\n\n")
-		box.WriteString("You must now manually add the following public key to the `authorized_keys` file for every account you intend to manage with Keymaster:\n\n")
+		box.WriteString(i18n.T("rotate_key.bootstrap_body") + "\n\n")
 		box.WriteString(lipgloss.NewStyle().Background(lipgloss.Color("235")).Padding(0, 1).Render(m.newPublicKey))
 
 		b.WriteString(lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorSpecial).Padding(1).Render(box.String()))
 
-		b.WriteString("\n\n" + helpStyle.Render("Press 'q' to return to the main menu."))
+		b.WriteString("\n\n" + helpStyle.Render(i18n.T("rotate_key.help_done")))
 	case rotateStateRotating:
-		b.WriteString("Rotating system key, please wait...")
+		b.WriteString(specialStyle.Render(i18n.T("rotate_key.rotating")))
 	case rotateStateRotated:
-		b.WriteString(successStyle.Render(fmt.Sprintf("✅ Successfully rotated system key. The new active key is serial #%d.", m.newKeySerial)))
+		b.WriteString(successStyle.Render(fmt.Sprintf(i18n.T("rotate_key.rotated"), m.newKeySerial)))
 		b.WriteString("\n\n")
-		b.WriteString("Deploy to your fleet to apply the new key.\n")
-		b.WriteString(helpStyle.Render("Press 'q' to return to the main menu."))
+		b.WriteString(specialStyle.Render(i18n.T("rotate_key.deploy_reminder") + "\n"))
+		b.WriteString(helpStyle.Render(i18n.T("rotate_key.help_done")))
 	}
 
 	return b.String()
-}
-
-func (m rotateKeyModel) viewConfirmationRotate() string {
-	var b strings.Builder
-	b.WriteString(titleStyle.Render("⚙️ Confirm System Key Rotation"))
-
-	question := "Are you sure you want to rotate the system key?\n\nThis will deactivate the current key and create a new one.\nHosts will need to be redeployed to get the new key."
-	b.WriteString(question)
-	b.WriteString("\n\n")
-
-	var yesButton, noButton string
-	if m.confirmCursor == 1 { // Yes
-		yesButton = activeButtonStyle.Render("Yes, Rotate")
-		noButton = buttonStyle.Render("No, Cancel")
-	} else { // No
-		yesButton = buttonStyle.Render("Yes, Rotate")
-		noButton = activeButtonStyle.Render("No, Cancel")
-	}
-
-	buttons := lipgloss.JoinHorizontal(lipgloss.Top, noButton, "  ", yesButton)
-	b.WriteString(buttons)
-
-	b.WriteString("\n" + helpStyle.Render("\n(left/right to navigate, enter to confirm, esc to cancel)"))
-
-	// Center the whole dialog
-	return lipgloss.Place(m.width, m.height,
-		lipgloss.Center, lipgloss.Center,
-		dialogBoxStyle.Render(b.String()),
-	)
-}
-
-func (m rotateKeyModel) viewConfirmationGenerate() string {
-	var b strings.Builder
-	b.WriteString(titleStyle.Render("⚙️ Generate Initial System Key"))
-
-	question := "No Keymaster system key found.\n\nThis key is required for Keymaster to connect to managed hosts.\n\nWould you like to generate one now?"
-	b.WriteString(question)
-	b.WriteString("\n\n")
-
-	var yesButton, noButton string
-	if m.confirmCursor == 1 { // Yes
-		yesButton = activeButtonStyle.Render("Yes, Generate")
-		noButton = buttonStyle.Render("No, Cancel")
-	} else { // No
-		yesButton = buttonStyle.Render("Yes, Generate")
-		noButton = activeButtonStyle.Render("No, Cancel")
-	}
-
-	buttons := lipgloss.JoinHorizontal(lipgloss.Top, noButton, "  ", yesButton)
-	b.WriteString(buttons)
-
-	b.WriteString("\n" + helpStyle.Render("\n(left/right to navigate, enter to confirm, esc to cancel)"))
-
-	// Center the whole dialog
-	return lipgloss.Place(m.width, m.height,
-		lipgloss.Center, lipgloss.Center,
-		dialogBoxStyle.Render(b.String()),
-	)
 }
 
 // --- Commands and Messages ---

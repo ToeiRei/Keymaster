@@ -47,7 +47,7 @@ type mainModel struct {
 	state      viewState
 	menu       menuModel
 	deployer   deployModel
-	rotator    rotateKeyModel
+	rotator    *rotateKeyModel
 	assignment assignKeysModel
 	keys       publicKeysModel
 	accounts   accountsModel
@@ -152,7 +152,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		var newRotatorModel tea.Model
 		newRotatorModel, cmd = m.rotator.Update(msg)
-		m.rotator = newRotatorModel.(rotateKeyModel)
+		m.rotator = newRotatorModel.(*rotateKeyModel)
 
 	case deployView:
 		// If we received a "back" message, switch the state.
