@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -51,17 +52,17 @@ func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 
 		switch i {
 		case 0:
-			t.Prompt = "Username:               "
-			t.Placeholder = "user"
+			t.Prompt = i18n.T("account_form.username_label")
+			t.Placeholder = i18n.T("account_form.username_placeholder")
 		case 1:
-			t.Prompt = "Hostname:               "
-			t.Placeholder = "www.example.com"
+			t.Prompt = i18n.T("account_form.hostname_label")
+			t.Placeholder = i18n.T("account_form.hostname_placeholder")
 		case 2:
-			t.Prompt = "Label (optional):       "
-			t.Placeholder = "prod-web-01"
+			t.Prompt = i18n.T("account_form.label_label")
+			t.Placeholder = i18n.T("account_form.label_placeholder")
 		case 3:
-			t.Prompt = "Tags (comma-separated): "
-			t.Placeholder = "role:db,dc:nyc"
+			t.Prompt = i18n.T("account_form.tags_label")
+			t.Placeholder = i18n.T("account_form.tags_placeholder")
 		}
 		m.inputs[i] = t
 	}
@@ -274,9 +275,9 @@ func (m accountFormModel) View() string {
 	var viewItems []string
 
 	if m.editingAccount != nil {
-		viewItems = append(viewItems, titleStyle.Render("✏️ Edit Account"))
+		viewItems = append(viewItems, titleStyle.Render("✏️ "+i18n.T("account_form.edit_title")))
 	} else {
-		viewItems = append(viewItems, titleStyle.Render("✨ Add New Account"))
+		viewItems = append(viewItems, titleStyle.Render("✨ "+i18n.T("account_form.add_title")))
 	}
 
 	// The title's padding adds a newline, so we add one more for a blank line.
@@ -301,17 +302,17 @@ func (m accountFormModel) View() string {
 		}
 	}
 
-	button := formItemStyle.Render("[ Submit ]")
+	button := formItemStyle.Render("[ " + i18n.T("account_form.submit") + " ]")
 	if m.focusIndex == len(m.inputs) {
-		button = formSelectedItemStyle.Render("[ Submit ]")
+		button = formSelectedItemStyle.Render("[ " + i18n.T("account_form.submit") + " ]")
 	}
 	viewItems = append(viewItems, "", button) // Blank line before button
 
 	if m.err != nil {
-		viewItems = append(viewItems, "", helpStyle.Render(fmt.Sprintf("Error: %v", m.err)))
+		viewItems = append(viewItems, "", helpStyle.Render(fmt.Sprintf(i18n.T("account_form.error"), m.err)))
 	}
 
-	viewItems = append(viewItems, "", helpStyle.Render("(tab to navigate, enter to submit, esc to cancel)"))
+	viewItems = append(viewItems, "", helpStyle.Render(i18n.T("account_form.help")))
 
 	return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
 }
