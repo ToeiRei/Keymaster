@@ -39,20 +39,22 @@ type deploymentResultMsg struct {
 }
 
 type deployModel struct {
-	state           deployState
-	action          deployAction
-	menuCursor      int
-	accountCursor   int
-	tagCursor       int
-	accounts        []model.Account
-	accountsInFleet []model.Account // Keep order for display
-	fleetResults    map[int]error   // map account ID to error for quick lookup
-	selectedAccount model.Account
-	tags            []string
-	authorizedKeys  string // The generated authorized_keys content
-	status          string
-	err             error
-	menuChoices     []string
+	state              deployState
+	action             deployAction
+	menuCursor         int
+	accountCursor      int
+	tagCursor          int
+	accounts           []model.Account
+	accountsInFleet    []model.Account // Keep order for display
+	fleetResults       map[int]error   // map account ID to error for quick lookup
+	selectedAccount    model.Account
+	tags               []string
+	authorizedKeys     string // The generated authorized_keys content
+	status             string
+	err                error
+	menuChoices        []string
+	accountFilter      string
+	isFilteringAccount bool
 }
 
 func newDeployModel() deployModel {
@@ -210,20 +212,40 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "/":
+			m.isFilteringAccount = true
+			m.accountFilter = ""
+			m.status = ""
+			return m, nil
 		case "esc":
+			if m.isFilteringAccount {
+				m.isFilteringAccount = false
+				// Do NOT clear m.accountFilter; persist filter after exiting filter mode
+				m.status = ""
+				return m, nil
+			}
+			if m.accountFilter != "" {
+				m.accountFilter = ""
+				m.status = ""
+				return m, nil
+			}
 			m.status = ""
 			m.state = deployStateMenu
 			m.err = nil
 			return m, nil
-		case "up", "k":
-			if m.accountCursor > 0 {
-				m.accountCursor--
-			}
-		case "down", "j":
-			if m.accountCursor < len(m.accounts)-1 {
-				m.accountCursor++
+		case "backspace":
+			if m.isFilteringAccount && m.accountFilter != "" {
+				runes := []rune(m.accountFilter)
+				if len(runes) > 0 {
+					m.accountFilter = string(runes[:len(runes)-1])
+				}
+				return m, nil
 			}
 		case "enter":
+			if m.isFilteringAccount {
+				m.isFilteringAccount = false
+				return m, nil
+			}
 			if len(m.accounts) == 0 {
 				return m, nil
 			}
@@ -244,7 +266,19 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, performDeploymentCmd(m.selectedAccount)
 			}
 			return m, nil
+		default:
+			if m.isFilteringAccount && len(msg.String()) == 1 && msg.Type == tea.KeyRunes {
+				m.accountFilter += msg.String()
+				return m, nil
+			}
+			if m.accountFilter != "" && !m.isFilteringAccount {
+				// Navigation keys etc. handled above
+				return m, nil
+			}
 		}
+	case startFilteringMsg:
+		// no-op, just to trigger filter mode
+		return m, nil
 	}
 	return m, nil
 }
@@ -392,10 +426,23 @@ func (m deployModel) View() string {
 	case deployStateSelectAccount:
 		title := titleStyle.Render(i18n.T("deploy.select_account"))
 		var listItems []string
-		if len(m.accounts) == 0 {
+		var filteredAccounts []model.Account
+		if m.accountFilter != "" {
+			for _, acc := range m.accounts {
+				if strings.Contains(strings.ToLower(acc.String()), strings.ToLower(m.accountFilter)) {
+					filteredAccounts = append(filteredAccounts, acc)
+				}
+			}
+		} else {
+			filteredAccounts = m.accounts
+		}
+		if m.accountCursor >= len(filteredAccounts) {
+			m.accountCursor = 0
+		}
+		if len(filteredAccounts) == 0 {
 			listItems = append(listItems, helpStyle.Render(i18n.T("deploy.no_accounts")))
 		} else {
-			for i, acc := range m.accounts {
+			for i, acc := range filteredAccounts {
 				line := acc.String()
 				if m.accountCursor == i {
 					listItems = append(listItems, selectedItemStyle.Render("▸ "+line))
@@ -405,7 +452,15 @@ func (m deployModel) View() string {
 			}
 		}
 		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, listItems...)))
-		help := helpFooterStyle.Render(i18n.T("deploy.help_select"))
+		var filterStatus string
+		if m.isFilteringAccount {
+			filterStatus = fmt.Sprintf(i18n.T("deploy.filtering"), m.accountFilter)
+		} else if m.accountFilter != "" {
+			filterStatus = fmt.Sprintf(i18n.T("deploy.filter_active"), m.accountFilter)
+		} else {
+			filterStatus = i18n.T("deploy.filter_hint")
+		}
+		help := helpFooterStyle.Render(i18n.T("deploy.help_select") + "  " + filterStatus)
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 
 	case deployStateSelectTag:
@@ -540,3 +595,6 @@ func performDeploymentCmd(account model.Account) tea.Cmd {
 		return deploymentResultMsg{account: account, err: nil} // Success
 	}
 }
+
+// startFilteringMsg is a message to trigger filter mode in the deploy single account view.
+type startFilteringMsg struct{}
