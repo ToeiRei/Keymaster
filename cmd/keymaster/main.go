@@ -136,7 +136,9 @@ database:
 `
 			// If writing fails (e.g., due to permissions), we don't treat it as a
 			// fatal error. The app will simply run with the default values set in memory.
-			_ = os.WriteFile(defaultConfigPath, []byte(defaultContent), 0644)
+			if err := os.WriteFile(defaultConfigPath, []byte(defaultContent), 0644); err == nil {
+				fmt.Println("No config file found. Created a default '.keymaster.yaml' in the current directory.")
+			}
 		}
 	}
 }

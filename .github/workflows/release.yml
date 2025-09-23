@@ -35,8 +35,9 @@ jobs:
           # Use the latest v2 GoReleaser version. The 'notes_file' option
           # in .goreleaser.yml requires GoReleaser v2.0.0 or newer.
           version: '~> v2'
-          # The '--clean' flag removes the 'dist' directory before building
-          args: release --clean
+          # The '--clean' flag removes the 'dist' directory before building.
+          # We pass the release notes file via CLI flag, as the config file option is a pro feature.
+          args: release --clean --release-notes-file release-notes.md
         env:
           # This token is provided by GitHub automatically and is required
           # to create a release and upload assets.

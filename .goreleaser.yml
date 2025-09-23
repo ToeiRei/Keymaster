@@ -45,9 +45,3 @@ checksum:
 
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
-
-release:
-  # Use the release-notes.md file generated in the GitHub Actions workflow
-  # as the content for the GitHub release.
-  notes:
-    from_file: "release-notes.md"
