@@ -1,0 +1,88 @@
+# Notices and Third-Party Licenses
+
+The Keymaster project incorporates code from several third-party open-source projects. We are grateful to the developers of these projects. The following is a list of these projects and their respective licenses.
+
+---
+
+## Dependencies
+
+The following third-party libraries are used by this project. All licenses are permissive and compatible with this project's MIT license.
+
+| Package                               | License        |
+| ------------------------------------- | -------------- |
+| github.com/charmbracelet/bubbles      | MIT            |
+| github.com/charmbracelet/bubbletea    | MIT            |
+| github.com/charmbracelet/lipgloss     | MIT            |
+| github.com/nicksnyder/go-i18n/v2      | MIT            |
+| github.com/pkg/sftp                   | BSD-2-Clause   |
+| github.com/spf13/cobra                | Apache-2.0     |
+| github.com/spf13/viper                | MIT            |
+| golang.org/x/crypto                   | BSD-3-Clause   |
+| golang.org/x/sys                      | BSD-3-Clause   |
+| golang.org/x/text                     | BSD-3-Clause   |
+| gopkg.in/yaml.v3                      | MIT/Apache-2.0 |
+
+---
+
+## License Texts
+
+### The MIT License (MIT)
+
+The following components are licensed under the MIT License:
+- `github.com/charmbracelet/bubbles`
+- `github.com/charmbracelet/bubbletea`
+- `github.com/charmbracelet/lipgloss`
+- `github.com/nicksnyder/go-i18n/v2`
+- `github.com/spf13/viper`
+- `gopkg.in/yaml.v3`
+
+```
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### Apache License 2.0 (Apache-2.0)
+
+The following components are licensed under the Apache License 2.0:
+- `github.com/spf13/cobra`
+- `gopkg.in/yaml.v3`
+
+The full text of the license can be found at: http://www.apache.org/licenses/LICENSE-2.0
+
+### BSD 2-Clause "Simplified" License (BSD-2-Clause)
+
+The following components are licensed under the BSD 2-Clause License:
+- `github.com/pkg/sftp`
+
+```
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+### BSD 3-Clause "New" or "Revised" License (BSD-3-Clause)
+
+The following components are licensed under the BSD 3-Clause License:
+- `golang.org/x/crypto`
+- `golang.org/x/sys`
+- `golang.org/x/text`
+
+The full text of the license can be found at: https://opensource.org/licenses/BSD-3-Clause
