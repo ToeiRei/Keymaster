@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Import Command:** The `import` command now provides more detailed feedback, reporting errors for invalid key lines instead of skipping them silently.
 
 ### Fixed
+- **GoReleaser Workflow:** Corrected the method for passing release notes to the `goreleaser-action` by using the dedicated `release_notes` input, resolving the "unknown flag" error.
 - **GoReleaser Workflow:** The release workflow now passes release notes via a CLI flag (`--release-notes-file`) to avoid using a GoReleaser Pro feature, fixing release failures.
 - **Configuration Discovery:** Keymaster now prints a message when it automatically creates a default `.keymaster.yaml` file, improving user feedback on first run.
 - **CLI Parsing:** Improved argument parsing in the `trust-host` command for consistency and robustness.
