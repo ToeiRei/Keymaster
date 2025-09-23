@@ -74,3 +74,14 @@ public_key_form.checkbox_checked: "[x] Set as Global Key (will be deployed to al
 public_key_form.help: "(tab to navigate, space/enter to toggle checkbox, enter on input to submit, esc to cancel)"
 public_key_form.error: "Error: %v"
 public_key_form.info: "Paste a valid SSH public key. You can set it as global to deploy to all accounts."
+
+# Assign keys view translations
+assign_keys.help_bar: "j/k up/down: navigate   enter: select/toggle   /: search   esc: back   q: quit"
+assign_keys.accounts_title: "Accounts"
+assign_keys.no_accounts: "No accounts found. Press 'a' to add one."
+assign_keys.search_hint: "Press / to search..."
+assign_keys.keys_title: "Assign Keys for: %s"
+assign_keys.keys_title_short: "Keys"
+assign_keys.no_keys: "No public keys found. Press 'a' to add one."
+assign_keys.filtering: "Filter: %s█"
+assign_keys.filter_active: "Filter: %s (press 'esc' to clear)"
