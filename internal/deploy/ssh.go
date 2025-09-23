@@ -1,6 +1,7 @@
 package deploy
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -213,6 +214,10 @@ func (d *Deployer) GetAuthorizedKeys() ([]byte, error) {
 	return content, nil
 }
 
+// ErrHostKeySuccessfullyRetrieved is a sentinel error used to gracefully stop the SSH handshake
+// in GetRemoteHostKey once the host key has been captured.
+var ErrHostKeySuccessfullyRetrieved = errors.New("keymaster: successfully retrieved host key")
+
 // GetRemoteHostKey connects to a host just to retrieve its public key.
 func GetRemoteHostKey(host string) (ssh.PublicKey, error) {
 	keyChan := make(chan ssh.PublicKey, 1)
@@ -224,7 +229,7 @@ func GetRemoteHostKey(host string) (ssh.PublicKey, error) {
 			// We got the key, send it back on the channel.
 			keyChan <- key
 			// Return a specific error to gracefully stop the handshake.
-			return fmt.Errorf("keymaster: successfully retrieved host key")
+			return ErrHostKeySuccessfullyRetrieved
 		},
 		Timeout: 5 * time.Second,
 	}
@@ -237,8 +242,8 @@ func GetRemoteHostKey(host string) (ssh.PublicKey, error) {
 	// We expect ssh.Dial to fail with our specific error.
 	_, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
-		// Check if it's our specific error.
-		if strings.Contains(err.Error(), "keymaster: successfully retrieved host key") {
+		// Check if it's our specific sentinel error.
+		if errors.Is(err, ErrHostKeySuccessfullyRetrieved) {
 			// Success, the key is in the channel.
 			return <-keyChan, nil
 		}
