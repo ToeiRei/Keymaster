@@ -1,3 +1,8 @@
+// main.go sets up the command-line interface (CLI) for the Keymaster
+// application using the Cobra library. It defines the root command,
+// subcommands (like deploy, audit, rotate-key), flags, and the main
+// entry point for execution.
+
 package main
 
 import (
@@ -25,6 +30,7 @@ import (
 var version = "dev" // this will be set by the linker
 var cfgFile string
 
+// main is the entry point of the application.
 func main() {
 	if err := rootCmd.Execute(); err != nil {
 		// The error is already printed by Cobra on failure.
@@ -32,6 +38,9 @@ func main() {
 	}
 }
 
+// rootCmd represents the base command when called without any subcommands.
+// It initializes the database via PersistentPreRunE for all child commands
+// and launches the interactive TUI when run directly.
 var rootCmd = &cobra.Command{
 	Use:   "keymaster",
 	Short: "Keymaster is a lightweight, agentless SSH access manager.",
@@ -57,6 +66,9 @@ Running without a subcommand will launch the interactive TUI.`,
 	},
 }
 
+// init is a special Go function that is called before main().
+// It sets up the application's command-line interface, including flags,
+// default configuration values, and subcommands.
 func init() {
 	cobra.OnInitialize(initConfig)
 
@@ -83,7 +95,10 @@ func init() {
 	rootCmd.AddCommand(trustHostCmd)
 }
 
-// initConfig reads in config file and ENV variables if set.
+// initConfig reads in a configuration file and environment variables.
+// It uses Viper to search for a config file (e.g., .keymaster.yaml) in the home
+// and current directories. If a config file is not found, it attempts to create
+// a default one. It also binds environment variables prefixed with "KEYMASTER".
 func initConfig() {
 	if cfgFile != "" {
 		// Use config file from the flag.
@@ -143,6 +158,9 @@ database:
 	}
 }
 
+// deployCmd represents the 'deploy' command.
+// It handles rendering the authorized_keys file from the database and deploying it
+// to one or all managed accounts.
 var deployCmd = &cobra.Command{
 	Use:   "deploy [user@host]",
 	Short: "Deploy authorized_keys to one or all hosts",
@@ -196,6 +214,9 @@ If no account is specified, deploys to all active accounts in the database.`,
 	},
 }
 
+// rotateKeyCmd represents the 'rotate-key' command.
+// It generates a new system key pair, saves it to the database as the new
+// active key, and keeps the old key for transitioning hosts.
 var rotateKeyCmd = &cobra.Command{
 	Use:   "rotate-key",
 	Short: "Rotates the active Keymaster system key",
@@ -232,6 +253,9 @@ The previous key is kept for accessing hosts that have not yet been updated.`,
 	},
 }
 
+// auditCmd represents the 'audit' command.
+// It connects to all active hosts to verify that their deployed authorized_keys
+// file matches the configuration stored in the database, detecting any drift.
 var auditCmd = &cobra.Command{
 	Use:   "audit",
 	Short: "Audit hosts for configuration drift",
@@ -257,6 +281,9 @@ var auditCmd = &cobra.Command{
 	},
 }
 
+// importCmd represents the 'import' command.
+// It parses a standard authorized_keys file and adds the public keys
+// found within it to the Keymaster database.
 var importCmd = &cobra.Command{
 	Use:   "import [authorized_keys_file]",
 	Short: "Import public keys from an authorized_keys file",
@@ -316,7 +343,9 @@ var importCmd = &cobra.Command{
 	},
 }
 
-// A task to be run in parallel on an account.
+// parallelTask defines a generic task to be executed in parallel across multiple
+// accounts. It holds configuration for messaging, logging, and the core task
+// function to be executed.
 type parallelTask struct {
 	name       string // e.g., "deployment", "audit"
 	startMsg   string // e.g., "🚀 Starting deployment..."
@@ -327,6 +356,9 @@ type parallelTask struct {
 	taskFunc   func(model.Account) error
 }
 
+// runParallelTasks executes a given task concurrently for a list of accounts.
+// It uses a wait group to manage goroutines and a channel to collect results,
+// printing status messages as tasks complete.
 func runParallelTasks(accounts []model.Account, task parallelTask) {
 	if len(accounts) == 0 {
 		fmt.Printf("No active accounts for %s.\n", task.name)
@@ -365,6 +397,11 @@ func runParallelTasks(accounts []model.Account, task parallelTask) {
 	fmt.Printf("\n%s complete.\n", strings.Title(task.name))
 }
 
+// runDeploymentForAccount handles the deployment logic for a single account.
+// It determines the correct system key to use for connection (either the active
+// key for bootstrapping or the account's last known key), generates the
+// authorized_keys content, deploys it, and updates the account's key serial
+// in the database upon success.
 func runDeploymentForAccount(account model.Account) error {
 	var connectKey *model.SystemKey
 	var err error
@@ -412,6 +449,10 @@ func runDeploymentForAccount(account model.Account) error {
 	return nil
 }
 
+// trustHostCmd represents the 'trust-host' command.
+// It facilitates the initial trust of a new host by fetching its public SSH key,
+// displaying its fingerprint, and prompting the user to save it to the database
+// as a known host.
 var trustHostCmd = &cobra.Command{
 	Use:   "trust-host <user@host>",
 	Short: "Adds a host's public key to the list of known hosts",
@@ -461,6 +502,11 @@ step before Keymaster can manage a new host.`,
 	},
 }
 
+// runAuditForAccount performs a configuration audit on a single account.
+// It connects to the host using the system key it's expected to have,
+// reads the remote authorized_keys file, and compares it against the
+// configuration that *should* be there according to the database. It returns
+// an error if a drift is detected.
 func runAuditForAccount(account model.Account) error {
 	// 1. An account with serial 0 has never been deployed. This is a known state, not a drift.
 	if account.Serial == 0 {
