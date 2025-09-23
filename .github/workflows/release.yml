@@ -21,13 +21,16 @@ jobs:
         uses: actions/setup-go@v5
 
       - name: Extract Release Notes
+        id: extract_notes
         run: |
+          NOTES_FILE=$(mktemp)
           # The tag is in the format vX.Y.Z. We need to extract X.Y.Z.
           VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
           # Use awk to find the section for the current version and print its content
           # until we hit the separator for the next version ('---').
           # This extracts the body of the latest changelog entry for the release notes.
-          awk -v ver="## [$VERSION]" '$0 ~ ver {p=1; next} p && /^---/ {exit} p' CHANGELOG.md > release-notes.md
+          awk -v ver="## [$VERSION]" '$0 ~ ver {p=1; next} p && /^---/ {exit} p' CHANGELOG.md > "$NOTES_FILE"
+          echo "notes_path=$NOTES_FILE" >> $GITHUB_OUTPUT
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
@@ -38,7 +41,7 @@ jobs:
           # The '--clean' flag removes the 'dist' directory before building.
           args: release --clean
           # Pass the release notes file directly to the action.
-          release_notes: release-notes.md
+          release_notes: ${{ steps.extract_notes.outputs.notes_path }}
         env:
           # This token is provided by GitHub automatically and is required
           # to create a release and upload assets.
