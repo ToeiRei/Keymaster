@@ -1,0 +1,9 @@
+# English translations for Keymaster
+menu.manage_accounts: "Manage Accounts"
+menu.manage_public_keys: "Manage Public Keys"
+menu.assign_keys: "Assign Keys to Accounts"
+menu.rotate_system_keys: "Rotate System Keys"
+menu.deploy_to_fleet: "Deploy to Fleet"
+menu.view_audit_log: "View Audit Log"
+menu.view_accounts_by_tag: "View Accounts by Tag"
+menu.navigation: "Navigation"

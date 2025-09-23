@@ -1,0 +1,9 @@
+# German translations for Keymaster
+menu.manage_accounts: "Konten verwalten"
+menu.manage_public_keys: "Öffentliche Schlüssel verwalten"
+menu.assign_keys: "Schlüssel zuweisen"
+menu.rotate_system_keys: "Systemschlüssel rotieren"
+menu.deploy_to_fleet: "Auf Flotte ausrollen"
+menu.view_audit_log: "Audit-Log anzeigen"
+menu.view_accounts_by_tag: "Konten nach Tag anzeigen"
+menu.navigation: "Navigation"
