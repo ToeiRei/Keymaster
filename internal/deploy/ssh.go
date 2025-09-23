@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/pkg/sftp"
@@ -60,9 +59,9 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 		addr = net.JoinHostPort(host, "22")
 	}
 	var client *ssh.Client
-	var finalErr error
 
-	// --- Attempt 1: Use the Keymaster system key exclusively ---
+	// If a private key is provided, use it exclusively. This is the standard path
+	// for deployment and auditing with a Keymaster system key.
 	if privateKey != "" {
 		signer, err := ssh.ParsePrivateKey([]byte(privateKey))
 		if err != nil {
@@ -75,7 +74,6 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 			HostKeyCallback: hostKeyCallback,
 			Timeout:         10 * time.Second,
 		}
-
 		client, err = ssh.Dial("tcp", addr, config)
 		if err == nil {
 			// Success! We connected with the system key.
@@ -86,21 +84,15 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 			}
 			return &Deployer{client: client, sftp: sftpClient}, nil
 		}
-
-		// If the error was not an auth failure, we should fail fast.
-		if !strings.Contains(err.Error(), "unable to authenticate") {
-			return nil, fmt.Errorf("connection with system key failed: %w", err)
-		}
-		// It was an auth error, so we'll store it and try the agent.
-		finalErr = err
+		// If we provided a key and it failed, we return the error immediately
+		// without falling back to the agent.
+		return nil, fmt.Errorf("connection with system key failed: %w", err)
 	}
 
-	// --- Attempt 2: Use the SSH agent as a fallback ---
+	// If no private key was provided, attempt to use the SSH agent.
+	// This is used for bootstrapping/importing keys.
 	agentClient := getSSHAgent()
 	if agentClient == nil {
-		if finalErr != nil { // This means the private key auth failed before this.
-			return nil, fmt.Errorf("system key authentication failed, and no SSH agent available for fallback: %w", finalErr)
-		}
 		return nil, fmt.Errorf("no authentication method available (no system key provided and no ssh agent found)")
 	}
 

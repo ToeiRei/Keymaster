@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.1] - 2024-09-24
 
+### Changed
+- **Audit Logic:** The `audit` command now performs a full content comparison of the remote `authorized_keys` file against the expected state, instead of only checking the serial number. This provides a much more accurate and reliable drift detection.
+
 ### Fixed
 - **Deployment Compatibility:** The SFTP deployment logic now uses a backup-and-rename strategy, improving compatibility with SFTP servers that do not support atomic overwrites (e.g., on Windows).
 - **Build Failures:** Resolved two separate build failures: one caused by a function being redeclared, and another by a package import conflict in `main.go`.

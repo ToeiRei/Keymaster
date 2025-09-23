@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/pem"
@@ -461,49 +460,55 @@ step before Keymaster can manage a new host.`,
 }
 
 func runAuditForAccount(account model.Account) error {
+	// 1. An account with serial 0 has never been deployed. This is a known state, not a drift.
+	if account.Serial == 0 {
+		return fmt.Errorf("host has not been deployed to yet (serial is 0)")
+	}
+
+	// 2. Get the system key the database *thinks* is on the host.
 	connectKey, err := db.GetSystemKeyBySerial(account.Serial)
 	if err != nil {
 		return fmt.Errorf("could not get system key %d from db: %w", account.Serial, err)
 	}
 	if connectKey == nil {
-		// If serial is 0, it's a new host, which is technically not out of sync.
-		if account.Serial == 0 {
-			return fmt.Errorf("host has not been deployed to yet (serial is 0)")
-		}
 		return fmt.Errorf("db inconsistency: no system key found for serial %d", account.Serial)
 	}
 
+	// 3. Attempt to connect with that key. If this fails, the key is wrong/missing.
 	deployer, err := deploy.NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
 	if err != nil {
-		return fmt.Errorf("connection failed: %w", err)
+		// Give a more helpful error message than just "connection failed".
+		return fmt.Errorf("connection failed using key serial %d: %w", account.Serial, err)
 	}
 	defer deployer.Close()
 
-	remoteContent, err := deployer.GetAuthorizedKeys()
+	// 4. Read the content of the remote authorized_keys file.
+	remoteContentBytes, err := deployer.GetAuthorizedKeys()
 	if err != nil {
 		return fmt.Errorf("could not read remote authorized_keys: %w", err)
 	}
 
-	// Scan the entire file for the Keymaster serial comment, which is more robust
-	// than just checking the first line.
-	var remoteSerial = -1 // Use a value that can't be a valid serial
-	scanner := bufio.NewScanner(bytes.NewReader(remoteContent))
-	for scanner.Scan() {
-		line := scanner.Text()
-		serial, err := sshkey.ParseSerial(line)
-		if err == nil {
-			// Found it!
-			remoteSerial = serial
-			break
-		}
+	// 5. Generate the content that *should* be on the host (the desired state).
+	// This is always generated using the latest active system key.
+	expectedContent, err := deploy.GenerateKeysContent(account.ID)
+	if err != nil {
+		return fmt.Errorf("could not generate expected keys content for comparison: %w", err)
 	}
 
-	if remoteSerial == -1 {
-		return fmt.Errorf("Keymaster serial comment not found in remote file")
+	// 6. Normalize both remote and expected content for a reliable, canonical comparison.
+	// This handles CRLF vs LF line endings and surrounding whitespace.
+	normalize := func(s string) string {
+		s = strings.ReplaceAll(s, "\r\n", "\n") // Normalize line endings
+		s = strings.TrimSpace(s)                // Remove leading/trailing whitespace
+		return s
 	}
 
-	if remoteSerial != account.Serial {
-		return fmt.Errorf("remote serial (%d) does not match database serial (%d)", remoteSerial, account.Serial)
+	normalizedRemote := normalize(string(remoteContentBytes))
+	normalizedExpected := normalize(expectedContent)
+
+	// 7. Compare the actual state with the desired state.
+	if normalizedRemote != normalizedExpected {
+		return fmt.Errorf("content drift detected. Remote file does not match the expected configuration")
 	}
 
 	return nil
