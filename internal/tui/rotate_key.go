@@ -1,4 +1,7 @@
-package tui
+// package tui provides the terminal user interface for Keymaster.
+// This file contains the logic for the system key rotation view, which handles
+// both the initial generation of a system key and the rotation of an existing one.
+package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"crypto/ed25519"
@@ -14,30 +17,44 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 )
 
+// rotateState represents the current view within the key rotation workflow.
 type rotateState int
 
 const (
+	// rotateStateChecking is the initial state where the model checks if a system key exists.
 	rotateStateChecking rotateState = iota
+	// rotateStateReadyToGenerate is an intermediate state before showing the generation confirmation.
 	rotateStateReadyToGenerate
+	// rotateStateReadyToRotate is an intermediate state before showing the rotation confirmation.
 	rotateStateReadyToRotate
+	// rotateStateGenerating shows a "generating..." message while the key is being created.
 	rotateStateGenerating
+	// rotateStateGenerated shows the result of the initial key generation, including the public key.
 	rotateStateGenerated
+	// rotateStateRotating shows a "rotating..." message while the key is being rotated.
 	rotateStateRotating
+	// rotateStateRotated shows the result of a successful key rotation.
 	rotateStateRotated
 )
 
+// rotateKeyModel holds the state for the system key rotation view.
+// It manages the workflow from checking for an existing key to confirming and
+// performing the generation or rotation.
 type rotateKeyModel struct {
 	state        rotateState
-	newPublicKey string
-	newKeySerial int
+	newPublicKey string // The public key generated during initial creation.
+	newKeySerial int    // The serial number of the newly created/rotated key.
 	err          error
 	// For confirmation modal
-	isConfirmingGenerate bool
-	isConfirmingRotate   bool
-	confirmCursor        int
+	isConfirmingGenerate bool // True if the "generate initial key" modal is active.
+	isConfirmingRotate   bool // True if the "rotate existing key" modal is active.
+	confirmCursor        int  // 0 for No, 1 for Yes in the confirmation modal.
 	width, height        int
 }
 
+// newRotateKeyModel creates a new model for the key rotation view.
+// It immediately checks the database to see if a system key already exists
+// and sets the appropriate confirmation state (generate vs. rotate).
 func newRotateKeyModel() *rotateKeyModel {
 	m := &rotateKeyModel{state: rotateStateChecking, confirmCursor: 0} // Default to No
 	hasKey, err := db.HasSystemKeys()
@@ -47,17 +64,21 @@ func newRotateKeyModel() *rotateKeyModel {
 	}
 
 	if hasKey {
+		m.state = rotateStateReadyToRotate
 		m.isConfirmingRotate = true
 	} else {
+		m.state = rotateStateReadyToGenerate
 		m.isConfirmingGenerate = true
 	}
 	return m
 }
 
+// Init initializes the model.
 func (m *rotateKeyModel) Init() tea.Cmd {
 	return nil
 }
 
+// Update handles messages and updates the model's state.
 func (m *rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -123,6 +144,7 @@ func (m *rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// viewConfirmationRotate renders the modal dialog for confirming a key rotation.
 func (m *rotateKeyModel) viewConfirmationRotate() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render(i18n.T("rotate_key.confirm_rotate_title")))
@@ -150,6 +172,7 @@ func (m *rotateKeyModel) viewConfirmationRotate() string {
 	)
 }
 
+// viewConfirmationGenerate renders the modal dialog for generating the initial system key.
 func (m *rotateKeyModel) viewConfirmationGenerate() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render(i18n.T("rotate_key.confirm_generate_title")))
@@ -177,6 +200,7 @@ func (m *rotateKeyModel) viewConfirmationGenerate() string {
 	)
 }
 
+// View renders the key rotation UI based on the current model state.
 func (m *rotateKeyModel) View() string {
 	if m.isConfirmingGenerate {
 		return m.viewConfirmationGenerate()
@@ -224,18 +248,21 @@ func (m *rotateKeyModel) View() string {
 
 // --- Commands and Messages ---
 
+// initialKeyGeneratedMsg is a message sent when the initial key generation is complete.
 type initialKeyGeneratedMsg struct {
 	publicKey string
 	serial    int
 	err       error
 }
 
+// keyRotatedMsg is a message sent when the key rotation is complete.
 type keyRotatedMsg struct {
 	serial int
 	err    error
 }
 
 // generateInitialKey is a tea.Cmd that performs the key generation and DB write.
+// It sends an initialKeyGeneratedMsg when complete.
 func generateInitialKey() tea.Msg {
 	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -264,6 +291,7 @@ func generateInitialKey() tea.Msg {
 }
 
 // performRotation is a tea.Cmd that generates a new key and performs the DB rotation.
+// It sends a keyRotatedMsg when complete.
 func performRotation() tea.Msg {
 	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {

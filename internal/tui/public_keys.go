@@ -1,4 +1,7 @@
-package tui
+// package tui provides the terminal user interface for Keymaster.
+// This file contains the logic for the public key management view, which allows
+// users to list, add, delete, and see the usage of public keys.
+package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
@@ -6,19 +9,27 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	internalkey "github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"golang.org/x/crypto/ssh"
 )
 
+// publicKeysViewState represents the current view within the public key management workflow.
 type publicKeysViewState int
 
 const (
+	// publicKeysListView is the default view, showing a filterable list of all keys.
 	publicKeysListView publicKeysViewState = iota
+	// publicKeysFormView shows the form for adding a new public key.
 	publicKeysFormView
+	// publicKeysUsageView shows a report of which accounts a specific key is assigned to.
 	publicKeysUsageView
 )
 
+// publicKeysModel holds the state for the public key management view.
+// It manages the list of keys, the form for adding new keys, and the usage report view.
 type publicKeysModel struct {
 	state            publicKeysViewState
 	form             publicKeyFormModel
@@ -38,6 +49,7 @@ type publicKeysModel struct {
 	width, height      int
 }
 
+// newPublicKeysModel creates a new model for the public key view, pre-loading keys from the database.
 func newPublicKeysModel() publicKeysModel {
 	m := publicKeysModel{}
 	var err error
@@ -49,10 +61,13 @@ func newPublicKeysModel() publicKeysModel {
 	return m
 }
 
+// Init initializes the model.
 func (m publicKeysModel) Init() tea.Cmd {
 	return nil
 }
 
+// rebuildDisplayedKeys constructs the list of keys to be displayed, applying the
+// current filter text. It also ensures the cursor remains within bounds.
 func (m *publicKeysModel) rebuildDisplayedKeys() {
 	if m.filter == "" {
 		m.displayedKeys = m.keys
@@ -77,6 +92,7 @@ func (m *publicKeysModel) rebuildDisplayedKeys() {
 	}
 }
 
+// Update handles messages and updates the model's state.
 func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -238,6 +254,7 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// View renders the public key management UI based on the current model state.
 func (m publicKeysModel) View() string {
 	if m.err != nil {
 		return fmt.Sprintf("Error: %v\n", m.err)
@@ -257,6 +274,7 @@ func (m publicKeysModel) View() string {
 	}
 }
 
+// viewConfirmation renders the modal dialog for confirming a key deletion.
 func (m publicKeysModel) viewConfirmation() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("🗑️ Confirm Deletion"))
@@ -287,6 +305,7 @@ func (m publicKeysModel) viewConfirmation() string {
 	)
 }
 
+// viewKeyList renders the main two-pane view with the key list and details.
 func (m publicKeysModel) viewKeyList() string {
 	title := mainTitleStyle.Render("🔑 " + i18n.T("public_keys.title"))
 	header := lipgloss.NewStyle().Align(lipgloss.Center).Render(title)
@@ -339,9 +358,13 @@ func (m publicKeysModel) viewKeyList() string {
 		detailsItems = append(detailsItems, "", helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.detail_comment"), key.Comment)))
 		detailsItems = append(detailsItems, helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.detail_algorithm"), key.Algorithm)))
 		detailsItems = append(detailsItems, helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.detail_global"), boolToYesNo(key.IsGlobal))))
-		// TODO: The `model.PublicKey` struct does not have a `Fingerprint` field, causing a compilation error.
-		// This line is commented out. Please check the struct definition for the correct field name.
-		// detailsItems = append(detailsItems, helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.detail_fingerprint"), key.Fingerprint)))
+
+		// Calculate and display the fingerprint on the fly.
+		parsedKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key.String()))
+		if err == nil {
+			fingerprint := internalkey.FingerprintSHA256(parsedKey)
+			detailsItems = append(detailsItems, helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.detail_fingerprint"), fingerprint)))
+		}
 	}
 
 	// Only show filter status if filtering
@@ -367,9 +390,9 @@ func (m publicKeysModel) viewKeyList() string {
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", helpLine)
 
-	// Helper for Yes/No i18n
 }
 
+// boolToYesNo is a helper function to convert a boolean to a localized "Yes" or "No".
 func boolToYesNo(val bool) string {
 	if val {
 		return i18n.T("public_keys.yes")
@@ -377,6 +400,7 @@ func boolToYesNo(val bool) string {
 	return i18n.T("public_keys.no")
 }
 
+// viewUsageReport renders the view that shows which accounts a key is assigned to.
 func (m publicKeysModel) viewUsageReport() string {
 	var b strings.Builder
 	title := fmt.Sprintf("📜 Key Usage Report for: %s", m.usageReportKey.Comment)

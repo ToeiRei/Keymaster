@@ -1,4 +1,7 @@
-package tui
+// package tui provides the terminal user interface for Keymaster.
+// This file, tui.go, is the main entry point for the TUI, containing the
+// top-level model that acts as a router to all other sub-views.
+package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
@@ -16,6 +19,7 @@ import (
 type viewState int
 
 const (
+	// menuView is the main dashboard and navigation menu.
 	menuView viewState = iota
 	accountsView
 	publicKeysView
@@ -26,7 +30,7 @@ const (
 	tagsView
 )
 
-// A message containing the data for the main menu dashboard.
+// dashboardDataMsg is a message containing the data for the main menu dashboard.
 type dashboardDataMsg struct {
 	data dashboardData
 }
@@ -42,7 +46,8 @@ type dashboardData struct {
 	err                error
 }
 
-// mainModel is the top-level model for the TUI. It manages which view is currently active.
+// mainModel is the top-level model for the TUI. It acts as a state machine
+// and router, delegating updates and view rendering to the currently active sub-model.
 type mainModel struct {
 	state      viewState
 	menu       menuModel
@@ -65,7 +70,7 @@ type menuModel struct {
 	cursor  int      // Which menu item our cursor is pointing at.
 }
 
-// initialModel returns the starting state of the TUI.
+// initialModel creates the starting state of the TUI, beginning at the main menu.
 func initialModel() mainModel {
 	return mainModel{
 		state: menuView,
@@ -83,14 +88,14 @@ func initialModel() mainModel {
 	}
 }
 
-// Init is the first function that will be called. It can be used to perform
-// some I/O operations on program startup.
+// Init is the first function that will be called by the Bubble Tea runtime.
+// It kicks off the initial command to load data for the dashboard.
 func (m mainModel) Init() tea.Cmd {
 	return refreshDashboardCmd()
 }
 
-// Update is called when "things happen." It's where we handle all events,
-// like key presses.
+// Update is the main message loop. It handles all events (like key presses and
+// window size changes) and delegates them to the active sub-model.
 func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -258,7 +263,8 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// View renders the TUI. It's called after every Update.
+// View renders the TUI. It's called after every Update and delegates rendering
+// to the currently active sub-model.
 func (m mainModel) View() string {
 	if m.err != nil {
 		// A simple error view
@@ -287,6 +293,7 @@ func (m mainModel) View() string {
 	}
 }
 
+// View renders the main menu and dashboard.
 func (m menuModel) View(data dashboardData, width int) string {
 	// Title (i18n)
 	title := mainTitleStyle.Render("🔑 " + i18n.T("dashboard.title"))
@@ -377,7 +384,7 @@ func (m menuModel) View(data dashboardData, width int) string {
 	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", footer)
 }
 
-// Run is the entrypoint for the TUI.
+// Run is the main entrypoint for the TUI. It initializes and runs the Bubble Tea program.
 func Run() {
 	if _, err := tea.NewProgram(initialModel()).Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)

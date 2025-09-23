@@ -1,9 +1,12 @@
-package tui
+// package tui provides the terminal user interface for Keymaster.
+// This file defines the shared lipgloss styles used across the different
+// views to ensure a consistent look and feel.
+package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import "github.com/charmbracelet/lipgloss"
 
+// colorPalette defines the core colors used in the TUI.
 const (
-	// Colors
 	colorSubtle    = lipgloss.Color("240") // Muted gray
 	colorHighlight = lipgloss.Color("81")  // A nice teal/cyan
 	colorSpecial   = lipgloss.Color("208") // An orange for special attention
@@ -12,6 +15,7 @@ const (
 	colorWhite     = lipgloss.Color("231")
 )
 
+// Styles defines the reusable lipgloss styles for various UI components.
 var (
 	// General
 	docStyle = lipgloss.NewStyle().Margin(1, 2)

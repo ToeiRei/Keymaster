@@ -1,4 +1,7 @@
-package tui
+// package tui provides the terminal user interface for Keymaster.
+// This file contains the logic for the public key creation form, which allows
+// users to paste a raw public key and add it to the database.
+package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
@@ -11,16 +14,19 @@ import (
 	"github.com/toeirei/keymaster/internal/sshkey"
 )
 
-// A message to signal that a key was created and we should go back to the list.
+// publicKeyCreatedMsg is a message to signal that a key was created successfully
+// and the view should return to the public key list.
 type publicKeyCreatedMsg struct{}
 
+// publicKeyFormModel holds the state for the public key creation form.
 type publicKeyFormModel struct {
-	focusIndex int // 0 for input, 1 for checkbox
-	input      textinput.Model
-	isGlobal   bool
-	err        error
+	focusIndex int             // 0 for input, 1 for checkbox
+	input      textinput.Model // The text input for pasting the raw key.
+	isGlobal   bool            // Whether the 'global' checkbox is checked.
+	err        error           // Any error that occurred during submission.
 }
 
+// newPublicKeyFormModel creates a new, empty form model for adding a public key.
 func newPublicKeyFormModel() publicKeyFormModel {
 	ti := textinput.New()
 	ti.Placeholder = i18n.T("public_key_form.placeholder")
@@ -37,10 +43,12 @@ func newPublicKeyFormModel() publicKeyFormModel {
 	}
 }
 
+// Init initializes the form model, returning a command to start the cursor blinking.
 func (m publicKeyFormModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
+// Update handles messages and updates the form model's state.
 func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -99,6 +107,7 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// View renders the public key form UI.
 func (m publicKeyFormModel) View() string {
 	title := mainTitleStyle.Render("✨ " + i18n.T("public_key_form.add_title"))
 	header := lipgloss.NewStyle().Align(lipgloss.Center).Render(title)
