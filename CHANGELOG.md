@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.1] - 2024-09-24
 
+### Fixed
+- **Deployment Compatibility:** The SFTP deployment logic now uses a backup-and-rename strategy, improving compatibility with SFTP servers that do not support atomic overwrites (e.g., on Windows).
+- **Build Failures:** Resolved two separate build failures: one caused by a function being redeclared, and another by a package import conflict in `main.go`.
+- **File Formatting:** Refined the `authorized_keys` file generator to ensure consistent formatting and a single trailing newline, adhering to POSIX standards.
+
 ### Security
 - **Automatic System Key Hardening:** Keymaster now automatically prepends restrictive options (`command="internal-sftp"`, `no-port-forwarding`, etc.) to its system key during every deployment. This significantly hardens security by default, ensuring the system key can only be used for SFTP operations and not for interactive shells, even if compromised.
 
