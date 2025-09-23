@@ -29,8 +29,8 @@ Keymaster 1.2 introduces a completely redesigned user interface to make managing
 │ Navigation                           │  │ System Status                                    │
 │                                      │  │                                                  │
 │   ▸ Manage Accounts                  │  │ Managed Accounts: 5 (5 active)                   │
-│     Manage Public Keys               │  │    Public Keys: 3 (1 global)                     │
-│     Assign Keys to Accounts          │  │     System Key: Active (Serial #1)               │
+│     Manage Public Keys               │  │      Public Keys: 3 (1 global)                   │
+│     Assign Keys to Accounts          │  │       System Key: Active (Serial #1)             │
 │     Rotate System Keys               │  │                                                  │
 │     Deploy to Fleet                  │  │                                                  │
 │     View Audit Log                   │  │ Recent Activity                                  │
