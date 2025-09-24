@@ -71,36 +71,32 @@ func NewDeployer(host, user, privateKey string) (*Deployer, error) {
 	// for deployment and auditing with a Keymaster system key.
 	if privateKey != "" {
 		signer, err := ssh.ParsePrivateKey([]byte(privateKey))
-		if err != nil {
-			return nil, fmt.Errorf("unable to parse private key: %w", err)
-		}
-
-		config := &ssh.ClientConfig{
-			User:            user,
-			Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
-			HostKeyCallback: hostKeyCallback,
-			Timeout:         10 * time.Second,
-		}
-		client, err = ssh.Dial("tcp", addr, config)
 		if err == nil {
-			// Success! We connected with the system key.
-			sftpClient, sftpErr := sftp.NewClient(client)
-			if sftpErr != nil {
-				client.Close()
-				return nil, fmt.Errorf("failed to create sftp client: %w", sftpErr)
+			config := &ssh.ClientConfig{
+				User:            user,
+				Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
+				HostKeyCallback: hostKeyCallback,
+				Timeout:         10 * time.Second,
 			}
-			return &Deployer{client: client, sftp: sftpClient}, nil
+			client, err = ssh.Dial("tcp", addr, config)
+			if err == nil {
+				// Success! We connected with the system key.
+				sftpClient, sftpErr := sftp.NewClient(client)
+				if sftpErr != nil {
+					client.Close()
+					return nil, fmt.Errorf("failed to create sftp client: %w", sftpErr)
+				}
+				return &Deployer{client: client, sftp: sftpClient}, nil
+			}
+			// If we provided a key and it failed, we will fall through to try the agent.
 		}
-		// If we provided a key and it failed, we return the error immediately
-		// without falling back to the agent.
-		return nil, fmt.Errorf("connection with system key failed: %w", err)
 	}
 
 	// If no private key was provided, attempt to use the SSH agent.
 	// This is used for bootstrapping/importing keys.
 	agentClient := getSSHAgent()
 	if agentClient == nil {
-		return nil, fmt.Errorf("no authentication method available (no system key provided and no ssh agent found)")
+		return nil, fmt.Errorf("no authentication method available (system key failed and no ssh agent found)")
 	}
 
 	config := &ssh.ClientConfig{
