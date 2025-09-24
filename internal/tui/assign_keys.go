@@ -160,7 +160,7 @@ func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cm
 			for _, key := range assigned {
 				m.assignedKeys[key.ID] = struct{}{}
 			}
-			m.status = fmt.Sprintf("Selected account %s (ID: %d) with %d keys assigned", m.selectedAccount.String(), m.selectedAccount.ID, len(assigned))
+			m.status = i18n.T("assign_keys.status.selected_account", m.selectedAccount.String(), len(assigned))
 			return m, nil
 		}
 	}
@@ -253,17 +253,17 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			selectedKey := filteredKeys[m.keyCursor]
 			if _, assigned := m.assignedKeys[selectedKey.ID]; assigned {
 				// Unassign
-				m.status = fmt.Sprintf("Attempting to unassign key: %s (ID: %d) from account ID: %d", selectedKey.Comment, selectedKey.ID, m.selectedAccount.ID)
+				m.status = i18n.T("assign_keys.status.unassign_attempt", selectedKey.Comment)
 				if err := db.UnassignKeyFromAccount(selectedKey.ID, m.selectedAccount.ID); err != nil {
 					m.err = err
-					m.status = fmt.Sprintf("Error unassigning key: %v", err)
+					m.status = i18n.T("assign_keys.status.unassign_error", err)
 				} else {
 					delete(m.assignedKeys, selectedKey.ID)
-					m.status = fmt.Sprintf("Unassigned key: %s", selectedKey.Comment)
+					m.status = i18n.T("assign_keys.status.unassign_success", selectedKey.Comment)
 				}
 			} else {
 				// Assign
-				m.status = fmt.Sprintf("Attempting to assign key: %s (ID: %d) to account ID: %d", selectedKey.Comment, selectedKey.ID, m.selectedAccount.ID)
+				m.status = i18n.T("assign_keys.status.assign_attempt", selectedKey.Comment)
 				// Verify key still exists
 				exists := false
 				for _, k := range m.keys {
@@ -274,15 +274,15 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				if !exists {
 					m.err = fmt.Errorf("key ID %d no longer exists in memory", selectedKey.ID)
-					m.status = fmt.Sprintf("Error: key may have been deleted: %v", m.err)
+					m.status = i18n.T("assign_keys.status.assign_error_deleted", m.err)
 					return m, nil
 				}
 				if err := db.AssignKeyToAccount(selectedKey.ID, m.selectedAccount.ID); err != nil {
 					m.err = err
-					m.status = fmt.Sprintf("Error assigning key: %v", err)
+					m.status = i18n.T("assign_keys.status.assign_error", err)
 				} else {
 					m.assignedKeys[selectedKey.ID] = struct{}{}
-					m.status = fmt.Sprintf("Assigned key: %s (ID: %d)", selectedKey.Comment, selectedKey.ID)
+					m.status = i18n.T("assign_keys.status.assign_success", selectedKey.Comment)
 				}
 			}
 			return m, nil
@@ -328,23 +328,25 @@ func (m *assignKeysModel) viewKeySelection() string {
 		listItems = append(listItems, helpStyle.Render(i18n.T("assign_keys.no_keys")))
 	} else {
 		for i, key := range keys {
-			checked := "○"
+			checked := i18n.T("assign_keys.checkmark_unchecked")
 			if _, ok := m.assignedKeys[key.ID]; ok {
-				checked = "✔"
+				checked = i18n.T("assign_keys.checkmark_checked")
 			}
 			globalMark := ""
 			if key.IsGlobal {
-				globalMark = "🌍 "
+				globalMark = i18n.T("assign_keys.global_marker")
 			}
 			cursor := "  "
 			if m.keyCursor == i {
 				cursor = "▸ "
 			}
-			item := cursor + checked + " " + globalMark + key.Comment + " (" + key.Algorithm + ")"
+			item := i18n.T("assign_keys.key_item_format", cursor, checked, globalMark, key.Comment, key.Algorithm)
 			if key.IsGlobal {
 				listItems = append(listItems, inactiveItemStyle.Render(item))
 			} else if _, ok := m.assignedKeys[key.ID]; ok {
-				listItems = append(listItems, selectedItemStyle.Render(item))
+				// Render assigned keys with the selected style to make them stand out.
+				style := selectedItemStyle.Copy()
+				listItems = append(listItems, style.Render(item))
 			} else {
 				listItems = append(listItems, itemStyle.Render(item))
 			}
@@ -377,15 +379,31 @@ func (m *assignKeysModel) View() string {
 
 	// Compose help and filter status on one line, matching accounts.go style
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
+
 	var filterStatus string
-	if m.isFilteringAcct {
-		filterStatus = i18n.T("assign_keys.filtering") + m.accountFilter
-	} else if m.accountFilter != "" {
-		filterStatus = i18n.T("assign_keys.filter_active") + m.accountFilter
+	var helpKey string
+
+	if m.state == assignStateSelectKeys {
+		helpKey = "assign_keys.help_bar_keys"
+		if m.isFilteringKey {
+			filterStatus = fmt.Sprintf(i18n.T("assign_keys.filtering"), m.keyFilter)
+		} else if m.keyFilter != "" {
+			filterStatus = fmt.Sprintf(i18n.T("assign_keys.filter_active"), m.keyFilter)
+		} else {
+			filterStatus = i18n.T("assign_keys.search_hint")
+		}
 	} else {
-		filterStatus = i18n.T("assign_keys.search_hint")
+		helpKey = "assign_keys.help_bar_accounts"
+		if m.isFilteringAcct {
+			filterStatus = fmt.Sprintf(i18n.T("assign_keys.filtering"), m.accountFilter)
+		} else if m.accountFilter != "" {
+			filterStatus = fmt.Sprintf(i18n.T("assign_keys.filter_active"), m.accountFilter)
+		} else {
+			filterStatus = i18n.T("assign_keys.search_hint")
+		}
 	}
-	helpLine := footerStyle.Render(i18n.T("assign_keys.help_bar") + "  " + filterStatus)
+
+	helpLine := footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T(helpKey), filterStatus))
 
 	return lipgloss.JoinVertical(lipgloss.Left, mainArea, "", helpLine)
 }
