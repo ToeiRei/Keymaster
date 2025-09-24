@@ -124,13 +124,13 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// If the form signals an account was created, switch back to the list and refresh.
 		if am, ok := msg.(accountModifiedMsg); ok {
 			m.state = accountsListView
-			m.status = "Successfully modified account."
+			m.status = i18n.T("accounts.status.modified_success")
 			m.accounts, m.err = db.GetAllAccounts()
 			m.rebuildDisplayedAccounts()
 
 			// Find the new/edited account in the list and set the cursor
 			for i, acc := range m.displayedAccounts {
-				if acc.Username == am.username && acc.Hostname == am.hostname {
+				if acc.ID == am.accountID {
 					m.cursor = i
 					break
 				}
@@ -138,7 +138,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// If it was a new account, automatically try to trust the host.
 			if am.isNew && am.hostname != "" {
-				m.status += fmt.Sprintf("\nAttempting to trust host %s...", am.hostname)
+				m.status += "\n" + i18n.T("accounts.status.trust_attempt", am.hostname)
 				return m, verifyHostKeyCmd(am.hostname)
 			}
 			return m, nil // For edits, just return to the list.
@@ -166,14 +166,14 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				for _, key := range m.pendingImportKeys {
 					_ = db.AssignKeyToAccount(m.pendingImportAccountID, key.ID)
 				}
-				m.status = fmt.Sprintf("Assigned %d imported keys.", len(m.pendingImportKeys))
+				m.status = i18n.T("accounts.status.import_assigned", len(m.pendingImportKeys))
 				m.state = accountsListView
 				m.pendingImportAccountID = 0
 				m.pendingImportKeys = nil
 				return m, nil
 			case "n", "q", "esc":
 				// Don't assign, just go back
-				m.status = fmt.Sprintf("Imported %d new keys without assigning.", len(m.pendingImportKeys))
+				m.status = i18n.T("accounts.status.import_skipped_assign", len(m.pendingImportKeys))
 				m.state = accountsListView
 				m.pendingImportAccountID = 0
 				m.pendingImportKeys = nil
@@ -192,7 +192,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Fallthrough to confirm
 			case "n", "q", "esc":
 				m.isConfirmingDelete = false
-				m.status = "Deletion cancelled."
+				m.status = i18n.T("accounts.status.delete_cancelled")
 				return m, nil
 			case "right", "tab", "l":
 				m.confirmCursor = 1 // Yes
@@ -205,7 +205,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err := db.DeleteAccount(m.accountToDelete.ID); err != nil {
 						m.err = err
 					} else {
-						m.status = fmt.Sprintf("Deleted account: %s", m.accountToDelete.String())
+						m.status = i18n.T("accounts.status.delete_success", m.accountToDelete.String())
 						m.accounts, m.err = db.GetAllAccounts()
 						m.rebuildDisplayedAccounts()
 					}
@@ -221,9 +221,9 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case hostKeyVerifiedMsg:
 		if msg.err != nil {
-			m.status = fmt.Sprintf("Failed to verify host %s: %v", msg.hostname, msg.err)
+			m.status = i18n.T("accounts.status.verify_fail", msg.hostname, msg.err)
 		} else {
-			m.status = fmt.Sprintf("Successfully trusted host key for %s.", msg.hostname)
+			m.status = i18n.T("accounts.status.verify_success", msg.hostname)
 			if msg.warning != "" {
 				m.status += fmt.Sprintf("\n%s", msg.warning)
 			}
@@ -231,7 +231,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case remoteKeysImportedMsg:
 		if msg.err != nil {
-			m.status = fmt.Sprintf("Import failed: %v", msg.err)
+			m.status = i18n.T("accounts.status.import_fail", msg.err)
 			if msg.warning != "" {
 				m.status += "\n" + msg.warning
 			}
@@ -240,13 +240,13 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Handle success case
 		if len(msg.importedKeys) == 0 {
-			m.status = fmt.Sprintf("No new keys found to import. Skipped %d duplicates.", msg.skippedCount)
+			m.status = i18n.T("accounts.status.import_no_new", msg.skippedCount)
 		} else {
 			// We have keys, move to confirmation state
 			m.state = accountsImportConfirmView
 			m.pendingImportAccountID = msg.accountID
 			m.pendingImportKeys = msg.importedKeys
-			m.status = fmt.Sprintf("Assign these %d new keys to this account? (y/n)", len(m.pendingImportKeys))
+			m.status = i18n.T("accounts.import_confirm.question", len(m.pendingImportKeys))
 		}
 
 		if msg.warning != "" {
@@ -344,7 +344,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.err = err
 				} else {
 					// Refresh the list after toggling.
-					m.status = fmt.Sprintf("Toggled status for: %s", accToToggle.String())
+					m.status = i18n.T("accounts.status.toggle_success", accToToggle.String())
 					m.accounts, m.err = db.GetAllAccounts()
 					m.rebuildDisplayedAccounts()
 				}
@@ -355,7 +355,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "v":
 			if len(m.displayedAccounts) > 0 {
 				accToTrust := m.displayedAccounts[m.cursor]
-				m.status = fmt.Sprintf("Verifying host key for %s...", accToTrust.Hostname)
+				m.status = i18n.T("accounts.status.verify_start", accToTrust.Hostname)
 				return m, verifyHostKeyCmd(accToTrust.Hostname)
 			}
 			return m, nil
@@ -371,7 +371,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "i":
 			if len(m.displayedAccounts) > 0 {
 				accToImportFrom := m.displayedAccounts[m.cursor]
-				m.status = fmt.Sprintf("Importing keys from %s...", accToImportFrom.String())
+				m.status = i18n.T("accounts.status.import_start", accToImportFrom.String())
 				return m, importRemoteKeysCmd(accToImportFrom)
 			}
 			return m, nil
@@ -389,8 +389,8 @@ func (m accountsModel) View() string {
 	// If we're in the import confirmation view, just show the status.
 	if m.state == accountsImportConfirmView {
 		var viewItems []string
-		viewItems = append(viewItems, titleStyle.Render("✨ Remote Import Confirmation"))
-		viewItems = append(viewItems, fmt.Sprintf("Found %d new public keys on the remote host:", len(m.pendingImportKeys)), "")
+		viewItems = append(viewItems, titleStyle.Render(i18n.T("accounts.import_confirm.title")))
+		viewItems = append(viewItems, i18n.T("accounts.import_confirm.found_keys", len(m.pendingImportKeys)), "")
 
 		for _, key := range m.pendingImportKeys {
 			line := fmt.Sprintf("- %s (%s)", key.Comment, key.Algorithm)
@@ -404,25 +404,25 @@ func (m accountsModel) View() string {
 	// If we are confirming a delete, render the modal instead of the list.
 	if m.isConfirmingDelete {
 		var b strings.Builder
-		b.WriteString(titleStyle.Render("🗑️ Confirm Deletion"))
+		b.WriteString(titleStyle.Render(i18n.T("accounts.delete_confirm.title")))
 
-		question := fmt.Sprintf("Are you sure you want to delete the account\n\n%s?", m.accountToDelete.String())
+		question := i18n.T("accounts.delete_confirm.question", m.accountToDelete.String())
 		b.WriteString(question)
 		b.WriteString("\n\n")
 
 		var yesButton, noButton string
 		if m.confirmCursor == 1 { // Yes
-			yesButton = activeButtonStyle.Render("Yes, Delete")
-			noButton = buttonStyle.Render("No, Cancel")
+			yesButton = activeButtonStyle.Render(i18n.T("accounts.delete_confirm.yes"))
+			noButton = buttonStyle.Render(i18n.T("accounts.delete_confirm.no"))
 		} else { // No
-			yesButton = buttonStyle.Render("Yes, Delete")
-			noButton = activeButtonStyle.Render("No, Cancel")
+			yesButton = buttonStyle.Render(i18n.T("accounts.delete_confirm.yes"))
+			noButton = activeButtonStyle.Render(i18n.T("accounts.delete_confirm.no"))
 		}
 
 		buttons := lipgloss.JoinHorizontal(lipgloss.Top, noButton, "  ", yesButton)
 		b.WriteString(buttons)
 
-		b.WriteString("\n" + helpStyle.Render("\n(left/right to navigate, enter to confirm, esc to cancel)"))
+		b.WriteString("\n" + helpStyle.Render("\n"+i18n.T("accounts.delete_confirm.help")))
 
 		// Center the whole dialog
 		return lipgloss.Place(m.width, m.height,
