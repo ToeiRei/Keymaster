@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [UNRELEASED]
+
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- 
+
+---
+
+## [1.3.3] - 2025-09-26
+
+### Changed
+- **Refactoring:** Consolidated duplicated `ed25519` key generation logic from the CLI and TUI into a single function in the `internal/crypto/ssh` package.
+- **Database:** Enabled Write-Ahead Logging (WAL) mode for SQLite to improve concurrency and prevent `database is locked` errors.
+
+### Fixed
+- **Importer:** The key importer now correctly handles duplicate keys by checking for a specific database error (`db.ErrDuplicate`) instead of relying on string matching, which improves reliability across different database backends.
+
+---
+
 ## [1.3.2] - 2025-09-25
 
 ### Changed
