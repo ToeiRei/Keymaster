@@ -43,11 +43,25 @@ func InitDB(dbType, dsn string) error {
 
 	switch dbType {
 	case "sqlite":
+		// To prevent "database is locked" errors under concurrent writes, we ensure
+		// a busy_timeout is set. This makes SQLite wait for a lock to be released
+		// instead of failing immediately. 5000ms is a reasonable default.
+		if !strings.Contains(dsn, "_busy_timeout") {
+			if strings.Contains(dsn, "?") {
+				dsn += "&_busy_timeout=5000"
+			} else {
+				dsn += "?_busy_timeout=5000"
+			}
+		}
 		db, err = sql.Open("sqlite", dsn)
 		if err == nil {
-			// Special case for SQLite: enable foreign keys
+			// Enable foreign key support, which is off by default in SQLite.
 			if _, err = db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
 				return fmt.Errorf("failed to enable foreign keys for sqlite: %w", err)
+			}
+			// Enable Write-Ahead Logging for better concurrency.
+			if _, err = db.Exec("PRAGMA journal_mode=WAL;"); err != nil {
+				return fmt.Errorf("failed to enable WAL mode for sqlite: %w", err)
 			}
 			driver, err = sqlite.WithInstance(db, &sqlite.Config{})
 			store = &SqliteStore{db: db}

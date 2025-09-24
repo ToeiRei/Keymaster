@@ -16,3 +16,5 @@ vendor/
 .vscode/
 .idea/
 .keymaster.yaml
+keymaster.db-wal
+keymaster.db-shm
