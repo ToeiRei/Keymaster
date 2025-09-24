@@ -234,6 +234,25 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.accountFilter = ""
 			m.status = ""
 			return m, nil
+		case "up", "k":
+			filteredAccounts := m.getFilteredAccounts()
+			if m.accountCursor > 0 {
+				m.accountCursor--
+			} else if len(filteredAccounts) > 0 {
+				// Wrap around to the bottom
+				m.accountCursor = len(filteredAccounts) - 1
+			}
+			return m, nil
+		case "down", "j":
+			filteredAccounts := m.getFilteredAccounts()
+			if len(filteredAccounts) > 0 {
+				if m.accountCursor < len(filteredAccounts)-1 {
+					m.accountCursor++
+				} else {
+					m.accountCursor = 0 // Wrap around to the top
+				}
+			}
+			return m, nil
 		case "esc":
 			if m.isFilteringAccount {
 				m.isFilteringAccount = false
@@ -263,10 +282,11 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isFilteringAccount = false
 				return m, nil
 			}
-			if len(m.accounts) == 0 {
+			filteredAccounts := m.getFilteredAccounts()
+			if len(filteredAccounts) == 0 {
 				return m, nil
 			}
-			m.selectedAccount = m.accounts[m.accountCursor]
+			m.selectedAccount = filteredAccounts[m.accountCursor]
 
 			switch m.action {
 			case actionGetKeys:
@@ -288,16 +308,26 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.accountFilter += msg.String()
 				return m, nil
 			}
-			if m.accountFilter != "" && !m.isFilteringAccount {
-				// Navigation keys etc. handled above
-				return m, nil
-			}
 		}
 	case startFilteringMsg:
 		// no-op, just to trigger filter mode
 		return m, nil
 	}
 	return m, nil
+}
+
+// getFilteredAccounts is a helper to get the list of accounts based on the current filter.
+func (m *deployModel) getFilteredAccounts() []model.Account {
+	if m.accountFilter == "" {
+		return m.accounts
+	}
+	var filteredAccounts []model.Account
+	for _, acc := range m.accounts {
+		if strings.Contains(strings.ToLower(acc.String()), strings.ToLower(m.accountFilter)) {
+			filteredAccounts = append(filteredAccounts, acc)
+		}
+	}
+	return filteredAccounts
 }
 
 // updateSelectTag handles input when the user is selecting a tag.
@@ -447,16 +477,7 @@ func (m deployModel) View() string {
 	case deployStateSelectAccount:
 		title := titleStyle.Render(i18n.T("deploy.select_account"))
 		var listItems []string
-		var filteredAccounts []model.Account
-		if m.accountFilter != "" {
-			for _, acc := range m.accounts {
-				if strings.Contains(strings.ToLower(acc.String()), strings.ToLower(m.accountFilter)) {
-					filteredAccounts = append(filteredAccounts, acc)
-				}
-			}
-		} else {
-			filteredAccounts = m.accounts
-		}
+		filteredAccounts := m.getFilteredAccounts()
 		if m.accountCursor >= len(filteredAccounts) {
 			m.accountCursor = 0
 		}
