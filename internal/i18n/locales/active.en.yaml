@@ -164,3 +164,67 @@ audit_log.header.timestamp: "Timestamp"
 audit_log.header.user: "User"
 audit_log.header.action: "Action"
 audit_log.header.details: "Details"
+
+# Config
+config.created_default: "No config file found. Created a default '.keymaster.yaml' in the current directory."
+
+# CLI specific translations
+
+# Deploy CLI command
+deploy.cli_error_get_accounts: "Error getting accounts: %v"
+deploy.cli_account_not_found: "Account '%s' not found or is not active."
+deploy.error_get_bootstrap_key: "failed to get active system key for bootstrap: %w"
+deploy.error_no_bootstrap_key: "no active system key found for bootstrap"
+deploy.error_get_serial_key: "failed to get system key with serial %d: %w"
+deploy.error_no_serial_key: "db inconsistency: no system key found for serial %d"
+deploy.error_get_active_key_for_serial: "could not retrieve active system key for serial update"
+deploy.error_connection_failed: "connection failed: %w"
+deploy.error_db_update_failed: "db update failed after successful deploy: %w"
+deploy.error_deployment_failed: "deployment failed: %w"
+
+# Audit CLI command
+audit.cli_error_get_accounts: "Error getting accounts: %v"
+audit.error_not_deployed: "host has not been deployed to yet (serial is 0)"
+audit.error_get_serial_key: "could not get system key %d from db: %w"
+audit.error_no_serial_key: "db inconsistency: no system key found for serial %d"
+audit.error_connection_failed: "connection failed using key serial %d: %w"
+audit.error_read_remote_file: "could not read remote authorized_keys: %w"
+audit.error_generate_expected: "could not generate expected keys content for comparison: %w"
+audit.error_drift_detected: "content drift detected. Remote file does not match the expected configuration"
+
+# Rotate Key CLI command
+rotate_key.cli_rotating: "⚙️  Rotating system key..."
+rotate_key.cli_error_generate: "Error generating new system key: %v"
+rotate_key.cli_error_save: "Error saving rotated key to database: %v"
+rotate_key.cli_rotated_success: "\n✅ Successfully rotated system key. The new active key is serial #%d."
+rotate_key.cli_deploy_reminder: "Run 'keymaster deploy' to apply the new key to your fleet."
+
+# Import CLI command
+import.start: "🔑 Importing keys from %s..."
+import.skip_invalid_line: "  - Skipping invalid key line: %v"
+import.skip_empty_comment: "  - Skipping key with empty comment: %.20s..."
+import.skip_duplicate: "  - Skipping duplicate key (comment exists): %s"
+import.error_opening_file: "Error opening file: %v"
+import.error_adding_key: "  - Error adding key '%s': %v"
+import.imported_key: "  + Imported key: %s"
+import.summary: "✅ Import complete. Imported %d keys, skipped %d."
+
+# Trust Host CLI command
+trust_host.error_invalid_format: "Invalid account format. Expected user@host."
+trust_host.retrieving_key: "Attempting to retrieve host key from %s..."
+trust_host.error_get_key: "Could not get host key: %v"
+trust_host.authenticity_warning_1: "The authenticity of host '%s' can't be established."
+trust_host.authenticity_warning_2: "%s key fingerprint is %s."
+trust_host.confirm_prompt: "Are you sure you want to continue connecting (yes/no)? "
+trust_host.not_trusted_abort: "Host key not trusted. Aborting."
+trust_host.error_save_key: "Failed to save host key to database: %v"
+trust_host.added_success: "Warning: Permanently added '%s' (type %s) to the list of known hosts."
+
+# Parallel task messages (used by runParallelTasks)
+parallel_task.no_accounts: "No active accounts for %s."
+parallel_task.start_message: "🚀 Starting %s to %d account(s)..."
+parallel_task.deploy_success_message: "✅ Successfully deployed to %s"
+parallel_task.deploy_fail_message: "💥 Failed to deploy to %s: %v"
+parallel_task.audit_success_message: "✅ OK: %s"
+parallel_task.audit_fail_message: "🚨 Drift detected on %s: %v"
+parallel_task.complete_message: "%s complete."

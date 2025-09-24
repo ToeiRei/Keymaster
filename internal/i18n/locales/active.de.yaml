@@ -165,3 +165,67 @@ audit_log.header.timestamp: "Zeitstempel"
 audit_log.header.user: "Benutzer"
 audit_log.header.action: "Aktion"
 audit_log.header.details: "Details"
+
+# Config
+config.created_default: "Keine Konfigurationsdatei gefunden. Eine Standard '.keymaster.yaml' wurde im aktuellen Verzeichnis erstellt."
+
+# CLI specific translations
+
+# Deploy CLI command
+deploy.cli_error_get_accounts: "Fehler beim Abrufen der Konten: %v"
+deploy.cli_account_not_found: "Konto '%s' nicht gefunden oder nicht aktiv."
+deploy.error_get_bootstrap_key: "Fehler beim Abrufen des aktiven Systemschlüssels für Bootstrap: %w"
+deploy.error_no_bootstrap_key: "Kein aktiver Systemschlüssel für Bootstrap gefunden"
+deploy.error_get_serial_key: "Fehler beim Abrufen des Systemschlüssels mit Seriennummer %d: %w"
+deploy.error_no_serial_key: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer %d gefunden"
+deploy.error_get_active_key_for_serial: "Aktiver Systemschlüssel für Seriennummer-Update konnte nicht abgerufen werden"
+deploy.error_connection_failed: "Verbindung fehlgeschlagen: %w"
+deploy.error_db_update_failed: "DB-Update nach erfolgreichem Deployment fehlgeschlagen: %w"
+deploy.error_deployment_failed: "Deployment fehlgeschlagen: %w"
+
+# Audit CLI command
+audit.cli_error_get_accounts: "Fehler beim Abrufen der Konten: %v"
+audit.error_not_deployed: "Host wurde noch nicht ausgerollt (Seriennummer ist 0)"
+audit.error_get_serial_key: "Systemschlüssel %d konnte nicht aus DB gelesen werden: %w"
+audit.error_no_serial_key: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer %d gefunden"
+audit.error_connection_failed: "Verbindung mit Schlüssel-Seriennummer %d fehlgeschlagen: %w"
+audit.error_read_remote_file: "authorized_keys auf dem Host konnte nicht gelesen werden: %w"
+audit.error_generate_expected: "Erwarteter authorized_keys-Inhalt konnte nicht generiert werden: %w"
+audit.error_drift_detected: "Konfigurationsdrift erkannt. Remote-Datei stimmt nicht mit der erwarteten Konfiguration überein"
+
+# Rotate Key CLI command
+rotate_key.cli_rotating: "⚙️  Systemschlüssel wird rotiert..."
+rotate_key.cli_error_generate: "Fehler beim Generieren des neuen Systemschlüssels: %v"
+rotate_key.cli_error_save: "Fehler beim Speichern des rotierten Schlüssels in der Datenbank: %v"
+rotate_key.cli_rotated_success: "\n✅ Systemschlüssel erfolgreich rotiert. Der neue aktive Schlüssel hat die Seriennummer #%d."
+rotate_key.cli_deploy_reminder: "Führen Sie 'keymaster deploy' aus, um den neuen Schlüssel auf Ihre Flotte anzuwenden."
+
+# Import CLI command
+import.start: "🔑 Schlüssel werden aus %s importiert..."
+import.skip_invalid_line: "  - Ungültige Schlüsselzeile übersprungen: %v"
+import.skip_empty_comment: "  - Schlüssel mit leerem Kommentar übersprungen: %.20s..."
+import.skip_duplicate: "  - Duplizierten Schlüssel übersprungen (Kommentar existiert): %s"
+import.error_opening_file: "Fehler beim Öffnen der Datei: %v"
+import.error_adding_key: "  - Fehler beim Hinzufügen des Schlüssels '%s': %v"
+import.imported_key: "  + Schlüssel importiert: %s"
+import.summary: "✅ Import abgeschlossen. %d Schlüssel importiert, %d übersprungen."
+
+# Trust Host CLI command
+trust_host.error_invalid_format: "Ungültiges Kontoformat. Erwartet: benutzer@host."
+trust_host.retrieving_key: "Versuche, Host-Schlüssel von %s abzurufen..."
+trust_host.error_get_key: "Host-Schlüssel konnte nicht abgerufen werden: %v"
+trust_host.authenticity_warning_1: "Die Authentizität des Hosts '%s' kann nicht festgestellt werden."
+trust_host.authenticity_warning_2: "%s Schlüssel-Fingerabdruck ist %s."
+trust_host.confirm_prompt: "Sind Sie sicher, dass Sie die Verbindung fortsetzen möchten (ja/nein)? "
+trust_host.not_trusted_abort: "Host-Schlüssel nicht vertraut. Abbruch."
+trust_host.error_save_key: "Fehler beim Speichern des Host-Schlüssels in der Datenbank: %v"
+trust_host.added_success: "Warnung: '%s' (Typ %s) wurde dauerhaft zur Liste der bekannten Hosts hinzugefügt."
+
+# Parallel task messages (used by runParallelTasks)
+parallel_task.no_accounts: "Keine aktiven Konten für %s."
+parallel_task.start_message: "🚀 Starte %s für %d Konto(en)..."
+parallel_task.deploy_success_message: "✅ Erfolgreich auf %s ausgerollt"
+parallel_task.deploy_fail_message: "💥 Fehler beim Ausrollen auf %s: %v"
+parallel_task.audit_success_message: "✅ OK: %s"
+parallel_task.audit_fail_message: "🚨 Drift auf %s erkannt: %v"
+parallel_task.complete_message: "%s abgeschlossen."

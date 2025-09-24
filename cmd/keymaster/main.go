@@ -22,6 +22,7 @@ import (
 	internalkey "github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
+	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
 	"github.com/toeirei/keymaster/internal/tui"
@@ -55,6 +56,7 @@ Running without a subcommand will launch the interactive TUI.`,
 		// Initialize the database for all commands.
 		// Viper has already read the config by this point.
 		dbType := viper.GetString("database.type")
+		i18n.Init(viper.GetString("language")) // Initialize i18n here
 		dsn := viper.GetString("database.dsn")
 		if err := db.InitDB(dbType, dsn); err != nil {
 			return fmt.Errorf("error initializing database: %w", err)
@@ -198,7 +200,7 @@ If no account is specified, deploys to all active accounts in the database.`,
 				}
 			}
 			if !found {
-				log.Fatalf("Account '%s' not found or is not active.", target)
+				log.Fatalf(i18n.T("deploy.cli_account_not_found"), target)
 			}
 		} else {
 			targetAccounts = allAccounts
@@ -206,10 +208,10 @@ If no account is specified, deploys to all active accounts in the database.`,
 
 		deployTask := parallelTask{
 			name:       "deployment",
-			startMsg:   "🚀 Starting deployment to %d account(s)...\n",
-			successMsg: "✅ Successfully deployed to %s",
-			failMsg:    "💥 Failed to deploy to %s: %v",
-			successLog: "DEPLOY_SUCCESS",
+			startMsg:   i18n.T("parallel_task.start_message", "deployment", len(targetAccounts)),
+			successMsg: i18n.T("parallel_task.deploy_success_message"),
+			failMsg:    i18n.T("parallel_task.deploy_fail_message"),
+			successLog: "CLI_DEPLOY_SUCCESS",
 			failLog:    "DEPLOY_FAIL",
 			taskFunc:   runDeploymentForAccount,
 		}
@@ -227,20 +229,20 @@ var rotateKeyCmd = &cobra.Command{
 	Long: `Generates a new ed25519 key pair, saves it to the database, and sets it as the active key.
 The previous key is kept for accessing hosts that have not yet been updated.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("⚙️  Rotating system key...")
+		fmt.Println(i18n.T("rotate_key.cli_rotating"))
 		// DB is initialized in PersistentPreRunE.
 		publicKeyString, privateKeyString, err := internalkey.GenerateAndMarshalEd25519Key("keymaster-system-key")
 		if err != nil {
-			log.Fatalf("Error generating new system key: %v", err)
+			log.Fatalf(i18n.T("rotate_key.cli_error_generate"), err)
 		}
 
 		serial, err := db.RotateSystemKey(publicKeyString, privateKeyString)
 		if err != nil {
-			log.Fatalf("Error saving rotated key to database: %v", err)
+			log.Fatalf(i18n.T("rotate_key.cli_error_save"), err)
 		}
 
-		fmt.Printf("\n✅ Successfully rotated system key. The new active key is serial #%d.\n", serial)
-		fmt.Println("Run 'keymaster deploy' to apply the new key to your fleet.")
+		fmt.Printf(i18n.T("rotate_key.cli_rotated_success")+"\n", serial)
+		fmt.Println(i18n.T("rotate_key.cli_deploy_reminder"))
 	},
 }
 
@@ -254,17 +256,17 @@ var auditCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
 		accounts, err := db.GetAllActiveAccounts()
-		if err != nil {
-			log.Fatalf("Error getting accounts: %v", err)
+		if err != nil { // This error is for the CLI, not TUI, so log.Fatalf is appropriate.
+			log.Fatalf(i18n.T("audit.cli_error_get_accounts"), err)
 		}
 
 		auditTask := parallelTask{
 			name:       "audit",
-			startMsg:   "🔬 Starting audit of %d account(s)...\n",
-			successMsg: "✅ OK: %s",
-			failMsg:    "🚨 Drift detected on %s: %v",
-			successLog: "AUDIT_SUCCESS",
-			failLog:    "AUDIT_FAIL",
+			startMsg:   i18n.T("parallel_task.start_message", "audit", len(accounts)),
+			successMsg: i18n.T("parallel_task.audit_success_message"),
+			failMsg:    i18n.T("parallel_task.audit_fail_message"),
+			successLog: "CLI_AUDIT_SUCCESS",
+			failLog:    "CLI_AUDIT_FAIL",
 			taskFunc:   runAuditForAccount,
 		}
 
@@ -282,12 +284,12 @@ var importCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1), // Ensures we get exactly one file path
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
-		// DB is initialized in PersistentPreRunE.
-		fmt.Printf("🔑 Importing keys from %s...\n", filePath)
+		// DB and i18n are initialized in PersistentPreRunE.
+		fmt.Printf(i18n.T("import.start")+"\n", filePath)
 
 		file, err := os.Open(filePath)
 		if err != nil {
-			log.Fatalf("Error opening file: %v", err)
+			log.Fatalf(i18n.T("import.error_opening_file"), err)
 		}
 		defer file.Close()
 
@@ -305,32 +307,32 @@ var importCmd = &cobra.Command{
 
 			alg, keyData, comment, err := sshkey.Parse(line)
 			if err != nil {
-				fmt.Printf("  - Skipping invalid key line: %v\n", err)
+				fmt.Printf(i18n.T("import.skip_invalid_line")+"\n", err)
 				skippedCount++
 				continue
 			}
 
 			if comment == "" {
-				fmt.Printf("  - Skipping key with empty comment: %.20s...\n", keyData)
+				fmt.Printf(i18n.T("import.skip_empty_comment")+"\n", keyData)
 				skippedCount++
 				continue
 			}
 
 			if err := db.AddPublicKey(alg, keyData, comment, false); err != nil {
-				if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-					fmt.Printf("  - Skipping duplicate key (comment exists): %s\n", comment)
+				if err == db.ErrDuplicate {
+					fmt.Printf(i18n.T("import.skip_duplicate")+"\n", comment)
 				} else {
-					fmt.Printf("  - Error adding key '%s': %v\n", comment, err)
+					fmt.Printf(i18n.T("import.error_adding_key")+"\n", comment, err)
 				}
 				skippedCount++
 				continue
 			}
 
-			fmt.Printf("  + Imported key: %s\n", comment)
+			fmt.Printf(i18n.T("import.imported_key")+"\n", comment)
 			importedCount++
 		}
 
-		fmt.Printf("\n✅ Import complete. Imported %d keys, skipped %d.\n", importedCount, skippedCount)
+		fmt.Printf("\n"+i18n.T("import.summary")+"\n", importedCount, skippedCount)
 	},
 }
 
@@ -352,12 +354,12 @@ type parallelTask struct {
 // printing status messages as tasks complete.
 func runParallelTasks(accounts []model.Account, task parallelTask) {
 	if len(accounts) == 0 {
-		fmt.Printf("No active accounts for %s.\n", task.name)
+		fmt.Println(i18n.T("parallel_task.no_accounts", task.name))
 		return
 	}
 
 	var wg sync.WaitGroup
-	results := make(chan string, len(accounts))
+	results := make(chan string, len(accounts)) // This channel will now carry pre-formatted i18n strings
 
 	fmt.Printf(task.startMsg, len(accounts))
 
@@ -368,10 +370,10 @@ func runParallelTasks(accounts []model.Account, task parallelTask) {
 			err := task.taskFunc(account)
 			details := fmt.Sprintf("account: %s", account.String())
 			if err != nil {
-				results <- fmt.Sprintf(task.failMsg, account.String(), err)
+				results <- fmt.Sprintf(task.failMsg, account.String(), err.Error())
 				_ = db.LogAction(task.failLog, fmt.Sprintf("%s, error: %v", details, err))
 			} else {
-				results <- fmt.Sprintf(task.successMsg, account.String())
+				results <- fmt.Sprintf(task.successMsg, account.String()) // Pass account string as arg
 				_ = db.LogAction(task.successLog, details)
 			}
 		}(acc)
@@ -385,7 +387,7 @@ func runParallelTasks(accounts []model.Account, task parallelTask) {
 	for res := range results {
 		fmt.Println(res)
 	}
-	fmt.Printf("\n%s complete.\n", strings.Title(task.name))
+	fmt.Printf("\n"+i18n.T("parallel_task.complete_message")+"\n", strings.Title(task.name))
 }
 
 // runDeploymentForAccount handles the deployment logic for a single account.
@@ -399,42 +401,42 @@ func runDeploymentForAccount(account model.Account) error {
 	if account.Serial == 0 {
 		connectKey, err = db.GetActiveSystemKey()
 		if err != nil {
-			return fmt.Errorf("failed to get active system key for bootstrap: %w", err)
+			return fmt.Errorf(i18n.T("deploy.error_get_bootstrap_key", err))
 		}
 		if connectKey == nil {
-			return fmt.Errorf("no active system key found for bootstrap")
+			return fmt.Errorf(i18n.T("deploy.error_no_bootstrap_key"))
 		}
 	} else {
 		connectKey, err = db.GetSystemKeyBySerial(account.Serial)
 		if err != nil {
-			return fmt.Errorf("failed to get system key with serial %d: %w", account.Serial, err)
+			return fmt.Errorf(i18n.T("deploy.error_get_serial_key", account.Serial, err))
 		}
 		if connectKey == nil {
-			return fmt.Errorf("db inconsistency: no system key found for serial %d", account.Serial)
+			return fmt.Errorf(i18n.T("deploy.error_no_serial_key", account.Serial))
 		}
 	}
 
 	content, err := deploy.GenerateKeysContent(account.ID)
 	if err != nil {
-		return err
+		return err // This error is already i18n-ready from the generator
 	}
 	activeKey, err := db.GetActiveSystemKey()
 	if err != nil || activeKey == nil {
-		return fmt.Errorf("could not retrieve active system key for serial update")
+		return fmt.Errorf(i18n.T("deploy.error_get_active_key_for_serial"))
 	}
 
 	deployer, err := deploy.NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
 	if err != nil {
-		return fmt.Errorf("connection failed: %w", err)
+		return fmt.Errorf(i18n.T("deploy.error_connection_failed", err))
 	}
 	defer deployer.Close()
 
 	if err := deployer.DeployAuthorizedKeys(content); err != nil {
-		return fmt.Errorf("deployment failed: %w", err)
+		return fmt.Errorf(i18n.T("deploy.error_deployment_failed", err))
 	}
 
 	if err := db.UpdateAccountSerial(account.ID, activeKey.Serial); err != nil {
-		return fmt.Errorf("db update failed after successful deploy: %w", err)
+		return fmt.Errorf(i18n.T("deploy.error_db_update_failed", err))
 	}
 
 	return nil
@@ -454,42 +456,41 @@ step before Keymaster can manage a new host.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
 		target := args[0]
-		_, hostname, found := strings.Cut(target, "@")
-		if !found {
-			log.Fatalf("Invalid account format. Expected user@host.")
+		var hostname string
+		if strings.Contains(target, "@") {
+			parts := strings.SplitN(target, "@", 2)
+			hostname = parts[1]
+		} else {
+			hostname = target // Assume the whole string is the hostname if no '@'
 		}
 
-		fmt.Printf("Attempting to retrieve host key from %s...\n", hostname)
+		fmt.Printf(i18n.T("trust_host.retrieving_key")+"\n", hostname)
 		key, err := deploy.GetRemoteHostKey(hostname)
 		if err != nil {
-			log.Fatalf("Could not get host key: %v", err)
+			log.Fatalf(i18n.T("trust_host.error_get_key"), err)
 		}
 
 		fingerprint := ssh.FingerprintSHA256(key) // Use standard ssh package
-		fmt.Printf("\nThe authenticity of host '%s' can't be established.\n", hostname)
-		fmt.Printf("%s key fingerprint is %s.\n", key.Type(), fingerprint)
+		fmt.Printf("\n"+i18n.T("trust_host.authenticity_warning_1")+"\n", hostname)
+		fmt.Printf(i18n.T("trust_host.authenticity_warning_2")+"\n", key.Type(), fingerprint)
 
 		if warning := sshkey.CheckHostKeyAlgorithm(key); warning != "" {
 			fmt.Printf("\n%s\n", warning)
 		}
 
-		fmt.Print("Are you sure you want to continue connecting (yes/no)? ")
-
-		reader := bufio.NewReader(os.Stdin)
-		answer, _ := reader.ReadString('\n')
-		answer = strings.TrimSpace(strings.ToLower(answer))
+		answer := promptForConfirmation(i18n.T("trust_host.confirm_prompt"))
 
 		if answer != "yes" {
-			fmt.Println("Host key not trusted. Aborting.")
+			fmt.Println(i18n.T("trust_host.not_trusted_abort"))
 			os.Exit(1)
 		}
 
 		keyStr := string(ssh.MarshalAuthorizedKey(key)) // Use standard ssh package
 		if err := db.AddKnownHostKey(hostname, keyStr); err != nil {
-			log.Fatalf("Failed to save host key to database: %v", err)
+			log.Fatalf(i18n.T("trust_host.error_save_key"), err)
 		}
 
-		fmt.Printf("Warning: Permanently added '%s' (type %s) to the list of known hosts.\n", hostname, key.Type())
+		fmt.Printf(i18n.T("trust_host.added_success")+"\n", hostname, key.Type())
 	},
 }
 
@@ -501,37 +502,37 @@ step before Keymaster can manage a new host.`,
 func runAuditForAccount(account model.Account) error {
 	// 1. An account with serial 0 has never been deployed. This is a known state, not a drift.
 	if account.Serial == 0 {
-		return fmt.Errorf("host has not been deployed to yet (serial is 0)")
+		return fmt.Errorf(i18n.T("audit.error_not_deployed"))
 	}
 
 	// 2. Get the system key the database *thinks* is on the host.
 	connectKey, err := db.GetSystemKeyBySerial(account.Serial)
 	if err != nil {
-		return fmt.Errorf("could not get system key %d from db: %w", account.Serial, err)
+		return fmt.Errorf(i18n.T("audit.error_get_serial_key", account.Serial, err))
 	}
 	if connectKey == nil {
-		return fmt.Errorf("db inconsistency: no system key found for serial %d", account.Serial)
+		return fmt.Errorf(i18n.T("audit.error_no_serial_key", account.Serial))
 	}
 
 	// 3. Attempt to connect with that key. If this fails, the key is wrong/missing.
 	deployer, err := deploy.NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
 	if err != nil {
 		// Give a more helpful error message than just "connection failed".
-		return fmt.Errorf("connection failed using key serial %d: %w", account.Serial, err)
+		return fmt.Errorf(i18n.T("audit.error_connection_failed", account.Serial, err))
 	}
 	defer deployer.Close()
 
 	// 4. Read the content of the remote authorized_keys file.
 	remoteContentBytes, err := deployer.GetAuthorizedKeys()
 	if err != nil {
-		return fmt.Errorf("could not read remote authorized_keys: %w", err)
+		return fmt.Errorf(i18n.T("audit.error_read_remote_file", err))
 	}
 
 	// 5. Generate the content that *should* be on the host (the desired state).
 	// This is always generated using the latest active system key.
 	expectedContent, err := deploy.GenerateKeysContent(account.ID)
 	if err != nil {
-		return fmt.Errorf("could not generate expected keys content for comparison: %w", err)
+		return fmt.Errorf(i18n.T("audit.error_generate_expected", err))
 	}
 
 	// 6. Normalize both remote and expected content for a reliable, canonical comparison.
@@ -547,8 +548,16 @@ func runAuditForAccount(account model.Account) error {
 
 	// 7. Compare the actual state with the desired state.
 	if normalizedRemote != normalizedExpected {
-		return fmt.Errorf("content drift detected. Remote file does not match the expected configuration")
+		return fmt.Errorf(i18n.T("audit.error_drift_detected"))
 	}
 
 	return nil
+}
+
+// promptForConfirmation displays a prompt and reads a line from stdin.
+func promptForConfirmation(prompt string) string {
+	fmt.Print(prompt)
+	reader := bufio.NewReader(os.Stdin)
+	answer, _ := reader.ReadString('\n')
+	return strings.TrimSpace(strings.ToLower(answer))
 }
