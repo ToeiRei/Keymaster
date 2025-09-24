@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-09-24
+### Added
+- **Project Governance:** Added standard open-source project files including `LICENSE` (MIT), `CODE_OF_CONDUCT.md`, and `CONTRIBUTING.md` to clarify contribution guidelines and project standards.
+- **Code Documentation:** Added a lot of comments to clarify how things work.
+### Fixed
+- **Key Assignment:** Fixed a critical bug where assigning or unassigning a key to an account would fail due to swapped database parameters.
+
 ## [1.3.0] - 2025-09-23
 
 ### Added
