@@ -9,6 +9,7 @@ package i18n
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -54,7 +55,7 @@ func Init(lang string) {
 // T is a convenience function to translate a message by its ID.
 // If the i18n system has not been initialized, it will default to English.
 // If a translation for the given ID is not found, it returns the ID itself.
-func T(messageID string) string {
+func T(messageID string, args ...any) string {
 	if localizer == nil {
 		Init("en")
 	}
@@ -64,7 +65,7 @@ func T(messageID string) string {
 		// In this case, we return the message ID itself as a fallback.
 		return messageID
 	}
-	return msg
+	return fmt.Sprintf(msg, args...)
 }
 
 // SetLang changes the active language of the localizer.
