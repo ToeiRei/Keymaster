@@ -41,65 +41,74 @@ func main() {
 	}
 }
 
-// rootCmd represents the base command when called without any subcommands.
-// It initializes the database via PersistentPreRunE for all child commands
-// and launches the interactive TUI when run directly.
-var rootCmd = &cobra.Command{
-	Use:   "keymaster",
-	Short: "Keymaster is a lightweight, agentless SSH access manager.",
-	Long: `Keymaster centralizes control of authorized_keys files.
-Instead of scattering user keys everywhere, Keymaster plants a single
-system key per account and uses it as a foothold to rewrite and
-version-control access. A database becomes the source of truth.
+var rootCmd *cobra.Command
 
-Running without a subcommand will launch the interactive TUI.`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// Initialize the database for all commands.
-		// Viper has already read the config by this point.
-		dbType := viper.GetString("database.type")
-		i18n.Init(viper.GetString("language")) // Initialize i18n here
-		dsn := viper.GetString("database.dsn")
-		if err := db.InitDB(dbType, dsn); err != nil {
-			return fmt.Errorf("error initializing database: %w", err)
-		}
-		return nil
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		// The database is already initialized by PersistentPreRunE.
-		tui.Run()
-	},
-}
-
-// init is a special Go function that is called before main().
-// It sets up the application's command-line interface, including flags,
-// default configuration values, and subcommands.
 func init() {
 	cobra.OnInitialize(initConfig)
-
-	rootCmd.Version = version
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keymaster.yaml or ./keymaster.yaml)")
-
-	// Database flags
-	rootCmd.PersistentFlags().String("db-type", "sqlite", "Database type (e.g., sqlite, postgres)")
-	rootCmd.PersistentFlags().String("db-dsn", "./keymaster.db", "Database connection string (DSN)")
-	rootCmd.PersistentFlags().String("lang", "en", `TUI language ("en", "de")`)
-
-	// Bind flags to viper
-	viper.BindPFlag("database.type", rootCmd.PersistentFlags().Lookup("db-type"))
-	viper.BindPFlag("database.dsn", rootCmd.PersistentFlags().Lookup("db-dsn"))
-	viper.BindPFlag("language", rootCmd.PersistentFlags().Lookup("lang"))
+	rootCmd = newRootCmd()
 
 	// Set defaults in viper. These are used if not set in the config file or by flags.
 	viper.SetDefault("database.type", "sqlite")
 	viper.SetDefault("database.dsn", "./keymaster.db")
 	viper.SetDefault("language", "en")
+}
 
-	// Add commands
-	rootCmd.AddCommand(deployCmd)
-	rootCmd.AddCommand(rotateKeyCmd)
-	rootCmd.AddCommand(auditCmd)
-	rootCmd.AddCommand(importCmd)
-	rootCmd.AddCommand(trustHostCmd)
+// newRootCmd creates and configures a new root cobra command.
+// This function is used to create the main application command as well as
+// fresh instances for isolated testing.
+func newRootCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "keymaster",
+		Short: "Keymaster is a lightweight, agentless SSH access manager.",
+		Long: `Keymaster centralizes control of authorized_keys files.
+Instead of scattering user keys everywhere, Keymaster plants a single
+system key per account and uses it as a foothold to rewrite and
+version-control access. A database becomes the source of truth.
+
+Running without a subcommand will launch the interactive TUI.`,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Initialize the database for all commands.
+			// Viper has already read the config by this point.
+			dbType := viper.GetString("database.type")
+			i18n.Init(viper.GetString("language")) // Initialize i18n here
+			dsn := viper.GetString("database.dsn")
+			if err := db.InitDB(dbType, dsn); err != nil {
+				return fmt.Errorf("error initializing database: %w", err)
+			}
+			return nil
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			// The database is already initialized by PersistentPreRunE.
+			tui.Run()
+		},
+	}
+
+	// Add subcommands to the newly created root command.
+	cmd.AddCommand(deployCmd)
+	cmd.AddCommand(rotateKeyCmd)
+	cmd.AddCommand(auditCmd)
+	cmd.AddCommand(importCmd)
+	cmd.AddCommand(trustHostCmd)
+
+	// Set version
+	cmd.Version = version
+
+	// Define flags
+	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keymaster.yaml or ./keymaster.yaml)")
+	cmd.PersistentFlags().String("db-type", "sqlite", "Database type (e.g., sqlite, postgres)")
+	cmd.PersistentFlags().String("db-dsn", "./keymaster.db", "Database connection string (DSN)")
+	cmd.PersistentFlags().String("lang", "en", `TUI language ("en", "de")`)
+
+	// Bind flags to viper
+	viper.BindPFlag("database.type", cmd.PersistentFlags().Lookup("db-type"))
+	viper.BindPFlag("database.dsn", cmd.PersistentFlags().Lookup("db-dsn"))
+	viper.BindPFlag("language", cmd.PersistentFlags().Lookup("lang"))
+
+	// Note: Flags are configured in the init() function on the global rootCmd.
+	// Cobra automatically handles making these flags available on new command
+	// instances created for tests, so we don't need to re-declare them here.
+
+	return cmd
 }
 
 // initConfig reads in a configuration file and environment variables.
@@ -242,7 +251,7 @@ The previous key is kept for accessing hosts that have not yet been updated.`,
 			log.Fatalf(i18n.T("rotate_key.cli_error_save"), err)
 		}
 
-		fmt.Printf(i18n.T("rotate_key.cli_rotated_success")+"\n", serial)
+		fmt.Println(i18n.T("rotate_key.cli_rotated_success", serial))
 		fmt.Println(i18n.T("rotate_key.cli_deploy_reminder"))
 	},
 }
@@ -286,7 +295,7 @@ var importCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
 		// DB and i18n are initialized in PersistentPreRunE.
-		fmt.Printf(i18n.T("import.start")+"\n", filePath)
+		fmt.Println(i18n.T("import.start", filePath))
 
 		file, err := os.Open(filePath)
 		if err != nil {
@@ -308,32 +317,32 @@ var importCmd = &cobra.Command{
 
 			alg, keyData, comment, err := sshkey.Parse(line)
 			if err != nil {
-				fmt.Printf(i18n.T("import.skip_invalid_line")+"\n", err)
+				fmt.Println(i18n.T("import.skip_invalid_line", err.Error()))
 				skippedCount++
 				continue
 			}
 
 			if comment == "" {
-				fmt.Printf(i18n.T("import.skip_empty_comment")+"\n", keyData)
+				fmt.Println(i18n.T("import.skip_empty_comment", string(keyData)))
 				skippedCount++
 				continue
 			}
 
 			if err := db.AddPublicKey(alg, keyData, comment, false); err != nil {
 				if err == db.ErrDuplicate {
-					fmt.Printf(i18n.T("import.skip_duplicate")+"\n", comment)
+					fmt.Println(i18n.T("import.skip_duplicate", comment))
 				} else {
-					fmt.Printf(i18n.T("import.error_adding_key")+"\n", comment, err)
+					fmt.Println(i18n.T("import.error_adding_key", comment, err))
 				}
 				skippedCount++
 				continue
 			}
 
-			fmt.Printf(i18n.T("import.imported_key")+"\n", comment)
+			fmt.Println(i18n.T("import.imported_key", comment))
 			importedCount++
 		}
 
-		fmt.Printf("\n"+i18n.T("import.summary")+"\n", importedCount, skippedCount)
+		fmt.Println("\n" + i18n.T("import.summary", importedCount, skippedCount))
 	},
 }
 
@@ -362,7 +371,8 @@ func runParallelTasks(accounts []model.Account, task parallelTask) {
 	var wg sync.WaitGroup
 	results := make(chan string, len(accounts)) // This channel will now carry pre-formatted i18n strings
 
-	fmt.Printf(task.startMsg, len(accounts))
+	// task.startMsg is already formatted by i18n.T, so just print it.
+	fmt.Println(task.startMsg)
 
 	for _, acc := range accounts {
 		wg.Add(1)
@@ -388,7 +398,7 @@ func runParallelTasks(accounts []model.Account, task parallelTask) {
 	for res := range results {
 		fmt.Println(res)
 	}
-	fmt.Printf("\n"+i18n.T("parallel_task.complete_message")+"\n", strings.Title(task.name))
+	fmt.Println("\n" + i18n.T("parallel_task.complete_message", strings.Title(task.name)))
 }
 
 // runDeploymentForAccount handles the deployment logic for a single account.
@@ -465,7 +475,7 @@ step before Keymaster can manage a new host.`,
 			hostname = target // Assume the whole string is the hostname if no '@'
 		}
 
-		fmt.Printf(i18n.T("trust_host.retrieving_key")+"\n", hostname)
+		fmt.Println(i18n.T("trust_host.retrieving_key", hostname))
 		key, err := deploy.GetRemoteHostKey(hostname)
 		if err != nil {
 			log.Fatalf(i18n.T("trust_host.error_get_key"), err)
@@ -491,7 +501,7 @@ step before Keymaster can manage a new host.`,
 			log.Fatalf(i18n.T("trust_host.error_save_key"), err)
 		}
 
-		fmt.Printf(i18n.T("trust_host.added_success")+"\n", hostname, key.Type())
+		fmt.Println(i18n.T("trust_host.added_success", hostname, key.Type()))
 	},
 }
 
