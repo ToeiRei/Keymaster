@@ -9,9 +9,17 @@
 package db // import "github.com/toeirei/keymaster/internal/db"
 
 import (
+	"database/sql"
+	"embed"
 	"fmt"
 	"strings"
 
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database"
+	"github.com/golang-migrate/migrate/v4/database/mysql"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/database/sqlite"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -21,28 +29,70 @@ var (
 	store Store
 )
 
+//go:embed migrations/*.sql
+var embeddedMigrations embed.FS
+
 // InitDB initializes the database connection based on the provided type and DSN.
 // It sets the global `store` variable to the appropriate database implementation
-// and ensures that the necessary tables are created.
+// and runs any pending database migrations.
 func InitDB(dbType, dsn string) error {
 	var err error
+	var db *sql.DB
+	var driver database.Driver
+	dbType = strings.ToLower(dbType)
 
-	switch strings.ToLower(dbType) {
+	switch dbType {
 	case "sqlite":
-		store, err = NewSqliteStore(dsn)
+		db, err = sql.Open("sqlite", dsn)
+		if err == nil {
+			// Special case for SQLite: enable foreign keys
+			if _, err = db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
+				return fmt.Errorf("failed to enable foreign keys for sqlite: %w", err)
+			}
+			driver, err = sqlite.WithInstance(db, &sqlite.Config{})
+			store = &SqliteStore{db: db}
+		}
 	case "postgres":
 		// The pgx driver is imported in postgres.go
-		store, err = NewPostgresStore(dsn)
+		db, err = sql.Open("pgx", dsn)
+		if err == nil {
+			driver, err = postgres.WithInstance(db, &postgres.Config{})
+			store = &PostgresStore{db: db}
+		}
 	case "mysql":
 		// The mysql driver is imported in mysql.go
-		store, err = NewMySQLStore(dsn)
+		db, err = sql.Open("mysql", dsn)
+		if err == nil {
+			driver, err = mysql.WithInstance(db, &mysql.Config{})
+			store = &MySQLStore{db: db}
+		}
 	default:
 		return fmt.Errorf("unsupported database type: '%s'", dbType)
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to initialize %s store: %w", dbType, err)
+		return fmt.Errorf("failed to open %s database: %w", dbType, err)
 	}
+
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("failed to connect to %s database: %w", dbType, err)
+	}
+
+	// Run migrations
+	sourceInstance, err := iofs.New(embeddedMigrations, ".")
+	if err != nil {
+		return fmt.Errorf("failed to create migration source: %w", err)
+	}
+
+	m, err := migrate.NewWithInstance("iofs", sourceInstance, dbType, driver)
+	if err != nil {
+		return fmt.Errorf("failed to create migration instance: %w", err)
+	}
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("failed to apply migrations: %w", err)
+	}
+
 	return nil
 }
 

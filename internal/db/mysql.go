@@ -26,81 +26,13 @@ type MySQLStore struct {
 func NewMySQLStore(dataSourceName string) (*MySQLStore, error) {
 	// The MySQL driver requires a DSN format like: "user:password@tcp(host:port)/dbname"
 	// It's good practice to add `?parseTime=true` to handle DATETIME columns correctly.
-	db, err := sql.Open("mysql", dataSourceName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+	// This function is now a placeholder. The actual initialization happens in InitDB.
+	// It's kept for potential future logic specific to the store's creation.
+	s, ok := store.(*MySQLStore)
+	if !ok {
+		return nil, fmt.Errorf("internal error: store is not a *MySQLStore")
 	}
-
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
-	}
-
-	if err := runMySQLMigrations(db); err != nil {
-		return nil, fmt.Errorf("database migration failed: %w", err)
-	}
-
-	return &MySQLStore{db: db}, nil
-}
-
-// runMySQLMigrations executes the necessary SQL statements to create the
-// database schema for MySQL. It is designed to be idempotent.
-func runMySQLMigrations(db *sql.DB) error {
-	// In MySQL, it's better to use VARCHAR for indexed columns and specify lengths.
-	tables := []string{
-		`CREATE TABLE IF NOT EXISTS accounts (
-			id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,
-			username VARCHAR(255) NOT NULL,
-			hostname VARCHAR(255) NOT NULL,
-			label VARCHAR(255),
-			tags TEXT,
-			serial INTEGER NOT NULL DEFAULT 0,
-			is_active BOOLEAN NOT NULL DEFAULT TRUE,
-			UNIQUE(username, hostname)
-		);`,
-		`CREATE TABLE IF NOT EXISTS public_keys (
-			id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,
-			algorithm VARCHAR(255) NOT NULL,
-			key_data TEXT NOT NULL,
-			comment VARCHAR(255) NOT NULL UNIQUE,
-			is_global BOOLEAN NOT NULL DEFAULT FALSE
-		);`,
-		`CREATE TABLE IF NOT EXISTS account_keys (
-			account_id INTEGER NOT NULL,
-			key_id INTEGER NOT NULL,
-			PRIMARY KEY (account_id, key_id),
-			FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE,
-			FOREIGN KEY (key_id) REFERENCES public_keys (id) ON DELETE CASCADE
-		);`,
-		`CREATE TABLE IF NOT EXISTS system_keys (
-			id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,
-			serial INTEGER NOT NULL UNIQUE,
-			public_key TEXT NOT NULL,
-			private_key TEXT NOT NULL,
-			is_active BOOLEAN NOT NULL DEFAULT FALSE
-		);`,
-		// Use a double-quoted string to avoid conflict between Go's raw string literal
-		// syntax and MySQL's identifier quoting syntax.
-		"CREATE TABLE IF NOT EXISTS known_hosts (\n" +
-			"\tid INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,\n" +
-			"\thostname VARCHAR(255) NOT NULL UNIQUE,\n" +
-			"\t`key` TEXT NOT NULL\n" +
-			");",
-		`CREATE TABLE IF NOT EXISTS audit_log (
-			id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,
-			timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			username VARCHAR(255) NOT NULL,
-			action VARCHAR(255) NOT NULL,
-			details TEXT
-		);`,
-	}
-
-	for _, tableSQL := range tables {
-		if _, err := db.Exec(tableSQL); err != nil {
-			return fmt.Errorf("failed to create table: %w, sql: %s", err, tableSQL)
-		}
-	}
-
-	return nil
+	return s, nil
 }
 
 // --- Stubbed Methods ---

@@ -15,5 +15,4 @@ vendor/
 # Common editor/IDE folders
 .vscode/
 .idea/
-TODO.txt
 .keymaster.yaml

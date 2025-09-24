@@ -23,96 +23,13 @@ type SqliteStore struct {
 
 // NewSqliteStore initializes the database connection and creates tables if they don't exist.
 func NewSqliteStore(dataSourceName string) (*SqliteStore, error) {
-	db, err := sql.Open("sqlite", dataSourceName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+	// This function is now a placeholder. The actual initialization happens in InitDB.
+	// It's kept for potential future logic specific to the store's creation.
+	s, ok := store.(*SqliteStore)
+	if !ok {
+		return nil, fmt.Errorf("internal error: store is not a *SqliteStore")
 	}
-
-	// Enable foreign key support, which is required for ON DELETE CASCADE.
-	if _, err = db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
-		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
-	}
-
-	if err := runMigrations(db); err != nil {
-		return nil, fmt.Errorf("database migration failed: %w", err)
-	}
-
-	return &SqliteStore{db: db}, nil
-}
-
-// runMigrations executes the necessary SQL statements to create and update the
-// database schema for SQLite. It is designed to be idempotent.
-func runMigrations(db *sql.DB) error {
-	tables := []string{
-		`CREATE TABLE IF NOT EXISTS accounts (
-			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-			username TEXT NOT NULL,
-			hostname TEXT NOT NULL,
-			label TEXT,
-			tags TEXT,
-			serial INTEGER NOT NULL DEFAULT 0,
-			is_active BOOLEAN NOT NULL DEFAULT 1,
-			UNIQUE(username, hostname)
-		);`,
-		`CREATE TABLE IF NOT EXISTS public_keys (
-			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-			algorithm TEXT NOT NULL,
-			key_data TEXT NOT NULL,
-			comment TEXT NOT NULL UNIQUE,
-			is_global BOOLEAN NOT NULL DEFAULT 0
-		);`,
-		`CREATE TABLE IF NOT EXISTS account_keys (
-			account_id INTEGER NOT NULL,
-			key_id INTEGER NOT NULL,
-			PRIMARY KEY (account_id, key_id),
-			FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE,
-			FOREIGN KEY (key_id) REFERENCES public_keys (id) ON DELETE CASCADE
-		);`,
-		`CREATE TABLE IF NOT EXISTS system_keys (
-			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-			serial INTEGER NOT NULL UNIQUE,
-			public_key TEXT NOT NULL,
-			private_key TEXT NOT NULL,
-			is_active BOOLEAN NOT NULL DEFAULT 0
-		);`,
-		`CREATE TABLE IF NOT EXISTS known_hosts (
-			hostname TEXT NOT NULL PRIMARY KEY,
-			key TEXT NOT NULL
-		);`,
-		`CREATE TABLE IF NOT EXISTS audit_log (
-			id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-			timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			username TEXT NOT NULL,
-			action TEXT NOT NULL,
-			details TEXT
-		);`,
-	}
-
-	for _, tableSQL := range tables {
-		if _, err := db.Exec(tableSQL); err != nil {
-			return err
-		}
-	}
-
-	// --- Simple Alter Table Migrations ---
-	migrations := []string{
-		"ALTER TABLE accounts ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1;",
-		"ALTER TABLE accounts ADD COLUMN label TEXT;",
-		"ALTER TABLE accounts ADD COLUMN tags TEXT;",
-		"ALTER TABLE public_keys ADD COLUMN is_global BOOLEAN NOT NULL DEFAULT 0;",
-	}
-
-	for _, migrationSQL := range migrations {
-		_, err := db.Exec(migrationSQL)
-		if err != nil {
-			// If the error indicates the column already exists, we can safely ignore it.
-			if !strings.Contains(err.Error(), "duplicate column name") {
-				return err
-			}
-		}
-	}
-
-	return nil
+	return s, nil
 }
 
 // GetAllAccounts retrieves all accounts from the database.
