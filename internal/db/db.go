@@ -11,6 +11,7 @@ package db // import "github.com/toeirei/keymaster/internal/db"
 import (
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -27,6 +28,9 @@ var (
 	// store is the active database connection, wrapped in our interface.
 	// It is initialized by InitDB.
 	store Store
+
+	// ErrDuplicate is returned when a unique constraint is violated.
+	ErrDuplicate = errors.New("duplicate entry")
 )
 
 //go:embed migrations

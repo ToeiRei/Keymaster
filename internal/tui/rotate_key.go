@@ -8,9 +8,6 @@
 package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
-	"crypto/ed25519"
-	"crypto/rand"
-	"encoding/pem"
 	"fmt"
 	"strings"
 
@@ -268,24 +265,10 @@ type keyRotatedMsg struct {
 // generateInitialKey is a tea.Cmd that performs the key generation and DB write.
 // It sends an initialKeyGeneratedMsg when complete.
 func generateInitialKey() tea.Msg {
-	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
+	publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key")
 	if err != nil {
-		return initialKeyGeneratedMsg{err: fmt.Errorf("failed to generate key pair: %w", err)}
+		return initialKeyGeneratedMsg{err: fmt.Errorf("failed to generate system key: %w", err)}
 	}
-
-	sshPubKey, err := ssh.NewPublicKey(pubKey)
-	if err != nil {
-		return initialKeyGeneratedMsg{err: fmt.Errorf("failed to create SSH public key: %w", err)}
-	}
-	pubKeyBytes := ssh.MarshalAuthorizedKey(sshPubKey)
-	publicKeyString := fmt.Sprintf("%s keymaster-system-key", strings.TrimSpace(string(pubKeyBytes)))
-
-	pemBlock, err := ssh.MarshalEd25519PrivateKey(privKey, "")
-	if err != nil {
-		return initialKeyGeneratedMsg{err: fmt.Errorf("failed to marshal private key: %w", err)}
-	}
-	privateKeyString := string(pem.EncodeToMemory(pemBlock))
-
 	serial, err := db.CreateSystemKey(publicKeyString, privateKeyString)
 	if err != nil {
 		return initialKeyGeneratedMsg{err: fmt.Errorf("failed to save system key to database: %w", err)}
@@ -297,24 +280,10 @@ func generateInitialKey() tea.Msg {
 // performRotation is a tea.Cmd that generates a new key and performs the DB rotation.
 // It sends a keyRotatedMsg when complete.
 func performRotation() tea.Msg {
-	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
+	publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key")
 	if err != nil {
-		return keyRotatedMsg{err: fmt.Errorf("failed to generate key pair: %w", err)}
+		return keyRotatedMsg{err: fmt.Errorf("failed to generate system key: %w", err)}
 	}
-
-	sshPubKey, err := ssh.NewPublicKey(pubKey)
-	if err != nil {
-		return keyRotatedMsg{err: fmt.Errorf("failed to create SSH public key: %w", err)}
-	}
-	pubKeyBytes := ssh.MarshalAuthorizedKey(sshPubKey)
-	publicKeyString := fmt.Sprintf("%s keymaster-system-key", strings.TrimSpace(string(pubKeyBytes)))
-
-	pemBlock, err := ssh.MarshalEd25519PrivateKey(privKey, "")
-	if err != nil {
-		return keyRotatedMsg{err: fmt.Errorf("failed to marshal private key: %w", err)}
-	}
-	privateKeyString := string(pem.EncodeToMemory(pemBlock))
-
 	serial, err := db.RotateSystemKey(publicKeyString, privateKeyString)
 	if err != nil {
 		return keyRotatedMsg{err: fmt.Errorf("failed to save rotated system key to database: %w", err)}
