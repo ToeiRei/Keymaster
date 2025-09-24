@@ -29,7 +29,7 @@ var (
 	store Store
 )
 
-//go:embed migrations/*.sql
+//go:embed migrations
 var embeddedMigrations embed.FS
 
 // InitDB initializes the database connection based on the provided type and DSN.
@@ -79,7 +79,7 @@ func InitDB(dbType, dsn string) error {
 	}
 
 	// Run migrations
-	sourceInstance, err := iofs.New(embeddedMigrations, ".")
+	sourceInstance, err := iofs.New(embeddedMigrations, "migrations")
 	if err != nil {
 		return fmt.Errorf("failed to create migration source: %w", err)
 	}
