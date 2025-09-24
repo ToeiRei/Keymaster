@@ -214,6 +214,12 @@ deploy.error_no_serial_key: "db inconsistency: no system key found for serial %d
 deploy.error_get_active_key_for_serial: "could not retrieve active system key for serial update"
 deploy.error_connection_failed: "connection failed: %w"
 deploy.error_db_update_failed: "db update failed after successful deploy: %w"
+deploy.error_no_bootstrap_key_tui: "no active system key found for bootstrap. Please generate one"
+deploy.error_no_serial_key_tui: "database inconsistency: no system key found for serial %d on account %s"
+deploy.error_connection_failed_tui: "failed to connect to %s: %w"
+deploy.error_deployment_failed_tui: "deployment to %s failed: %w"
+deploy.error_db_update_failed_tui: "deployment succeeded, but failed to update database serial: %w"
+deploy.error_get_serial_for_status: "deployment succeeded, but could not get new serial for status message: %w"
 deploy.error_deployment_failed: "deployment failed: %w"
 
 # Audit CLI command

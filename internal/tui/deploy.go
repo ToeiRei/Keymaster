@@ -64,7 +64,6 @@ type deployModel struct {
 	authorizedKeys     string // The generated authorized_keys content
 	status             string
 	err                error
-	menuChoices        []string
 	accountFilter      string
 	isFilteringAccount bool
 }
@@ -74,12 +73,6 @@ func newDeployModel() deployModel {
 	return deployModel{
 		state:        deployStateMenu,
 		fleetResults: make(map[int]error),
-		menuChoices: []string{
-			"Deploy to Fleet (fully automatic)",
-			"Deploy to Single Account",
-			"Deploy to Tag",
-			"Get authorized_keys for Account",
-		},
 	}
 }
 
@@ -104,7 +97,7 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.fleetResults[res.account.ID] = res.err
 			if len(m.fleetResults) == len(m.accountsInFleet) {
 				m.state = deployStateComplete
-				m.status = "Fleet deployment complete."
+				m.status = i18n.T("deploy.fleet_complete")
 			}
 		}
 		// No other input handled while fleet deployment is running
@@ -117,9 +110,9 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				activeKey, err := db.GetActiveSystemKey()
 				if err != nil {
-					m.err = fmt.Errorf("deployment succeeded, but could not get new serial for status message: %w", err)
+					m.err = fmt.Errorf(i18n.T("deploy.error_get_serial_for_status"), err)
 				} else {
-					m.status = fmt.Sprintf("Successfully deployed to %s and updated serial to #%d.", m.selectedAccount.String(), activeKey.Serial)
+					m.status = i18n.T("deploy.success", m.selectedAccount.String(), activeKey.Serial)
 				}
 			}
 		}
@@ -143,7 +136,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.menuCursor--
 			}
 		case "down", "j":
-			if m.menuCursor < len(m.menuChoices)-1 {
+			if m.menuCursor < 3 { // There are 4 menu items (0-3)
 				m.menuCursor++
 			}
 		case "enter":
@@ -157,11 +150,11 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				if len(m.accountsInFleet) == 0 {
-					m.status = "No active accounts to deploy to."
+					m.status = i18n.T("deploy.no_accounts")
 					return m, nil
 				}
 				m.fleetResults = make(map[int]error, len(m.accountsInFleet))
-				m.status = "Starting fleet deployment..."
+				m.status = i18n.T("deploy.starting_fleet")
 				cmds := make([]tea.Cmd, len(m.accountsInFleet))
 				for i, acc := range m.accountsInFleet {
 					cmds[i] = performDeploymentCmd(acc)
@@ -299,7 +292,7 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.authorizedKeys = content
 			case actionDeploySingle:
 				m.state = deployStateInProgress
-				m.status = fmt.Sprintf("Deploying to %s...", m.selectedAccount.String())
+				m.status = i18n.T("deploy.deploying_to", m.selectedAccount.String())
 				return m, performDeploymentCmd(m.selectedAccount)
 			}
 			return m, nil
@@ -376,12 +369,12 @@ func (m deployModel) updateSelectTag(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = deployStateFleetInProgress
 			m.accountsInFleet = taggedAccounts
 			if len(m.accountsInFleet) == 0 {
-				m.status = fmt.Sprintf("No active accounts with tag '%s' to deploy to.", selectedTag)
+				m.status = i18n.T("deploy.no_accounts_tag", selectedTag)
 				m.state = deployStateMenu // go back to menu
 				return m, nil
 			}
 			m.fleetResults = make(map[int]error, len(m.accountsInFleet))
-			m.status = fmt.Sprintf("Starting deployment to tag '%s'...", selectedTag)
+			m.status = i18n.T("deploy.starting_tag", selectedTag)
 			cmds := make([]tea.Cmd, len(m.accountsInFleet))
 			for i, acc := range m.accountsInFleet {
 				cmds[i] = performDeploymentCmd(acc)
@@ -447,20 +440,9 @@ func (m deployModel) View() string {
 	case deployStateMenu:
 		title := titleStyle.Render(i18n.T("deploy.title"))
 		var listItems []string
-		for i, choice := range m.menuChoices {
-			var label string
-			switch i {
-			case 0:
-				label = i18n.T("deploy.menu.deploy_fleet")
-			case 1:
-				label = i18n.T("deploy.menu.deploy_single")
-			case 2:
-				label = i18n.T("deploy.menu.deploy_tag")
-			case 3:
-				label = i18n.T("deploy.menu.get_keys")
-			default:
-				label = choice
-			}
+		menuItems := []string{"deploy.menu.deploy_fleet", "deploy.menu.deploy_single", "deploy.menu.deploy_tag", "deploy.menu.get_keys"}
+		for i, itemKey := range menuItems {
+			label := i18n.T(itemKey)
 			if m.menuCursor == i {
 				listItems = append(listItems, selectedItemStyle.Render("▸ "+label))
 			} else {
@@ -524,8 +506,9 @@ func (m deployModel) View() string {
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 
 	case deployStateShowAuthorizedKeys:
-		title := titleStyle.Render(fmt.Sprintf(i18n.T("deploy.show_keys"), m.selectedAccount.String()))
-		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", m.authorizedKeys))
+		// Render just the keys for easy copy-pasting, with a title and help outside the main content.
+		title := titleStyle.Render(i18n.T("deploy.show_keys", m.selectedAccount.String()))
+		mainPane := lipgloss.JoinVertical(lipgloss.Left, title, "", m.authorizedKeys)
 		help := helpFooterStyle.Render(i18n.T("deploy.help_keys"))
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 
@@ -572,9 +555,9 @@ func (m deployModel) View() string {
 					}
 				}
 			}
-			mainPane += fmt.Sprintf(i18n.T("deploy.summary"), successCount, len(failedAccounts))
+			mainPane += i18n.T("deploy.summary", successCount, len(failedAccounts))
 			if len(failedAccounts) > 0 {
-				mainPane += fmt.Sprintf(i18n.T("deploy.failed_accounts"), strings.Join(failedAccounts, "\n"))
+				mainPane += i18n.T("deploy.failed_accounts", strings.Join(failedAccounts, "\n"))
 			}
 		}
 		help := helpFooterStyle.Render(i18n.T("deploy.help_complete"))
@@ -592,46 +575,46 @@ func performDeploymentCmd(account model.Account) tea.Cmd {
 			// Bootstrap: use the active system key.
 			connectKey, err = db.GetActiveSystemKey()
 			if err != nil {
-				return deploymentResultMsg{account: account, err: fmt.Errorf("failed to get active system key for bootstrap: %w", err)}
+				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_get_bootstrap_key"), err)}
 			}
 			if connectKey == nil {
-				return deploymentResultMsg{account: account, err: fmt.Errorf("no active system key found for bootstrap. Please generate one")}
+				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_no_bootstrap_key_tui"))}
 			}
 		} else {
 			// Normal deployment: use the key matching the account's current serial.
 			connectKey, err = db.GetSystemKeyBySerial(account.Serial)
 			if err != nil {
-				return deploymentResultMsg{account: account, err: fmt.Errorf("failed to get system key with serial %d: %w", account.Serial, err)}
+				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_get_serial_key"), account.Serial, err)}
 			}
 			if connectKey == nil {
-				return deploymentResultMsg{account: account, err: fmt.Errorf("database inconsistency: no system key found for serial %d on account %s", account.Serial, account.String())}
+				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_no_serial_key_tui"), account.Serial, account.String())}
 			}
 		}
 
 		// 2. Generate the target authorized_keys content (always uses the *active* key).
 		content, err := deploy.GenerateKeysContent(account.ID)
 		if err != nil {
-			return deploymentResultMsg{account: account, err: err}
+			return deploymentResultMsg{account: account, err: err} // Already i18n
 		}
 		activeKey, err := db.GetActiveSystemKey() // Need this for the new serial.
 		if err != nil || activeKey == nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf("could not retrieve active system key for serial update")}
+			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_get_active_key_for_serial"))}
 		}
 
 		// 3. Establish connection and deploy.
 		deployer, err := deploy.NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
 		if err != nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf("failed to connect to %s: %w", account.String(), err)}
+			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_connection_failed_tui"), account.String(), err)}
 		}
 		defer deployer.Close()
 
 		if err := deployer.DeployAuthorizedKeys(content); err != nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf("deployment to %s failed: %w", account.String(), err)}
+			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_deployment_failed_tui"), account.String(), err)}
 		}
 
 		// 4. Update the database on success.
 		if err := db.UpdateAccountSerial(account.ID, activeKey.Serial); err != nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf("deployment succeeded, but failed to update database serial: %w", err)}
+			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_db_update_failed_tui"), err)}
 		}
 
 		return deploymentResultMsg{account: account, err: nil} // Success

@@ -214,6 +214,12 @@ deploy.error_no_serial_key: "DB-Inkonsistenz: kein Systemschlüssel für Serienn
 deploy.error_get_active_key_for_serial: "Aktiver Systemschlüssel für Seriennummer-Update konnte nicht abgerufen werden"
 deploy.error_connection_failed: "Verbindung fehlgeschlagen: %w"
 deploy.error_db_update_failed: "DB-Update nach erfolgreichem Deployment fehlgeschlagen: %w"
+deploy.error_no_bootstrap_key_tui: "Kein aktiver Systemschlüssel für Bootstrap gefunden. Bitte einen erzeugen"
+deploy.error_no_serial_key_tui: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer %d auf Konto %s gefunden"
+deploy.error_connection_failed_tui: "Verbindung zu %s fehlgeschlagen: %w"
+deploy.error_deployment_failed_tui: "Deployment auf %s fehlgeschlagen: %w"
+deploy.error_db_update_failed_tui: "Deployment erfolgreich, aber DB-Seriennummer konnte nicht aktualisiert werden: %w"
+deploy.error_get_serial_for_status: "Deployment erfolgreich, aber neue Seriennummer konnte für Statusmeldung nicht gelesen werden: %w"
 deploy.error_deployment_failed: "Deployment fehlgeschlagen: %w"
 
 # Audit CLI command
