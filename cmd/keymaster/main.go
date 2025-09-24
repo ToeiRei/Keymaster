@@ -11,6 +11,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -401,18 +402,18 @@ func runDeploymentForAccount(account model.Account) error {
 	if account.Serial == 0 {
 		connectKey, err = db.GetActiveSystemKey()
 		if err != nil {
-			return fmt.Errorf(i18n.T("deploy.error_get_bootstrap_key", err))
+			return fmt.Errorf("%s: %w", i18n.T("deploy.error_get_bootstrap_key"), err)
 		}
 		if connectKey == nil {
-			return fmt.Errorf(i18n.T("deploy.error_no_bootstrap_key"))
+			return errors.New(i18n.T("deploy.error_no_bootstrap_key"))
 		}
 	} else {
 		connectKey, err = db.GetSystemKeyBySerial(account.Serial)
 		if err != nil {
-			return fmt.Errorf(i18n.T("deploy.error_get_serial_key", account.Serial, err))
+			return fmt.Errorf("%s: %w", i18n.T("deploy.error_get_serial_key", account.Serial), err)
 		}
 		if connectKey == nil {
-			return fmt.Errorf(i18n.T("deploy.error_no_serial_key", account.Serial))
+			return errors.New(i18n.T("deploy.error_no_serial_key", account.Serial))
 		}
 	}
 
@@ -422,21 +423,21 @@ func runDeploymentForAccount(account model.Account) error {
 	}
 	activeKey, err := db.GetActiveSystemKey()
 	if err != nil || activeKey == nil {
-		return fmt.Errorf(i18n.T("deploy.error_get_active_key_for_serial"))
+		return errors.New(i18n.T("deploy.error_get_active_key_for_serial"))
 	}
 
 	deployer, err := deploy.NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
 	if err != nil {
-		return fmt.Errorf(i18n.T("deploy.error_connection_failed", err))
+		return fmt.Errorf("%s: %w", i18n.T("deploy.error_connection_failed"), err)
 	}
 	defer deployer.Close()
 
 	if err := deployer.DeployAuthorizedKeys(content); err != nil {
-		return fmt.Errorf(i18n.T("deploy.error_deployment_failed", err))
+		return fmt.Errorf("%s: %w", i18n.T("deploy.error_deployment_failed"), err)
 	}
 
 	if err := db.UpdateAccountSerial(account.ID, activeKey.Serial); err != nil {
-		return fmt.Errorf(i18n.T("deploy.error_db_update_failed", err))
+		return fmt.Errorf("%s: %w", i18n.T("deploy.error_db_update_failed"), err)
 	}
 
 	return nil
@@ -502,37 +503,37 @@ step before Keymaster can manage a new host.`,
 func runAuditForAccount(account model.Account) error {
 	// 1. An account with serial 0 has never been deployed. This is a known state, not a drift.
 	if account.Serial == 0 {
-		return fmt.Errorf(i18n.T("audit.error_not_deployed"))
+		return errors.New(i18n.T("audit.error_not_deployed"))
 	}
 
 	// 2. Get the system key the database *thinks* is on the host.
 	connectKey, err := db.GetSystemKeyBySerial(account.Serial)
 	if err != nil {
-		return fmt.Errorf(i18n.T("audit.error_get_serial_key", account.Serial, err))
+		return fmt.Errorf("%s: %w", i18n.T("audit.error_get_serial_key", account.Serial), err)
 	}
 	if connectKey == nil {
-		return fmt.Errorf(i18n.T("audit.error_no_serial_key", account.Serial))
+		return errors.New(i18n.T("audit.error_no_serial_key", account.Serial))
 	}
 
 	// 3. Attempt to connect with that key. If this fails, the key is wrong/missing.
 	deployer, err := deploy.NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
 	if err != nil {
 		// Give a more helpful error message than just "connection failed".
-		return fmt.Errorf(i18n.T("audit.error_connection_failed", account.Serial, err))
+		return fmt.Errorf("%s: %w", i18n.T("audit.error_connection_failed", account.Serial), err)
 	}
 	defer deployer.Close()
 
 	// 4. Read the content of the remote authorized_keys file.
 	remoteContentBytes, err := deployer.GetAuthorizedKeys()
 	if err != nil {
-		return fmt.Errorf(i18n.T("audit.error_read_remote_file", err))
+		return fmt.Errorf("%s: %w", i18n.T("audit.error_read_remote_file"), err)
 	}
 
 	// 5. Generate the content that *should* be on the host (the desired state).
 	// This is always generated using the latest active system key.
 	expectedContent, err := deploy.GenerateKeysContent(account.ID)
 	if err != nil {
-		return fmt.Errorf(i18n.T("audit.error_generate_expected", err))
+		return fmt.Errorf("%s: %w", i18n.T("audit.error_generate_expected"), err)
 	}
 
 	// 6. Normalize both remote and expected content for a reliable, canonical comparison.
@@ -548,7 +549,7 @@ func runAuditForAccount(account model.Account) error {
 
 	// 7. Compare the actual state with the desired state.
 	if normalizedRemote != normalizedExpected {
-		return fmt.Errorf(i18n.T("audit.error_drift_detected"))
+		return errors.New(i18n.T("audit.error_drift_detected"))
 	}
 
 	return nil
