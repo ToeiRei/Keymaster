@@ -109,7 +109,7 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.state == publicKeysFormView {
 		if _, ok := msg.(publicKeyCreatedMsg); ok {
 			m.state = publicKeysListView
-			m.status = "Successfully added new public key."
+			m.status = i18n.T("public_keys.status.add_success")
 			m.keys, m.err = db.GetAllPublicKeys()
 			m.rebuildDisplayedKeys()
 			return m, nil
@@ -148,7 +148,7 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Fallthrough to confirm
 			case "n", "q", "esc":
 				m.isConfirmingDelete = false
-				m.status = "Deletion cancelled."
+				m.status = i18n.T("public_keys.status.delete_cancelled")
 				return m, nil
 			case "right", "tab", "l":
 				m.confirmCursor = 1 // Yes
@@ -161,7 +161,7 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err := db.DeletePublicKey(m.keyToDelete.ID); err != nil {
 						m.err = err
 					} else {
-						m.status = fmt.Sprintf("Deleted key: %s", m.keyToDelete.Comment)
+						m.status = i18n.T("public_keys.status.delete_success", m.keyToDelete.Comment)
 						m.keys, m.err = db.GetAllPublicKeys()
 						m.rebuildDisplayedKeys()
 					}
@@ -233,7 +233,7 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err := db.TogglePublicKeyGlobal(keyToToggle.ID); err != nil {
 					m.err = err
 				} else {
-					m.status = fmt.Sprintf("Toggled global status for key: %s", keyToToggle.Comment)
+					m.status = i18n.T("public_keys.status.toggle_success", keyToToggle.Comment)
 					// Refresh the list to show the new status
 					m.keys, m.err = db.GetAllPublicKeys()
 					m.rebuildDisplayedKeys()
@@ -281,26 +281,26 @@ func (m publicKeysModel) View() string {
 // viewConfirmation renders the modal dialog for confirming a key deletion.
 func (m publicKeysModel) viewConfirmation() string {
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("🗑️ Confirm Deletion"))
+	b.WriteString(titleStyle.Render(i18n.T("public_keys.delete_confirm.title")))
 
-	question := fmt.Sprintf("Are you sure you want to delete the public key\n\n%s?", m.keyToDelete.Comment)
+	question := i18n.T("public_keys.delete_confirm.question", m.keyToDelete.Comment)
 	b.WriteString(question)
-	b.WriteString("\n\nThis will remove it from all accounts it is assigned to.")
+	b.WriteString("\n\n" + i18n.T("public_keys.delete_confirm.warning"))
 	b.WriteString("\n\n")
 
 	var yesButton, noButton string
 	if m.confirmCursor == 1 { // Yes
-		yesButton = activeButtonStyle.Render("Yes, Delete")
-		noButton = buttonStyle.Render("No, Cancel")
+		yesButton = activeButtonStyle.Render(i18n.T("public_keys.delete_confirm.yes"))
+		noButton = buttonStyle.Render(i18n.T("public_keys.delete_confirm.no"))
 	} else { // No
-		yesButton = buttonStyle.Render("Yes, Delete")
-		noButton = activeButtonStyle.Render("No, Cancel")
+		yesButton = buttonStyle.Render(i18n.T("public_keys.delete_confirm.yes"))
+		noButton = activeButtonStyle.Render(i18n.T("public_keys.delete_confirm.no"))
 	}
 
 	buttons := lipgloss.JoinHorizontal(lipgloss.Top, noButton, "  ", yesButton)
 	b.WriteString(buttons)
 
-	b.WriteString("\n" + helpStyle.Render("\n(left/right to navigate, enter to confirm, esc to cancel)"))
+	b.WriteString("\n" + helpStyle.Render("\n"+i18n.T("public_keys.delete_confirm.help")))
 
 	// Center the whole dialog
 	return lipgloss.Place(m.width, m.height,
@@ -407,18 +407,18 @@ func boolToYesNo(val bool) string {
 // viewUsageReport renders the view that shows which accounts a key is assigned to.
 func (m publicKeysModel) viewUsageReport() string {
 	var b strings.Builder
-	title := fmt.Sprintf("📜 Key Usage Report for: %s", m.usageReportKey.Comment)
+	title := i18n.T("public_keys.usage_report.title", m.usageReportKey.Comment)
 	b.WriteString(titleStyle.Render(title))
 
 	if len(m.usageReportAccts) == 0 {
-		b.WriteString(helpStyle.Render("This key is not assigned to any accounts."))
+		b.WriteString("\n\n" + helpStyle.Render(i18n.T("public_keys.usage_report.not_assigned")))
 	} else {
-		b.WriteString("This key is assigned to the following accounts:\n\n")
+		b.WriteString("\n\n" + i18n.T("public_keys.usage_report.assigned_to") + "\n\n")
 		for _, acc := range m.usageReportAccts {
 			b.WriteString(itemStyle.Render("- "+acc.String()) + "\n")
 		}
 	}
 
-	b.WriteString(helpStyle.Render("\n(esc or q to go back)"))
+	b.WriteString(helpStyle.Render("\n" + i18n.T("public_keys.usage_report.help")))
 	return b.String()
 }
