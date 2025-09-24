@@ -359,15 +359,15 @@ func (m publicKeysModel) viewKeyList() string {
 	// Show details for the selected key
 	if len(m.displayedKeys) > 0 && m.cursor < len(m.displayedKeys) {
 		key := m.displayedKeys[m.cursor]
-		detailsItems = append(detailsItems, "", helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.detail_comment"), key.Comment)))
-		detailsItems = append(detailsItems, helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.detail_algorithm"), key.Algorithm)))
-		detailsItems = append(detailsItems, helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.detail_global"), boolToYesNo(key.IsGlobal))))
+		detailsItems = append(detailsItems, "", helpStyle.Render(i18n.T("public_keys.detail_comment", key.Comment)))
+		detailsItems = append(detailsItems, helpStyle.Render(i18n.T("public_keys.detail_algorithm", key.Algorithm)))
+		detailsItems = append(detailsItems, helpStyle.Render(i18n.T("public_keys.detail_global", boolToYesNo(key.IsGlobal))))
 
 		// Calculate and display the fingerprint on the fly.
 		parsedKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key.String()))
 		if err == nil {
 			fingerprint := internalkey.FingerprintSHA256(parsedKey)
-			detailsItems = append(detailsItems, helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.detail_fingerprint"), fingerprint)))
+			detailsItems = append(detailsItems, helpStyle.Render(i18n.T("public_keys.detail_fingerprint", fingerprint)))
 		}
 	}
 

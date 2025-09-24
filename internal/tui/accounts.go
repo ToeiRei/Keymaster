@@ -486,7 +486,7 @@ func (m accountsModel) View() string {
 	if len(m.displayedAccounts) > 0 && m.cursor < len(m.displayedAccounts) {
 		acc := m.displayedAccounts[m.cursor]
 		if acc.Tags != "" {
-			detailsItems = append(detailsItems, "", helpStyle.Render(fmt.Sprintf(i18n.T("accounts.tags"), acc.Tags)))
+			detailsItems = append(detailsItems, "", helpStyle.Render(i18n.T("accounts.tags", acc.Tags)))
 		}
 	}
 

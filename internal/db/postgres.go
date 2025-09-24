@@ -61,13 +61,17 @@ func (s *PostgresStore) GetAllAccounts() ([]model.Account, error) {
 	return accounts, nil
 }
 
-func (s *PostgresStore) AddAccount(username, hostname, label, tags string) error {
+func (s *PostgresStore) AddAccount(username, hostname, label, tags string) (int, error) {
 	// Postgres uses $1, $2, etc. for placeholders.
-	_, err := s.db.Exec("INSERT INTO accounts(username, hostname, label, tags) VALUES($1, $2, $3, $4)", username, hostname, label, tags)
+	var id int
+	err := s.db.QueryRow("INSERT INTO accounts(username, hostname, label, tags) VALUES($1, $2, $3, $4) RETURNING id", username, hostname, label, tags).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
 	if err == nil {
 		_ = s.LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
 	}
-	return err
+	return id, err
 }
 
 func (s *PostgresStore) DeleteAccount(id int) error {

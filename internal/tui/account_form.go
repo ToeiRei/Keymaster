@@ -28,9 +28,10 @@ var disabledStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 
 // accountModifiedMsg is a message to signal that an account was modified (created or updated).
 type accountModifiedMsg struct {
-	isNew    bool
-	username string
-	hostname string
+	isNew     bool
+	username  string
+	hostname  string
+	accountID int
 }
 
 type accountFormModel struct {
@@ -192,7 +193,7 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					// Signal that we're done.
 					return m, func() tea.Msg {
-						return accountModifiedMsg{isNew: false, username: m.editingAccount.Username, hostname: m.editingAccount.Hostname}
+						return accountModifiedMsg{isNew: false, username: m.editingAccount.Username, hostname: m.editingAccount.Hostname, accountID: m.editingAccount.ID}
 					}
 				} else {
 					// Add new account
@@ -206,12 +207,15 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, nil
 					}
 
-					if err := db.AddAccount(username, hostname, label, tags); err != nil {
+					newID, err := db.AddAccount(username, hostname, label, tags)
+					if err != nil {
 						m.err = err
 						return m, nil
 					}
 					// Signal that we're done.
-					return m, func() tea.Msg { return accountModifiedMsg{isNew: true, username: username, hostname: hostname} }
+					return m, func() tea.Msg {
+						return accountModifiedMsg{isNew: true, username: username, hostname: hostname, accountID: newID}
+					}
 				}
 			}
 

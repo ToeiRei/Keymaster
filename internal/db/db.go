@@ -120,7 +120,7 @@ func GetAllAccounts() ([]model.Account, error) {
 }
 
 // AddAccount adds a new account to the database.
-func AddAccount(username, hostname, label, tags string) error {
+func AddAccount(username, hostname, label, tags string) (int, error) {
 	return store.AddAccount(username, hostname, label, tags)
 }
 

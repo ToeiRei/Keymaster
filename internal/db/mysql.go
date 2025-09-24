@@ -65,12 +65,19 @@ func (s *MySQLStore) GetAllAccounts() ([]model.Account, error) {
 	return accounts, nil
 }
 
-func (s *MySQLStore) AddAccount(username, hostname, label, tags string) error {
-	_, err := s.db.Exec("INSERT INTO accounts(username, hostname, label, tags) VALUES(?, ?, ?, ?)", username, hostname, label, tags)
+func (s *MySQLStore) AddAccount(username, hostname, label, tags string) (int, error) {
+	result, err := s.db.Exec("INSERT INTO accounts(username, hostname, label, tags) VALUES(?, ?, ?, ?)", username, hostname, label, tags)
+	if err != nil {
+		return 0, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID: %w", err)
+	}
 	if err == nil {
 		_ = s.LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
 	}
-	return err
+	return int(id), err
 }
 
 func (s *MySQLStore) DeleteAccount(id int) error {
