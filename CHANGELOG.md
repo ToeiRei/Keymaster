@@ -7,14 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+### Fixed
+
+---
+
+## [1.3.4] - 2025-09-26
+
 ### Added
-- 
+- **Internationalization:** Completed translations for German, covering all CLI commands and TUI views.
 
 ### Changed
-- 
+- **Database Migrations:** Refactored the database migration system to use separate SQL files for each supported database (SQLite, PostgreSQL, MySQL). This improves reliability and makes adding future schema changes easier.
+- **CLI Initialization:** The root command initialization was refactored for better testability and to ensure consistent behavior.
 
 ### Fixed
-- 
+- **Message Formatting:** Corrected several internationalization string formatting issues in the CLI and TUI to ensure messages display correctly.
 
 ---
 
