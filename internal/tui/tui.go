@@ -349,12 +349,12 @@ func (m menuModel) View(data dashboardData, width int) string {
 	// Status Items
 	sysKeyStatus := errorStyle.Render(i18n.T("dashboard.system_key.not_generated"))
 	if data.systemKeySerial > 0 {
-		sysKeyStatus = successStyle.Render(fmt.Sprintf(i18n.T("dashboard.system_key.active"), data.systemKeySerial))
+		sysKeyStatus = successStyle.Render(i18n.T("dashboard.system_key.active", data.systemKeySerial))
 	}
 	dashboardItems = append(dashboardItems, lipgloss.JoinVertical(lipgloss.Left,
-		fmt.Sprintf(i18n.T("dashboard.accounts"), data.accountCount, data.activeAccountCount),
-		fmt.Sprintf(i18n.T("dashboard.public_keys"), data.publicKeyCount, data.globalKeyCount),
-		fmt.Sprintf(i18n.T("dashboard.system_key"), sysKeyStatus),
+		i18n.T("dashboard.accounts", data.accountCount, data.activeAccountCount),
+		i18n.T("dashboard.public_keys", data.publicKeyCount, data.globalKeyCount),
+		i18n.T("dashboard.system_key", sysKeyStatus),
 	))
 
 	// Recent Activity
