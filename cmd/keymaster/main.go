@@ -11,9 +11,6 @@ package main
 
 import (
 	"bufio"
-	"crypto/ed25519"
-	"crypto/rand"
-	"encoding/pem"
 	"fmt"
 	"log"
 	"os"
@@ -235,23 +232,10 @@ The previous key is kept for accessing hosts that have not yet been updated.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("⚙️  Rotating system key...")
 		// DB is initialized in PersistentPreRunE.
-		pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
+		publicKeyString, privateKeyString, err := internalkey.GenerateAndMarshalEd25519Key("keymaster-system-key")
 		if err != nil {
-			log.Fatalf("Error generating key pair: %v", err)
+			log.Fatalf("Error generating new system key: %v", err)
 		}
-
-		sshPubKey, err := ssh.NewPublicKey(pubKey) // Use standard ssh package
-		if err != nil {
-			log.Fatalf("Error creating SSH public key: %v", err)
-		}
-		pubKeyBytes := ssh.MarshalAuthorizedKey(sshPubKey) // Use standard ssh package
-		publicKeyString := fmt.Sprintf("%s keymaster-system-key", strings.TrimSpace(string(pubKeyBytes)))
-
-		pemBlock, err := internalkey.MarshalEd25519PrivateKey(privKey, "") // Use aliased internal package
-		if err != nil {
-			log.Fatalf("Error marshaling private key: %v", err)
-		}
-		privateKeyString := string(pem.EncodeToMemory(pemBlock))
 
 		serial, err := db.RotateSystemKey(publicKeyString, privateKeyString)
 		if err != nil {
