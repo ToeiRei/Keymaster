@@ -33,7 +33,7 @@ var (
 	ErrDuplicate = errors.New("duplicate entry")
 )
 
-//go:embed migrations
+//go:embed migrations/*
 var embeddedMigrations embed.FS
 
 // InitDB initializes the database connection based on the provided type and DSN.
@@ -96,8 +96,11 @@ func InitDB(dbType, dsn string) error {
 		return fmt.Errorf("failed to connect to %s database: %w", dbType, err)
 	}
 
+	// Define the path to the migrations for the specific database type.
+	migrationsPath := fmt.Sprintf("migrations/%s", dbType)
+
 	// Run migrations
-	sourceInstance, err := iofs.New(embeddedMigrations, "migrations")
+	sourceInstance, err := iofs.New(embeddedMigrations, migrationsPath)
 	if err != nil {
 		return fmt.Errorf("failed to create migration source: %w", err)
 	}
