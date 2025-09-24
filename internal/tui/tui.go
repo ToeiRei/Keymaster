@@ -17,6 +17,7 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/viper"
 )
 
 // viewState represents which part of the UI is currently active.
@@ -263,6 +264,23 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					i18n.T("menu.view_audit_log"),
 					i18n.T("menu.view_accounts_by_tag"),
 				}
+				// Save the new language setting
+				viper.Set("language", i18n.GetLang())
+				if err := viper.WriteConfig(); err != nil {
+					// This is not a fatal error, so we just note it.
+					// The language will still change for the current session.
+					m.err = fmt.Errorf("could not save language setting: %w", err)
+				}
+				// Re-initialize models that depend on i18n strings
+				m.menu.choices = []string{
+					i18n.T("menu.manage_accounts"),
+					i18n.T("menu.manage_public_keys"),
+					i18n.T("menu.assign_keys"),
+					i18n.T("menu.rotate_system_keys"),
+					i18n.T("menu.deploy_to_fleet"),
+					i18n.T("menu.view_audit_log"),
+					i18n.T("menu.view_accounts_by_tag"),
+				}
 				return m, nil
 			}
 		}
@@ -394,6 +412,9 @@ func (m menuModel) View(data dashboardData, width int) string {
 
 // Run is the main entrypoint for the TUI. It initializes and runs the Bubble Tea program.
 func Run() {
+	// Initialize i18n with the language from config
+	i18n.Init(viper.GetString("language"))
+
 	if _, err := tea.NewProgram(initialModel()).Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)

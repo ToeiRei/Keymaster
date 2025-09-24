@@ -25,12 +25,17 @@ var localeFS embed.FS
 // bundle stores all the loaded translation messages from the locale files.
 var bundle *i18n.Bundle
 
-// localizer is used to translate messages into a specific language.
-var localizer *i18n.Localizer
+var (
+	// localizer is used to translate messages into a specific language.
+	localizer *i18n.Localizer
+	// currentLang stores the tag of the currently active language.
+	currentLang string
+)
 
 // Init initializes the i18n bundle and sets up the localizer for a specific language.
 // It parses all embedded YAML files from the 'locales' directory.
 func Init(lang string) {
+	currentLang = lang
 	bundle = i18n.NewBundle(language.English)
 	bundle.RegisterUnmarshalFunc("yaml", yaml.Unmarshal)
 
@@ -65,4 +70,9 @@ func T(messageID string) string {
 // SetLang changes the active language of the localizer.
 func SetLang(lang string) {
 	Init(lang)
+}
+
+// GetLang returns the string tag of the currently active language.
+func GetLang() string {
+	return currentLang
 }

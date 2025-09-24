@@ -82,14 +82,17 @@ func init() {
 	// Database flags
 	rootCmd.PersistentFlags().String("db-type", "sqlite", "Database type (e.g., sqlite, postgres)")
 	rootCmd.PersistentFlags().String("db-dsn", "./keymaster.db", "Database connection string (DSN)")
+	rootCmd.PersistentFlags().String("lang", "en", `TUI language ("en", "de")`)
 
 	// Bind flags to viper
 	viper.BindPFlag("database.type", rootCmd.PersistentFlags().Lookup("db-type"))
 	viper.BindPFlag("database.dsn", rootCmd.PersistentFlags().Lookup("db-dsn"))
+	viper.BindPFlag("language", rootCmd.PersistentFlags().Lookup("lang"))
 
 	// Set defaults in viper. These are used if not set in the config file or by flags.
 	viper.SetDefault("database.type", "sqlite")
 	viper.SetDefault("database.dsn", "./keymaster.db")
+	viper.SetDefault("language", "en")
 
 	// Add commands
 	rootCmd.AddCommand(deployCmd)
@@ -142,6 +145,9 @@ database:
   # The Data Source Name (DSN) for the database connection.
   # For SQLite, this is the path to the database file.
   dsn: ./keymaster.db
+
+# The default language for the TUI. Supported: "en", "de".
+language: en
 
 # Example for future PostgreSQL configuration:
 # database:
