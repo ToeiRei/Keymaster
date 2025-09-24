@@ -214,16 +214,16 @@ func (m *rotateKeyModel) View() string {
 	b.WriteString(titleStyle.Render("🔑 " + i18n.T("rotate_key.title")))
 
 	if m.err != nil {
-		return errorStyle.Render(fmt.Sprintf(i18n.T("rotate_key.error"), m.err))
+		return errorStyle.Render(i18n.T("rotate_key.error", m.err))
 	}
 
 	switch m.state {
 	case rotateStateChecking:
-		b.WriteString("Checking for existing system key...")
+		b.WriteString(i18n.T("rotate_key.checking"))
 	case rotateStateGenerating:
 		b.WriteString(specialStyle.Render(i18n.T("rotate_key.generating")))
 	case rotateStateGenerated:
-		b.WriteString(successStyle.Render(fmt.Sprintf(i18n.T("rotate_key.generated"), m.newKeySerial)))
+		b.WriteString(successStyle.Render(i18n.T("rotate_key.generated", m.newKeySerial)))
 		b.WriteString("\n\n")
 
 		var box strings.Builder
@@ -238,7 +238,7 @@ func (m *rotateKeyModel) View() string {
 	case rotateStateRotating:
 		b.WriteString(specialStyle.Render(i18n.T("rotate_key.rotating")))
 	case rotateStateRotated:
-		b.WriteString(successStyle.Render(fmt.Sprintf(i18n.T("rotate_key.rotated"), m.newKeySerial)))
+		b.WriteString(successStyle.Render(i18n.T("rotate_key.rotated", m.newKeySerial)))
 		b.WriteString("\n\n")
 		b.WriteString(specialStyle.Render(i18n.T("rotate_key.deploy_reminder") + "\n"))
 		b.WriteString(helpStyle.Render(i18n.T("rotate_key.help_done")))
@@ -267,11 +267,11 @@ type keyRotatedMsg struct {
 func generateInitialKey() tea.Msg {
 	publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key")
 	if err != nil {
-		return initialKeyGeneratedMsg{err: fmt.Errorf("failed to generate system key: %w", err)}
+		return initialKeyGeneratedMsg{err: fmt.Errorf(i18n.T("rotate_key.error_generate"), err)}
 	}
 	serial, err := db.CreateSystemKey(publicKeyString, privateKeyString)
 	if err != nil {
-		return initialKeyGeneratedMsg{err: fmt.Errorf("failed to save system key to database: %w", err)}
+		return initialKeyGeneratedMsg{err: fmt.Errorf(i18n.T("rotate_key.error_save"), err)}
 	}
 
 	return initialKeyGeneratedMsg{publicKey: publicKeyString, serial: serial}
@@ -282,11 +282,11 @@ func generateInitialKey() tea.Msg {
 func performRotation() tea.Msg {
 	publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key")
 	if err != nil {
-		return keyRotatedMsg{err: fmt.Errorf("failed to generate system key: %w", err)}
+		return keyRotatedMsg{err: fmt.Errorf(i18n.T("rotate_key.error_generate"), err)}
 	}
 	serial, err := db.RotateSystemKey(publicKeyString, privateKeyString)
 	if err != nil {
-		return keyRotatedMsg{err: fmt.Errorf("failed to save rotated system key to database: %w", err)}
+		return keyRotatedMsg{err: fmt.Errorf(i18n.T("rotate_key.error_save_rotated"), err)}
 	}
 
 	return keyRotatedMsg{serial: serial}
