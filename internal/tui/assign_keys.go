@@ -52,8 +52,8 @@ type assignKeysModel struct {
 }
 
 // newAssignKeysModel creates a new model for the key assignment view, pre-loading accounts and keys.
-func newAssignKeysModel() assignKeysModel {
-	m := assignKeysModel{
+func newAssignKeysModel() *assignKeysModel {
+	m := &assignKeysModel{
 		state:        assignStateSelectAccount,
 		assignedKeys: make(map[int]struct{}),
 	}
@@ -74,12 +74,12 @@ func newAssignKeysModel() assignKeysModel {
 }
 
 // Init initializes the model.
-func (m assignKeysModel) Init() tea.Cmd {
+func (m *assignKeysModel) Init() tea.Cmd {
 	return nil
 }
 
 // Update handles messages and updates the model's state.
-func (m assignKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *assignKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.state {
 	case assignStateSelectAccount:
 		return m.updateAccountSelection(msg)
@@ -90,7 +90,7 @@ func (m assignKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // updateAccountSelection handles input when the user is selecting an account.
-func (m assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		// Filtering mode for accounts
@@ -141,6 +141,16 @@ func (m assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd
 			m.state = assignStateSelectKeys
 			m.keyCursor = 0
 			m.status = ""
+
+			// Refresh the key list to ensure we have the latest data
+			keys, err := db.GetAllPublicKeys()
+			if err != nil {
+				m.err = fmt.Errorf("error refreshing key list: %v", err)
+				return m, nil
+			}
+			m.keys = keys
+
+			// Get currently assigned keys
 			assigned, err := db.GetKeysForAccount(m.selectedAccount.ID)
 			if err != nil {
 				m.err = err
@@ -150,6 +160,7 @@ func (m assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd
 			for _, key := range assigned {
 				m.assignedKeys[key.ID] = struct{}{}
 			}
+			m.status = fmt.Sprintf("Selected account %s (ID: %d) with %d keys assigned", m.selectedAccount.String(), m.selectedAccount.ID, len(assigned))
 			return m, nil
 		}
 	}
@@ -157,7 +168,7 @@ func (m assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd
 }
 
 // filteredAccounts returns a slice of accounts that match the current filter text.
-func (m assignKeysModel) filteredAccounts() []model.Account {
+func (m *assignKeysModel) filteredAccounts() []model.Account {
 	if m.accountFilter == "" {
 		return m.accounts
 	}
@@ -171,7 +182,7 @@ func (m assignKeysModel) filteredAccounts() []model.Account {
 }
 
 // filteredKeys returns a slice of public keys that match the current filter text.
-func (m assignKeysModel) filteredKeys() []model.PublicKey {
+func (m *assignKeysModel) filteredKeys() []model.PublicKey {
 	if m.keyFilter == "" {
 		return m.keys
 	}
@@ -193,7 +204,7 @@ func containsIgnoreCase(s, substr string) bool {
 }
 
 // updateKeySelection handles input when the user is selecting keys to assign.
-func (m assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		// Filtering mode for keys
@@ -234,7 +245,7 @@ func (m assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.keyCursor < len(m.filteredKeys())-1 {
 				m.keyCursor++
 			}
-		case " ", "enter":
+		case " ": // Only use space for toggling assignment
 			filteredKeys := m.filteredKeys()
 			if len(filteredKeys) == 0 || m.keyCursor >= len(filteredKeys) {
 				return m, nil
@@ -242,19 +253,36 @@ func (m assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			selectedKey := filteredKeys[m.keyCursor]
 			if _, assigned := m.assignedKeys[selectedKey.ID]; assigned {
 				// Unassign
-				if err := db.UnassignKeyFromAccount(m.selectedAccount.ID, selectedKey.ID); err != nil {
+				m.status = fmt.Sprintf("Attempting to unassign key: %s (ID: %d) from account ID: %d", selectedKey.Comment, selectedKey.ID, m.selectedAccount.ID)
+				if err := db.UnassignKeyFromAccount(selectedKey.ID, m.selectedAccount.ID); err != nil {
 					m.err = err
+					m.status = fmt.Sprintf("Error unassigning key: %v", err)
 				} else {
 					delete(m.assignedKeys, selectedKey.ID)
 					m.status = fmt.Sprintf("Unassigned key: %s", selectedKey.Comment)
 				}
 			} else {
 				// Assign
-				if err := db.AssignKeyToAccount(m.selectedAccount.ID, selectedKey.ID); err != nil {
+				m.status = fmt.Sprintf("Attempting to assign key: %s (ID: %d) to account ID: %d", selectedKey.Comment, selectedKey.ID, m.selectedAccount.ID)
+				// Verify key still exists
+				exists := false
+				for _, k := range m.keys {
+					if k.ID == selectedKey.ID {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					m.err = fmt.Errorf("key ID %d no longer exists in memory", selectedKey.ID)
+					m.status = fmt.Sprintf("Error: key may have been deleted: %v", m.err)
+					return m, nil
+				}
+				if err := db.AssignKeyToAccount(selectedKey.ID, m.selectedAccount.ID); err != nil {
 					m.err = err
+					m.status = fmt.Sprintf("Error assigning key: %v", err)
 				} else {
 					m.assignedKeys[selectedKey.ID] = struct{}{}
-					m.status = fmt.Sprintf("Assigned key: %s", selectedKey.Comment)
+					m.status = fmt.Sprintf("Assigned key: %s (ID: %d)", selectedKey.Comment, selectedKey.ID)
 				}
 			}
 			return m, nil
@@ -264,7 +292,7 @@ func (m assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // viewAccountList renders the left pane containing the list of accounts.
-func (m assignKeysModel) viewAccountList() string {
+func (m *assignKeysModel) viewAccountList() string {
 	var listItems []string
 	accounts := m.filteredAccounts()
 	if len(accounts) == 0 {
@@ -293,7 +321,7 @@ func (m assignKeysModel) viewAccountList() string {
 }
 
 // viewKeySelection renders the right pane containing the list of keys for assignment.
-func (m assignKeysModel) viewKeySelection() string {
+func (m *assignKeysModel) viewKeySelection() string {
 	var listItems []string
 	keys := m.filteredKeys()
 	if len(keys) == 0 {
@@ -339,7 +367,7 @@ func (m assignKeysModel) viewKeySelection() string {
 }
 
 // View renders the entire key assignment UI.
-func (m assignKeysModel) View() string {
+func (m *assignKeysModel) View() string {
 	left := m.viewAccountList()
 	right := ""
 	if m.state == assignStateSelectKeys {

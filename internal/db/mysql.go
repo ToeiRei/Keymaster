@@ -437,7 +437,25 @@ func (s *MySQLStore) HasSystemKeys() (bool, error) {
 	return count > 0, nil
 }
 func (s *MySQLStore) AssignKeyToAccount(keyID, accountID int) error {
-	_, err := s.db.Exec("INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, accountID)
+	// First verify the key and account exist
+	var keyExists, accountExists bool
+	err := s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM public_keys WHERE id = ?)", keyID).Scan(&keyExists)
+	if err != nil {
+		return fmt.Errorf("error checking key existence: %w", err)
+	}
+	if !keyExists {
+		return fmt.Errorf("key ID %d does not exist in public_keys table", keyID)
+	}
+
+	err = s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM accounts WHERE id = ?)", accountID).Scan(&accountExists)
+	if err != nil {
+		return fmt.Errorf("error checking account existence: %w", err)
+	}
+	if !accountExists {
+		return fmt.Errorf("account ID %d does not exist in accounts table", accountID)
+	}
+
+	_, err = s.db.Exec("INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, accountID)
 	if err == nil {
 		// Get details for logging, ignoring errors as this is best-effort.
 		var keyComment, accUser, accHost string

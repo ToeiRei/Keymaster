@@ -57,7 +57,7 @@ type mainModel struct {
 	menu       menuModel
 	deployer   deployModel
 	rotator    *rotateKeyModel
-	assignment assignKeysModel
+	assignment *assignKeysModel
 	keys       publicKeysModel
 	accounts   accountsModel
 	auditLog   *auditLogModel
@@ -149,9 +149,13 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = menuView
 			return m, refreshDashboardCmd()
 		}
-		var newAssignmentModel tea.Model
-		newAssignmentModel, cmd = m.assignment.Update(msg)
-		m.assignment = newAssignmentModel.(assignKeysModel)
+		var newModel tea.Model
+		newModel, cmd = m.assignment.Update(msg)
+		// Since assignment is a pointer receiver, we don't need to reassign
+		// the model unless it's changed
+		if newModel != m.assignment {
+			m.assignment = newModel.(*assignKeysModel)
+		}
 
 	case rotateKeyView:
 		// If we received a "back" message, switch the state.
@@ -216,7 +220,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				case 2: // Assign Keys to Accounts
 					m.state = assignKeysView
-					m.assignment = newAssignKeysModel()
+					m.assignment = newAssignKeysModel() // Already returns *assignKeysModel
 					return m, nil
 				case 3: // Rotate System Keys
 					m.state = rotateKeyView
