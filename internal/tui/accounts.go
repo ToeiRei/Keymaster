@@ -432,56 +432,6 @@ func (m *accountsModel) ensureCursorInView() {
 
 // headerView renders the main title of the page.
 func (m *accountsModel) headerView() string {
-	// If we're in the form view, render that instead.
-	if m.state == accountsFormView {
-		return m.form.View()
-	}
-
-	// If we're in the import confirmation view, just show the status.
-	if m.state == accountsImportConfirmView {
-		var viewItems []string
-		viewItems = append(viewItems, titleStyle.Render(i18n.T("accounts.import_confirm.title")))
-		viewItems = append(viewItems, i18n.T("accounts.import_confirm.found_keys", len(m.pendingImportKeys)), "")
-
-		for _, key := range m.pendingImportKeys {
-			line := fmt.Sprintf("- %s (%s)", key.Comment, key.Algorithm)
-			viewItems = append(viewItems, itemStyle.Render(line))
-		}
-
-		viewItems = append(viewItems, "", helpStyle.Render(m.status))
-		return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
-	}
-
-	// If we are confirming a delete, render the modal instead of the list.
-	if m.isConfirmingDelete {
-		var b strings.Builder
-		b.WriteString(titleStyle.Render(i18n.T("accounts.delete_confirm.title")))
-
-		question := i18n.T("accounts.delete_confirm.question", m.accountToDelete.String())
-		b.WriteString(question)
-		b.WriteString("\n\n")
-
-		var yesButton, noButton string
-		if m.confirmCursor == 1 { // Yes
-			yesButton = activeButtonStyle.Render(i18n.T("accounts.delete_confirm.yes"))
-			noButton = buttonStyle.Render(i18n.T("accounts.delete_confirm.no"))
-		} else { // No
-			yesButton = buttonStyle.Render(i18n.T("accounts.delete_confirm.yes"))
-			noButton = activeButtonStyle.Render(i18n.T("accounts.delete_confirm.no"))
-		}
-
-		buttons := lipgloss.JoinHorizontal(lipgloss.Top, noButton, "  ", yesButton)
-		b.WriteString(buttons)
-
-		b.WriteString("\n" + helpStyle.Render("\n"+i18n.T("accounts.delete_confirm.help")))
-
-		// Center the whole dialog
-		return lipgloss.Place(m.width, m.height,
-			lipgloss.Center, lipgloss.Center,
-			dialogBoxStyle.Render(b.String()),
-		)
-	}
-
 	// --- Styled, dashboard-like layout ---
 	return mainTitleStyle.Render("🔑 " + i18n.T("accounts.title"))
 }
@@ -542,11 +492,52 @@ func (m *accountsModel) footerView() string {
 	return footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T("accounts.footer"), filterStatus))
 }
 
-func (m *accountsModel) View() string {
-	header := lipgloss.NewStyle().Align(lipgloss.Center).Render(m.headerView())
-	if m.state != accountsListView {
-		return header // Return early for form, confirmation, etc.
+func (m *accountsModel) viewConfirmation() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render(i18n.T("accounts.delete_confirm.title")))
+	question := i18n.T("accounts.delete_confirm.question", m.accountToDelete.String())
+	b.WriteString(question)
+	b.WriteString("\n\n")
+	var yesButton, noButton string
+	if m.confirmCursor == 1 { // Yes
+		yesButton = activeButtonStyle.Render(i18n.T("accounts.delete_confirm.yes"))
+		noButton = buttonStyle.Render(i18n.T("accounts.delete_confirm.no"))
+	} else { // No
+		yesButton = buttonStyle.Render(i18n.T("accounts.delete_confirm.yes"))
+		noButton = activeButtonStyle.Render(i18n.T("accounts.delete_confirm.no"))
 	}
+	buttons := lipgloss.JoinHorizontal(lipgloss.Top, noButton, "  ", yesButton)
+	b.WriteString(buttons)
+	b.WriteString("\n" + helpStyle.Render("\n"+i18n.T("accounts.delete_confirm.help")))
+	return lipgloss.Place(m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		dialogBoxStyle.Render(b.String()),
+	)
+}
+
+func (m *accountsModel) View() string {
+	// Handle full-screen views first.
+	switch m.state {
+	case accountsFormView:
+		return m.form.View()
+	case accountsImportConfirmView:
+		var viewItems []string
+		viewItems = append(viewItems, titleStyle.Render(i18n.T("accounts.import_confirm.title")))
+		viewItems = append(viewItems, i18n.T("accounts.import_confirm.found_keys", len(m.pendingImportKeys)), "")
+		for _, key := range m.pendingImportKeys {
+			line := fmt.Sprintf("- %s (%s)", key.Comment, key.Algorithm)
+			viewItems = append(viewItems, itemStyle.Render(line))
+		}
+		viewItems = append(viewItems, "", helpStyle.Render(m.status))
+		return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
+	}
+
+	if m.isConfirmingDelete {
+		return m.viewConfirmation()
+	}
+
+	// If we've reached here, we are in the main list view.
+	header := lipgloss.NewStyle().Width(m.width).Align(lipgloss.Center).Render(m.headerView())
 
 	// --- List Pane (Left) ---
 	listPaneTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("accounts.list_title"))
@@ -581,7 +572,7 @@ func (m *accountsModel) View() string {
 	rightPane := paneStyle.Width(m.width - menuWidth - 8).Height(paneHeight).Render(detailContent)
 	mainArea := lipgloss.JoinHorizontal(lipgloss.Left, leftPane, rightPane)
 
-	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", m.footerView())
+	return lipgloss.JoinVertical(lipgloss.Top, header, mainArea, m.footerView())
 }
 
 // verifyHostKeyCmd is a tea.Cmd that fetches a host's public key and saves it.
