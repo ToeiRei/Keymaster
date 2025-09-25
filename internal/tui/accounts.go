@@ -328,6 +328,8 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
+				// SetContent must be called to redraw the cursor.
+				// This resets the viewport's YOffset, so ensureCursorInView must be called *after*.
 				m.viewport.SetContent(m.listContentView())
 				m.ensureCursorInView()
 			}
@@ -417,16 +419,18 @@ func max(a, b int) int {
 }
 
 // ensureCursorInView adjusts the viewport's Y offset to ensure the cursor is visible.
+// It implements "edge scrolling," where the list only scrolls when the cursor
+// hits the top or bottom of the visible area.
 func (m *accountsModel) ensureCursorInView() {
-	min := m.viewport.YOffset
-	max := m.viewport.YOffset + m.viewport.Height - 1
+	top := m.viewport.YOffset
+	bottom := top + m.viewport.Height - 1
 
-	cursorLine := m.cursor
-
-	if cursorLine < min {
-		m.viewport.SetYOffset(cursorLine) // Scroll up to show the cursor
-	} else if cursorLine > max {
-		m.viewport.SetYOffset(cursorLine - m.viewport.Height + 1) // Scroll down to show the cursor
+	if m.cursor < top {
+		// Cursor is above the viewport, so scroll up to bring it into view.
+		m.viewport.YOffset = m.cursor
+	} else if m.cursor > bottom {
+		// Cursor is below the viewport, so scroll down.
+		m.viewport.YOffset = m.cursor - m.viewport.Height + 1
 	}
 }
 
@@ -537,7 +541,7 @@ func (m *accountsModel) View() string {
 	}
 
 	// If we've reached here, we are in the main list view.
-	header := lipgloss.NewStyle().Width(m.width).Align(lipgloss.Center).Render(m.headerView())
+	header := m.headerView()
 
 	// --- List Pane (Left) ---
 	listPaneTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("accounts.list_title"))
