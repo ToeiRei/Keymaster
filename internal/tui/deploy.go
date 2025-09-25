@@ -573,7 +573,7 @@ func performDeploymentCmd(account model.Account) tea.Cmd {
 		var err error
 		if account.Serial == 0 {
 			// Bootstrap: use the active system key.
-			connectKey, err = db.GetActiveSystemKey()
+			connectKey, err = db.GetActiveSystemKey() // i18n
 			if err != nil {
 				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_get_bootstrap_key"), err)}
 			}
@@ -582,7 +582,7 @@ func performDeploymentCmd(account model.Account) tea.Cmd {
 			}
 		} else {
 			// Normal deployment: use the key matching the account's current serial.
-			connectKey, err = db.GetSystemKeyBySerial(account.Serial)
+			connectKey, err = db.GetSystemKeyBySerial(account.Serial) // i18n
 			if err != nil {
 				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_get_serial_key"), account.Serial, err)}
 			}
@@ -604,17 +604,17 @@ func performDeploymentCmd(account model.Account) tea.Cmd {
 		// 3. Establish connection and deploy.
 		deployer, err := deploy.NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
 		if err != nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_connection_failed_tui"), account.String(), err)}
+			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_connection_failed_tui", account.String(), err))}
 		}
 		defer deployer.Close()
 
 		if err := deployer.DeployAuthorizedKeys(content); err != nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_deployment_failed_tui"), account.String(), err)}
+			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_deployment_failed_tui", account.String(), err))}
 		}
 
 		// 4. Update the database on success.
 		if err := db.UpdateAccountSerial(account.ID, activeKey.Serial); err != nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_db_update_failed_tui"), err)}
+			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_db_update_failed_tui", err))}
 		}
 
 		return deploymentResultMsg{account: account, err: nil} // Success

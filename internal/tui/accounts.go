@@ -492,7 +492,7 @@ func (m accountsModel) View() string {
 
 	// Only show filter status if filtering
 	if m.isFiltering {
-		detailsItems = append(detailsItems, "", helpStyle.Render(fmt.Sprintf(i18n.T("accounts.filtering"), m.filter)))
+		detailsItems = append(detailsItems, "", helpStyle.Render(i18n.T("accounts.filtering", m.filter)))
 	}
 
 	rightPane := paneStyle.Width(detailWidth).MarginLeft(2).Render(lipgloss.JoinVertical(lipgloss.Left, detailsItems...))
