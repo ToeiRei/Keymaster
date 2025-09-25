@@ -108,18 +108,17 @@ func (m *assignKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.state {
 	case assignStateSelectAccount:
 		updatedModel, cmd = m.updateAccountSelection(msg)
+		cmds = append(cmds, cmd)
+		m.accountViewport, cmd = m.accountViewport.Update(msg)
+		cmds = append(cmds, cmd)
 	case assignStateSelectKeys:
 		updatedModel, cmd = m.updateKeySelection(msg)
+		cmds = append(cmds, cmd)
+		m.keyViewport, cmd = m.keyViewport.Update(msg)
+		cmds = append(cmds, cmd)
 	default:
 		return m, nil // Should be unreachable
 	}
-	cmds = append(cmds, cmd)
-
-	// After the main logic, pass the message to the viewports for their own updates (e.g., mouse scrolling).
-	m.accountViewport, cmd = m.accountViewport.Update(msg)
-	cmds = append(cmds, cmd)
-	m.keyViewport, cmd = m.keyViewport.Update(msg)
-	cmds = append(cmds, cmd)
 
 	return updatedModel, tea.Batch(cmds...)
 }
