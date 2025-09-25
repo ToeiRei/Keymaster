@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.5] - 2025-09-27
+
+### Fixes
+- **Design fixes:** Long lists break the views
+
+---
+
 ## [1.3.4] - 2025-09-26
 
 ### Added
