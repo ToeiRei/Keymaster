@@ -373,7 +373,7 @@ func (m publicKeysModel) viewKeyList() string {
 
 	// Only show filter status if filtering
 	if m.isFiltering {
-		detailsItems = append(detailsItems, "", helpStyle.Render(fmt.Sprintf(i18n.T("public_keys.filtering"), m.filter)))
+		detailsItems = append(detailsItems, "", helpStyle.Render(i18n.T("public_keys.filtering", m.filter)))
 	}
 
 	rightPane := paneStyle.Width(detailWidth).MarginLeft(2).Render(lipgloss.JoinVertical(lipgloss.Left, detailsItems...))
@@ -384,7 +384,7 @@ func (m publicKeysModel) viewKeyList() string {
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
 	var filterStatus string
 	if m.isFiltering {
-		filterStatus = fmt.Sprintf(i18n.T("public_keys.filtering"), m.filter)
+		filterStatus = i18n.T("public_keys.filtering", m.filter)
 	} else if m.filter != "" {
 		filterStatus = fmt.Sprintf(i18n.T("public_keys.filter_active"), m.filter)
 	} else {

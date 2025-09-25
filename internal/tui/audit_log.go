@@ -255,7 +255,7 @@ func (m *auditLogModel) footerLine() string {
 		i18n.T("audit_log.header.details"),
 	}
 	if m.isFiltering {
-		filterStatus = fmt.Sprintf(i18n.T("audit_log.filtering"), colNames[m.filterCol], m.filter)
+		filterStatus = i18n.T("audit_log.filtering", colNames[m.filterCol], m.filter)
 	} else if m.filter != "" {
 		filterStatus = fmt.Sprintf(i18n.T("audit_log.filter_active"), colNames[m.filterCol], m.filter)
 	} else {

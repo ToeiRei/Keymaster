@@ -478,7 +478,7 @@ func (m deployModel) View() string {
 		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, listItems...)))
 		var filterStatus string
 		if m.isFilteringAccount {
-			filterStatus = fmt.Sprintf(i18n.T("deploy.filtering"), m.accountFilter)
+			filterStatus = i18n.T("deploy.filtering", m.accountFilter)
 		} else if m.accountFilter != "" {
 			filterStatus = fmt.Sprintf(i18n.T("deploy.filter_active"), m.accountFilter)
 		} else {

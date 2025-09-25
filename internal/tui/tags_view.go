@@ -215,7 +215,7 @@ func (m tagsViewModel) View() string {
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
 	var filterStatus string
 	if m.isFiltering {
-		filterStatus = fmt.Sprintf(i18n.T("tags_view.filtering"), m.filter)
+		filterStatus = i18n.T("tags_view.filtering", m.filter)
 	} else if m.filter != "" {
 		filterStatus = fmt.Sprintf(i18n.T("tags_view.filter_active"), m.filter)
 	} else {

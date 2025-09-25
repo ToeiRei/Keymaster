@@ -504,7 +504,7 @@ func (m accountsModel) View() string {
 	// Compose help and filter status on one line
 	var filterStatus string
 	if m.isFiltering {
-		filterStatus = fmt.Sprintf(i18n.T("accounts.filtering"), m.filter)
+		filterStatus = i18n.T("accounts.filtering", m.filter)
 	} else if m.filter != "" {
 		filterStatus = fmt.Sprintf(i18n.T("accounts.filter_active"), m.filter)
 	} else {

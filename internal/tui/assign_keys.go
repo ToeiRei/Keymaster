@@ -386,7 +386,7 @@ func (m *assignKeysModel) View() string {
 	if m.state == assignStateSelectKeys {
 		helpKey = "assign_keys.help_bar_keys"
 		if m.isFilteringKey {
-			filterStatus = fmt.Sprintf(i18n.T("assign_keys.filtering"), m.keyFilter)
+			filterStatus = i18n.T("assign_keys.filtering", m.keyFilter)
 		} else if m.keyFilter != "" {
 			filterStatus = fmt.Sprintf(i18n.T("assign_keys.filter_active"), m.keyFilter)
 		} else {
@@ -395,7 +395,7 @@ func (m *assignKeysModel) View() string {
 	} else {
 		helpKey = "assign_keys.help_bar_accounts"
 		if m.isFilteringAcct {
-			filterStatus = fmt.Sprintf(i18n.T("assign_keys.filtering"), m.accountFilter)
+			filterStatus = i18n.T("assign_keys.filtering", m.accountFilter)
 		} else if m.accountFilter != "" {
 			filterStatus = fmt.Sprintf(i18n.T("assign_keys.filter_active"), m.accountFilter)
 		} else {
