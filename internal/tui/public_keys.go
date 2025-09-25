@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	internalkey "github.com/toeirei/keymaster/internal/crypto/ssh"
@@ -38,6 +39,7 @@ type publicKeysModel struct {
 	state            publicKeysViewState
 	form             publicKeyFormModel
 	keys             []model.PublicKey // Master list
+	viewport         viewport.Model
 	displayedKeys    []model.PublicKey // Filtered list
 	cursor           int
 	status           string
@@ -55,13 +57,16 @@ type publicKeysModel struct {
 
 // newPublicKeysModel creates a new model for the public key view, pre-loading keys from the database.
 func newPublicKeysModel() publicKeysModel {
-	m := publicKeysModel{}
+	m := publicKeysModel{
+		viewport: viewport.New(0, 0),
+	}
 	var err error
 	m.keys, err = db.GetAllPublicKeys()
 	if err != nil {
 		m.err = err
 	}
 	m.rebuildDisplayedKeys()
+	m.viewport.SetContent(m.listContentView())
 	return m
 }
 
@@ -97,13 +102,23 @@ func (m *publicKeysModel) rebuildDisplayedKeys() {
 }
 
 // Update handles messages and updates the model's state.
-func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	// Handle window size messages first, as they affect layout.
 	if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
 		m.width = sizeMsg.Width
 		m.height = sizeMsg.Height
+
+		header := lipgloss.NewStyle().Width(m.width).Align(lipgloss.Center).Render(m.headerView())
+		footer := m.footerView()
+
+		// The space for the panes is the total height minus header, footer, and the newlines around the main area.
+		mainAreaHeight := m.height - lipgloss.Height(header) - lipgloss.Height(footer) - 2
+
+		// The viewport's height is the available area minus chrome for the pane itself (borders, padding, title).
+		m.viewport.Height = mainAreaHeight - 6
+		m.viewport.Width = m.width/2 - 4 // Approximate width for left pane
 	}
 
 	if m.state == publicKeysFormView {
@@ -112,6 +127,7 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = i18n.T("public_keys.status.add_success")
 			m.keys, m.err = db.GetAllPublicKeys()
 			m.rebuildDisplayedKeys()
+			m.viewport.SetContent(m.listContentView())
 			return m, nil
 		}
 		if _, ok := msg.(backToListMsg); ok {
@@ -164,6 +180,7 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.status = i18n.T("public_keys.status.delete_success", m.keyToDelete.Comment)
 						m.keys, m.err = db.GetAllPublicKeys()
 						m.rebuildDisplayedKeys()
+						m.viewport.SetContent(m.listContentView())
 					}
 				}
 				m.isConfirmingDelete = false
@@ -179,16 +196,19 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isFiltering = false
 				m.filter = ""
 				m.rebuildDisplayedKeys()
+				m.viewport.SetContent(m.listContentView())
 			case tea.KeyEnter:
 				m.isFiltering = false
 			case tea.KeyBackspace:
 				if len(m.filter) > 0 {
 					m.filter = m.filter[:len(m.filter)-1]
 					m.rebuildDisplayedKeys()
+					m.viewport.SetContent(m.listContentView())
 				}
 			case tea.KeyRunes:
 				m.filter += string(msg.Runes)
 				m.rebuildDisplayedKeys()
+				m.viewport.SetContent(m.listContentView())
 			}
 			return m, nil
 		}
@@ -204,16 +224,21 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.filter != "" && !m.isFiltering {
 				m.filter = ""
 				m.rebuildDisplayedKeys()
+				m.viewport.SetContent(m.listContentView())
 				return m, nil
 			}
 			return m, func() tea.Msg { return backToMenuMsg{} }
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
+				m.viewport.SetContent(m.listContentView())
+				m.ensureCursorInView()
 			}
 		case "down", "j":
 			if m.cursor < len(m.displayedKeys)-1 {
 				m.cursor++
+				m.viewport.SetContent(m.listContentView())
+				m.ensureCursorInView()
 			}
 		case "a":
 			m.state = publicKeysFormView
@@ -237,6 +262,7 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Refresh the list to show the new status
 					m.keys, m.err = db.GetAllPublicKeys()
 					m.rebuildDisplayedKeys()
+					m.viewport.SetContent(m.listContentView())
 				}
 			}
 			return m, nil
@@ -255,11 +281,34 @@ func (m publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	}
-	return m, nil
+
+	// Pass messages to the viewport at the end
+	var vpCmd tea.Cmd
+	m.viewport, vpCmd = m.viewport.Update(msg)
+	return m, tea.Batch(cmd, vpCmd)
+}
+
+// ensureCursorInView adjusts the viewport's Y offset to ensure the cursor is visible.
+func (m *publicKeysModel) ensureCursorInView() {
+	top := m.viewport.YOffset
+	bottom := top + m.viewport.Height - 1
+
+	if m.cursor < top {
+		// Cursor is above the viewport, so scroll up to bring it into view.
+		m.viewport.YOffset = m.cursor
+	} else if m.cursor > bottom {
+		// Cursor is below the viewport, so scroll down.
+		m.viewport.YOffset = m.cursor - m.viewport.Height + 1
+	}
+}
+
+// headerView renders the main title of the page.
+func (m *publicKeysModel) headerView() string {
+	return mainTitleStyle.Render("🔑 " + i18n.T("public_keys.title"))
 }
 
 // View renders the public key management UI based on the current model state.
-func (m publicKeysModel) View() string {
+func (m *publicKeysModel) View() string {
 	if m.err != nil {
 		return fmt.Sprintf("Error: %v\n", m.err)
 	}
@@ -279,7 +328,7 @@ func (m publicKeysModel) View() string {
 }
 
 // viewConfirmation renders the modal dialog for confirming a key deletion.
-func (m publicKeysModel) viewConfirmation() string {
+func (m *publicKeysModel) viewConfirmation() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render(i18n.T("public_keys.delete_confirm.title")))
 
@@ -309,34 +358,43 @@ func (m publicKeysModel) viewConfirmation() string {
 	)
 }
 
-// viewKeyList renders the main two-pane view with the key list and details.
-func (m publicKeysModel) viewKeyList() string {
-	title := mainTitleStyle.Render("🔑 " + i18n.T("public_keys.title"))
-	header := lipgloss.NewStyle().Align(lipgloss.Center).Render(title)
-
-	// List pane (left)
-	var listItems []string
+// listContentView builds the string content for the list viewport.
+func (m *publicKeysModel) listContentView() string {
+	var b strings.Builder
 	for i, key := range m.displayedKeys {
 		var globalMarker string
 		if key.IsGlobal {
 			globalMarker = "🌐 "
 		}
-		line := fmt.Sprintf("%s%s (%s)", globalMarker, key.Comment, key.Algorithm)
+		line := fmt.Sprintf("  %s%s (%s)", globalMarker, key.Comment, key.Algorithm)
 		if m.cursor == i {
-			listItems = append(listItems, selectedItemStyle.Render("▸ "+line))
+			line = fmt.Sprintf("▸ %s%s (%s)", globalMarker, key.Comment, key.Algorithm)
+			b.WriteString(selectedItemStyle.Render(line) + "\n")
 		} else {
-			listItems = append(listItems, itemStyle.Render("  "+line))
+			b.WriteString(itemStyle.Render(line) + "\n")
 		}
 	}
+	return b.String()
+}
 
-	if len(m.displayedKeys) == 0 && m.filter == "" {
-		listItems = append(listItems, helpStyle.Render(i18n.T("public_keys.empty")))
-	} else if len(m.displayedKeys) == 0 && m.filter != "" {
-		listItems = append(listItems, helpStyle.Render(i18n.T("public_keys.empty_filtered")))
+// viewKeyList renders the main two-pane view with the key list and details.
+func (m *publicKeysModel) viewKeyList() string {
+	header := m.headerView()
+
+	// List pane (left)
+	var listContent string
+	if len(m.displayedKeys) == 0 {
+		if m.filter == "" {
+			listContent = helpStyle.Render(i18n.T("public_keys.empty"))
+		} else {
+			listContent = helpStyle.Render(i18n.T("public_keys.empty_filtered"))
+		}
+	} else {
+		listContent = m.viewport.View()
 	}
 
 	listPaneTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("public_keys.list_title"))
-	listPane := lipgloss.JoinVertical(lipgloss.Left, listPaneTitle, "", lipgloss.JoinVertical(lipgloss.Left, listItems...))
+	listPane := lipgloss.JoinVertical(lipgloss.Left, listPaneTitle, "", listContent)
 
 	paneStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -344,9 +402,10 @@ func (m publicKeysModel) viewKeyList() string {
 		Padding(1, 2)
 
 	menuWidth := 48
-	detailWidth := m.width - 4 - menuWidth - 2
+	paneHeight := m.viewport.Height + 6
 
-	leftPane := paneStyle.Width(menuWidth).Render(listPane)
+	leftPane := paneStyle.Width(menuWidth).Height(paneHeight).Render(listPane)
+	detailWidth := m.width - menuWidth - 8
 
 	// Details/status pane (right)
 	var detailsItems []string
@@ -376,11 +435,18 @@ func (m publicKeysModel) viewKeyList() string {
 		detailsItems = append(detailsItems, "", helpStyle.Render(i18n.T("public_keys.filtering", m.filter)))
 	}
 
-	rightPane := paneStyle.Width(detailWidth).MarginLeft(2).Render(lipgloss.JoinVertical(lipgloss.Left, detailsItems...))
+	rightPane := paneStyle.Width(detailWidth).Height(paneHeight).Render(lipgloss.JoinVertical(lipgloss.Left, detailsItems...))
 
-	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
+	mainArea := lipgloss.JoinHorizontal(lipgloss.Left, leftPane, rightPane)
 
-	// Help/footer line always at the bottom
+	// Footer
+	footer := m.footerView()
+
+	return lipgloss.JoinVertical(lipgloss.Top, header, mainArea, footer)
+}
+
+// footerView renders the help text at the bottom of the page.
+func (m *publicKeysModel) footerView() string {
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
 	filterStatus := getFilterStatusLine(m.isFiltering, m.filter, FilterI18nKeys{
 		Filtering:    "public_keys.filtering",
@@ -388,9 +454,7 @@ func (m publicKeysModel) viewKeyList() string {
 		FilterHint:   "public_keys.filter_hint",
 	})
 	helpLine := footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T("public_keys.footer"), filterStatus))
-
-	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", helpLine)
-
+	return helpLine
 }
 
 // boolToYesNo is a helper function to convert a boolean to a localized "Yes" or "No".
@@ -402,7 +466,7 @@ func boolToYesNo(val bool) string {
 }
 
 // viewUsageReport renders the view that shows which accounts a key is assigned to.
-func (m publicKeysModel) viewUsageReport() string {
+func (m *publicKeysModel) viewUsageReport() string {
 	var b strings.Builder
 	title := i18n.T("public_keys.usage_report.title", m.usageReportKey.Comment)
 	b.WriteString(titleStyle.Render(title))

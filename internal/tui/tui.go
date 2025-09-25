@@ -59,7 +59,7 @@ type mainModel struct {
 	deployer   deployModel
 	rotator    *rotateKeyModel
 	assignment *assignKeysModel
-	keys       publicKeysModel
+	keys       *publicKeysModel
 	accounts   *accountsModel
 	auditLog   *auditLogModel
 	tags       tagsViewModel
@@ -145,7 +145,9 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		var newKeysModel tea.Model
 		newKeysModel, cmd = m.keys.Update(msg)
-		m.keys = newKeysModel.(publicKeysModel)
+		if newModel, ok := newKeysModel.(*publicKeysModel); ok {
+			m.keys = newModel
+		}
 
 	case assignKeysView:
 		// If we received a "back" message, switch the state.
@@ -227,8 +229,12 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				case 1: // Manage Public Keys
 					m.state = publicKeysView
-					m.keys = newPublicKeysModel()
-					return m, nil
+					newModel := newPublicKeysModel()
+					m.keys = &newModel
+					var updatedModel tea.Model
+					updatedModel, cmd = m.keys.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+					m.keys = updatedModel.(*publicKeysModel)
+					return m, cmd
 				case 2: // Assign Keys to Accounts
 					m.state = assignKeysView
 					m.assignment = newAssignKeysModel() // Already returns *assignKeysModel
