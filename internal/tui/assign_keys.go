@@ -420,14 +420,20 @@ func (m *assignKeysModel) footerView() string {
 		FilterActive: "assign_keys.filter_active",
 		FilterHint:   "assign_keys.search_hint",
 	}
+	var helpText string
 	if m.state == assignStateSelectKeys {
 		helpKey = "assign_keys.help_bar_keys"
 		filterStatus = getFilterStatusLine(m.isFilteringKey, m.keyFilter, keys)
+		helpText = fmt.Sprintf("%s  %s", i18n.T(helpKey), filterStatus)
+		if m.status != "" {
+			return statusMessageStyle.Render(m.status)
+		}
 	} else {
 		helpKey = "assign_keys.help_bar_accounts"
 		filterStatus = getFilterStatusLine(m.isFilteringAcct, m.accountFilter, keys)
+		helpText = fmt.Sprintf("%s  %s", i18n.T(helpKey), filterStatus)
 	}
-	return footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T(helpKey), filterStatus))
+	return footerStyle.Render(helpText)
 }
 
 func (m *assignKeysModel) View() string {
@@ -451,12 +457,8 @@ func (m *assignKeysModel) View() string {
 	if m.state == assignStateSelectKeys {
 		keyPaneTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("assign_keys.keys_title", m.selectedAccount.String()))
 		keyFilterBar := filterStyle.Render(getFilterStatusLine(m.isFilteringKey, m.keyFilter, FilterI18nKeys{Filtering: "assign_keys.filtering", FilterActive: "assign_keys.filter_active", FilterHint: "assign_keys.search_hint"}))
-		statusLine := ""
-		if m.status != "" {
-			statusLine = statusMessageStyle.Render(m.status)
-		}
-		rightPaneContent := lipgloss.JoinVertical(lipgloss.Left, keyPaneTitle, "", m.keyViewport.View(), "", keyFilterBar, "", statusLine)
-		rightPane = paneStyle.Width(m.keyViewport.Width + 4).Height(m.accountViewport.Height + 4).Render(rightPaneContent)
+		rightPaneContent := lipgloss.JoinVertical(lipgloss.Left, keyPaneTitle, "", m.keyViewport.View(), "", keyFilterBar)
+		rightPane = paneStyle.Width(m.keyViewport.Width + 4).Height(paneHeight).Render(rightPaneContent)
 	} else {
 		// Render an empty placeholder pane
 		placeholderTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("assign_keys.keys_title_short"))
