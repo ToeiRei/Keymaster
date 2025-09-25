@@ -5,6 +5,9 @@
 package tui
 
 import (
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/i18n"
 )
 
@@ -27,4 +30,39 @@ func getFilterStatusLine(isFiltering bool, filterText string, keys FilterI18nKey
 		return i18n.T(keys.FilterActive, allArgs...)
 	}
 	return i18n.T(keys.FilterHint)
+}
+
+// scrollbar renders a simple vertical scrollbar.
+// It returns an empty string if the total number of items is less than or equal
+// to the height of the view, as no scrollbar is needed.
+func scrollbar(viewHeight, totalItems, start, end int) string {
+	if totalItems <= viewHeight {
+		return ""
+	}
+
+	// The character for the scrollbar track.
+	trackChar := "│"
+	// The character for the scrollbar thumb (the part that moves).
+	thumbChar := "█"
+
+	var sb strings.Builder
+
+	// Calculate the height and position of the thumb.
+	thumbHeight := int(float64(viewHeight) / float64(totalItems) * float64(viewHeight))
+	if thumbHeight < 1 {
+		thumbHeight = 1
+	}
+
+	thumbTop := int(float64(start) / float64(totalItems) * float64(viewHeight))
+
+	for i := 0; i < viewHeight; i++ {
+		if i >= thumbTop && i < thumbTop+thumbHeight {
+			sb.WriteString(thumbChar)
+		} else {
+			sb.WriteString(trackChar)
+		}
+		sb.WriteString("\n")
+	}
+
+	return lipgloss.NewStyle().MarginLeft(1).Render(sb.String())
 }

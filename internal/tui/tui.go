@@ -60,7 +60,7 @@ type mainModel struct {
 	rotator    *rotateKeyModel
 	assignment *assignKeysModel
 	keys       publicKeysModel
-	accounts   accountsModel
+	accounts   *accountsModel
 	auditLog   *auditLogModel
 	tags       tagsViewModel
 	dashboard  dashboardData
@@ -132,7 +132,10 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		var newAccountsModel tea.Model
 		newAccountsModel, cmd = m.accounts.Update(msg)
-		m.accounts = newAccountsModel.(accountsModel)
+		// The Update method for accounts now has a pointer receiver, so we expect a pointer back.
+		if newModel, ok := newAccountsModel.(*accountsModel); ok {
+			m.accounts = newModel
+		}
 
 	case publicKeysView:
 		// If we received a "back" message, switch the state.
@@ -213,8 +216,15 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switch m.menu.cursor {
 				case 0: // Manage Accounts
 					m.state = accountsView
-					m.accounts = newAccountsModel() // This loads data from the DB.
-					return m, nil
+					// newAccountsModel returns a value, but we need a pointer.
+					newModel := newAccountsModel()
+					m.accounts = &newModel
+					// Manually update the new sub-model with the current window size
+					// to ensure the viewport is initialized correctly.
+					var updatedModel tea.Model
+					updatedModel, cmd = m.accounts.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+					m.accounts = updatedModel.(*accountsModel)
+					return m, cmd
 				case 1: // Manage Public Keys
 					m.state = publicKeysView
 					m.keys = newPublicKeysModel()

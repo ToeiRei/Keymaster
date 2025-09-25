@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
@@ -53,6 +54,7 @@ type accountsModel struct {
 	state                  accountsViewState
 	form                   accountFormModel
 	accounts               []model.Account // The master list
+	viewport               viewport.Model
 	displayedAccounts      []model.Account // The filtered list for display
 	cursor                 int
 	status                 string // For showing status messages like "Deleted..."
@@ -69,13 +71,16 @@ type accountsModel struct {
 }
 
 func newAccountsModel() accountsModel {
-	m := accountsModel{}
+	m := accountsModel{
+		viewport: viewport.New(0, 0),
+	}
 	var err error
 	m.accounts, err = db.GetAllAccounts()
 	if err != nil {
 		m.err = err
 	}
 	m.rebuildDisplayedAccounts()
+	m.viewport.SetContent(m.listContentView())
 	return m
 }
 
@@ -110,13 +115,22 @@ func (m *accountsModel) rebuildDisplayedAccounts() {
 	}
 }
 
-func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	// Handle window size messages first, as they affect layout.
 	if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
 		m.width = sizeMsg.Width
 		m.height = sizeMsg.Height
+
+		headerHeight := lipgloss.Height(lipgloss.NewStyle().Align(lipgloss.Center).Render(m.headerView()))
+		footerHeight := lipgloss.Height(m.footerView())
+		// The space for the panes is the total height minus header, footer, and the newlines around the main area.
+		mainAreaHeight := m.height - headerHeight - footerHeight - 2 // -2 for newlines around mainArea
+
+		// The viewport's height is the available area minus chrome for the pane itself (borders, padding, title).
+		m.viewport.Height = mainAreaHeight - 6
+		m.viewport.Width = m.width/2 - 4 // Approximate width for left pane
 	}
 
 	// Delegate updates to the form if it's active.
@@ -127,6 +141,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = i18n.T("accounts.status.modified_success")
 			m.accounts, m.err = db.GetAllAccounts()
 			m.rebuildDisplayedAccounts()
+			m.viewport.SetContent(m.listContentView()) // Update viewport content
 
 			// Find the new/edited account in the list and set the cursor
 			for i, acc := range m.displayedAccounts {
@@ -208,6 +223,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.status = i18n.T("accounts.status.delete_success", m.accountToDelete.String())
 						m.accounts, m.err = db.GetAllAccounts()
 						m.rebuildDisplayedAccounts()
+						m.viewport.SetContent(m.listContentView())
 					}
 				}
 				m.isConfirmingDelete = false
@@ -269,10 +285,12 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.filter) > 0 {
 					m.filter = m.filter[:len(m.filter)-1]
 					m.rebuildDisplayedAccounts()
+					m.viewport.SetContent(m.listContentView())
 				}
 			case tea.KeyRunes:
 				m.filter += string(msg.Runes)
 				m.rebuildDisplayedAccounts()
+				m.viewport.SetContent(m.listContentView())
 			}
 			return m, nil
 		}
@@ -291,6 +309,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.filter = ""
 				m.rebuildDisplayedAccounts()
 				return m, nil
+
 			}
 			return m, func() tea.Msg { return backToMenuMsg{} }
 		case "esc":
@@ -300,6 +319,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.filter != "" {
 				m.filter = ""
 				m.rebuildDisplayedAccounts()
+				m.viewport.SetContent(m.listContentView())
 				return m, nil
 			}
 			return m, func() tea.Msg { return backToMenuMsg{} }
@@ -308,12 +328,16 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
+				m.viewport.SetContent(m.listContentView())
+				m.ensureCursorInView()
 			}
 
 		// Navigate down.
 		case "down", "j":
 			if m.cursor < len(m.displayedAccounts)-1 {
 				m.cursor++
+				m.viewport.SetContent(m.listContentView())
+				m.ensureCursorInView()
 			}
 
 		// Delete an account.
@@ -347,6 +371,7 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.status = i18n.T("accounts.status.toggle_success", accToToggle.String())
 					m.accounts, m.err = db.GetAllAccounts()
 					m.rebuildDisplayedAccounts()
+					m.viewport.SetContent(m.listContentView())
 				}
 			}
 			return m, nil
@@ -377,10 +402,36 @@ func (m accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	}
-	return m, nil
+
+	// Pass messages to the viewport at the end
+	var vpCmd tea.Cmd
+	m.viewport, vpCmd = m.viewport.Update(msg)
+	return m, tea.Batch(cmd, vpCmd)
 }
 
-func (m accountsModel) View() string {
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// ensureCursorInView adjusts the viewport's Y offset to ensure the cursor is visible.
+func (m *accountsModel) ensureCursorInView() {
+	min := m.viewport.YOffset
+	max := m.viewport.YOffset + m.viewport.Height - 1
+
+	cursorLine := m.cursor
+
+	if cursorLine < min {
+		m.viewport.SetYOffset(cursorLine) // Scroll up to show the cursor
+	} else if cursorLine > max {
+		m.viewport.SetYOffset(cursorLine - m.viewport.Height + 1) // Scroll down to show the cursor
+	}
+}
+
+// headerView renders the main title of the page.
+func (m *accountsModel) headerView() string {
 	// If we're in the form view, render that instead.
 	if m.state == accountsFormView {
 		return m.form.View()
@@ -432,56 +483,40 @@ func (m accountsModel) View() string {
 	}
 
 	// --- Styled, dashboard-like layout ---
-	title := mainTitleStyle.Render("🔑 " + i18n.T("accounts.title"))
-	header := lipgloss.NewStyle().Align(lipgloss.Center).Render(title)
+	return mainTitleStyle.Render("🔑 " + i18n.T("accounts.title"))
+}
 
-	// List pane (left)
-	var listItems []string
+// listContentView builds the string content for the list viewport.
+func (m *accountsModel) listContentView() string {
+	var b strings.Builder
 	for i, acc := range m.displayedAccounts {
-		line := acc.String()
+		var styledLine string
+		line := "  " + acc.String()
 		if m.cursor == i {
-			line = "▸ " + line
-			if acc.IsActive {
-				listItems = append(listItems, selectedItemStyle.Render(line))
+			line = "▸ " + acc.String()
+			if !acc.IsActive {
+				styledLine = selectedItemStyle.Copy().Strikethrough(true).Render(line)
 			} else {
-				listItems = append(listItems, selectedItemStyle.Copy().Strikethrough(true).Render(line))
+				styledLine = selectedItemStyle.Render(line)
 			}
+		} else if !acc.IsActive {
+			styledLine = inactiveItemStyle.Render(line)
 		} else {
-			if acc.IsActive {
-				listItems = append(listItems, itemStyle.Render("  "+line))
-			} else {
-				listItems = append(listItems, inactiveItemStyle.Render("  "+line))
-			}
+			styledLine = itemStyle.Render(line)
 		}
+		b.WriteString(styledLine + "\n")
 	}
+	return b.String()
+}
 
-	if len(m.displayedAccounts) == 0 && m.filter == "" {
-		listItems = append(listItems, helpStyle.Render(i18n.T("accounts.empty")))
-	} else if len(m.displayedAccounts) == 0 && m.filter != "" {
-		listItems = append(listItems, helpStyle.Render(i18n.T("accounts.empty_filtered")))
-	}
-
-	listPaneTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("accounts.list_title"))
-	listPane := lipgloss.JoinVertical(lipgloss.Left, listPaneTitle, "", lipgloss.JoinVertical(lipgloss.Left, listItems...))
-
-	paneStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(colorSubtle).
-		Padding(1, 2)
-
-	menuWidth := 48
-	detailWidth := m.width - 4 - menuWidth - 2
-
-	leftPane := paneStyle.Width(menuWidth).Render(listPane)
-
-	// Details/status pane (right)
+// detailContentView builds the string content for the detail pane.
+func (m *accountsModel) detailContentView() string {
 	var detailsItems []string
 	if m.err != nil {
 		detailsItems = append(detailsItems, helpStyle.Render(fmt.Sprintf(i18n.T("accounts.error"), m.err)))
 	} else if m.status != "" {
 		detailsItems = append(detailsItems, statusMessageStyle.Render(m.status))
 	}
-
 	// Show tags for the selected account in the detail pane
 	if len(m.displayedAccounts) > 0 && m.cursor < len(m.displayedAccounts) {
 		acc := m.displayedAccounts[m.cursor]
@@ -489,27 +524,64 @@ func (m accountsModel) View() string {
 			detailsItems = append(detailsItems, "", helpStyle.Render(i18n.T("accounts.tags", acc.Tags)))
 		}
 	}
-
 	// Only show filter status if filtering
 	if m.isFiltering {
 		detailsItems = append(detailsItems, "", helpStyle.Render(i18n.T("accounts.filtering", m.filter)))
 	}
+	return lipgloss.JoinVertical(lipgloss.Left, detailsItems...)
+}
 
-	rightPane := paneStyle.Width(detailWidth).MarginLeft(2).Render(lipgloss.JoinVertical(lipgloss.Left, detailsItems...))
-
-	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
-
-	// Help/footer line always at the bottom
+// footerView renders the help text at the bottom of the page.
+func (m *accountsModel) footerView() string {
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
 	filterStatus := getFilterStatusLine(m.isFiltering, m.filter, FilterI18nKeys{
 		Filtering:    "accounts.filtering",
 		FilterActive: "accounts.filter_active",
 		FilterHint:   "accounts.filter_hint",
 	})
+	return footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T("accounts.footer"), filterStatus))
+}
 
-	helpLine := footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T("accounts.footer"), filterStatus))
+func (m *accountsModel) View() string {
+	header := lipgloss.NewStyle().Align(lipgloss.Center).Render(m.headerView())
+	if m.state != accountsListView {
+		return header // Return early for form, confirmation, etc.
+	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", helpLine)
+	// --- List Pane (Left) ---
+	listPaneTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("accounts.list_title"))
+	var listContent string
+	if len(m.displayedAccounts) == 0 {
+		if m.filter == "" {
+			listContent = helpStyle.Render(i18n.T("accounts.empty"))
+		} else {
+			listContent = helpStyle.Render(i18n.T("accounts.empty_filtered"))
+		}
+	} else {
+		listContent = m.viewport.View()
+	}
+	listPaneBody := lipgloss.JoinVertical(lipgloss.Left, listPaneTitle, "", listContent)
+
+	// --- Detail Pane (Right) ---
+	// We set the content here, but the height is driven by the left pane's viewport.
+	detailContent := m.detailContentView()
+
+	// --- Layout ---
+	paneStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorSubtle).
+		Padding(1, 2)
+
+	// Use the viewport's calculated height to drive the pane height.
+	// The pane height is the viewport height plus the vertical padding, borders, and title space.
+	paneHeight := m.viewport.Height + 6
+	menuWidth := m.width/2 - 4
+
+	leftPane := paneStyle.Width(menuWidth).Height(paneHeight).Render(listPaneBody)
+	rightPane := paneStyle.Width(m.width - menuWidth - 8).Height(paneHeight).Render(detailContent)
+	mainArea := lipgloss.JoinHorizontal(lipgloss.Left, leftPane, rightPane)
+
+	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", m.footerView())
 }
 
 // verifyHostKeyCmd is a tea.Cmd that fetches a host's public key and saves it.
