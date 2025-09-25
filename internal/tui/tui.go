@@ -333,17 +333,16 @@ func (m mainModel) View() string {
 	case tagsView:
 		return m.tags.View()
 	default: // menuView
-		return m.menu.View(m.dashboard, m.width)
+		return m.menu.View(m.dashboard, m.width, m.height)
 	}
 }
 
 // View renders the main menu and dashboard.
-func (m menuModel) View(data dashboardData, width int) string {
+func (m menuModel) View(data dashboardData, width, height int) string {
 	// Title (i18n)
 	title := mainTitleStyle.Render("🔑 " + i18n.T("dashboard.title"))
 	subTitle := helpStyle.Render(i18n.T("dashboard.subtitle"))
-	titleBlock := lipgloss.JoinVertical(lipgloss.Center, title, subTitle)
-	header := lipgloss.NewStyle().Align(lipgloss.Center).Render(titleBlock)
+	header := lipgloss.JoinVertical(lipgloss.Left, title, subTitle)
 
 	// --- Panes ---
 	paneTitleStyle := lipgloss.NewStyle().Bold(true)
@@ -384,6 +383,11 @@ func (m menuModel) View(data dashboardData, width int) string {
 		BorderForeground(colorSubtle).
 		Padding(1, 2)
 
+	// Calculate height for the panes to fill the screen
+	headerHeight := lipgloss.Height(header)
+	footerHeight := lipgloss.Height(lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true).Render(""))
+	paneHeight := height - headerHeight - footerHeight - 2 // -2 for newlines around mainArea
+
 	menuWidth := 38
 	dashboardWidth := width - 4 - menuWidth - 2
 
@@ -416,8 +420,8 @@ func (m menuModel) View(data dashboardData, width int) string {
 	}
 	dashboardContent := lipgloss.JoinVertical(lipgloss.Left, dashboardItems...)
 
-	leftPane := paneStyle.Width(menuWidth).Render(menuContent)
-	rightPane := paneStyle.Width(dashboardWidth).MarginLeft(2).Render(dashboardContent)
+	leftPane := paneStyle.Width(menuWidth).Height(paneHeight).Render(menuContent)
+	rightPane := paneStyle.Width(dashboardWidth).Height(paneHeight).MarginLeft(2).Render(dashboardContent)
 
 	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
 
@@ -425,7 +429,7 @@ func (m menuModel) View(data dashboardData, width int) string {
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
 	footer := footerStyle.Render(i18n.T("dashboard.footer"))
 
-	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", footer)
+	return lipgloss.JoinVertical(lipgloss.Top, header, mainArea, footer)
 }
 
 // Run is the main entrypoint for the TUI. It initializes and runs the Bubble Tea program.
