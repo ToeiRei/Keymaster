@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
@@ -38,6 +39,8 @@ const (
 type assignKeysModel struct {
 	state           assignState
 	accounts        []model.Account
+	accountViewport viewport.Model
+	keyViewport     viewport.Model
 	keys            []model.PublicKey
 	accountCursor   int
 	keyCursor       int
@@ -49,13 +52,16 @@ type assignKeysModel struct {
 	isFilteringAcct bool
 	keyFilter       string
 	isFilteringKey  bool
+	width, height   int
 }
 
 // newAssignKeysModel creates a new model for the key assignment view, pre-loading accounts and keys.
 func newAssignKeysModel() *assignKeysModel {
 	m := &assignKeysModel{
-		state:        assignStateSelectAccount,
-		assignedKeys: make(map[int]struct{}),
+		state:           assignStateSelectAccount,
+		assignedKeys:    make(map[int]struct{}),
+		accountViewport: viewport.New(0, 0),
+		keyViewport:     viewport.New(0, 0),
 	}
 
 	var err error
@@ -70,6 +76,7 @@ func newAssignKeysModel() *assignKeysModel {
 	if err != nil {
 		m.err = err
 	}
+	m.accountViewport.SetContent(m.accountListViewContent())
 	return m
 }
 
@@ -80,16 +87,43 @@ func (m *assignKeysModel) Init() tea.Cmd {
 
 // Update handles messages and updates the model's state.
 func (m *assignKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+
+	if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
+		m.width = sizeMsg.Width
+		m.height = sizeMsg.Height
+		headerHeight := lipgloss.Height(m.headerView())
+		footerHeight := lipgloss.Height(m.footerView())
+		mainAreaHeight := m.height - headerHeight - footerHeight - 2
+
+		m.accountViewport.Height = mainAreaHeight - 6 // Pane borders, title, padding, filter bar
+		m.accountViewport.Width = 40
+		m.keyViewport.Height = mainAreaHeight - 6
+		m.keyViewport.Width = m.width - m.accountViewport.Width - 10
+	}
+
+	// Route the message to the correct sub-updater based on the current state.
+	var updatedModel tea.Model
 	switch m.state {
 	case assignStateSelectAccount:
-		return m.updateAccountSelection(msg)
+		updatedModel, cmd = m.updateAccountSelection(msg)
 	case assignStateSelectKeys:
-		return m.updateKeySelection(msg)
+		updatedModel, cmd = m.updateKeySelection(msg)
+	default:
+		return m, nil // Should be unreachable
 	}
-	return m, nil
+	cmds = append(cmds, cmd)
+
+	// After the main logic, pass the message to the viewports for their own updates (e.g., mouse scrolling).
+	m.accountViewport, cmd = m.accountViewport.Update(msg)
+	cmds = append(cmds, cmd)
+	m.keyViewport, cmd = m.keyViewport.Update(msg)
+	cmds = append(cmds, cmd)
+
+	return updatedModel, tea.Batch(cmds...)
 }
 
-// updateAccountSelection handles input when the user is selecting an account.
 func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -109,6 +143,7 @@ func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cm
 			}
 			// Reset cursor after filter change
 			m.accountCursor = 0
+			m.accountViewport.SetContent(m.accountListViewContent())
 			return m, nil
 		}
 		switch msg.String() {
@@ -120,10 +155,14 @@ func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cm
 		case "up", "k":
 			if m.accountCursor > 0 {
 				m.accountCursor--
+				m.accountViewport.SetContent(m.accountListViewContent())
+				m.ensureAccountCursorInView()
 			}
 		case "down", "j":
 			if m.accountCursor < len(m.filteredAccounts())-1 {
 				m.accountCursor++
+				m.accountViewport.SetContent(m.accountListViewContent())
+				m.ensureAccountCursorInView()
 			}
 		case "enter":
 			filteredAccounts := m.filteredAccounts()
@@ -161,6 +200,7 @@ func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cm
 				m.assignedKeys[key.ID] = struct{}{}
 			}
 			m.status = i18n.T("assign_keys.status.selected_account", m.selectedAccount.String(), len(assigned))
+			m.keyViewport.SetContent(m.keyListViewContent())
 			return m, nil
 		}
 	}
@@ -203,7 +243,6 @@ func containsIgnoreCase(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
 
-// updateKeySelection handles input when the user is selecting keys to assign.
 func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -223,6 +262,7 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// After a filter change, we should reset the cursor to avoid out-of-bounds.
 			m.keyCursor = 0
+			m.keyViewport.SetContent(m.keyListViewContent())
 			return m, nil
 		}
 		switch msg.String() {
@@ -239,11 +279,15 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.keyCursor > 0 {
 				m.keyCursor--
+				m.keyViewport.SetContent(m.keyListViewContent())
+				m.ensureKeyCursorInView()
 			}
 		case "down", "j":
 			// Use filtered list for bounds checking
 			if m.keyCursor < len(m.filteredKeys())-1 {
 				m.keyCursor++
+				m.keyViewport.SetContent(m.keyListViewContent())
+				m.ensureKeyCursorInView()
 			}
 		case " ": // Only use space for toggling assignment
 			filteredKeys := m.filteredKeys()
@@ -285,14 +329,14 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.status = i18n.T("assign_keys.status.assign_success", selectedKey.Comment)
 				}
 			}
+			m.keyViewport.SetContent(m.keyListViewContent())
 			return m, nil
 		}
 	}
 	return m, nil
 }
 
-// viewAccountList renders the left pane containing the list of accounts.
-func (m *assignKeysModel) viewAccountList() string {
+func (m *assignKeysModel) accountListViewContent() string {
 	var listItems []string
 	accounts := m.filteredAccounts()
 	if len(accounts) == 0 {
@@ -308,22 +352,13 @@ func (m *assignKeysModel) viewAccountList() string {
 			}
 		}
 	}
-	filterBar := ""
-	if m.isFilteringAcct {
-		filterBar = filterStyle.Render("/" + m.accountFilter)
-	} else {
-		filterBar = filterStyle.Render(i18n.T("assign_keys.search_hint"))
-	}
-	listPaneTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("assign_keys.accounts_title"))
-	listPane := lipgloss.JoinVertical(lipgloss.Left, listPaneTitle, "", lipgloss.JoinVertical(lipgloss.Left, listItems...), "", filterBar)
-	paneStyle := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorSubtle).Padding(1, 2)
-	return paneStyle.Width(40).Render(listPane)
+	return lipgloss.JoinVertical(lipgloss.Left, listItems...)
 }
 
-// viewKeySelection renders the right pane containing the list of keys for assignment.
-func (m *assignKeysModel) viewKeySelection() string {
+func (m *assignKeysModel) keyListViewContent() string {
 	var listItems []string
 	keys := m.filteredKeys()
+
 	if len(keys) == 0 {
 		listItems = append(listItems, helpStyle.Render(i18n.T("assign_keys.no_keys")))
 	} else {
@@ -342,53 +377,50 @@ func (m *assignKeysModel) viewKeySelection() string {
 			}
 			item := i18n.T("assign_keys.key_item_format", cursor, checked, globalMark, key.Comment, key.Algorithm)
 			if key.IsGlobal {
-				listItems = append(listItems, inactiveItemStyle.Render(item))
+				listItems = append(listItems, inactiveItemStyle.Render(item)) // Render global keys as inactive
 			} else if _, ok := m.assignedKeys[key.ID]; ok {
-				// Render assigned keys with the selected style to make them stand out.
-				style := selectedItemStyle.Copy()
-				listItems = append(listItems, style.Render(item))
+				listItems = append(listItems, selectedItemStyle.Render(item))
 			} else {
 				listItems = append(listItems, itemStyle.Render(item))
 			}
 		}
 	}
-	filterBar := ""
-	if m.isFilteringKey {
-		filterBar = filterStyle.Render("/" + m.keyFilter)
-	} else {
-		filterBar = filterStyle.Render(i18n.T("assign_keys.search_hint"))
-	}
-	status := ""
-	if m.status != "" {
-		status = statusMessageStyle.Render(m.status)
-	}
-	listPaneTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("assign_keys.keys_title_short"))
-	listPane := lipgloss.JoinVertical(lipgloss.Left, listPaneTitle, "", lipgloss.JoinVertical(lipgloss.Left, listItems...), "", filterBar, "", status)
-	paneStyle := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorSubtle).Padding(1, 2)
-	return paneStyle.Width(60).Render(listPane)
+	return lipgloss.JoinVertical(lipgloss.Left, listItems...)
 }
 
-// View renders the entire key assignment UI.
-func (m *assignKeysModel) View() string {
-	left := m.viewAccountList()
-	right := ""
-	if m.state == assignStateSelectKeys {
-		right = m.viewKeySelection()
+func (m *assignKeysModel) ensureAccountCursorInView() {
+	top := m.accountViewport.YOffset
+	bottom := top + m.accountViewport.Height - 1
+	if m.accountCursor < top {
+		m.accountViewport.YOffset = m.accountCursor
+	} else if m.accountCursor > bottom {
+		m.accountViewport.YOffset = m.accountCursor - m.accountViewport.Height + 1
 	}
-	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+}
 
-	// Compose help and filter status on one line, matching accounts.go style
+func (m *assignKeysModel) ensureKeyCursorInView() {
+	top := m.keyViewport.YOffset
+	bottom := top + m.keyViewport.Height - 1
+	if m.keyCursor < top {
+		m.keyViewport.YOffset = m.keyCursor
+	} else if m.keyCursor > bottom {
+		m.keyViewport.YOffset = m.keyCursor - m.keyViewport.Height + 1
+	}
+}
+
+func (m *assignKeysModel) headerView() string {
+	return mainTitleStyle.Render("🔑 " + i18n.T("menu.assign_keys"))
+}
+
+func (m *assignKeysModel) footerView() string {
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
-
 	var filterStatus string
 	var helpKey string
-
 	keys := FilterI18nKeys{
 		Filtering:    "assign_keys.filtering",
 		FilterActive: "assign_keys.filter_active",
 		FilterHint:   "assign_keys.search_hint",
 	}
-
 	if m.state == assignStateSelectKeys {
 		helpKey = "assign_keys.help_bar_keys"
 		filterStatus = getFilterStatusLine(m.isFilteringKey, m.keyFilter, keys)
@@ -396,8 +428,44 @@ func (m *assignKeysModel) View() string {
 		helpKey = "assign_keys.help_bar_accounts"
 		filterStatus = getFilterStatusLine(m.isFilteringAcct, m.accountFilter, keys)
 	}
+	return footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T(helpKey), filterStatus))
+}
 
-	helpLine := footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T(helpKey), filterStatus))
+func (m *assignKeysModel) View() string {
+	header := m.headerView()
+	footer := m.footerView()
 
-	return lipgloss.JoinVertical(lipgloss.Left, mainArea, "", helpLine)
+	paneStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorSubtle).
+		Padding(1, 2)
+
+	// Left Pane
+	accountListTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("assign_keys.accounts_title"))
+	accountFilterBar := filterStyle.Render(getFilterStatusLine(m.isFilteringAcct, m.accountFilter, FilterI18nKeys{Filtering: "assign_keys.filtering", FilterActive: "assign_keys.filter_active", FilterHint: "assign_keys.search_hint"}))
+	leftPaneContent := lipgloss.JoinVertical(lipgloss.Left, accountListTitle, "", m.accountViewport.View(), "", accountFilterBar)
+	paneHeight := m.accountViewport.Height + 6
+	leftPane := paneStyle.Width(m.accountViewport.Width + 4).Height(paneHeight).Render(leftPaneContent)
+
+	// Right Pane
+	var rightPane string
+	if m.state == assignStateSelectKeys {
+		keyPaneTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("assign_keys.keys_title", m.selectedAccount.String()))
+		keyFilterBar := filterStyle.Render(getFilterStatusLine(m.isFilteringKey, m.keyFilter, FilterI18nKeys{Filtering: "assign_keys.filtering", FilterActive: "assign_keys.filter_active", FilterHint: "assign_keys.search_hint"}))
+		statusLine := ""
+		if m.status != "" {
+			statusLine = statusMessageStyle.Render(m.status)
+		}
+		rightPaneContent := lipgloss.JoinVertical(lipgloss.Left, keyPaneTitle, "", m.keyViewport.View(), "", keyFilterBar, "", statusLine)
+		rightPane = paneStyle.Width(m.keyViewport.Width + 4).Height(m.accountViewport.Height + 4).Render(rightPaneContent)
+	} else {
+		// Render an empty placeholder pane
+		placeholderTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("assign_keys.keys_title_short"))
+		placeholderContent := lipgloss.JoinVertical(lipgloss.Left, placeholderTitle, "", helpStyle.Render(i18n.T("assign_keys.select_account_prompt")))
+		rightPane = paneStyle.Width(m.keyViewport.Width + 4).Height(paneHeight).Render(placeholderContent)
+	}
+
+	mainArea := lipgloss.JoinHorizontal(lipgloss.Left, leftPane, rightPane)
+
+	return lipgloss.JoinVertical(lipgloss.Top, header, mainArea, footer)
 }

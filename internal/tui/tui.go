@@ -157,11 +157,9 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		var newModel tea.Model
 		newModel, cmd = m.assignment.Update(msg)
-		// Since assignment is a pointer receiver, we don't need to reassign
-		// the model unless it's changed
-		if newModel != m.assignment {
-			m.assignment = newModel.(*assignKeysModel)
-		}
+		// The Update method for assignment now has a pointer receiver, so we expect a pointer back.
+		// We can directly assign the result of Update to m.assignment.
+		m.assignment = newModel.(*assignKeysModel)
 
 	case rotateKeyView:
 		// If we received a "back" message, switch the state.
@@ -237,8 +235,12 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				case 2: // Assign Keys to Accounts
 					m.state = assignKeysView
-					m.assignment = newAssignKeysModel() // Already returns *assignKeysModel
-					return m, nil
+					newModel := newAssignKeysModel()
+					m.assignment = newModel
+					var updatedModel tea.Model
+					updatedModel, cmd = m.assignment.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+					m.assignment = updatedModel.(*assignKeysModel)
+					return m, cmd
 				case 3: // Rotate System Keys
 					m.state = rotateKeyView
 					m.rotator = newRotateKeyModel()
