@@ -382,14 +382,11 @@ func (m publicKeysModel) viewKeyList() string {
 
 	// Help/footer line always at the bottom
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
-	var filterStatus string
-	if m.isFiltering {
-		filterStatus = i18n.T("public_keys.filtering", m.filter)
-	} else if m.filter != "" {
-		filterStatus = fmt.Sprintf(i18n.T("public_keys.filter_active"), m.filter)
-	} else {
-		filterStatus = i18n.T("public_keys.filter_hint")
-	}
+	filterStatus := getFilterStatusLine(m.isFiltering, m.filter, FilterI18nKeys{
+		Filtering:    "public_keys.filtering",
+		FilterActive: "public_keys.filter_active",
+		FilterHint:   "public_keys.filter_hint",
+	})
 	helpLine := footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T("public_keys.footer"), filterStatus))
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", helpLine)

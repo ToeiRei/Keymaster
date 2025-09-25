@@ -254,13 +254,12 @@ func (m *auditLogModel) footerLine() string {
 		i18n.T("audit_log.header.action"),
 		i18n.T("audit_log.header.details"),
 	}
-	if m.isFiltering {
-		filterStatus = i18n.T("audit_log.filtering", colNames[m.filterCol], m.filter)
-	} else if m.filter != "" {
-		filterStatus = fmt.Sprintf(i18n.T("audit_log.filter_active"), colNames[m.filterCol], m.filter)
-	} else {
-		filterStatus = i18n.T("audit_log.filter_hint")
-	}
+	filterStatus = getFilterStatusLine(m.isFiltering, m.filter, FilterI18nKeys{
+		Filtering:    "audit_log.filtering",
+		FilterActive: "audit_log.filter_active",
+		FilterHint:   "audit_log.filter_hint",
+	}, colNames[m.filterCol])
+
 	// Single line: help and filter status
 	return fmt.Sprintf("%s  %s", i18n.T("audit_log.footer"), filterStatus)
 }

@@ -476,14 +476,11 @@ func (m deployModel) View() string {
 			}
 		}
 		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, listItems...)))
-		var filterStatus string
-		if m.isFilteringAccount {
-			filterStatus = i18n.T("deploy.filtering", m.accountFilter)
-		} else if m.accountFilter != "" {
-			filterStatus = fmt.Sprintf(i18n.T("deploy.filter_active"), m.accountFilter)
-		} else {
-			filterStatus = i18n.T("deploy.filter_hint")
-		}
+		filterStatus := getFilterStatusLine(m.isFilteringAccount, m.accountFilter, FilterI18nKeys{
+			Filtering:    "deploy.filtering",
+			FilterActive: "deploy.filter_active",
+			FilterHint:   "deploy.filter_hint",
+		})
 		help := helpFooterStyle.Render(i18n.T("deploy.help_select") + "  " + filterStatus)
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 

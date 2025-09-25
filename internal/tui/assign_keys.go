@@ -383,24 +383,18 @@ func (m *assignKeysModel) View() string {
 	var filterStatus string
 	var helpKey string
 
+	keys := FilterI18nKeys{
+		Filtering:    "assign_keys.filtering",
+		FilterActive: "assign_keys.filter_active",
+		FilterHint:   "assign_keys.search_hint",
+	}
+
 	if m.state == assignStateSelectKeys {
 		helpKey = "assign_keys.help_bar_keys"
-		if m.isFilteringKey {
-			filterStatus = i18n.T("assign_keys.filtering", m.keyFilter)
-		} else if m.keyFilter != "" {
-			filterStatus = fmt.Sprintf(i18n.T("assign_keys.filter_active"), m.keyFilter)
-		} else {
-			filterStatus = i18n.T("assign_keys.search_hint")
-		}
+		filterStatus = getFilterStatusLine(m.isFilteringKey, m.keyFilter, keys)
 	} else {
 		helpKey = "assign_keys.help_bar_accounts"
-		if m.isFilteringAcct {
-			filterStatus = i18n.T("assign_keys.filtering", m.accountFilter)
-		} else if m.accountFilter != "" {
-			filterStatus = fmt.Sprintf(i18n.T("assign_keys.filter_active"), m.accountFilter)
-		} else {
-			filterStatus = i18n.T("assign_keys.search_hint")
-		}
+		filterStatus = getFilterStatusLine(m.isFilteringAcct, m.accountFilter, keys)
 	}
 
 	helpLine := footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T(helpKey), filterStatus))
