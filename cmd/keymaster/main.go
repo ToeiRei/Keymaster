@@ -73,7 +73,7 @@ Running without a subcommand will launch the interactive TUI.`,
 			i18n.Init(viper.GetString("language")) // Initialize i18n here
 			dsn := viper.GetString("database.dsn")
 			if err := db.InitDB(dbType, dsn); err != nil {
-				return fmt.Errorf("error initializing database: %w", err)
+				return fmt.Errorf(i18n.T("config.error_init_db", err))
 			}
 			return nil
 		},
@@ -243,12 +243,12 @@ The previous key is kept for accessing hosts that have not yet been updated.`,
 		// DB is initialized in PersistentPreRunE.
 		publicKeyString, privateKeyString, err := internalkey.GenerateAndMarshalEd25519Key("keymaster-system-key")
 		if err != nil {
-			log.Fatalf(i18n.T("rotate_key.cli_error_generate"), err)
+			log.Fatalf(i18n.T("rotate_key.cli_error_generate", err))
 		}
 
 		serial, err := db.RotateSystemKey(publicKeyString, privateKeyString)
 		if err != nil {
-			log.Fatalf(i18n.T("rotate_key.cli_error_save"), err)
+			log.Fatalf(i18n.T("rotate_key.cli_error_save", err))
 		}
 
 		fmt.Println(i18n.T("rotate_key.cli_rotated_success", serial))
@@ -266,8 +266,8 @@ var auditCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
 		accounts, err := db.GetAllActiveAccounts()
-		if err != nil { // This error is for the CLI, not TUI, so log.Fatalf is appropriate.
-			log.Fatalf(i18n.T("audit.cli_error_get_accounts"), err)
+		if err != nil {
+			log.Fatalf(i18n.T("audit.cli_error_get_accounts", err))
 		}
 
 		auditTask := parallelTask{
@@ -299,7 +299,7 @@ var importCmd = &cobra.Command{
 
 		file, err := os.Open(filePath)
 		if err != nil {
-			log.Fatalf(i18n.T("import.error_opening_file"), err)
+			log.Fatalf(i18n.T("import.error_opening_file", err))
 		}
 		defer file.Close()
 
@@ -317,7 +317,7 @@ var importCmd = &cobra.Command{
 
 			alg, keyData, comment, err := sshkey.Parse(line)
 			if err != nil {
-				fmt.Println(i18n.T("import.skip_invalid_line", err.Error()))
+				fmt.Println(i18n.T("import.skip_invalid_line", err))
 				skippedCount++
 				continue
 			}
@@ -332,7 +332,7 @@ var importCmd = &cobra.Command{
 				if err == db.ErrDuplicate {
 					fmt.Println(i18n.T("import.skip_duplicate", comment))
 				} else {
-					fmt.Println(i18n.T("import.error_adding_key", comment, err))
+					fmt.Println(i18n.T("import.error_adding_key", comment, err.Error()))
 				}
 				skippedCount++
 				continue
@@ -412,7 +412,7 @@ func runDeploymentForAccount(account model.Account) error {
 	if account.Serial == 0 {
 		connectKey, err = db.GetActiveSystemKey()
 		if err != nil {
-			return fmt.Errorf("%s: %w", i18n.T("deploy.error_get_bootstrap_key"), err)
+			return fmt.Errorf(i18n.T("deploy.error_get_bootstrap_key", err))
 		}
 		if connectKey == nil {
 			return errors.New(i18n.T("deploy.error_no_bootstrap_key"))
@@ -420,10 +420,10 @@ func runDeploymentForAccount(account model.Account) error {
 	} else {
 		connectKey, err = db.GetSystemKeyBySerial(account.Serial)
 		if err != nil {
-			return fmt.Errorf("%s: %w", i18n.T("deploy.error_get_serial_key", account.Serial), err)
+			return fmt.Errorf(i18n.T("deploy.error_get_serial_key", account.Serial, err))
 		}
 		if connectKey == nil {
-			return errors.New(i18n.T("deploy.error_no_serial_key", account.Serial))
+			return fmt.Errorf(i18n.T("deploy.error_no_serial_key", account.Serial))
 		}
 	}
 
@@ -438,16 +438,16 @@ func runDeploymentForAccount(account model.Account) error {
 
 	deployer, err := deploy.NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
 	if err != nil {
-		return fmt.Errorf("%s: %w", i18n.T("deploy.error_connection_failed"), err)
+		return fmt.Errorf(i18n.T("deploy.error_connection_failed", err))
 	}
 	defer deployer.Close()
 
 	if err := deployer.DeployAuthorizedKeys(content); err != nil {
-		return fmt.Errorf("%s: %w", i18n.T("deploy.error_deployment_failed"), err)
+		return fmt.Errorf(i18n.T("deploy.error_deployment_failed", err))
 	}
 
 	if err := db.UpdateAccountSerial(account.ID, activeKey.Serial); err != nil {
-		return fmt.Errorf("%s: %w", i18n.T("deploy.error_db_update_failed"), err)
+		return fmt.Errorf(i18n.T("deploy.error_db_update_failed", err))
 	}
 
 	return nil
@@ -478,7 +478,7 @@ step before Keymaster can manage a new host.`,
 		fmt.Println(i18n.T("trust_host.retrieving_key", hostname))
 		key, err := deploy.GetRemoteHostKey(hostname)
 		if err != nil {
-			log.Fatalf(i18n.T("trust_host.error_get_key"), err)
+			log.Fatalf(i18n.T("trust_host.error_get_key", err))
 		}
 
 		fingerprint := ssh.FingerprintSHA256(key) // Use standard ssh package
@@ -498,7 +498,7 @@ step before Keymaster can manage a new host.`,
 
 		keyStr := string(ssh.MarshalAuthorizedKey(key)) // Use standard ssh package
 		if err := db.AddKnownHostKey(hostname, keyStr); err != nil {
-			log.Fatalf(i18n.T("trust_host.error_save_key"), err)
+			log.Fatalf(i18n.T("trust_host.error_save_key", err))
 		}
 
 		fmt.Println(i18n.T("trust_host.added_success", hostname, key.Type()))
@@ -519,31 +519,31 @@ func runAuditForAccount(account model.Account) error {
 	// 2. Get the system key the database *thinks* is on the host.
 	connectKey, err := db.GetSystemKeyBySerial(account.Serial)
 	if err != nil {
-		return fmt.Errorf("%s: %w", i18n.T("audit.error_get_serial_key", account.Serial), err)
+		return fmt.Errorf(i18n.T("audit.error_get_serial_key", account.Serial, err))
 	}
 	if connectKey == nil {
-		return errors.New(i18n.T("audit.error_no_serial_key", account.Serial))
+		return fmt.Errorf(i18n.T("audit.error_no_serial_key", account.Serial))
 	}
 
 	// 3. Attempt to connect with that key. If this fails, the key is wrong/missing.
 	deployer, err := deploy.NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
 	if err != nil {
 		// Give a more helpful error message than just "connection failed".
-		return fmt.Errorf("%s: %w", i18n.T("audit.error_connection_failed", account.Serial), err)
+		return fmt.Errorf(i18n.T("audit.error_connection_failed", account.Serial, err))
 	}
 	defer deployer.Close()
 
 	// 4. Read the content of the remote authorized_keys file.
 	remoteContentBytes, err := deployer.GetAuthorizedKeys()
 	if err != nil {
-		return fmt.Errorf("%s: %w", i18n.T("audit.error_read_remote_file"), err)
+		return fmt.Errorf(i18n.T("audit.error_read_remote_file", err))
 	}
 
 	// 5. Generate the content that *should* be on the host (the desired state).
 	// This is always generated using the latest active system key.
 	expectedContent, err := deploy.GenerateKeysContent(account.ID)
 	if err != nil {
-		return fmt.Errorf("%s: %w", i18n.T("audit.error_generate_expected"), err)
+		return fmt.Errorf(i18n.T("audit.error_generate_expected", err))
 	}
 
 	// 6. Normalize both remote and expected content for a reliable, canonical comparison.
