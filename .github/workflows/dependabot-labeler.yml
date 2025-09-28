@@ -1,0 +1,41 @@
+# .github/workflows/dependabot-labeler.yml
+name: "Dependabot: Auto-labeler"
+
+on:
+  pull_request_target:
+    types:
+      - opened
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  labeler:
+    # This job only runs for pull requests opened by dependabot
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Check compatibility score and label"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prBody = context.payload.pull_request.body;
+            const scoreRegex = /Compatibility score: (\d+)%/;
+            const match = prBody.match(scoreRegex);
+
+            if (match && match[1]) {
+              const score = parseInt(match[1], 10);
+              console.log(`Found compatibility score: ${score}%`);
+
+              if (score >= 80) {
+                console.log("Score is >= 80%. Adding 'safe-to-merge' label.");
+                await github.rest.issues.addLabels({
+                  ...context.repo,
+                  issue_number: context.issue.number,
+                  labels: ['safe-to-merge']
+                });
+              }
+            } else {
+              console.log("Could not find compatibility score in PR body.");
+            }
