@@ -68,7 +68,7 @@ func InstallSignalHandler() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		sig := <-sigChan
+		<-sigChan
 
 		CleanupAllActiveSessions()
 
