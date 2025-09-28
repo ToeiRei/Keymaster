@@ -2,15 +2,14 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-// package tui provides the terminal user interface for Keymaster.
-// This file contains the logic for the deployment view, which allows users
-// to deploy keys to single accounts, tags, or the entire fleet.
 package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
+	"math/rand"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
@@ -623,8 +622,22 @@ func performDeploymentCmd(account model.Account) tea.Cmd {
 		}
 
 		// 4. Update the database on success.
-		if err := db.UpdateAccountSerial(account.ID, activeKey.Serial); err != nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_db_update_failed_tui", err))}
+		// Retry updating the database serial on "database is locked" errors.
+		// This is critical to prevent state inconsistency after a successful deployment.
+		var dbUpdateErr error
+		for i := 0; i < 5; i++ { // Retry up to 5 times
+			dbUpdateErr = db.UpdateAccountSerial(account.ID, activeKey.Serial)
+			if dbUpdateErr == nil {
+				break // Success
+			}
+			if strings.Contains(dbUpdateErr.Error(), "database is locked") {
+				time.Sleep(time.Duration(50+rand.Intn(100)) * time.Millisecond) // Wait 50-150ms
+				continue
+			}
+			break // It's a different error, don't retry
+		}
+		if dbUpdateErr != nil {
+			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_db_update_failed_tui", dbUpdateErr))}
 		}
 
 		return deploymentResultMsg{account: account, err: nil} // Success

@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+### Added
+- Add clipboard copy functionality for public keys (`c` in the public keys view).
+
 ### Fixed
+- Fix migration format for `golang-migrate` compatibility.
+
+---
+## [1.3.6] - 2025-09-28
+
+### Added
+- Add clipboard copy functionality for public keys (also on deployment dialog to display authorized_keys file contents)
+
+
+### Fixed
+- Fix migration format for golang-migrate compatability
 
 ---
 

@@ -14,9 +14,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -446,8 +448,22 @@ func runDeploymentForAccount(account model.Account) error {
 		return fmt.Errorf(i18n.T("deploy.error_deployment_failed", err))
 	}
 
-	if err := db.UpdateAccountSerial(account.ID, activeKey.Serial); err != nil {
-		return fmt.Errorf(i18n.T("deploy.error_db_update_failed", err))
+	// Retry updating the database serial on "database is locked" errors.
+	// This is critical to prevent state inconsistency after a successful deployment.
+	var dbUpdateErr error
+	for i := 0; i < 5; i++ { // Retry up to 5 times
+		dbUpdateErr = db.UpdateAccountSerial(account.ID, activeKey.Serial)
+		if dbUpdateErr == nil {
+			return nil // Success
+		}
+		if strings.Contains(dbUpdateErr.Error(), "database is locked") {
+			time.Sleep(time.Duration(50+rand.Intn(100)) * time.Millisecond) // Wait 50-150ms
+			continue
+		}
+		break // It's a different error, don't retry
+	}
+	if dbUpdateErr != nil {
+		return fmt.Errorf(i18n.T("deploy.error_db_update_failed", dbUpdateErr))
 	}
 
 	return nil
