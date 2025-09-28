@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
@@ -391,9 +392,17 @@ func (m deployModel) updateShowAuthorizedKeys(msg tea.Msg) (tea.Model, tea.Cmd) 
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
-			m.status = ""
+			m.status = "" // Clear copy status on exit
 			m.state = deployStateSelectAccount
 			m.err = nil
+			return m, nil
+		case "c":
+			err := clipboard.WriteAll(m.authorizedKeys)
+			if err != nil {
+				m.status = i18n.T("deploy.status.copy_failed", err.Error())
+			} else {
+				m.status = i18n.T("deploy.status.copy_success")
+			}
 			return m, nil
 		}
 	}
@@ -505,7 +514,11 @@ func (m deployModel) View() string {
 	case deployStateShowAuthorizedKeys:
 		// Render just the keys for easy copy-pasting, with a title and help outside the main content.
 		title := titleStyle.Render(i18n.T("deploy.show_keys", m.selectedAccount.String()))
-		mainPane := lipgloss.JoinVertical(lipgloss.Left, title, "", m.authorizedKeys)
+		var content []string
+		if m.status != "" {
+			content = append(content, statusMessageStyle.Render(m.status), "")
+		}
+		mainPane := lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, content...), m.authorizedKeys)
 		help := helpFooterStyle.Render(i18n.T("deploy.help_keys"))
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 
