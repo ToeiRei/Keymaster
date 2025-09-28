@@ -27,8 +27,10 @@ setup.
     offline during a rotation.
 - **Fleet-Wide Operations:** Deploy key changes or audit your entire fleet of
     active hosts with a single command.
-- **Drift Detection:** The `audit` command quickly checks all hosts to ensure
-    their deployed keys match the central database state.
+- **Drift Detection:** The `audit` command connects to each host and compares the
+    fully rendered, normalized `authorized_keys` content against the expected state
+    from the database (including the Keymaster header with the current system key
+    serial). Any difference is reported as drift.
 - **Scriptable CLI:** All core features are available as command-line arguments,
     making Keymaster perfect for automation.
 - **SSH Agent Integration:** Can use a running SSH agent (including
@@ -109,7 +111,7 @@ You are now ready to manage this host with Keymaster!
   keymaster deploy
   ```
 
-- **Audit the fleet for drift:**
+- **Audit the fleet for drift (full file comparison):**
 
   ```sh
   keymaster audit
@@ -173,7 +175,8 @@ For details on reporting security vulnerabilities, please see our Security Polic
 
 To minimize risk, Keymaster automatically applies strict restrictions to its system key upon every deployment. This prevents the key from being used for interactive shell access or other unintended purposes, even if the private key is compromised. This is not something you need to configure; Keymaster handles it for you to enforce the principle of least privilege.
 
-When deployed, the Keymaster system key in the remote `authorized_keys` file will look like this:
+When deployed, the Keymaster system key in the remote `authorized_keys` file will look like this
+and include the current system key serial in a header for traceability:
 
 ```text
 # Keymaster Managed Keys (Serial: 1)
