@@ -582,10 +582,10 @@ func runAuditForAccount(account model.Account) error {
 	return nil
 }
 
-// exportSSHConfigCmd represents the 'export-ssh-config' command.
+// exportSSHConfigCmd represents the 'export-ssh-client-config' command.
 // It generates an SSH config file from all active accounts in the database.
 var exportSSHConfigCmd = &cobra.Command{
-	Use:   "export-ssh-config [output-file]",
+	Use:   "export-ssh-client-config [output-file]",
 	Short: "Export SSH config from active accounts",
 	Long: `Generates an SSH config file with Host entries for all active accounts.
 If no output file is specified, prints to stdout.

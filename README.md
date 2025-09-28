@@ -102,7 +102,7 @@ You are now ready to manage this host with Keymaster!
 
 - **Export SSH config:**
   ```sh
-  keymaster export-ssh-config ~/.ssh/config
+  keymaster export-ssh-client-config ~/.ssh/config
   ```
 
 This project is licensed under the MIT License - see the LICENSE file for details.
