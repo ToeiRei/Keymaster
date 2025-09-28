@@ -100,6 +100,11 @@ You are now ready to manage this host with Keymaster!
   keymaster import /path/to/authorized_keys
   ```
 
+- **Export SSH config:**
+  ```sh
+  keymaster export-ssh-config ~/.ssh/config
+  ```
+
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ### Third-Party Licenses

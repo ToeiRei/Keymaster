@@ -91,6 +91,7 @@ Running without a subcommand will launch the interactive TUI.`,
 	cmd.AddCommand(auditCmd)
 	cmd.AddCommand(importCmd)
 	cmd.AddCommand(trustHostCmd)
+	cmd.AddCommand(exportSSHConfigCmd)
 
 	// Set version
 	cmd.Version = version
@@ -579,6 +580,71 @@ func runAuditForAccount(account model.Account) error {
 	}
 
 	return nil
+}
+
+// exportSSHConfigCmd represents the 'export-ssh-config' command.
+// It generates an SSH config file from all active accounts in the database.
+var exportSSHConfigCmd = &cobra.Command{
+	Use:   "export-ssh-config [output-file]",
+	Short: "Export SSH config from active accounts",
+	Long: `Generates an SSH config file with Host entries for all active accounts.
+If no output file is specified, prints to stdout.
+Each account with a label will use the label as the Host alias.`,
+	Args: cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		// DB is initialized in PersistentPreRunE.
+		accounts, err := db.GetAllActiveAccounts()
+		if err != nil {
+			log.Fatalf(i18n.T("export_ssh_config.error_get_accounts", err))
+		}
+
+		if len(accounts) == 0 {
+			fmt.Println(i18n.T("export_ssh_config.no_accounts"))
+			return
+		}
+
+		var output strings.Builder
+		output.WriteString("# " + i18n.T("export_ssh_config.header") + "\n")
+		output.WriteString(fmt.Sprintf("# %s: %s\n\n", i18n.T("export_ssh_config.date"), time.Now().Format("2006-01-02 15:04:05")))
+
+		for _, account := range accounts {
+			// Use label as host alias if available, otherwise use username@hostname
+			hostAlias := account.Label
+			if hostAlias == "" {
+				hostAlias = fmt.Sprintf("%s-%s", account.Username, strings.ReplaceAll(account.Hostname, ".", "-"))
+			}
+
+			output.WriteString(fmt.Sprintf("# %s\n", account.String()))
+			output.WriteString(fmt.Sprintf("Host %s\n", hostAlias))
+			output.WriteString(fmt.Sprintf("    HostName %s\n", account.Hostname))
+			output.WriteString(fmt.Sprintf("    User %s\n", account.Username))
+
+			// Parse hostname for port if it contains one
+			_, port := account.Hostname, "22"
+			if idx := strings.LastIndex(account.Hostname, ":"); idx > 0 {
+				// Check if it's IPv6 by looking for multiple colons
+				if strings.Count(account.Hostname, ":") == 1 {
+					port = account.Hostname[idx+1:]
+				}
+			}
+			if port != "22" {
+				output.WriteString(fmt.Sprintf("    Port %s\n", port))
+			}
+
+			output.WriteString("\n")
+		}
+
+		// Output to file or stdout
+		if len(args) > 0 {
+			outputFile := args[0]
+			if err := os.WriteFile(outputFile, []byte(output.String()), 0644); err != nil {
+				log.Fatalf(i18n.T("export_ssh_config.error_write_file", err))
+			}
+			fmt.Println(i18n.T("export_ssh_config.success", outputFile))
+		} else {
+			fmt.Print(output.String())
+		}
+	},
 }
 
 // promptForConfirmation displays a prompt and reads a line from stdin.
