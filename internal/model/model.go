@@ -7,7 +7,10 @@
 // the application logic, such as accounts, keys, and audit logs.
 package model // import "github.com/toeirei/keymaster/internal/model"
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // Account represents a user on a specific host (e.g., deploy@server-01).
 // This is the core entity for which we manage access.
@@ -67,4 +70,18 @@ type AuditLogEntry struct {
 	Username  string // The OS user who performed the action.
 	Action    string // A category for the event (e.g., "DEPLOY_SUCCESS", "ADD_ACCOUNT").
 	Details   string // A free-text description of the event.
+}
+
+// BootstrapSession represents an ongoing bootstrap operation for a new host.
+// Sessions track temporary keys and pending account information during the bootstrap workflow.
+type BootstrapSession struct {
+	ID            string    // Unique session identifier.
+	Username      string    // Username for the pending account.
+	Hostname      string    // Hostname for the pending account.
+	Label         string    // Optional label for the pending account.
+	Tags          string    // Optional tags for the pending account.
+	TempPublicKey string    // Temporary public key for initial access.
+	CreatedAt     time.Time // When the session was created.
+	ExpiresAt     time.Time // When the session expires.
+	Status        string    // Current status (active, committing, completed, failed, orphaned).
 }

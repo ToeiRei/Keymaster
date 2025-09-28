@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
@@ -261,4 +262,34 @@ func GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
 // LogAction records an audit trail event.
 func LogAction(action string, details string) error {
 	return store.LogAction(action, details)
+}
+
+// SaveBootstrapSession saves a bootstrap session to the database.
+func SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error {
+	return store.SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey, expiresAt, status)
+}
+
+// GetBootstrapSession retrieves a bootstrap session by ID.
+func GetBootstrapSession(id string) (*model.BootstrapSession, error) {
+	return store.GetBootstrapSession(id)
+}
+
+// DeleteBootstrapSession removes a bootstrap session from the database.
+func DeleteBootstrapSession(id string) error {
+	return store.DeleteBootstrapSession(id)
+}
+
+// UpdateBootstrapSessionStatus updates the status of a bootstrap session.
+func UpdateBootstrapSessionStatus(id string, status string) error {
+	return store.UpdateBootstrapSessionStatus(id, status)
+}
+
+// GetExpiredBootstrapSessions returns all expired bootstrap sessions.
+func GetExpiredBootstrapSessions() ([]*model.BootstrapSession, error) {
+	return store.GetExpiredBootstrapSessions()
+}
+
+// GetOrphanedBootstrapSessions returns all orphaned bootstrap sessions.
+func GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error) {
+	return store.GetOrphanedBootstrapSessions()
 }

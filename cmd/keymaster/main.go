@@ -20,6 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/toeirei/keymaster/internal/bootstrap"
 	internalkey "github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
@@ -35,6 +36,16 @@ var cfgFile string
 
 // main is the entry point of the application.
 func main() {
+	// Install signal handler for graceful shutdown of bootstrap sessions
+	bootstrap.InstallSignalHandler()
+
+	// Set up cleanup store for bootstrap operations
+	defer func() {
+		if err := bootstrap.CleanupAllActiveSessions(); err != nil {
+			log.Printf("Error during final cleanup: %v", err)
+		}
+	}()
+
 	if err := rootCmd.Execute(); err != nil {
 		// The error is already printed by Cobra on failure.
 		os.Exit(1)
@@ -75,6 +86,15 @@ Running without a subcommand will launch the interactive TUI.`,
 			if err := db.InitDB(dbType, dsn); err != nil {
 				return fmt.Errorf(i18n.T("config.error_init_db", err))
 			}
+
+			// Recover from any previous crashes
+			if err := bootstrap.RecoverFromCrash(); err != nil {
+				log.Printf("Bootstrap recovery error: %v", err)
+			}
+
+			// Start background session reaper
+			bootstrap.StartSessionReaper()
+
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
