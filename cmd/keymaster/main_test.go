@@ -6,7 +6,9 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 	"testing"
@@ -14,6 +16,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
+	"golang.org/x/crypto/ssh"
 )
 
 // setupTestDB initializes an in-memory SQLite database for isolated testing.
@@ -38,7 +41,8 @@ func setupTestDB(t *testing.T) {
 }
 
 // executeCommand runs a cobra command with the given arguments and captures its output.
-func executeCommand(t *testing.T, args ...string) string {
+// It can optionally take an `io.Reader` to mock stdin for interactive commands.
+func executeCommand(t *testing.T, stdin io.Reader, args ...string) string {
 	t.Helper()
 
 	// Redirect stdout to a buffer
@@ -48,6 +52,15 @@ func executeCommand(t *testing.T, args ...string) string {
 	defer func() {
 		os.Stdout = oldOut
 	}()
+
+	// Redirect stdin if a reader is provided
+	if stdin != nil {
+		oldIn := os.Stdin
+		os.Stdin = stdin.(*os.File)
+		defer func() {
+			os.Stdin = oldIn
+		}()
+	}
 
 	// Create a new root command for each test to ensure isolation
 	root := newRootCmd()
@@ -94,7 +107,7 @@ ssh-ed25519 CCCCC3NzaC1lZDI1NTE5AAAAIGy5E/P9Ea45T/k+s/p3g4zJzE4Q3g== user@exampl
 	}
 
 	// 2. Execute
-	output := executeCommand(t, "import", tmpfile.Name())
+	output := executeCommand(t, nil, "import", tmpfile.Name())
 
 	// 3. Assertions
 	t.Run("should print success message for imported key", func(t *testing.T) {
@@ -135,4 +148,99 @@ ssh-ed25519 CCCCC3NzaC1lZDI1NTE5AAAAIGy5E/P9Ea45T/k+s/p3g4zJzE4Q3g== user@exampl
 			t.Errorf("Expected imported key to have comment 'user@example.com', but got '%s'", keys[0].Comment)
 		}
 	})
+}
+
+func TestTrustHostCmd(t *testing.T) {
+	// 1. Setup
+	setupTestDB(t)
+
+	// Create a mock SSH server that will present a host key on connection.
+	server, privateKey, err := newMockSSHServer()
+	if err != nil {
+		t.Fatalf("Failed to create mock SSH server: %v", err)
+	}
+
+	// Start the server on a random port.
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Failed to listen on a port: %v", err)
+	}
+	defer listener.Close()
+
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			// This error is expected when the listener is closed.
+			return
+		}
+		defer conn.Close()
+		// Perform SSH handshake to present the host key.
+		_, _, _, _ = ssh.NewServerConn(conn, server)
+	}()
+
+	// Prepare to mock stdin by writing "yes" to a pipe.
+	inputReader, inputWriter, _ := os.Pipe()
+	go func() {
+		defer inputWriter.Close()
+		fmt.Fprintln(inputWriter, "yes")
+	}()
+
+	// 2. Execute
+	hostname := listener.Addr().String()
+	output := executeCommand(t, inputReader, "trust-host", hostname)
+
+	// 3. Assertions
+	t.Run("should print authenticity warning", func(t *testing.T) {
+		expectedWarning := fmt.Sprintf("The authenticity of host '%s' can't be established.", hostname)
+		if !strings.Contains(output, expectedWarning) {
+			t.Errorf("Expected output to contain authenticity warning, but it didn't. Output:\n%s", output)
+		}
+	})
+
+	t.Run("should print key fingerprint", func(t *testing.T) {
+		fingerprint := ssh.FingerprintSHA256(privateKey.PublicKey())
+		if !strings.Contains(output, fingerprint) {
+			t.Errorf("Expected output to contain fingerprint '%s', but it didn't. Output:\n%s", fingerprint, output)
+		}
+	})
+
+	t.Run("should print success message", func(t *testing.T) {
+		expectedSuccess := fmt.Sprintf("Warning: Permanently added '%s'", hostname)
+		if !strings.Contains(output, expectedSuccess) {
+			t.Errorf("Expected output to contain success message, but it didn't. Output:\n%s", output)
+		}
+	})
+
+	t.Run("database should contain the trusted host key", func(t *testing.T) {
+		key, err := db.GetKnownHostKey(hostname)
+		if err != nil {
+			t.Fatalf("Failed to get known host key from DB: %v", err)
+		}
+		if key == "" {
+			t.Fatalf("Expected to find a key for hostname '%s' in the database, but it was empty.", hostname)
+		}
+
+		expectedKey := string(ssh.MarshalAuthorizedKey(privateKey.PublicKey()))
+		if key != expectedKey {
+			t.Errorf("Stored key does not match the expected key.\nGot: %s\nWant: %s", key, expectedKey)
+		}
+	})
+}
+
+// newMockSSHServer creates a basic SSH server config with a new private key.
+func newMockSSHServer() (*ssh.ServerConfig, ssh.Signer, error) {
+	privateKeyBytes, err := os.ReadFile("../../testdata/ssh_host_ed25519_key")
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not read test private key: %w", err)
+	}
+	privateKey, err := ssh.ParsePrivateKey(privateKeyBytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not parse test private key: %w", err)
+	}
+	config := &ssh.ServerConfig{
+		// No authentication needed, we just need to present the host key.
+		NoClientAuth: true,
+	}
+	config.AddHostKey(privateKey)
+	return config, privateKey, nil
 }
