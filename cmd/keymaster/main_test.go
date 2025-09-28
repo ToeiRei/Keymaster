@@ -442,3 +442,89 @@ language: de
 		}
 	})
 }
+
+func TestRotateKeyCmd(t *testing.T) {
+	// 1. Setup
+	setupTestDB(t)
+
+	t.Run("should create initial system key when none exist", func(t *testing.T) {
+		// 2. Execute
+		output := executeCommand(t, nil, "rotate-key")
+
+		// 3. Assert Output
+		if !strings.Contains(output, "Successfully rotated system key. The new active key is serial #1.") {
+			t.Errorf("Expected output to contain success message for serial #1, but it didn't. Output:\n%s", output)
+		}
+
+		// 4. Assert Database State
+		activeKey, err := db.GetActiveSystemKey()
+		if err != nil {
+			t.Fatalf("Failed to get active system key from DB: %v", err)
+		}
+		if activeKey == nil {
+			t.Fatal("Expected an active system key, but found none.")
+		}
+		if activeKey.Serial != 1 {
+			t.Errorf("Expected active key to have serial 1, but got %d", activeKey.Serial)
+		}
+		if !activeKey.IsActive {
+			t.Error("Expected the new key to be active, but it was not.")
+		}
+	})
+
+	t.Run("should rotate existing system key to next serial", func(t *testing.T) {
+		// 2. Execute again to trigger rotation
+		output := executeCommand(t, nil, "rotate-key")
+
+		// 3. Assert Output
+		if !strings.Contains(output, "Successfully rotated system key. The new active key is serial #2.") {
+			t.Errorf("Expected output to contain success message for serial #2, but it didn't. Output:\n%s", output)
+		}
+
+		// 4. Assert New Database State
+		activeKey, err := db.GetActiveSystemKey()
+		if err != nil {
+			t.Fatalf("Failed to get active system key from DB: %v", err)
+		}
+		if activeKey == nil {
+			t.Fatal("Expected an active system key, but found none.")
+		}
+		if activeKey.Serial != 2 {
+			t.Errorf("Expected active key to have serial 2, but got %d", activeKey.Serial)
+		}
+
+		// 5. Assert Old Key is now inactive
+		oldKey, err := db.GetSystemKeyBySerial(1)
+		if err != nil {
+			t.Fatalf("Failed to get old system key (serial 1) from DB: %v", err)
+		}
+		if oldKey == nil {
+			t.Fatal("Expected to find old system key (serial 1), but it was gone.")
+		}
+		if oldKey.IsActive {
+			t.Error("Expected old system key (serial 1) to be inactive, but it was still active.")
+		}
+	})
+
+	t.Run("should not change existing account serials", func(t *testing.T) {
+		// This test assumes the previous tests have run, and we have an active key with serial > 1.
+		// Let's add an account that is "synced" with an older key.
+		accountID, err := db.AddAccount("test", "host.com", "test-label", "")
+		if err != nil {
+			t.Fatalf("Failed to add test account: %v", err)
+		}
+		// Set its serial to an old, inactive key.
+		if err := db.UpdateAccountSerial(accountID, 1); err != nil {
+			t.Fatalf("Failed to set account serial: %v", err)
+		}
+
+		// Execute another rotation. This should not affect our test account.
+		executeCommand(t, nil, "rotate-key")
+
+		// Assert that the account's serial number has NOT changed.
+		allAccounts, _ := db.GetAllAccounts()
+		if allAccounts[0].Serial != 1 {
+			t.Errorf("Expected account serial to remain 1 after key rotation, but it changed to %d", allAccounts[0].Serial)
+		}
+	})
+}
