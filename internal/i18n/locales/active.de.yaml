@@ -271,6 +271,14 @@ import.error_adding_key: "  - Fehler beim Hinzufügen des Schlüssels '%s': %v"
 import.imported_key: "  + Schlüssel importiert: %s"
 import.summary: "✅ Import abgeschlossen. %d Schlüssel importiert, %d übersprungen."
 
+# Export SSH Config Befehl
+export_ssh_config.error_get_accounts: "Fehler beim Abrufen der Konten: %v"
+export_ssh_config.no_accounts: "Keine aktiven Konten zum Exportieren gefunden."
+export_ssh_config.header: "Generiert von Keymaster"
+export_ssh_config.date: "Datum"
+export_ssh_config.error_write_file: "Fehler beim Schreiben der Datei: %v"
+export_ssh_config.success: "✅ SSH-Konfiguration erfolgreich exportiert nach %s"
+
 # Trust Host CLI command
 trust_host.error_invalid_format: "Ungültiges Kontoformat. Erwartet: benutzer@host."
 trust_host.retrieving_key: "Versuche, Host-Schlüssel von %s abzurufen..."
