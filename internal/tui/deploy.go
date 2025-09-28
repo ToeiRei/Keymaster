@@ -6,10 +6,8 @@ package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
-	"math/rand"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
@@ -578,69 +576,7 @@ func (m deployModel) View() string {
 // performDeploymentCmd is a tea.Cmd that executes the full deployment logic for a single account.
 func performDeploymentCmd(account model.Account) tea.Cmd {
 	return func() tea.Msg {
-		var connectKey *model.SystemKey
-		var err error
-		if account.Serial == 0 {
-			// Bootstrap: use the active system key.
-			connectKey, err = db.GetActiveSystemKey() // i18n
-			if err != nil {
-				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_get_bootstrap_key"), err)}
-			}
-			if connectKey == nil {
-				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_no_bootstrap_key_tui"))}
-			}
-		} else {
-			// Normal deployment: use the key matching the account's current serial.
-			connectKey, err = db.GetSystemKeyBySerial(account.Serial) // i18n
-			if err != nil {
-				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_get_serial_key"), account.Serial, err)}
-			}
-			if connectKey == nil {
-				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_no_serial_key_tui"), account.Serial, account.String())}
-			}
-		}
-
-		// 2. Generate the target authorized_keys content (always uses the *active* key).
-		content, err := deploy.GenerateKeysContent(account.ID)
-		if err != nil {
-			return deploymentResultMsg{account: account, err: err} // Already i18n
-		}
-		activeKey, err := db.GetActiveSystemKey() // Need this for the new serial.
-		if err != nil || activeKey == nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_get_active_key_for_serial"))}
-		}
-
-		// 3. Establish connection and deploy.
-		deployer, err := deploy.NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
-		if err != nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_connection_failed_tui", account.String(), err))}
-		}
-		defer deployer.Close()
-
-		if err := deployer.DeployAuthorizedKeys(content); err != nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_deployment_failed_tui", account.String(), err))}
-		}
-
-		// 4. Update the database on success.
-		// Retry updating the database serial on "database is locked" errors.
-		// This is critical to prevent state inconsistency after a successful deployment.
-		var dbUpdateErr error
-		for i := 0; i < 5; i++ { // Retry up to 5 times
-			dbUpdateErr = db.UpdateAccountSerial(account.ID, activeKey.Serial)
-			if dbUpdateErr == nil {
-				break // Success
-			}
-			if strings.Contains(dbUpdateErr.Error(), "database is locked") {
-				time.Sleep(time.Duration(50+rand.Intn(100)) * time.Millisecond) // Wait 50-150ms
-				continue
-			}
-			break // It's a different error, don't retry
-		}
-		if dbUpdateErr != nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_db_update_failed_tui", dbUpdateErr))}
-		}
-
-		return deploymentResultMsg{account: account, err: nil} // Success
+		return deploymentResultMsg{account: account, err: deploy.RunDeploymentForAccount(account, true)}
 	}
 }
 

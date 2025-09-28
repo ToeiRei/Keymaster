@@ -14,7 +14,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
 	"strings"
 	"sync"
@@ -362,114 +361,6 @@ type parallelTask struct {
 	taskFunc   func(model.Account) error
 }
 
-// runParallelTasks executes a given task concurrently for a list of accounts.
-// It uses a wait group to manage goroutines and a channel to collect results,
-// printing status messages as tasks complete.
-func runParallelTasks(accounts []model.Account, task parallelTask) {
-	if len(accounts) == 0 {
-		fmt.Println(i18n.T("parallel_task.no_accounts", task.name))
-		return
-	}
-
-	var wg sync.WaitGroup
-	results := make(chan string, len(accounts)) // This channel will now carry pre-formatted i18n strings
-
-	// task.startMsg is already formatted by i18n.T, so just print it.
-	fmt.Println(task.startMsg)
-
-	for _, acc := range accounts {
-		wg.Add(1)
-		go func(account model.Account) {
-			defer wg.Done()
-			err := task.taskFunc(account)
-			details := fmt.Sprintf("account: %s", account.String())
-			if err != nil {
-				results <- fmt.Sprintf(task.failMsg, account.String(), err.Error())
-				_ = db.LogAction(task.failLog, fmt.Sprintf("%s, error: %v", details, err))
-			} else {
-				results <- fmt.Sprintf(task.successMsg, account.String()) // Pass account string as arg
-				_ = db.LogAction(task.successLog, details)
-			}
-		}(acc)
-	}
-
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	for res := range results {
-		fmt.Println(res)
-	}
-	fmt.Println("\n" + i18n.T("parallel_task.complete_message", strings.Title(task.name)))
-}
-
-// runDeploymentForAccount handles the deployment logic for a single account.
-// It determines the correct system key to use for connection (either the active
-// key for bootstrapping or the account's last known key), generates the
-// authorized_keys content, deploys it, and updates the account's key serial
-// in the database upon success.
-func runDeploymentForAccount(account model.Account) error {
-	var connectKey *model.SystemKey
-	var err error
-	if account.Serial == 0 {
-		connectKey, err = db.GetActiveSystemKey()
-		if err != nil {
-			return fmt.Errorf(i18n.T("deploy.error_get_bootstrap_key", err))
-		}
-		if connectKey == nil {
-			return errors.New(i18n.T("deploy.error_no_bootstrap_key"))
-		}
-	} else {
-		connectKey, err = db.GetSystemKeyBySerial(account.Serial)
-		if err != nil {
-			return fmt.Errorf(i18n.T("deploy.error_get_serial_key", account.Serial, err))
-		}
-		if connectKey == nil {
-			return fmt.Errorf(i18n.T("deploy.error_no_serial_key", account.Serial))
-		}
-	}
-
-	content, err := deploy.GenerateKeysContent(account.ID)
-	if err != nil {
-		return err // This error is already i18n-ready from the generator
-	}
-	activeKey, err := db.GetActiveSystemKey()
-	if err != nil || activeKey == nil {
-		return errors.New(i18n.T("deploy.error_get_active_key_for_serial"))
-	}
-
-	deployer, err := deploy.NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
-	if err != nil {
-		return fmt.Errorf(i18n.T("deploy.error_connection_failed", err))
-	}
-	defer deployer.Close()
-
-	if err := deployer.DeployAuthorizedKeys(content); err != nil {
-		return fmt.Errorf(i18n.T("deploy.error_deployment_failed", err))
-	}
-
-	// Retry updating the database serial on "database is locked" errors.
-	// This is critical to prevent state inconsistency after a successful deployment.
-	var dbUpdateErr error
-	for i := 0; i < 5; i++ { // Retry up to 5 times
-		dbUpdateErr = db.UpdateAccountSerial(account.ID, activeKey.Serial)
-		if dbUpdateErr == nil {
-			return nil // Success
-		}
-		if strings.Contains(dbUpdateErr.Error(), "database is locked") {
-			time.Sleep(time.Duration(50+rand.Intn(100)) * time.Millisecond) // Wait 50-150ms
-			continue
-		}
-		break // It's a different error, don't retry
-	}
-	if dbUpdateErr != nil {
-		return fmt.Errorf(i18n.T("deploy.error_db_update_failed", dbUpdateErr))
-	}
-
-	return nil
-}
-
 // trustHostCmd represents the 'trust-host' command.
 // It facilitates the initial trust of a new host by fetching its public SSH key,
 // displaying its fingerprint, and prompting the user to save it to the database
@@ -520,6 +411,48 @@ step before Keymaster can manage a new host.`,
 
 		fmt.Println(i18n.T("trust_host.added_success", hostname, key.Type()))
 	},
+}
+
+// runParallelTasks executes a given task concurrently for a list of accounts.
+// It uses a wait group to manage goroutines and a channel to collect results,
+// printing status messages as tasks complete.
+func runParallelTasks(accounts []model.Account, task parallelTask) {
+	if len(accounts) == 0 {
+		fmt.Println(i18n.T("parallel_task.no_accounts", task.name))
+		return
+	}
+
+	var wg sync.WaitGroup
+	results := make(chan string, len(accounts)) // This channel will now carry pre-formatted i18n strings
+
+	// task.startMsg is already formatted by i18n.T, so just print it.
+	fmt.Println(task.startMsg)
+
+	for _, acc := range accounts {
+		wg.Add(1)
+		go func(account model.Account) {
+			defer wg.Done()
+			err := task.taskFunc(account)
+			details := fmt.Sprintf("account: %s", account.String())
+			if err != nil {
+				results <- fmt.Sprintf(task.failMsg, account.String(), err.Error())
+				_ = db.LogAction(task.failLog, fmt.Sprintf("%s, error: %v", details, err))
+			} else {
+				results <- fmt.Sprintf(task.successMsg, account.String()) // Pass account string as arg
+				_ = db.LogAction(task.successLog, details)
+			}
+		}(acc)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	for res := range results {
+		fmt.Println(res)
+	}
+	fmt.Println("\n" + i18n.T("parallel_task.complete_message", strings.Title(task.name)))
 }
 
 // runAuditForAccount performs a configuration audit on a single account.
@@ -653,4 +586,11 @@ func promptForConfirmation(prompt string) string {
 	reader := bufio.NewReader(os.Stdin)
 	answer, _ := reader.ReadString('\n')
 	return strings.TrimSpace(strings.ToLower(answer))
+}
+
+// runDeploymentForAccount is a simple wrapper for the CLI to match the
+// signature required by runParallelTasks. It calls the centralized
+// deployment logic from the deploy package.
+func runDeploymentForAccount(account model.Account) error {
+	return deploy.RunDeploymentForAccount(account, false)
 }
