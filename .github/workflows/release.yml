@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0 # Fetch all history so GoReleaser can generate a changelog if needed
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
 
       - name: Extract Release Notes
         id: extract_notes
