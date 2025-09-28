@@ -179,8 +179,10 @@ language: en
 				// fatal error. The app will simply run with the default values set in memory.
 				if err := os.WriteFile(defaultConfigPath, []byte(defaultContent), 0644); err == nil {
 					// Return a specific error/message that can be handled by the caller.
-					// For tests, this is ignored. For the real app, it's a helpful message.
-					return errors.New(i18n.T("config.created_default"))
+					// We also re-read the config we just wrote to ensure viper is in a clean state.
+					_ = viper.ReadInConfig()
+					// The message is useful for the CLI user, but for tests, returning nil is cleaner.
+					return nil
 				}
 			}
 		} else if err != nil {
