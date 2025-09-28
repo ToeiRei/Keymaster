@@ -415,26 +415,34 @@ func (m menuModel) View(data dashboardData, width, height int) string {
 		dashboardItems = append(dashboardItems, helpStyle.Render(i18n.T("dashboard.no_recent_activity")))
 	} else {
 		for _, log := range data.recentLogs {
-			ts := log.Timestamp
-			ts = ts[5:16] // MM-DD HH:MM
+			// --- Refactored log line rendering with color and better truncation ---
+			ts := log.Timestamp[5:16] // Format as MM-DD HH:MM
 
-			action := log.Action
-			maxActionLen := 15
-			if len(action) > maxActionLen {
-				action = action[:maxActionLen]
-			}
-
-			details := log.Details
+			// Calculate available space inside the pane for the log line content.
 			innerDashboardWidth := dashboardWidth - 4 - 2
-			maxDetailsLen := innerDashboardWidth - len(ts) - maxActionLen - 2
-			if maxDetailsLen < 5 {
-				maxDetailsLen = 5
-			}
-			if len(details) > maxDetailsLen {
-				details = details[:maxDetailsLen-3] + "..."
+			availableWidth := innerDashboardWidth - len(ts) - 1 // Subtract timestamp and a space
+
+			// Get the styled action from audit_log.go's logic and its plain-text length.
+			actionStyle := auditActionStyle(log.Action)
+			styledAction := actionStyle.Render(log.Action)
+			actionLen := len(log.Action)
+
+			// Calculate the remaining space for the details string.
+			detailsWidth := availableWidth - actionLen - 1 // -1 for space after action
+			if detailsWidth < 10 {
+				detailsWidth = 10 // Ensure we show at least a little detail.
 			}
 
-			logLine := fmt.Sprintf("%s %-15s %s", helpStyle.Render(ts), action, details)
+			// Gracefully truncate the details if they are too long.
+			details := log.Details
+			if len(details) > detailsWidth {
+				details = details[:detailsWidth-3] + "..."
+			}
+
+			// Use lipgloss.JoinHorizontal to correctly lay out the styled and unstyled parts.
+			logLine := lipgloss.JoinHorizontal(lipgloss.Left,
+				helpStyle.Render(ts), " ", styledAction, " ", helpStyle.Render(details))
+
 			dashboardItems = append(dashboardItems, logLine)
 		}
 	}
