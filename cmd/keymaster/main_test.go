@@ -528,3 +528,73 @@ func TestRotateKeyCmd(t *testing.T) {
 		}
 	})
 }
+
+func TestExportSSHConfigCmd(t *testing.T) {
+	t.Run("should print message when no accounts exist", func(t *testing.T) {
+		setupTestDB(t) // Fresh DB for this test
+
+		output := executeCommand(t, nil, "export-ssh-client-config")
+
+		if !strings.Contains(output, "No active accounts found to export.") {
+			t.Errorf("Expected 'no accounts' message, but got: %s", output)
+		}
+	})
+
+	t.Run("should print config to stdout for active accounts", func(t *testing.T) {
+		setupTestDB(t) // Fresh DB
+
+		// Add test accounts
+		_, _ = db.AddAccount("user1", "host1.com", "prod-web-1", "")
+		_, _ = db.AddAccount("user2", "host2.com", "", "") // No label
+		inactiveID, _ := db.AddAccount("user3", "host3.com", "inactive-host", "")
+		_ = db.ToggleAccountStatus(inactiveID) // Make this one inactive
+
+		output := executeCommand(t, nil, "export-ssh-client-config")
+
+		t.Run("should include account with label", func(t *testing.T) {
+			if !strings.Contains(output, "Host prod-web-1") {
+				t.Error("Expected to find Host entry for labeled account 'prod-web-1'")
+			}
+		})
+
+		t.Run("should include account without label using generated alias", func(t *testing.T) {
+			if !strings.Contains(output, "Host user2-host2-com") {
+				t.Error("Expected to find Host entry for unlabeled account 'user2-host2-com'")
+			}
+		})
+
+		t.Run("should not include inactive accounts", func(t *testing.T) {
+			if strings.Contains(output, "Host inactive-host") {
+				t.Error("Expected not to find Host entry for inactive account")
+			}
+		})
+	})
+
+	t.Run("should write config to specified file", func(t *testing.T) {
+		setupTestDB(t) // Fresh DB
+
+		_, _ = db.AddAccount("user1", "host1.com", "prod-web-1", "")
+
+		tmpfile, err := os.CreateTemp("", "ssh_config_*.txt")
+		if err != nil {
+			t.Fatalf("Failed to create temp file: %v", err)
+		}
+		defer os.Remove(tmpfile.Name())
+		tmpfilePath := tmpfile.Name()
+		tmpfile.Close() // Close the file so the command can write to it
+
+		output := executeCommand(t, nil, "export-ssh-client-config", tmpfilePath)
+
+		if !strings.Contains(output, "Successfully exported SSH config to") {
+			t.Errorf("Expected success message in stdout, but got: %s", output)
+		}
+
+		fileContent, err := os.ReadFile(tmpfilePath)
+		if err != nil {
+			t.Fatalf("Failed to read temp file content: %v", err)
+		}
+		if !strings.Contains(string(fileContent), "Host prod-web-1") {
+			t.Error("Expected file content to contain the correct Host entry")
+		}
+	})
+}
