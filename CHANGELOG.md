@@ -7,27 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+---
+
+## [1.3.5] - 2025-09-29
+
 ### Added
 - Add clipboard copy functionality for public keys (`c` in the public keys view).
+- Add clipboard copy functionality to the deployment `authorized_keys` view.
 
 ### Fixed
+- **Critical:** Fix a race condition during concurrent deployments where a `database is locked` error on SQLite could lead to a state inconsistency, effectively "losing" a host. A retry mechanism was added to the database update step to ensure successful deployments are correctly recorded.
 - Fix migration format for `golang-migrate` compatibility.
-
----
-## [1.3.6] - 2025-09-28
-
-### Added
-- Add clipboard copy functionality for public keys (also on deployment dialog to display authorized_keys file contents)
-
-
-### Fixed
-- Fix migration format for golang-migrate compatability
-
----
-
-## [1.3.5] - 2025-09-27
-
-### Fixes
 - **Design fixes:** Long lists break the views
 
 ---
