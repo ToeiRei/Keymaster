@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"sync"
@@ -33,6 +34,7 @@ import (
 
 var version = "dev" // this will be set by the linker
 var cfgFile string
+var auditMode string // audit mode flag: "strict" (default) or "serial"
 
 // main is the entry point of the application.
 func main() {
@@ -185,7 +187,7 @@ language: en
 					return nil
 				}
 			}
-		} else if err != nil {
+		} else {
 			// The config file was found but was malformed or unreadable.
 			// We return the error but don't exit, allowing the app to proceed with defaults.
 			return fmt.Errorf("error reading config file: %w", err)
@@ -279,12 +281,25 @@ The previous key is kept for accessing hosts that have not yet been updated.`,
 var auditCmd = &cobra.Command{
 	Use:   "audit",
 	Short: "Audit hosts for configuration drift",
-	Long:  `Connects to all active hosts and checks if their deployed authorized_keys file has the expected Keymaster serial number.`,
+	Long: `Connects to all active hosts and compares the fully rendered, normalized authorized_keys content against the expected configuration from the database to detect drift.
+
+Use --mode=serial to only verify the Keymaster header serial number on the remote host matches the account's last deployed serial (useful during staged rotations).`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
 		accounts, err := db.GetAllActiveAccounts()
 		if err != nil {
 			log.Fatalf("%s", i18n.T("audit.cli_error_get_accounts", err))
+		}
+
+		// Select audit function based on mode
+		var auditFunc func(model.Account) error
+		switch strings.ToLower(strings.TrimSpace(auditMode)) {
+		case "serial":
+			auditFunc = deploy.AuditAccountSerial
+		case "strict", "":
+			auditFunc = deploy.AuditAccountStrict
+		default:
+			log.Fatalf("invalid audit mode: %s (use 'strict' or 'serial')", auditMode)
 		}
 
 		auditTask := parallelTask{
@@ -294,11 +309,16 @@ var auditCmd = &cobra.Command{
 			failMsg:    i18n.T("parallel_task.audit_fail_message"),
 			successLog: "CLI_AUDIT_SUCCESS",
 			failLog:    "CLI_AUDIT_FAIL",
-			taskFunc:   runAuditForAccount,
+			taskFunc:   auditFunc,
 		}
 
 		runParallelTasks(accounts, auditTask)
 	},
+}
+
+func init() {
+	// Attach flags after auditCmd is defined
+	auditCmd.Flags().StringVarP(&auditMode, "mode", "m", "strict", "Audit mode: 'strict' (full file comparison) or 'serial' (header serial only)")
 }
 
 // importCmd represents the 'import' command.
@@ -423,11 +443,12 @@ step before Keymaster can manage a new host.`,
 		}
 
 		keyStr := string(ssh.MarshalAuthorizedKey(key)) // Use standard ssh package
-		if err := db.AddKnownHostKey(hostname, keyStr); err != nil {
+		normalized := normalizeKnownHostKeyName(hostname)
+		if err := db.AddKnownHostKey(normalized, keyStr); err != nil {
 			log.Fatalf("%s", i18n.T("trust_host.error_save_key", err))
 		}
 
-		fmt.Printf("%s\n", i18n.T("trust_host.added_success", hostname, key.Type()))
+		fmt.Printf("%s\n", i18n.T("trust_host.added_success", normalized, key.Type()))
 	},
 }
 
@@ -473,65 +494,7 @@ func runParallelTasks(accounts []model.Account, task parallelTask) {
 	fmt.Println("\n" + i18n.T("parallel_task.complete_message", strings.Title(task.name)))
 }
 
-// runAuditForAccount performs a configuration audit on a single account.
-// It connects to the host using the system key it's expected to have,
-// reads the remote authorized_keys file, and compares it against the
-// configuration that *should* be there according to the database. It returns
-// an error if a drift is detected.
-func runAuditForAccount(account model.Account) error {
-	// 1. An account with serial 0 has never been deployed. This is a known state, not a drift.
-	if account.Serial == 0 {
-		return errors.New(i18n.T("audit.error_not_deployed"))
-	}
-
-	// 2. Get the system key the database *thinks* is on the host.
-	connectKey, err := db.GetSystemKeyBySerial(account.Serial)
-	if err != nil {
-		return errors.New(i18n.T("audit.error_get_serial_key", account.Serial, err))
-	}
-	if connectKey == nil {
-		return errors.New(i18n.T("audit.error_no_serial_key", account.Serial))
-	}
-
-	// 3. Attempt to connect with that key. If this fails, the key is wrong/missing.
-	deployer, err := deploy.NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
-	if err != nil {
-		// Give a more helpful error message than just "connection failed".
-		return errors.New(i18n.T("audit.error_connection_failed", account.Serial, err))
-	}
-	defer deployer.Close()
-
-	// 4. Read the content of the remote authorized_keys file.
-	remoteContentBytes, err := deployer.GetAuthorizedKeys()
-	if err != nil {
-		return errors.New(i18n.T("audit.error_read_remote_file", err))
-	}
-
-	// 5. Generate the content that *should* be on the host (the desired state).
-	// This is always generated using the latest active system key.
-	expectedContent, err := deploy.GenerateKeysContent(account.ID)
-	if err != nil {
-		return errors.New(i18n.T("audit.error_generate_expected", err))
-	}
-
-	// 6. Normalize both remote and expected content for a reliable, canonical comparison.
-	// This handles CRLF vs LF line endings and surrounding whitespace.
-	normalize := func(s string) string {
-		s = strings.ReplaceAll(s, "\r\n", "\n") // Normalize line endings
-		s = strings.TrimSpace(s)                // Remove leading/trailing whitespace
-		return s
-	}
-
-	normalizedRemote := normalize(string(remoteContentBytes))
-	normalizedExpected := normalize(expectedContent)
-
-	// 7. Compare the actual state with the desired state.
-	if normalizedRemote != normalizedExpected {
-		return errors.New(i18n.T("audit.error_drift_detected"))
-	}
-
-	return nil
-}
+// audit implementations moved to internal/deploy/audit.go
 
 // exportSSHConfigCmd represents the 'export-ssh-client-config' command.
 // It generates an SSH config file from all active accounts in the database.
@@ -604,6 +567,27 @@ func promptForConfirmation(prompt string) string {
 	reader := bufio.NewReader(os.Stdin)
 	answer, _ := reader.ReadString('\n')
 	return strings.TrimSpace(strings.ToLower(answer))
+}
+
+// normalizeKnownHostKeyName normalizes a hostname for storage in the known hosts database
+// so that it matches lookups performed during SSH handshakes. It removes any port and
+// strips IPv6 brackets, returning just the host portion.
+func normalizeKnownHostKeyName(h string) string {
+	h = strings.TrimSpace(h)
+	if h == "" {
+		return h
+	}
+	// If a port is present (e.g., "example.com:2222" or "[2001:db8::1]:2222"),
+	// SplitHostPort returns the host without brackets for IPv6.
+	if host, _, err := net.SplitHostPort(h); err == nil {
+		return host
+	}
+	// If it's a bracketed IPv6 without port like "[2001:db8::1]", trim brackets.
+	if strings.HasPrefix(h, "[") && strings.HasSuffix(h, "]") {
+		return strings.TrimSuffix(strings.TrimPrefix(h, "["), "]")
+	}
+	// Otherwise, return as-is (covers plain hostnames or raw IPv6 without brackets/port).
+	return h
 }
 
 // runDeploymentForAccount is a simple wrapper for the CLI to match the

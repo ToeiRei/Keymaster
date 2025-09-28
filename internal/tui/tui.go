@@ -32,6 +32,7 @@ const (
 	rotateKeyView
 	deployView
 	auditLogView
+	auditView
 	tagsView
 )
 
@@ -57,6 +58,7 @@ type mainModel struct {
 	state      viewState
 	menu       menuModel
 	deployer   deployModel
+	auditor    auditModel
 	rotator    *rotateKeyModel
 	assignment *assignKeysModel
 	keys       *publicKeysModel
@@ -87,6 +89,7 @@ func initialModel() mainModel {
 				i18n.T("menu.rotate_system_keys"),
 				i18n.T("menu.deploy_to_fleet"),
 				i18n.T("menu.view_audit_log"),
+				i18n.T("menu.audit_hosts"),
 				i18n.T("menu.view_accounts_by_tag"),
 			},
 		},
@@ -190,6 +193,15 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newAuditLogModel, cmd = m.auditLog.Update(msg)
 		m.auditLog = newAuditLogModel.(*auditLogModel)
 
+	case auditView:
+		if _, ok := msg.(backToMenuMsg); ok {
+			m.state = menuView
+			return m, refreshDashboardCmd()
+		}
+		var newAuditModel tea.Model
+		newAuditModel, cmd = m.auditor.Update(msg)
+		m.auditor = newAuditModel.(auditModel)
+
 	case tagsView:
 		if _, ok := msg.(backToMenuMsg); ok {
 			m.state = menuView
@@ -258,7 +270,11 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					newAuditLogModel, cmd = m.auditLog.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
 					m.auditLog = newAuditLogModel.(*auditLogModel)
 					return m, cmd
-				case 6: // View Accounts by Tag
+				case 6: // Audit Hosts
+					m.state = auditView
+					m.auditor = newAuditModel()
+					return m, nil
+				case 7: // View Accounts by Tag
 					m.state = tagsView
 					m.tags = newTagsViewModel()
 					return m, nil
@@ -280,6 +296,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					i18n.T("menu.rotate_system_keys"),
 					i18n.T("menu.deploy_to_fleet"),
 					i18n.T("menu.view_audit_log"),
+					i18n.T("menu.audit_hosts"),
 					i18n.T("menu.view_accounts_by_tag"),
 				}
 				// Save the new language setting
@@ -297,6 +314,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					i18n.T("menu.rotate_system_keys"),
 					i18n.T("menu.deploy_to_fleet"),
 					i18n.T("menu.view_audit_log"),
+					i18n.T("menu.audit_hosts"),
 					i18n.T("menu.view_accounts_by_tag"),
 				}
 				return m, nil
@@ -330,6 +348,8 @@ func (m mainModel) View() string {
 		return m.deployer.View()
 	case auditLogView:
 		return m.auditLog.View()
+	case auditView:
+		return m.auditor.View()
 	case tagsView:
 		return m.tags.View()
 	default: // menuView
