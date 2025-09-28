@@ -122,6 +122,12 @@ func (s *PostgresStore) UpdateAccountLabel(id int, label string) error {
 	return err
 }
 
+func (s *PostgresStore) UpdateAccountHostname(id int, hostname string) error {
+	// This is primarily used for testing to point an account to a mock server.
+	_, err := s.db.Exec("UPDATE accounts SET hostname = $1 WHERE id = $2", hostname, id)
+	return err
+}
+
 func (s *PostgresStore) UpdateAccountTags(id int, tags string) error {
 	_, err := s.db.Exec("UPDATE accounts SET tags = $1 WHERE id = $2", tags, id)
 	if err == nil {

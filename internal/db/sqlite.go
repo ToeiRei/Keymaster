@@ -127,6 +127,13 @@ func (s *SqliteStore) UpdateAccountLabel(id int, label string) error {
 	return err
 }
 
+// UpdateAccountHostname updates the hostname for a given account.
+// This is primarily used for testing to point an account to a mock server.
+func (s *SqliteStore) UpdateAccountHostname(id int, hostname string) error {
+	_, err := s.db.Exec("UPDATE accounts SET hostname = ? WHERE id = ?", hostname, id)
+	return err
+}
+
 // UpdateAccountTags updates the tags for a given account.
 func (s *SqliteStore) UpdateAccountTags(id int, tags string) error {
 	_, err := s.db.Exec("UPDATE accounts SET tags = ? WHERE id = ?", tags, id)

@@ -128,6 +128,13 @@ func (s *MySQLStore) UpdateAccountLabel(id int, label string) error {
 	}
 	return err
 }
+
+func (s *MySQLStore) UpdateAccountHostname(id int, hostname string) error {
+	// This is primarily used for testing to point an account to a mock server.
+	_, err := s.db.Exec("UPDATE accounts SET hostname = ? WHERE id = ?", hostname, id)
+	return err
+}
+
 func (s *MySQLStore) UpdateAccountTags(id int, tags string) error {
 	_, err := s.db.Exec("UPDATE accounts SET tags = ? WHERE id = ?", tags, id)
 	if err == nil {
