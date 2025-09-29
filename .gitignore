@@ -13,7 +13,6 @@ go.work.sum
 vendor/
 
 # Common editor/IDE folders
-.vscode/
 .idea/
 .keymaster.yaml
 keymaster.db-wal
