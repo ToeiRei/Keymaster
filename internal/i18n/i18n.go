@@ -63,10 +63,12 @@ func Init(defaultLang string) {
 			//
 			// Why this approach?
 			// 1. The i18n library panics if it sees a language subtag without pluralization rules (e.g., 'ang').
+			//    This is a known limitation in the go-i18n/golang.org/x/text ecosystem, which relies on
+			//    plural rules from the Unicode CLDR. If a rule is missing, loading fails.
+			//    This affects other valid but less common languages like 'oc' (Occitan).
 			// 2. Simply ignoring the error doesn't work, as the message file fails to load entirely.
 			// 3. Using a private-use tag like 'en-x-ang' also fails, as the library's fallback logic
 			//    aggressively prefers the base 'en' translations over the 'en-x-ang' ones.
-			//
 			// By loading 'en-ang' messages directly into the 'en' bundle (and ensuring it's loaded last),
 			// we effectively hijack the English localizer when 'en-ang' is selected. When the language
 			// is switched back, Init() is re-run, and the standard 'en' file overwrites the 'en-ang' messages.
