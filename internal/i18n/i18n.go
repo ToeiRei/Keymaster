@@ -16,6 +16,7 @@ import (
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
+	"golang.org/x/text/language/display"
 	"gopkg.in/yaml.v3"
 )
 
@@ -97,20 +98,16 @@ func Init(defaultLang string) {
 			}
 
 			var displayName string
-			switch langCode {
-			case "en":
-				displayName = "English"
-			case "de":
-				displayName = "Deutsch"
-			case "en-ang":
+			// Special case for Old English, which has a custom display name.
+			if langCode == "en-ang" {
 				displayName = "Ænglisc (Olde English)"
-			default:
-				// For any other valid language tag, try to parse it to get a display name.
+			} else {
+				// For all other languages, try to get the native display name.
 				tag, err := language.Parse(langCode)
 				if err == nil {
-					displayName = tag.String() // This will produce codes like 'en', 'de'
+					displayName = display.Self.Name(tag)
 				} else {
-					displayName = langCode // Fallback to the code itself if parsing fails for an unknown reason.
+					displayName = langCode // Fallback to the code itself if parsing fails.
 				}
 			}
 			availableLocales[langCode] = displayName
