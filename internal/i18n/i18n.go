@@ -11,7 +11,6 @@ import (
 	"embed"
 	"fmt"
 	"path" // Use the 'path' package for consistent forward slashes
-	"sort"
 	"strings"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -32,7 +31,6 @@ var (
 
 // Init initializes the i18n bundle, discovers available locales, and sets the default language.
 func Init(defaultLang string) {
-	// Initialize the bundle with English as the default fallback language.
 	bundle = i18n.NewBundle(language.English) // English is the fallback
 
 	bundle.RegisterUnmarshalFunc("yaml", yaml.Unmarshal)
@@ -46,11 +44,6 @@ func Init(defaultLang string) {
 		panic(fmt.Sprintf("failed to read embedded locales directory: %v", err))
 	}
 
-	// Process en-ang last to ensure it can overwrite 'en' messages when selected.
-	sort.SliceStable(files, func(i, j int) bool {
-		return !strings.Contains(files[i].Name(), "en-ang")
-	})
-
 	for _, file := range files {
 		fileName := file.Name()
 		if strings.HasPrefix(fileName, "active.") && (strings.HasSuffix(fileName, ".yaml")) {
@@ -58,48 +51,9 @@ func Init(defaultLang string) {
 			langCode := strings.TrimPrefix(fileName, "active.")
 			langCode = strings.TrimSuffix(langCode, ".yaml")
 
-			// Special-case for Old English ('en-ang'). The i18n library panics on the 'ang' subtag.
-			// To work around this, we manually load the messages and add them to the main 'en' bundle.
-			// This overwrites the standard English messages when en-ang is the active language.
-			//
-			// Why this approach?
-			// 1. The i18n library panics if it sees a language subtag without pluralization rules (e.g., 'ang').
-			//    This is a known limitation in the go-i18n/golang.org/x/text ecosystem, which relies on
-			//    plural rules from the Unicode CLDR. If a rule is missing, loading fails.
-			//    This affects other valid but less common languages like 'oc' (Occitan).
-			// 2. Simply ignoring the error doesn't work, as the message file fails to load entirely.
-			// 3. Using a private-use tag like 'en-x-ang' also fails, as the library's fallback logic
-			//    aggressively prefers the base 'en' translations over the 'en-x-ang' ones.
-			// By loading 'en-ang' messages directly into the 'en' bundle (and ensuring it's loaded last),
-			// we effectively hijack the English localizer when 'en-ang' is selected. When the language
-			// is switched back, Init() is re-run, and the standard 'en' file overwrites the 'en-ang' messages.
-			if langCode == "en-ang" {
-				filePath := path.Join("locales", fileName)
-				data, err := localeFS.ReadFile(filePath)
-				if err != nil {
-					panic(fmt.Sprintf("failed to read embedded locale file %s: %v", fileName, err))
-				}
-				var raw map[string]string
-				if err := yaml.Unmarshal(data, &raw); err != nil {
-					panic(fmt.Sprintf("failed to parse locale file %s: %v", fileName, err))
-				}
-				msgs := make([]*i18n.Message, 0, len(raw))
-				for id, val := range raw {
-					msgs = append(msgs, &i18n.Message{ID: id, Other: val})
-				}
-				if err := bundle.AddMessages(language.English, msgs...); err != nil {
-					panic(fmt.Sprintf("failed to add 'en-ang' messages to 'en' tag: %v", err))
-				}
-			} else {
-				filePath := path.Join("locales", fileName)
-				if _, err := bundle.LoadMessageFileFS(localeFS, filePath); err != nil {
-					panic(fmt.Sprintf("failed to load standard locale file %s: %v", fileName, err))
-				}
-			}
-
 			var displayName string
 			// Special case for Old English, which has a custom display name.
-			if langCode == "en-ang" {
+			if langCode == "art-x-ang" {
 				displayName = "Ænglisc (Olde English)"
 			} else {
 				// For all other languages, try to get the native display name.
@@ -111,6 +65,13 @@ func Init(defaultLang string) {
 				}
 			}
 			availableLocales[langCode] = displayName
+
+			// Load the file into the bundle
+			filePath := path.Join("locales", fileName)
+			_, err := bundle.LoadMessageFileFS(localeFS, filePath)
+			if err != nil {
+				panic(fmt.Sprintf("failed to load locale file %s: %v", fileName, err))
+			}
 		}
 	}
 
@@ -120,13 +81,9 @@ func Init(defaultLang string) {
 // SetLang changes the current language for the application.
 func SetLang(lang string) {
 	currentLang = lang
-	localizerTag := lang
-	// When the user selects 'en-ang', we use the 'en' localizer because we've
-	// overwritten the 'en' messages with the 'en-ang' content.
-	if lang == "en-ang" {
-		localizerTag = "en"
-	}
-	localizer = i18n.NewLocalizer(bundle, localizerTag)
+	// Using 'art-x-ang' treats it as a standalone language, so no special
+	// fallback logic is needed. The library will just use the messages as-is.
+	localizer = i18n.NewLocalizer(bundle, lang)
 }
 
 // GetLang returns the currently active language code.

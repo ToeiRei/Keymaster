@@ -46,6 +46,8 @@ func main() {
 	defer func() {
 		if err := bootstrap.CleanupAllActiveSessions(); err != nil {
 			log.Printf("Error during final cleanup: %v", err)
+		} else {
+			log.Println("Bootstrap cleanup complete.")
 		}
 	}()
 
@@ -58,18 +60,7 @@ func main() {
 var rootCmd *cobra.Command
 
 func init() {
-	// cobra.OnInitialize can't handle errors, so we wrap initConfig.
-	// The error is checked and handled inside newRootCmd's PersistentPreRunE,
-	// which is a more appropriate place for error handling that needs to
-	// stop command execution. For now, we just log if there's an issue
-	// during the initial setup phase.
-	cobra.OnInitialize(func() { _ = initConfig() })
 	rootCmd = newRootCmd()
-
-	// Set defaults in viper. These are used if not set in the config file or by flags.
-	viper.SetDefault("database.type", "sqlite")
-	viper.SetDefault("database.dsn", "./keymaster.db")
-	viper.SetDefault("language", "en")
 }
 
 // newRootCmd creates and configures a new root cobra command.
@@ -89,7 +80,6 @@ Running without a subcommand will launch the interactive TUI.`,
 			// Initialize the database for all commands.
 			// Viper has already read the config by this point.
 			dbType := viper.GetString("database.type")
-			i18n.Init(viper.GetString("language")) // Initialize i18n here
 			dsn := viper.GetString("database.dsn")
 			if err := db.InitDB(dbType, dsn); err != nil {
 				return errors.New(i18n.T("config.error_init_db", err))
@@ -107,6 +97,7 @@ Running without a subcommand will launch the interactive TUI.`,
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			// The database is already initialized by PersistentPreRunE.
+			i18n.Init(viper.GetString("language")) // Initialize i18n for the TUI
 			tui.Run()
 		},
 	}
@@ -122,6 +113,12 @@ Running without a subcommand will launch the interactive TUI.`,
 	// Set version
 	cmd.Version = version
 
+	// Initialize config on every command execution.
+	cobra.OnInitialize(func() { _ = initConfig() })
+
+	// Set defaults in viper. These are used if not set in the config file or by flags.
+	viper.SetDefault("database.type", "sqlite")
+	viper.SetDefault("database.dsn", "./keymaster.db")
 	// Define flags
 	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keymaster.yaml or ./keymaster.yaml)")
 	cmd.PersistentFlags().String("db-type", "sqlite", "Database type (e.g., sqlite, postgres)")
@@ -132,10 +129,6 @@ Running without a subcommand will launch the interactive TUI.`,
 	viper.BindPFlag("database.type", cmd.PersistentFlags().Lookup("db-type"))
 	viper.BindPFlag("database.dsn", cmd.PersistentFlags().Lookup("db-dsn"))
 	viper.BindPFlag("language", cmd.PersistentFlags().Lookup("lang"))
-
-	// Note: Flags are configured in the init() function on the global rootCmd.
-	// Cobra automatically handles making these flags available on new command
-	// instances created for tests, so we don't need to re-declare them here.
 
 	return cmd
 }
@@ -228,6 +221,7 @@ If no account is specified, deploys to all active accounts in the database.`,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
+		i18n.Init(viper.GetString("language")) // Initialize i18n for CLI output
 		allAccounts, err := db.GetAllActiveAccounts()
 		if err != nil {
 			log.Fatalf("Error getting accounts: %v", err)
@@ -278,6 +272,7 @@ var rotateKeyCmd = &cobra.Command{
 	Long: `Generates a new ed25519 key pair, saves it to the database, and sets it as the active key.
 The previous key is kept for accessing hosts that have not yet been updated.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		i18n.Init(viper.GetString("language")) // Initialize i18n for CLI output
 		fmt.Println(i18n.T("rotate_key.cli_rotating"))
 		// DB is initialized in PersistentPreRunE.
 		publicKeyString, privateKeyString, err := internalkey.GenerateAndMarshalEd25519Key("keymaster-system-key")
@@ -306,6 +301,7 @@ var auditCmd = &cobra.Command{
 Use --mode=serial to only verify the Keymaster header serial number on the remote host matches the account's last deployed serial (useful during staged rotations).`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
+		i18n.Init(viper.GetString("language")) // Initialize i18n for CLI output
 		accounts, err := db.GetAllActiveAccounts()
 		if err != nil {
 			log.Fatalf("%s", i18n.T("audit.cli_error_get_accounts", err))
@@ -351,6 +347,7 @@ var importCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1), // Ensures we get exactly one file path
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
+		i18n.Init(viper.GetString("language")) // Initialize i18n for CLI output
 		// DB and i18n are initialized in PersistentPreRunE.
 		fmt.Println(i18n.T("import.start", filePath))
 
@@ -432,6 +429,7 @@ step before Keymaster can manage a new host.`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
+		i18n.Init(viper.GetString("language")) // Initialize i18n for CLI output
 		target := args[0]
 		var hostname string
 		if strings.Contains(target, "@") {
@@ -527,6 +525,7 @@ Each account with a label will use the label as the Host alias.`,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
+		i18n.Init(viper.GetString("language")) // Initialize i18n for CLI output
 		accounts, err := db.GetAllActiveAccounts()
 		if err != nil {
 			log.Fatalf("%s", i18n.T("export_ssh_config.error_get_accounts", err))

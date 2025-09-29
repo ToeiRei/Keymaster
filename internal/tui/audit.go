@@ -401,8 +401,15 @@ func (m auditModel) View() string {
 			}
 		}
 		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, listItems...)))
-		filterStatus := getFilterStatusLine(m.isFilteringAccount, m.accountFilter, FilterI18nKeys{Filtering: "audit.tui.filtering", FilterActive: "audit.tui.filter_active", FilterHint: "audit.tui.filter_hint"})
-		help := helpFooterStyle.Render(i18n.T("audit.tui.help_select") + "  " + filterStatus)
+		var filterStatus string
+		if m.isFilteringAccount {
+			filterStatus = i18n.T("audit.tui.filtering", m.accountFilter)
+		} else if m.accountFilter != "" {
+			filterStatus = i18n.T("audit.tui.filter_active", m.accountFilter)
+		} else {
+			filterStatus = i18n.T("audit.tui.filter_hint")
+		}
+		help := helpFooterStyle.Render(fmt.Sprintf("%s  %s", i18n.T("audit.tui.help_select"), filterStatus))
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 
 	case auditStateSelectTag:

@@ -481,11 +481,14 @@ func (m *accountsModel) detailContentView() string {
 // footerView renders the help text at the bottom of the page.
 func (m *accountsModel) footerView() string {
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
-	filterStatus := getFilterStatusLine(m.isFiltering, m.filter, FilterI18nKeys{
-		Filtering:    "accounts.filtering",
-		FilterActive: "accounts.filter_active",
-		FilterHint:   "accounts.filter_hint",
-	})
+	var filterStatus string
+	if m.isFiltering {
+		filterStatus = i18n.T("accounts.filtering", m.filter)
+	} else if m.filter != "" {
+		filterStatus = i18n.T("accounts.filter_active", m.filter)
+	} else {
+		filterStatus = i18n.T("accounts.filter_hint")
+	}
 	return footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T("accounts.footer"), filterStatus))
 }
 
@@ -564,10 +567,11 @@ func (m *accountsModel) View() string {
 	// The pane height is the viewport height plus the vertical padding, borders, and title space.
 	paneHeight := m.viewport.Height + 6
 	menuWidth := m.width/2 - 4
+	detailWidth := m.width - menuWidth - 8 // Correctly calculate the remaining width
 
 	leftPane := paneStyle.Width(menuWidth).Height(paneHeight).Render(listPaneBody)
-	rightPane := paneStyle.Width(m.width - menuWidth - 8).Height(paneHeight).Render(detailContent)
-	mainArea := lipgloss.JoinHorizontal(lipgloss.Left, leftPane, rightPane)
+	rightPane := paneStyle.Width(detailWidth).Height(paneHeight).Render(detailContent)
+	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
 
 	return lipgloss.JoinVertical(lipgloss.Top, header, mainArea, m.footerView())
 }
