@@ -69,10 +69,8 @@ func (s *PostgresStore) AddAccount(username, hostname, label, tags string) (int,
 	if err != nil {
 		return 0, err
 	}
-	if err == nil {
-		_ = s.LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
-	}
-	return id, err
+	_ = s.LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
+	return id, nil
 }
 
 func (s *PostgresStore) DeleteAccount(id int) error {

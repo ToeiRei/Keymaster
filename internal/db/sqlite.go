@@ -70,9 +70,7 @@ func (s *SqliteStore) AddAccount(username, hostname, label, tags string) (int, e
 	if err != nil {
 		return 0, fmt.Errorf("failed to get last insert ID: %w", err)
 	}
-	if err == nil {
-		_ = s.LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
-	}
+	_ = s.LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
 	return int(id), err
 }
 
