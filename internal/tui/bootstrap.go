@@ -76,7 +76,9 @@ type bootstrapModel struct {
 	hostKeyVerified  bool
 
 	// Clipboard status
-	commandCopied bool
+	commandCopied        bool   // For bootstrap command
+	verifyCommandCopied  bool   // For ssh-keygen verify command
+	currentVerifyCommand string // Current verify command for copying
 }
 
 // Bootstrap workflow messages
@@ -894,6 +896,15 @@ func (m *bootstrapModel) viewError() string {
 // handleVerifyHostKeyKeys handles input during host key verification step.
 func (m *bootstrapModel) handleVerifyHostKeyKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
+	case "c":
+		// Copy verify command to clipboard
+		if m.currentVerifyCommand != "" {
+			if err := clipboard.WriteAll(m.currentVerifyCommand); err == nil {
+				m.verifyCommandCopied = true
+			}
+		}
+		return m, nil
+
 	case "left", "right", "h", "l":
 		m.confirmCursor = 1 - m.confirmCursor // Toggle between 0 and 1
 
@@ -1013,27 +1024,48 @@ func (m *bootstrapModel) viewVerifyHostKey() string {
 
 	content = append(content, "")
 	content = append(content, i18n.T("bootstrap.verify_hostkey_warning"))
+	content = append(content, "")
 	content = append(content, i18n.T("bootstrap.verify_hostkey_check_command"))
+	content = append(content, "")
 
 	// Generate specific ssh-keygen command based on key type
-	sshKeygenCmd := i18n.T("bootstrap.verify_hostkey_ssh_keygen") // fallback
+	sshKeygenCmd := "ssh-keygen -lf /etc/ssh/ssh_host_*_key.pub" // fallback
 	if len(parts) >= 1 {
 		keyType := parts[0]
 		// Map SSH key types to their corresponding host key files
 		switch keyType {
 		case "ssh-rsa":
-			sshKeygenCmd = "   ssh-keygen -lf /etc/ssh/ssh_host_rsa_key.pub"
+			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_rsa_key.pub"
 		case "ssh-dss":
-			sshKeygenCmd = "   ssh-keygen -lf /etc/ssh/ssh_host_dsa_key.pub"
+			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_dsa_key.pub"
 		case "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521":
-			sshKeygenCmd = "   ssh-keygen -lf /etc/ssh/ssh_host_ecdsa_key.pub"
+			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_ecdsa_key.pub"
 		case "ssh-ed25519":
-			sshKeygenCmd = "   ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub"
+			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub"
 		default:
-			sshKeygenCmd = "   ssh-keygen -lf /etc/ssh/ssh_host_*_key.pub"
+			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_*_key.pub"
 		}
 	}
-	content = append(content, sshKeygenCmd)
+
+	// Store the command for copying
+	m.currentVerifyCommand = sshKeygenCmd
+
+	// Style the command with highlighting but no box
+	styledCommand := lipgloss.NewStyle().
+		Background(lipgloss.Color("236")).
+		Foreground(lipgloss.Color("220")).
+		Padding(0, 1).
+		Render(sshKeygenCmd)
+
+	content = append(content, ""+styledCommand)
+	content = append(content, "")
+
+	// Show copy status or help for verify command (indented)
+	if m.verifyCommandCopied {
+		content = append(content, ""+successStyle.Render(i18n.T("bootstrap.verify_hostkey_copied")))
+	} else {
+		content = append(content, ""+helpStyle.Render(i18n.T("bootstrap.verify_hostkey_copy_hint")))
+	}
 	content = append(content, "")
 
 	// Accept/Reject buttons using modern button styles
