@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -277,6 +278,18 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.usageReportAccts = accounts
 				m.state = publicKeysUsageView
 				m.status = ""
+			}
+			return m, nil
+		case "c": // Copy to clipboard
+			if len(m.displayedKeys) > 0 {
+				keyToCopy := m.displayedKeys[m.cursor]
+				keyContent := fmt.Sprintf("%s %s %s", keyToCopy.Algorithm, keyToCopy.KeyData, keyToCopy.Comment)
+				err := clipboard.WriteAll(keyContent)
+				if err != nil {
+					m.status = i18n.T("public_keys.status.copy_failed", err.Error())
+				} else {
+					m.status = i18n.T("public_keys.status.copy_success", keyToCopy.Comment)
+				}
 			}
 			return m, nil
 		}

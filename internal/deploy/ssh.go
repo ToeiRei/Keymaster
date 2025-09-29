@@ -166,8 +166,13 @@ func newDeployerInternal(host, user, privateKey string, isBootstrap bool) (*Depl
 // compatibility with SFTP servers that don't support atomic overwrites (e.g., on Windows).
 func (d *Deployer) DeployAuthorizedKeys(content string) error {
 	// 1. Ensure .ssh directory exists with correct permissions.
-	sshDir := ".ssh"
-	_ = d.sftp.Mkdir(sshDir) // Ignore error if it already exists.
+	const sshDir = ".ssh"
+	if _, err := d.sftp.Stat(sshDir); err != nil {
+		// If the directory doesn't exist, create it.
+		if err := d.sftp.Mkdir(sshDir); err != nil {
+			return fmt.Errorf("failed to create .ssh directory: %w", err)
+		}
+	}
 	if err := d.sftp.Chmod(sshDir, 0700); err != nil {
 		return fmt.Errorf("failed to chmod .ssh directory: %w", err)
 	}

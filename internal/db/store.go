@@ -20,6 +20,7 @@ type Store interface {
 	UpdateAccountSerial(id, serial int) error
 	ToggleAccountStatus(id int) error
 	UpdateAccountLabel(id int, label string) error
+	UpdateAccountHostname(id int, hostname string) error
 	UpdateAccountTags(id int, tags string) error
 	GetAllActiveAccounts() ([]model.Account, error)
 

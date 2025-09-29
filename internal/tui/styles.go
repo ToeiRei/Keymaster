@@ -21,9 +21,6 @@ const (
 
 // Styles defines the reusable lipgloss styles for various UI components.
 var (
-	// General
-	docStyle = lipgloss.NewStyle().Margin(1, 2)
-
 	// Help text
 	helpStyle = lipgloss.NewStyle().Foreground(colorSubtle)
 

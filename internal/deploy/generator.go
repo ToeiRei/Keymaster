@@ -19,14 +19,11 @@ import (
 // SystemKeyRestrictions defines the SSH options applied to the Keymaster system key.
 // These restrictions limit the key to only allow SFTP access for file management,
 // enhancing security by preventing shell access, port forwarding, etc.
-const SystemKeyRestrictions = "command=\"internal-sftp\",no-port-forwarding,no-x11-forwarding,no-agent-forwarding,no-pty"
+const SystemKeyRestrictions = `command="internal-sftp",no-port-forwarding,no-x11-forwarding,no-agent-forwarding,no-pty`
 
 // GenerateKeysContent constructs the authorized_keys file content for a given account.
-// It combines the active system key, global user keys, and account-specific keys.
+// It defaults to using the currently active system key.
 func GenerateKeysContent(accountID int) (string, error) {
-	var content strings.Builder
-
-	// 1. Get the active system key. This is always the first key.
 	activeKey, err := db.GetActiveSystemKey()
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve active system key: %w", err)
@@ -34,12 +31,27 @@ func GenerateKeysContent(accountID int) (string, error) {
 	if activeKey == nil {
 		return "", fmt.Errorf("no active system key found. please generate one first")
 	}
+	return GenerateKeysContentForSerial(accountID, activeKey.Serial)
+}
+
+// GenerateKeysContentForSerial constructs the authorized_keys file content for a given account using a specific system key serial.
+func GenerateKeysContentForSerial(accountID int, serial int) (string, error) {
+	var content strings.Builder
+
+	// 1. Get the active system key. This is always the first key.
+	systemKey, err := db.GetSystemKeyBySerial(serial)
+	if err != nil {
+		return "", fmt.Errorf("could not retrieve active system key: %w", err)
+	}
+	if systemKey == nil {
+		return "", fmt.Errorf("no active system key found. please generate one first")
+	}
 
 	// Add the Keymaster header and the restricted system key.
-	content.WriteString(fmt.Sprintf("# Keymaster Managed Keys (Serial: %d)\n", activeKey.Serial))
+	content.WriteString(fmt.Sprintf("# Keymaster Managed Keys (Serial: %d)\n", systemKey.Serial))
 
 	// Prepend restrictions to the system key.
-	restrictedSystemKey := fmt.Sprintf("%s %s", SystemKeyRestrictions, activeKey.PublicKey)
+	restrictedSystemKey := fmt.Sprintf("%s %s", SystemKeyRestrictions, systemKey.PublicKey)
 	content.WriteString(restrictedSystemKey)
 
 	// 2. Get all global public keys.

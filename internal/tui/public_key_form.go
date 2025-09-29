@@ -35,7 +35,9 @@ func newPublicKeyFormModel() publicKeyFormModel {
 	ti := textinput.New()
 	ti.Placeholder = i18n.T("public_key_form.placeholder")
 	ti.Focus()
-	ti.CharLimit = 1024
+	// Allow substantially longer inputs to support large SSH public keys
+	// (including long comments). 8 KiB should be more than enough.
+	ti.CharLimit = 8192
 	ti.Width = 80
 	ti.Prompt = i18n.T("public_key_form.prompt")
 	ti.TextStyle = focusedStyle

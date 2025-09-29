@@ -411,13 +411,6 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmd, vpCmd)
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 // ensureCursorInView adjusts the viewport's Y offset to ensure the cursor is visible.
 // It implements "edge scrolling," where the list only scrolls when the cursor
 // hits the top or bottom of the visible area.

@@ -32,6 +32,7 @@ const (
 	rotateKeyView
 	deployView
 	auditLogView
+	auditView
 	tagsView
 	bootstrapView
 )
@@ -58,6 +59,7 @@ type mainModel struct {
 	state      viewState
 	menu       menuModel
 	deployer   deployModel
+	auditor    auditModel
 	rotator    *rotateKeyModel
 	assignment *assignKeysModel
 	keys       *publicKeysModel
@@ -89,6 +91,7 @@ func initialModel() mainModel {
 				i18n.T("menu.rotate_system_keys"),
 				i18n.T("menu.deploy_to_fleet"),
 				i18n.T("menu.view_audit_log"),
+				i18n.T("menu.audit_hosts"),
 				i18n.T("menu.view_accounts_by_tag"),
 			},
 		},
@@ -198,6 +201,15 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newAuditLogModel, cmd = m.auditLog.Update(msg)
 		m.auditLog = newAuditLogModel.(*auditLogModel)
 
+	case auditView:
+		if _, ok := msg.(backToMenuMsg); ok {
+			m.state = menuView
+			return m, refreshDashboardCmd()
+		}
+		var newAuditModel tea.Model
+		newAuditModel, cmd = m.auditor.Update(msg)
+		m.auditor = newAuditModel.(auditModel)
+
 	case tagsView:
 		if _, ok := msg.(backToMenuMsg); ok {
 			m.state = menuView
@@ -296,7 +308,11 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					newAuditLogModel, cmd = m.auditLog.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
 					m.auditLog = newAuditLogModel.(*auditLogModel)
 					return m, cmd
-				case 6: // View Accounts by Tag
+				case 6: // Audit Hosts
+					m.state = auditView
+					m.auditor = newAuditModel()
+					return m, nil
+				case 7: // View Accounts by Tag
 					m.state = tagsView
 					m.tags = newTagsViewModel()
 					return m, nil
@@ -318,6 +334,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					i18n.T("menu.rotate_system_keys"),
 					i18n.T("menu.deploy_to_fleet"),
 					i18n.T("menu.view_audit_log"),
+					i18n.T("menu.audit_hosts"),
 					i18n.T("menu.view_accounts_by_tag"),
 				}
 				// Save the new language setting
@@ -335,6 +352,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					i18n.T("menu.rotate_system_keys"),
 					i18n.T("menu.deploy_to_fleet"),
 					i18n.T("menu.view_audit_log"),
+					i18n.T("menu.audit_hosts"),
 					i18n.T("menu.view_accounts_by_tag"),
 				}
 				return m, nil
@@ -368,6 +386,8 @@ func (m mainModel) View() string {
 		return m.deployer.View()
 	case auditLogView:
 		return m.auditLog.View()
+	case auditView:
+		return m.auditor.View()
 	case tagsView:
 		return m.tags.View()
 	case bootstrapView:
@@ -435,26 +455,34 @@ func (m menuModel) View(data dashboardData, width, height int) string {
 		dashboardItems = append(dashboardItems, helpStyle.Render(i18n.T("dashboard.no_recent_activity")))
 	} else {
 		for _, log := range data.recentLogs {
-			ts := log.Timestamp
-			ts = ts[5:16] // MM-DD HH:MM
+			// --- Refactored log line rendering with color and better truncation ---
+			ts := log.Timestamp[5:16] // Format as MM-DD HH:MM
 
-			action := log.Action
-			maxActionLen := 15
-			if len(action) > maxActionLen {
-				action = action[:maxActionLen]
-			}
-
-			details := log.Details
+			// Calculate available space inside the pane for the log line content.
 			innerDashboardWidth := dashboardWidth - 4 - 2
-			maxDetailsLen := innerDashboardWidth - len(ts) - maxActionLen - 2
-			if maxDetailsLen < 5 {
-				maxDetailsLen = 5
-			}
-			if len(details) > maxDetailsLen {
-				details = details[:maxDetailsLen-3] + "..."
+			availableWidth := innerDashboardWidth - len(ts) - 1 // Subtract timestamp and a space
+
+			// Get the styled action from audit_log.go's logic and its plain-text length.
+			actionStyle := auditActionStyle(log.Action)
+			styledAction := actionStyle.Render(log.Action)
+			actionLen := len(log.Action)
+
+			// Calculate the remaining space for the details string.
+			detailsWidth := availableWidth - actionLen - 1 // -1 for space after action
+			if detailsWidth < 10 {
+				detailsWidth = 10 // Ensure we show at least a little detail.
 			}
 
-			logLine := fmt.Sprintf("%s %-15s %s", helpStyle.Render(ts), action, details)
+			// Gracefully truncate the details if they are too long.
+			details := log.Details
+			if len(details) > detailsWidth {
+				details = details[:detailsWidth-3] + "..."
+			}
+
+			// Use lipgloss.JoinHorizontal to correctly lay out the styled and unstyled parts.
+			logLine := lipgloss.JoinHorizontal(lipgloss.Left,
+				helpStyle.Render(ts), " ", styledAction, " ", helpStyle.Render(details))
+
 			dashboardItems = append(dashboardItems, logLine)
 		}
 	}

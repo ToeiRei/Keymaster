@@ -2,9 +2,6 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-// package tui provides the terminal user interface for Keymaster.
-// This file contains the logic for the deployment view, which allows users
-// to deploy keys to single accounts, tags, or the entire fleet.
 package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
@@ -12,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
@@ -391,9 +389,17 @@ func (m deployModel) updateShowAuthorizedKeys(msg tea.Msg) (tea.Model, tea.Cmd) 
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
-			m.status = ""
+			m.status = "" // Clear copy status on exit
 			m.state = deployStateSelectAccount
 			m.err = nil
+			return m, nil
+		case "c":
+			err := clipboard.WriteAll(m.authorizedKeys)
+			if err != nil {
+				m.status = i18n.T("deploy.status.copy_failed", err.Error())
+			} else {
+				m.status = i18n.T("deploy.status.copy_success")
+			}
 			return m, nil
 		}
 	}
@@ -505,7 +511,11 @@ func (m deployModel) View() string {
 	case deployStateShowAuthorizedKeys:
 		// Render just the keys for easy copy-pasting, with a title and help outside the main content.
 		title := titleStyle.Render(i18n.T("deploy.show_keys", m.selectedAccount.String()))
-		mainPane := lipgloss.JoinVertical(lipgloss.Left, title, "", m.authorizedKeys)
+		var content []string
+		if m.status != "" {
+			content = append(content, statusMessageStyle.Render(m.status), "")
+		}
+		mainPane := lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, content...), m.authorizedKeys)
 		help := helpFooterStyle.Render(i18n.T("deploy.help_keys"))
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 
@@ -566,55 +576,7 @@ func (m deployModel) View() string {
 // performDeploymentCmd is a tea.Cmd that executes the full deployment logic for a single account.
 func performDeploymentCmd(account model.Account) tea.Cmd {
 	return func() tea.Msg {
-		var connectKey *model.SystemKey
-		var err error
-		if account.Serial == 0 {
-			// Bootstrap: use the active system key.
-			connectKey, err = db.GetActiveSystemKey() // i18n
-			if err != nil {
-				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_get_bootstrap_key"), err)}
-			}
-			if connectKey == nil {
-				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_no_bootstrap_key_tui"))}
-			}
-		} else {
-			// Normal deployment: use the key matching the account's current serial.
-			connectKey, err = db.GetSystemKeyBySerial(account.Serial) // i18n
-			if err != nil {
-				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_get_serial_key"), account.Serial, err)}
-			}
-			if connectKey == nil {
-				return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_no_serial_key_tui"), account.Serial, account.String())}
-			}
-		}
-
-		// 2. Generate the target authorized_keys content (always uses the *active* key).
-		content, err := deploy.GenerateKeysContent(account.ID)
-		if err != nil {
-			return deploymentResultMsg{account: account, err: err} // Already i18n
-		}
-		activeKey, err := db.GetActiveSystemKey() // Need this for the new serial.
-		if err != nil || activeKey == nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_get_active_key_for_serial"))}
-		}
-
-		// 3. Establish connection and deploy.
-		deployer, err := deploy.NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
-		if err != nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_connection_failed_tui", account.String(), err))}
-		}
-		defer deployer.Close()
-
-		if err := deployer.DeployAuthorizedKeys(content); err != nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_deployment_failed_tui", account.String(), err))}
-		}
-
-		// 4. Update the database on success.
-		if err := db.UpdateAccountSerial(account.ID, activeKey.Serial); err != nil {
-			return deploymentResultMsg{account: account, err: fmt.Errorf(i18n.T("deploy.error_db_update_failed_tui", err))}
-		}
-
-		return deploymentResultMsg{account: account, err: nil} // Success
+		return deploymentResultMsg{account: account, err: deploy.RunDeploymentForAccount(account, true)}
 	}
 }
 

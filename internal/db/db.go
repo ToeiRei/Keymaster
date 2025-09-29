@@ -149,6 +149,11 @@ func UpdateAccountLabel(id int, label string) error {
 	return store.UpdateAccountLabel(id, label)
 }
 
+// UpdateAccountHostname updates the hostname for a given account.
+func UpdateAccountHostname(id int, hostname string) error {
+	return store.UpdateAccountHostname(id, hostname)
+}
+
 // UpdateAccountTags updates the tags for a given account.
 func UpdateAccountTags(id int, tags string) error {
 	return store.UpdateAccountTags(id, tags)
