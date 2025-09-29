@@ -27,38 +27,72 @@ type Deployer struct {
 }
 
 // NewDeployer creates a new SSH connection and returns a Deployer.
+// For bootstrap connections, use NewBootstrapDeployer instead.
 func NewDeployer(host, user, privateKey string) (*Deployer, error) {
-	// Define the host key callback once to be reused.
-	hostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-		// The hostname passed to the callback can include the port. We need to strip it
-		// to ensure we're looking up the correct key in our database. The `hostname`
-		// argument to this callback is the address we are dialing.
-		hostForLookup, _, err := net.SplitHostPort(hostname)
-		if err != nil {
-			// If SplitHostPort fails, it means there was no port, so we use the original string.
-			hostForLookup = hostname
+	return newDeployerInternal(host, user, privateKey, false)
+}
+
+// NewBootstrapDeployer creates a new SSH connection for bootstrap operations.
+// It accepts any host key and saves it to the database for future connections.
+func NewBootstrapDeployer(host, user, privateKey string) (*Deployer, error) {
+	return newDeployerInternal(host, user, privateKey, true)
+}
+
+// newDeployerInternal is the internal implementation for creating deployers.
+func newDeployerInternal(host, user, privateKey string, isBootstrap bool) (*Deployer, error) {
+	// Define the host key callback based on bootstrap mode.
+	var hostKeyCallback ssh.HostKeyCallback
+
+	if isBootstrap {
+		// For bootstrap, accept any host key and save it
+		hostKeyCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			// Strip port if present
+			hostOnly, _, err := net.SplitHostPort(hostname)
+			if err != nil {
+				hostOnly = hostname
+			}
+
+			// Save the host key for future connections
+			presentedKey := string(ssh.MarshalAuthorizedKey(key))
+			if err := db.AddKnownHostKey(hostOnly, presentedKey); err != nil {
+				// Log error but don't fail the connection
+				// The host key can be added manually later
+			}
+
+			return nil // Accept the key for bootstrap
 		}
+	} else {
+		// Normal mode: verify host keys
+		hostKeyCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			// The hostname passed to the callback can include the port. We need to strip it
+			// to ensure we're looking up the correct key in our database.
+			host, _, err := net.SplitHostPort(hostname)
+			if err != nil {
+				// If SplitHostPort fails, it means there was no port, so we use the original string.
+				host = hostname
+			}
 
-		// The key is presented in the format "ssh-ed25519 AAA..."
-		presentedKey := string(ssh.MarshalAuthorizedKey(key))
+			// The key is presented in the format "ssh-ed25519 AAA..."
+			presentedKey := string(ssh.MarshalAuthorizedKey(key))
 
-		// Check if we have a trusted key for this host in our database.
-		knownKey, err := db.GetKnownHostKey(hostForLookup)
-		if err != nil {
-			return fmt.Errorf("failed to query known_hosts database: %w", err)
+			// Check if we have a trusted key for this host in our database.
+			knownKey, err := db.GetKnownHostKey(host)
+			if err != nil {
+				return fmt.Errorf("failed to query known_hosts database: %w", err)
+			}
+
+			// If we don't have a key, this is the first connection.
+			if knownKey == "" {
+				return fmt.Errorf("unknown host key for %s. run 'keymaster trust-host' to add it", host)
+			}
+
+			// If the key exists, it must match exactly.
+			if knownKey != presentedKey {
+				return fmt.Errorf("!!! HOST KEY MISMATCH FOR %s !!!\nRemote key presented: %s\nThis could be a man-in-the-middle attack", host, presentedKey)
+			}
+
+			return nil // Host key is trusted.
 		}
-
-		// If we don't have a key, this is the first connection.
-		if knownKey == "" {
-			return fmt.Errorf("unknown host key for %s. run 'keymaster trust-host' to add it", hostForLookup)
-		}
-
-		// If the key exists, it must match exactly.
-		if knownKey != presentedKey {
-			return fmt.Errorf("!!! HOST KEY MISMATCH FOR %s !!!\nRemote key presented: %s\nThis could be a man-in-the-middle attack", hostForLookup, presentedKey)
-		}
-
-		return nil // Host key is trusted.
 	}
 
 	// Add port 22 if not specified.

@@ -34,13 +34,24 @@ type accountModifiedMsg struct {
 	accountID int
 }
 
+// bootstrapRequestedMsg is a message to signal that bootstrap workflow should be started.
+type bootstrapRequestedMsg struct {
+	username string
+	hostname string
+	label    string
+	tags     string
+}
+
 type accountFormModel struct {
 	// focusIndex determines which input or button is currently active.
-	// 0: user, 1: host, 2: label, 3: tags, 4: submit button.
+	// 0: user, 1: host, 2: label, 3: tags, 4: bootstrap checkbox, 5: submit button.
 	focusIndex     int
 	inputs         []textinput.Model // 0: user, 1: host, 2: label, 3: tags
 	err            error
 	editingAccount *model.Account // If not nil, we are in edit mode.
+
+	// Bootstrap functionality
+	bootstrapEnabled bool // Whether bootstrap mode is enabled
 
 	// For tag autocompletion
 	allTags          []string
@@ -164,6 +175,20 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			return m, func() tea.Msg { return backToListMsg{} }
 
+		// Handle spacebar for bootstrap checkbox toggle
+		case " ":
+			if m.focusIndex == len(m.inputs) && m.editingAccount == nil {
+				m.bootstrapEnabled = !m.bootstrapEnabled
+				return m, nil
+			}
+			// If not on checkbox, pass through to input
+			if m.focusIndex < len(m.inputs) {
+				var cmd tea.Cmd
+				m.inputs[m.focusIndex], cmd = m.inputs[m.focusIndex].Update(msg)
+				return m, cmd
+			}
+			return m, nil
+
 		// Set focus to next input
 		case "tab", "shift+tab", "enter", "up", "down":
 			s := msg.String()
@@ -176,9 +201,15 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
+			// Handle checkbox toggle for bootstrap (enter key)
+			if s == "enter" && m.focusIndex == len(m.inputs) && m.editingAccount == nil {
+				m.bootstrapEnabled = !m.bootstrapEnabled
+				return m, nil
+			}
+
 			// Did the user press enter while the submit button was focused?
-			// If so, create the account.
-			if s == "enter" && m.focusIndex == len(m.inputs) {
+			// If so, create the account or start bootstrap.
+			if s == "enter" && m.focusIndex == len(m.inputs)+1 {
 				if m.editingAccount != nil {
 					// Update existing account
 					label := m.inputs[2].Value()
@@ -196,7 +227,7 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return accountModifiedMsg{isNew: false, username: m.editingAccount.Username, hostname: m.editingAccount.Hostname, accountID: m.editingAccount.ID}
 					}
 				} else {
-					// Add new account
+					// Validate inputs first
 					username := strings.TrimSpace(m.inputs[0].Value())
 					hostname := strings.TrimSpace(m.inputs[1].Value())
 					label := strings.TrimSpace(m.inputs[2].Value())
@@ -207,21 +238,34 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, nil
 					}
 
-					newID, err := db.AddAccount(username, hostname, label, tags)
-					if err != nil {
-						m.err = err
-						return m, nil
-					}
-					// Signal that we're done.
-					return m, func() tea.Msg {
-						return accountModifiedMsg{isNew: true, username: username, hostname: hostname, accountID: newID}
+					if m.bootstrapEnabled {
+						// Start bootstrap workflow
+						return m, func() tea.Msg {
+							return bootstrapRequestedMsg{
+								username: username,
+								hostname: hostname,
+								label:    label,
+								tags:     tags,
+							}
+						}
+					} else {
+						// Add new account directly (existing behavior)
+						newID, err := db.AddAccount(username, hostname, label, tags)
+						if err != nil {
+							m.err = err
+							return m, nil
+						}
+						// Signal that we're done.
+						return m, func() tea.Msg {
+							return accountModifiedMsg{isNew: true, username: username, hostname: hostname, accountID: newID}
+						}
 					}
 				}
 			}
 
 			// Cycle focus
 			if m.editingAccount != nil { // In edit mode
-				// Cycle between label, tags, and submit button
+				// Cycle between label, tags, and submit button (no bootstrap checkbox in edit mode)
 				if s == "up" || s == "shift+tab" {
 					m.focusIndex--
 					if m.focusIndex < 2 { // 2 is the first editable field (label)
@@ -234,16 +278,17 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			} else {
-				// In add mode, cycle through all fields
+				// In add mode, cycle through all fields including bootstrap checkbox
+				// 0-3: inputs, 4: bootstrap checkbox, 5: submit button
 				if s == "up" || s == "shift+tab" {
 					m.focusIndex--
 				} else {
 					m.focusIndex++
 				}
-				if m.focusIndex > len(m.inputs) {
+				if m.focusIndex > len(m.inputs)+1 { // +1 for bootstrap checkbox + submit button
 					m.focusIndex = 0
 				} else if m.focusIndex < 0 {
-					m.focusIndex = len(m.inputs)
+					m.focusIndex = len(m.inputs) + 1 // Start at submit button
 				}
 			}
 
@@ -293,18 +338,20 @@ func (m accountFormModel) updateInputs(msg tea.Msg) (accountFormModel, tea.Cmd) 
 
 // View renders the account form UI based on the current model state.
 func (m accountFormModel) View() string {
-	var viewItems []string
+	var contentItems []string
 
+	// Title section
 	if m.editingAccount != nil {
-		viewItems = append(viewItems, titleStyle.Render("✏️ "+i18n.T("account_form.edit_title")))
+		contentItems = append(contentItems, titleStyle.Render("✏️ "+i18n.T("account_form.edit_title")))
 	} else {
-		viewItems = append(viewItems, titleStyle.Render("✨ "+i18n.T("account_form.add_title")))
+		contentItems = append(contentItems, titleStyle.Render("✨ "+i18n.T("account_form.add_title")))
 	}
 
-	// The title's padding adds a newline, so we add one more for a blank line.
-	viewItems = append(viewItems, "")
+	contentItems = append(contentItems, "")
+
+	// Input fields
 	for i := range m.inputs {
-		viewItems = append(viewItems, m.inputs[i].View())
+		contentItems = append(contentItems, m.inputs[i].View())
 		// If this is the tags input, add suggestions right after it.
 		if i == 3 && len(m.suggestions) > 0 {
 			var suggestionLines []string
@@ -319,23 +366,68 @@ func (m accountFormModel) View() string {
 			suggestionsBox := lipgloss.NewStyle().
 				PaddingLeft(len(m.inputs[i].Prompt) + 1).
 				Render(lipgloss.JoinVertical(lipgloss.Left, suggestionLines...))
-			viewItems = append(viewItems, suggestionsBox)
+			contentItems = append(contentItems, suggestionsBox)
 		}
 	}
 
-	button := formItemStyle.Render("[ " + i18n.T("account_form.submit") + " ]")
-	if m.focusIndex == len(m.inputs) {
-		button = formSelectedItemStyle.Render("[ " + i18n.T("account_form.submit") + " ]")
-	}
-	viewItems = append(viewItems, "", button) // Blank line before button
+	// Add bootstrap checkbox (only in add mode, not edit mode)
+	if m.editingAccount == nil {
+		checkbox := "☐ " + i18n.T("account_form.bootstrap_label")
+		if m.bootstrapEnabled {
+			checkbox = "☑ " + i18n.T("account_form.bootstrap_label")
+		}
 
+		if m.focusIndex == len(m.inputs) {
+			checkbox = formSelectedItemStyle.Render(checkbox)
+		} else {
+			checkbox = formItemStyle.Render(checkbox)
+		}
+		contentItems = append(contentItems, "", checkbox)
+	}
+
+	// Submit button using modern button style
+	submitButtonIndex := len(m.inputs)
+	if m.editingAccount == nil {
+		submitButtonIndex = len(m.inputs) + 1 // Account for bootstrap checkbox
+	}
+
+	buttonText := i18n.T("account_form.submit")
+	if m.editingAccount == nil && m.bootstrapEnabled {
+		buttonText = i18n.T("account_form.bootstrap_submit")
+	}
+
+	var button string
+	if m.focusIndex == submitButtonIndex {
+		button = activeButtonStyle.Render(buttonText)
+	} else {
+		button = buttonStyle.Render(buttonText)
+	}
+	contentItems = append(contentItems, "", button)
+
+	// Error message
 	if m.err != nil {
-		viewItems = append(viewItems, "", helpStyle.Render(fmt.Sprintf(i18n.T("account_form.error"), m.err)))
+		contentItems = append(contentItems, "", errorStyle.Render(fmt.Sprintf(i18n.T("account_form.error"), m.err)))
 	}
 
-	viewItems = append(viewItems, "", helpStyle.Render(i18n.T("account_form.help")))
+	// Main pane with border (matching other pages)
+	paneStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorSubtle).
+		Padding(1, 2).
+		Width(60)
 
-	return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
+	mainContent := paneStyle.Render(lipgloss.JoinVertical(lipgloss.Left, contentItems...))
+
+	// Help footer with background (matching other pages)
+	helpFooterStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("241")).
+		Background(lipgloss.Color("236")).
+		Padding(0, 1).
+		Italic(true)
+
+	helpFooter := helpFooterStyle.Render(i18n.T("account_form.help"))
+
+	return lipgloss.JoinVertical(lipgloss.Left, mainContent, "", helpFooter)
 }
 
 // updateSuggestions calculates a new list of suggestions based on the current input.

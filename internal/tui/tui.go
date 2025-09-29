@@ -34,6 +34,7 @@ const (
 	auditLogView
 	auditView
 	tagsView
+	bootstrapView
 )
 
 // dashboardDataMsg is a message containing the data for the main menu dashboard.
@@ -65,6 +66,7 @@ type mainModel struct {
 	accounts   *accountsModel
 	auditLog   *auditLogModel
 	tags       tagsViewModel
+	bootstrap  *bootstrapModel
 	dashboard  dashboardData
 	width      int
 	height     int
@@ -123,6 +125,12 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = msg.data.err
 		}
 		return m, nil
+
+	case bootstrapRequestedMsg:
+		// Start bootstrap workflow
+		m.state = bootstrapView
+		m.bootstrap = newBootstrapModel(msg.username, msg.hostname, msg.label, msg.tags)
+		return m, m.bootstrap.Init()
 	}
 
 	// Delegate updates to the currently active view.
@@ -210,6 +218,36 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var newTagsModel tea.Model
 		newTagsModel, cmd = m.tags.Update(msg)
 		m.tags = newTagsModel.(tagsViewModel)
+
+	case bootstrapView:
+		// Handle back message or account completion
+		if _, ok := msg.(backToListMsg); ok {
+			m.state = accountsView
+			// Reinitialize accounts view to show updated list
+			newModel := newAccountsModel()
+			m.accounts = &newModel
+			var updatedModel tea.Model
+			updatedModel, cmd = m.accounts.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+			m.accounts = updatedModel.(*accountsModel)
+			return m, cmd
+		}
+		// Handle successful account creation from bootstrap
+		if accountMsg, ok := msg.(accountModifiedMsg); ok {
+			m.state = accountsView
+			// Reinitialize accounts view to show new account
+			newModel := newAccountsModel()
+			m.accounts = &newModel
+			var updatedModel tea.Model
+			updatedModel, cmd = m.accounts.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+			m.accounts = updatedModel.(*accountsModel)
+			// Also pass the account modified message to accounts view
+			updatedModel, cmd2 := m.accounts.Update(accountMsg)
+			m.accounts = updatedModel.(*accountsModel)
+			return m, tea.Batch(cmd, cmd2)
+		}
+		var newBootstrapModel tea.Model
+		newBootstrapModel, cmd = m.bootstrap.Update(msg)
+		m.bootstrap = newBootstrapModel.(*bootstrapModel)
 
 	default: // menuView
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
@@ -352,6 +390,8 @@ func (m mainModel) View() string {
 		return m.auditor.View()
 	case tagsView:
 		return m.tags.View()
+	case bootstrapView:
+		return m.bootstrap.View()
 	default: // menuView
 		return m.menu.View(m.dashboard, m.width, m.height)
 	}

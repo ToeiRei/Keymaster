@@ -4,7 +4,11 @@
 
 package db
 
-import "github.com/toeirei/keymaster/internal/model"
+import (
+	"time"
+
+	"github.com/toeirei/keymaster/internal/model"
+)
 
 // Store defines the interface for all database operations in Keymaster.
 // This allows for multiple database backends to be implemented.
@@ -49,4 +53,12 @@ type Store interface {
 	// Audit Log methods
 	GetAllAuditLogEntries() ([]model.AuditLogEntry, error)
 	LogAction(action string, details string) error
+
+	// Bootstrap Session methods
+	SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error
+	GetBootstrapSession(id string) (*model.BootstrapSession, error)
+	DeleteBootstrapSession(id string) error
+	UpdateBootstrapSessionStatus(id string, status string) error
+	GetExpiredBootstrapSessions() ([]*model.BootstrapSession, error)
+	GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error)
 }

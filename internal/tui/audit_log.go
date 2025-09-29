@@ -35,7 +35,8 @@ func auditActionStyle(action string) lipgloss.Style {
 	case strings.HasPrefix(action, "DELETE_ACCOUNT"),
 		strings.HasPrefix(action, "DELETE_PUBLIC_KEY"),
 		strings.HasPrefix(action, "UNASSIGN_KEY"),
-		strings.HasPrefix(action, "ROTATE_SYSTEM_KEY"):
+		strings.HasPrefix(action, "ROTATE_SYSTEM_KEY"),
+		strings.HasPrefix(action, "BOOTSTRAP_FAILED"):
 		return auditHighRiskStyle
 	// Medium risk (state/privilege change)
 	case strings.HasPrefix(action, "TOGGLE_ACCOUNT_STATUS"),
@@ -48,7 +49,8 @@ func auditActionStyle(action string) lipgloss.Style {
 		return auditMediumRiskStyle
 	// Low risk (add)
 	case strings.HasPrefix(action, "ADD_ACCOUNT"),
-		strings.HasPrefix(action, "ADD_PUBLIC_KEY"):
+		strings.HasPrefix(action, "ADD_PUBLIC_KEY"),
+		strings.HasPrefix(action, "BOOTSTRAP_HOST"):
 		return auditLowRiskStyle
 	// Info/neutral
 	default:

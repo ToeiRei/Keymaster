@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os/user"
 	"strings"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib" // PostgreSQL driver
 	"github.com/toeirei/keymaster/internal/model"
@@ -497,4 +498,112 @@ func (s *PostgresStore) LogAction(action string, details string) error {
 
 	_, err = s.db.Exec("INSERT INTO audit_log (username, action, details) VALUES ($1, $2, $3)", username, action, details)
 	return err
+}
+
+// SaveBootstrapSession saves a bootstrap session to the database.
+func (s *PostgresStore) SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error {
+	_, err := s.db.Exec(`INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, expires_at, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		id, username, hostname, label, tags, tempPublicKey, expiresAt, status)
+	return err
+}
+
+// GetBootstrapSession retrieves a bootstrap session by ID.
+func (s *PostgresStore) GetBootstrapSession(id string) (*model.BootstrapSession, error) {
+	var session model.BootstrapSession
+	var label, tags sql.NullString
+
+	err := s.db.QueryRow(`SELECT id, username, hostname, label, tags, temp_public_key, created_at, expires_at, status
+		FROM bootstrap_sessions WHERE id = $1`, id).Scan(
+		&session.ID, &session.Username, &session.Hostname, &label, &tags,
+		&session.TempPublicKey, &session.CreatedAt, &session.ExpiresAt, &session.Status)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if label.Valid {
+		session.Label = label.String
+	}
+	if tags.Valid {
+		session.Tags = tags.String
+	}
+
+	return &session, nil
+}
+
+// DeleteBootstrapSession removes a bootstrap session from the database.
+func (s *PostgresStore) DeleteBootstrapSession(id string) error {
+	_, err := s.db.Exec("DELETE FROM bootstrap_sessions WHERE id = $1", id)
+	return err
+}
+
+// UpdateBootstrapSessionStatus updates the status of a bootstrap session.
+func (s *PostgresStore) UpdateBootstrapSessionStatus(id string, status string) error {
+	_, err := s.db.Exec("UPDATE bootstrap_sessions SET status = $1 WHERE id = $2", status, id)
+	return err
+}
+
+// GetExpiredBootstrapSessions returns all expired bootstrap sessions.
+func (s *PostgresStore) GetExpiredBootstrapSessions() ([]*model.BootstrapSession, error) {
+	rows, err := s.db.Query(`SELECT id, username, hostname, label, tags, temp_public_key, created_at, expires_at, status
+		FROM bootstrap_sessions WHERE expires_at < NOW()`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []*model.BootstrapSession
+	for rows.Next() {
+		var session model.BootstrapSession
+		var label, tags sql.NullString
+
+		if err := rows.Scan(&session.ID, &session.Username, &session.Hostname, &label, &tags,
+			&session.TempPublicKey, &session.CreatedAt, &session.ExpiresAt, &session.Status); err != nil {
+			return nil, err
+		}
+
+		if label.Valid {
+			session.Label = label.String
+		}
+		if tags.Valid {
+			session.Tags = tags.String
+		}
+
+		sessions = append(sessions, &session)
+	}
+
+	return sessions, nil
+}
+
+// GetOrphanedBootstrapSessions returns all orphaned bootstrap sessions.
+func (s *PostgresStore) GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error) {
+	rows, err := s.db.Query(`SELECT id, username, hostname, label, tags, temp_public_key, created_at, expires_at, status
+		FROM bootstrap_sessions WHERE status = 'orphaned'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []*model.BootstrapSession
+	for rows.Next() {
+		var session model.BootstrapSession
+		var label, tags sql.NullString
+
+		if err := rows.Scan(&session.ID, &session.Username, &session.Hostname, &label, &tags,
+			&session.TempPublicKey, &session.CreatedAt, &session.ExpiresAt, &session.Status); err != nil {
+			return nil, err
+		}
+
+		if label.Valid {
+			session.Label = label.String
+		}
+		if tags.Valid {
+			session.Tags = tags.String
+		}
+
+		sessions = append(sessions, &session)
+	}
+
+	return sessions, nil
 }
