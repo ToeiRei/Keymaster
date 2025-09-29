@@ -321,10 +321,14 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, tea.Quit
 				}
 			case "L":
-				// Toggle language between English and German
-				if i18n.T("menu.manage_accounts") == "Manage Accounts" {
+				// Cycle through available languages: en -> de -> en-olde -> en
+				currentLang := i18n.GetLang()
+				switch currentLang {
+				case "en":
 					i18n.SetLang("de")
-				} else {
+				case "de":
+					i18n.SetLang("en-olde")
+				default: // en-olde or any other case
 					i18n.SetLang("en")
 				}
 				m.menu.choices = []string{
