@@ -8,7 +8,11 @@
 package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
+	"crypto/md5"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -29,6 +33,7 @@ type bootstrapStep int
 const (
 	stepGenerateKey    bootstrapStep = iota // Generate temporary key and show command
 	stepWaitConfirm                         // Wait for user to confirm key is installed
+	stepVerifyHostKey                       // Show and verify server host key
 	stepTestConnection                      // Test that temporary key works
 	stepSelectKeys                          // Select which keys to assign
 	stepConfirmDeploy                       // Show final confirmation
@@ -65,8 +70,15 @@ type bootstrapModel struct {
 	connectionTested bool
 	testInProgress   bool
 
+	// Host key verification
+	hostKey          string // The host key in authorized_keys format
+	hostKeyRetrieved bool
+	hostKeyVerified  bool
+
 	// Clipboard status
-	commandCopied bool
+	commandCopied        bool   // For bootstrap command
+	verifyCommandCopied  bool   // For ssh-keygen verify command
+	currentVerifyCommand string // Current verify command for copying
 }
 
 // Bootstrap workflow messages
@@ -74,6 +86,12 @@ type (
 	// sessionCreatedMsg indicates a bootstrap session was successfully created
 	sessionCreatedMsg struct {
 		session *bootstrap.BootstrapSession
+	}
+
+	// hostKeyRetrievedMsg indicates host key retrieval completed
+	hostKeyRetrievedMsg struct {
+		hostKey string
+		err     error
 	}
 
 	// connectionTestMsg indicates connection test completed
@@ -150,6 +168,15 @@ func (m *bootstrapModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg
 		return m, nil
 
+	case hostKeyRetrievedMsg:
+		if msg.err != nil {
+			m.err = msg.err
+		} else {
+			m.hostKey = msg.hostKey
+			m.hostKeyRetrieved = true
+		}
+		return m, nil
+
 	case connectionTestMsg:
 		m.testInProgress = false
 		if msg.success {
@@ -222,6 +249,8 @@ func (m *bootstrapModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleGenerateKeyKeys(msg)
 	case stepWaitConfirm:
 		return m.handleWaitConfirmKeys(msg)
+	case stepVerifyHostKey:
+		return m.handleVerifyHostKeyKeys(msg)
 	case stepTestConnection:
 		return m.handleTestConnectionKeys(msg)
 	case stepSelectKeys:
@@ -332,9 +361,8 @@ func (m *bootstrapModel) handleWaitConfirmKeys(msg tea.KeyMsg) (tea.Model, tea.C
 
 	case "enter":
 		if m.confirmCursor == 0 { // "Yes, I installed it"
-			m.step = stepTestConnection
-			m.testInProgress = true
-			return m, m.testConnection()
+			m.step = stepVerifyHostKey
+			return m, m.retrieveHostKey()
 		} else { // "Generate new command"
 			// Generate new temporary key and go back to key generation step
 			m.step = stepGenerateKey
@@ -446,6 +474,8 @@ func (m *bootstrapModel) View() string {
 		return m.viewGenerateKey()
 	case stepWaitConfirm:
 		return m.viewWaitConfirm()
+	case stepVerifyHostKey:
+		return m.viewVerifyHostKey()
 	case stepTestConnection:
 		return m.viewTestConnection()
 	case stepSelectKeys:
@@ -863,6 +893,210 @@ func (m *bootstrapModel) viewError() string {
 	return lipgloss.JoinVertical(lipgloss.Left, mainContent, "", helpFooter)
 }
 
+// handleVerifyHostKeyKeys handles input during host key verification step.
+func (m *bootstrapModel) handleVerifyHostKeyKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "c":
+		// Copy verify command to clipboard
+		if m.currentVerifyCommand != "" {
+			if err := clipboard.WriteAll(m.currentVerifyCommand); err == nil {
+				m.verifyCommandCopied = true
+			}
+		}
+		return m, nil
+
+	case "left", "right", "h", "l":
+		m.confirmCursor = 1 - m.confirmCursor // Toggle between 0 and 1
+
+	case "enter":
+		if m.confirmCursor == 0 { // "Accept"
+			m.hostKeyVerified = true
+			m.step = stepTestConnection
+			m.testInProgress = true
+			return m, m.testConnection()
+		} else { // "Reject"
+			// Go back to key generation step for new session
+			m.step = stepGenerateKey
+			return m, m.generateNewSession()
+		}
+
+	case "r":
+		// Retry host key retrieval
+		m.hostKeyRetrieved = false
+		m.hostKey = ""
+		m.err = nil
+		return m, m.retrieveHostKey()
+
+	case "tab":
+		// Go back to waiting for confirmation step
+		m.step = stepWaitConfirm
+		m.confirmCursor = 0
+	}
+
+	return m, nil
+}
+
+// viewVerifyHostKey renders the host key verification step with proper styling.
+func (m *bootstrapModel) viewVerifyHostKey() string {
+	var content []string
+
+	content = append(content, titleStyle.Render("🔐 "+i18n.T("bootstrap.verify_hostkey_title")))
+	content = append(content, "")
+
+	if !m.hostKeyRetrieved {
+		content = append(content, "🔄 "+i18n.T("bootstrap.verify_hostkey_retrieving"))
+
+		// Main pane using shared dialog style
+		mainContent := dialogBoxStyle.Copy().
+			BorderForeground(colorSubtle).
+			Width(80).
+			Render(lipgloss.JoinVertical(lipgloss.Left, content...))
+
+		// Help footer
+		helpFooterStyle := helpStyle.Copy().
+			Background(lipgloss.Color("236")).
+			Padding(0, 1).
+			Italic(true)
+
+		helpFooter := helpFooterStyle.Render(i18n.T("bootstrap.verify_hostkey_retrieving"))
+		return lipgloss.JoinVertical(lipgloss.Left, mainContent, "", helpFooter)
+	}
+
+	if m.err != nil {
+		content = append(content, errorStyle.Render(fmt.Sprintf(i18n.T("bootstrap.verify_hostkey_error_retrieving"), m.err.Error())))
+		content = append(content, "")
+
+		// Main pane
+		mainContent := dialogBoxStyle.Copy().
+			BorderForeground(colorError).
+			Width(80).
+			Render(lipgloss.JoinVertical(lipgloss.Left, content...))
+
+		// Help footer
+		helpFooterStyle := helpStyle.Copy().
+			Background(lipgloss.Color("236")).
+			Padding(0, 1).
+			Italic(true)
+
+		helpFooter := helpFooterStyle.Render(i18n.T("bootstrap.verify_hostkey_error_retry_help"))
+		return lipgloss.JoinVertical(lipgloss.Left, mainContent, "", helpFooter)
+	}
+
+	// Show host key details
+	content = append(content, i18n.T("bootstrap.verify_hostkey_server_key"))
+	content = append(content, "")
+
+	// Extract key type and generate fingerprints
+	parts := strings.Fields(strings.TrimSpace(m.hostKey))
+	if len(parts) >= 2 {
+		keyType := parts[0]
+		keyData := parts[1]
+
+		// Decode the base64 key data for fingerprint calculation
+		keyBytes, err := base64.StdEncoding.DecodeString(keyData)
+		if err == nil {
+			// Generate SHA256 fingerprint (modern)
+			sha256Hash := sha256.Sum256(keyBytes)
+			sha256Fingerprint := base64.StdEncoding.EncodeToString(sha256Hash[:])
+			sha256Fingerprint = strings.TrimRight(sha256Fingerprint, "=")
+
+			// Generate MD5 fingerprint (legacy, but still commonly used)
+			md5Hash := md5.Sum(keyBytes)
+			md5Fingerprint := ""
+			for i, b := range md5Hash {
+				if i > 0 {
+					md5Fingerprint += ":"
+				}
+				md5Fingerprint += fmt.Sprintf("%02x", b)
+			}
+
+			content = append(content, fmt.Sprintf("🔑 %s: %s", i18n.T("bootstrap.verify_hostkey_type_label"), keyType))
+			content = append(content, "")
+			content = append(content, fmt.Sprintf("🔒 SHA256: %s", sha256Fingerprint))
+			content = append(content, fmt.Sprintf("🔒 MD5:    %s", md5Fingerprint))
+		} else {
+			content = append(content, fmt.Sprintf("🔑 %s: %s", i18n.T("bootstrap.verify_hostkey_type_label"), keyType))
+			content = append(content, i18n.T("bootstrap.verify_hostkey_fingerprint_error"))
+		}
+	} else {
+		content = append(content, i18n.T("bootstrap.verify_hostkey_invalid_format"))
+	}
+
+	content = append(content, "")
+	content = append(content, i18n.T("bootstrap.verify_hostkey_warning"))
+	content = append(content, "")
+	content = append(content, i18n.T("bootstrap.verify_hostkey_check_command"))
+	content = append(content, "")
+
+	// Generate specific ssh-keygen command based on key type
+	sshKeygenCmd := "ssh-keygen -lf /etc/ssh/ssh_host_*_key.pub" // fallback
+	if len(parts) >= 1 {
+		keyType := parts[0]
+		// Map SSH key types to their corresponding host key files
+		switch keyType {
+		case "ssh-rsa":
+			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_rsa_key.pub"
+		case "ssh-dss":
+			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_dsa_key.pub"
+		case "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521":
+			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_ecdsa_key.pub"
+		case "ssh-ed25519":
+			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub"
+		default:
+			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_*_key.pub"
+		}
+	}
+
+	// Store the command for copying
+	m.currentVerifyCommand = sshKeygenCmd
+
+	// Style the command with highlighting but no box
+	styledCommand := lipgloss.NewStyle().
+		Background(lipgloss.Color("236")).
+		Foreground(lipgloss.Color("220")).
+		Padding(0, 1).
+		Render(sshKeygenCmd)
+
+	content = append(content, ""+styledCommand)
+	content = append(content, "")
+
+	// Show copy status or help for verify command (indented)
+	if m.verifyCommandCopied {
+		content = append(content, ""+successStyle.Render(i18n.T("bootstrap.verify_hostkey_copied")))
+	} else {
+		content = append(content, ""+helpStyle.Render(i18n.T("bootstrap.verify_hostkey_copy_hint")))
+	}
+	content = append(content, "")
+
+	// Accept/Reject buttons using modern button styles
+	var acceptButton, rejectButton string
+	if m.confirmCursor == 0 {
+		acceptButton = activeButtonStyle.Render(i18n.T("bootstrap.verify_hostkey_accept"))
+		rejectButton = buttonStyle.Render(i18n.T("bootstrap.verify_hostkey_reject"))
+	} else {
+		acceptButton = buttonStyle.Render(i18n.T("bootstrap.verify_hostkey_accept"))
+		rejectButton = activeButtonStyle.Render(i18n.T("bootstrap.verify_hostkey_reject"))
+	}
+
+	buttons := lipgloss.JoinHorizontal(lipgloss.Left, acceptButton, "  ", rejectButton)
+	content = append(content, buttons)
+
+	// Main pane using shared dialog style
+	mainContent := dialogBoxStyle.Copy().
+		BorderForeground(colorSubtle).
+		Width(80).
+		Render(lipgloss.JoinVertical(lipgloss.Left, content...))
+
+	// Help footer
+	helpFooterStyle := helpStyle.Copy().
+		Background(lipgloss.Color("236")).
+		Padding(0, 1).
+		Italic(true)
+
+	helpFooter := helpFooterStyle.Render(i18n.T("bootstrap.verify_hostkey_help"))
+	return lipgloss.JoinVertical(lipgloss.Left, mainContent, "", helpFooter)
+}
+
 // Helper methods for async operations
 
 // testConnection tests if the temporary key works by attempting an SSH connection.
@@ -878,13 +1112,23 @@ func (m *bootstrapModel) testConnection() tea.Cmd {
 			return connectionTestMsg{success: false, err: fmt.Errorf("failed to parse temporary private key: %w", err)}
 		}
 
+		// Create host key callback using the verified host key
+		hostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			presentedKey := string(ssh.MarshalAuthorizedKey(key))
+			// Verify against the manually verified host key
+			if strings.TrimSpace(presentedKey) != strings.TrimSpace(m.hostKey) {
+				return fmt.Errorf("host key mismatch: server presented different key than verified")
+			}
+			return nil
+		}
+
 		// Create SSH client configuration
 		config := &ssh.ClientConfig{
 			User: m.session.PendingAccount.Username,
 			Auth: []ssh.AuthMethod{
 				ssh.PublicKeys(signer),
 			},
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Bootstrap: accept unknown host keys (security acceptable for initial setup)
+			HostKeyCallback: hostKeyCallback,
 			Timeout:         10 * time.Second,
 		}
 
@@ -1042,12 +1286,13 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to generate keys content: %w", err)}
 		}
 
-		// 4. Deploy to remote host via SSH using bootstrap deployer
+		// 4. Deploy to remote host via SSH using the verified host key
 		tempPrivateKey := string(m.session.TempKeyPair.GetPrivateKeyPEM())
-		deployer, err := deploy.NewBootstrapDeployer(
+		deployer, err := deploy.NewBootstrapDeployerWithExpectedKey(
 			accountData.Hostname,
 			accountData.Username,
 			tempPrivateKey,
+			m.hostKey,
 		)
 		if err != nil {
 			// Log the failure
@@ -1089,6 +1334,33 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 
 		return deploymentCompleteMsg{account: accountData, err: nil}
 	}
+}
+
+// retrieveHostKey fetches the host key from the target server for verification.
+func (m *bootstrapModel) retrieveHostKey() tea.Cmd {
+	return func() tea.Msg {
+		if m.session == nil {
+			return hostKeyRetrievedMsg{hostKey: "", err: fmt.Errorf("no session available")}
+		}
+
+		// Use the deploy package's GetRemoteHostKey function
+		hostKey, err := deploy.GetRemoteHostKey(m.session.PendingAccount.Hostname)
+		if err != nil {
+			return hostKeyRetrievedMsg{hostKey: "", err: fmt.Errorf("failed to retrieve host key: %w", err)}
+		}
+
+		// Convert to authorized_keys format
+		hostKeyString := string(ssh.MarshalAuthorizedKey(hostKey))
+		return hostKeyRetrievedMsg{hostKey: hostKeyString, err: nil}
+	}
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // advanceStep advances to the next step in the workflow.

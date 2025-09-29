@@ -71,6 +71,13 @@ func NewBootstrapDeployer(host, user, privateKey string) (*Deployer, error) {
 	return NewDeployerWithConfig(host, user, privateKey, DefaultConnectionConfig(), true)
 }
 
+// NewBootstrapDeployerWithExpectedKey creates a new SSH connection for bootstrap operations
+// that only accepts the specific expected host key. This is used when the host key has been
+// manually verified by the user.
+func NewBootstrapDeployerWithExpectedKey(host, user, privateKey, expectedHostKey string) (*Deployer, error) {
+	return newDeployerWithExpectedHostKey(host, user, privateKey, DefaultConnectionConfig(), expectedHostKey)
+}
+
 // NewDeployerWithConfig creates a new SSH connection with custom timeout configuration.
 func NewDeployerWithConfig(host, user, privateKey string, config *ConnectionConfig, isBootstrap bool) (*Deployer, error) {
 	return newDeployerInternal(host, user, privateKey, config, isBootstrap)
@@ -190,6 +197,70 @@ func newDeployerInternal(host, user, privateKey string, config *ConnectionConfig
 
 	// Success with agent.
 
+	sftpClient, err := sftp.NewClient(client)
+	if err != nil {
+		client.Close()
+		return nil, fmt.Errorf("failed to create sftp client: %w", err)
+	}
+
+	return &Deployer{
+		client: client,
+		sftp:   sftpClient,
+		config: config,
+	}, nil
+}
+
+// newDeployerWithExpectedHostKey creates a deployer that only accepts a specific host key
+func newDeployerWithExpectedHostKey(host, user, privateKey string, config *ConnectionConfig, expectedHostKey string) (*Deployer, error) {
+	// Create a host key callback that only accepts the expected key
+	hostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		presentedKey := string(ssh.MarshalAuthorizedKey(key))
+		if strings.TrimSpace(presentedKey) != strings.TrimSpace(expectedHostKey) {
+			return fmt.Errorf("host key mismatch: server presented different key than expected")
+		}
+
+		// Strip port if present for database storage
+		hostOnly, _, err := net.SplitHostPort(hostname)
+		if err != nil {
+			hostOnly = hostname
+		}
+
+		// Save the verified host key to database
+		if err := db.AddKnownHostKey(hostOnly, presentedKey); err != nil {
+			// Log error but don't fail the connection
+		}
+
+		return nil
+	}
+
+	// Add port 22 if not specified
+	addr := host
+	if _, _, err := net.SplitHostPort(host); err != nil {
+		addr = net.JoinHostPort(host, "22")
+	}
+
+	// Parse the private key
+	signer, err := ssh.ParsePrivateKey([]byte(privateKey))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	// Create SSH client configuration
+	sshConfig := &ssh.ClientConfig{
+		User:            user,
+		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
+		HostKeyCallback: hostKeyCallback,
+		Timeout:         config.ConnectionTimeout,
+	}
+
+	// Connect
+	client, err := ssh.Dial("tcp", addr, sshConfig)
+	if err != nil {
+		err = ClassifyConnectionError(host, err)
+		return nil, err
+	}
+
+	// Create SFTP client
 	sftpClient, err := sftp.NewClient(client)
 	if err != nil {
 		client.Close()
