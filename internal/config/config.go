@@ -24,38 +24,39 @@ var Defauls = map[string]any{
 
 func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any) (T, error) {
 	var c T
+	v := viper.New()
 
 	// defaults
 	for key, value := range defaults {
-		viper.SetDefault(key, value)
+		v.SetDefault(key, value)
 	}
 
 	// files (first file found wins)
-	viper.SetConfigName("keymaster")
-	viper.SetConfigType("yaml")
+	v.SetConfigName("keymaster")
+	v.SetConfigType("yaml")
 	if home, err := os.UserHomeDir(); err == nil {
-		viper.AddConfigPath(home + "/.config")
+		v.AddConfigPath(home + "/.config")
 	}
-	viper.AddConfigPath("/etc/keymaster")
+	v.AddConfigPath("/etc/keymaster")
 
 	// env
-	viper.AutomaticEnv()
-	viper.SetEnvPrefix("keymaster")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+	v.SetEnvPrefix("keymaster")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	// cli
 	// TODO: maybe needs to trigger additional parsing beferohand
-	viper.BindPFlags(cmd.Flags())
+	v.BindPFlags(cmd.Flags())
 
 	// TODO: maybe not needed
-	// if err := viper.ReadInConfig(); err != nil {
-	// 	if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+	// if err := v.ReadInConfig(); err != nil {
+	// 	if _, ok := err.(v.ConfigFileNotFoundError); !ok {
 	// 		return nil, err
 	// 	}
 	// }
 
 	// parse config
-	if err := viper.Unmarshal(&c); err != nil {
+	if err := v.Unmarshal(&c); err != nil {
 		return c, err
 	}
 
