@@ -10,6 +10,7 @@ package tui // import "github.com/toeirei/keymaster/internal/tui"
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
@@ -42,6 +43,9 @@ const (
 type dashboardDataMsg struct {
 	data dashboardData
 }
+
+// languageChangedMsg is a message to signal that the language has changed and the UI should be re-initialized.
+type languageChangedMsg struct{}
 
 // dashboardData holds the summary information for the main menu view.
 type dashboardData struct {
@@ -141,6 +145,11 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = bootstrapView
 		m.bootstrap = newBootstrapModel(msg.username, msg.hostname, msg.label, msg.tags)
 		return m, m.bootstrap.Init()
+
+	case languageChangedMsg:
+		// The language has changed. Re-initialize the entire model to apply new translations everywhere.
+		newModel := initialModel()
+		return newModel, newModel.Init()
 	}
 
 	// Delegate updates to the currently active view.
@@ -280,12 +289,8 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// We can ignore the error here as it's not critical for the session.
 				_ = viper.WriteConfig()
 
-				// Re-initialize the main menu with new translations
-				m.menu = initialModel().menu
-
-				// Go back to main menu
-				m.state = menuView
-				return m, refreshDashboardCmd()
+				// Signal that the language has changed so the entire UI can be re-initialized.
+				return m, func() tea.Msg { return languageChangedMsg{} }
 			}
 		}
 		var newLangModel tea.Model
@@ -517,14 +522,15 @@ func (m menuModel) View(data dashboardData, width, height int) string {
 
 // newLanguageModel creates a new model for the language selection view.
 func newLanguageModel() languageModel {
-	// The keys are the language codes (e.g., "en"), and values are the display names.
-	choices := map[string]string{
-		"en":      "English",
-		"de":      "Deutsch",
-		"en-olde": "Ænglisc (Olde English)",
+	// Get the dynamically discovered locales from the i18n package.
+	choices := i18n.GetAvailableLocales()
+
+	// Create a sorted list of keys for stable iteration and display order.
+	keys := make([]string, 0, len(choices))
+	for k := range choices {
+		keys = append(keys, k)
 	}
-	// We need a stable order for the cursor.
-	keys := []string{"en", "de", "en-olde"}
+	sort.Strings(keys)
 
 	return languageModel{
 		choices:     choices,
@@ -568,9 +574,6 @@ func (m languageModel) View() string {
 
 // Run is the main entrypoint for the TUI. It initializes and runs the Bubble Tea program.
 func Run() {
-	// Initialize i18n with the language from config
-	i18n.Init(viper.GetString("language"))
-
 	if _, err := tea.NewProgram(initialModel()).Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
