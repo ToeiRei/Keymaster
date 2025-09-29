@@ -35,6 +35,7 @@ const (
 	auditView
 	tagsView
 	bootstrapView
+	languageView
 )
 
 // dashboardDataMsg is a message containing the data for the main menu dashboard.
@@ -67,6 +68,7 @@ type mainModel struct {
 	auditLog   *auditLogModel
 	tags       tagsViewModel
 	bootstrap  *bootstrapModel
+	language   languageModel
 	dashboard  dashboardData
 	width      int
 	height     int
@@ -77,6 +79,13 @@ type mainModel struct {
 type menuModel struct {
 	choices []string // The menu items to show.
 	cursor  int      // Which menu item our cursor is pointing at.
+}
+
+// languageModel holds the state for the language selection menu.
+type languageModel struct {
+	choices     map[string]string // map of lang code to display name
+	orderedKeys []string          // for stable iteration
+	cursor      int
 }
 
 // initialModel creates the starting state of the TUI, beginning at the main menu.
@@ -93,6 +102,7 @@ func initialModel() mainModel {
 				i18n.T("menu.view_audit_log"),
 				i18n.T("menu.audit_hosts"),
 				i18n.T("menu.view_accounts_by_tag"),
+				i18n.T("menu.language"),
 			},
 		},
 	}
@@ -249,6 +259,39 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newBootstrapModel, cmd = m.bootstrap.Update(msg)
 		m.bootstrap = newBootstrapModel.(*bootstrapModel)
 
+	case languageView:
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			switch keyMsg.String() {
+			case "q", "esc":
+				m.state = menuView
+				return m, refreshDashboardCmd()
+			case "up", "k":
+				if m.language.cursor > 0 {
+					m.language.cursor--
+				}
+			case "down", "j":
+				if m.language.cursor < len(m.language.orderedKeys)-1 {
+					m.language.cursor++
+				}
+			case "enter":
+				langCode := m.language.orderedKeys[m.language.cursor]
+				i18n.SetLang(langCode)
+				viper.Set("language", langCode)
+				// We can ignore the error here as it's not critical for the session.
+				_ = viper.WriteConfig()
+
+				// Re-initialize the main menu with new translations
+				m.menu = initialModel().menu
+
+				// Go back to main menu
+				m.state = menuView
+				return m, refreshDashboardCmd()
+			}
+		}
+		var newLangModel tea.Model
+		newLangModel, cmd = m.language.Update(msg)
+		m.language = newLangModel.(languageModel)
+
 	default: // menuView
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
 			switch keyMsg.String() {
@@ -316,49 +359,15 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.state = tagsView
 					m.tags = newTagsViewModel()
 					return m, nil
-				default:
-					// For now, other options just quit.
-					return m, tea.Quit
+				case 8: // Language
+					m.state = languageView
+					m.language = newLanguageModel()
+					return m, nil
 				}
 			case "L":
-				// Cycle through available languages: en -> de -> en-olde -> en
-				currentLang := i18n.GetLang()
-				switch currentLang {
-				case "en":
-					i18n.SetLang("de")
-				case "de":
-					i18n.SetLang("en-olde")
-				default: // en-olde or any other case
-					i18n.SetLang("en")
-				}
-				m.menu.choices = []string{
-					i18n.T("menu.manage_accounts"),
-					i18n.T("menu.manage_public_keys"),
-					i18n.T("menu.assign_keys"),
-					i18n.T("menu.rotate_system_keys"),
-					i18n.T("menu.deploy_to_fleet"),
-					i18n.T("menu.view_audit_log"),
-					i18n.T("menu.audit_hosts"),
-					i18n.T("menu.view_accounts_by_tag"),
-				}
-				// Save the new language setting
-				viper.Set("language", i18n.GetLang())
-				if err := viper.WriteConfig(); err != nil {
-					// This is not a fatal error, so we just note it.
-					// The language will still change for the current session.
-					m.err = fmt.Errorf("could not save language setting: %w", err)
-				}
-				// Re-initialize models that depend on i18n strings
-				m.menu.choices = []string{
-					i18n.T("menu.manage_accounts"),
-					i18n.T("menu.manage_public_keys"),
-					i18n.T("menu.assign_keys"),
-					i18n.T("menu.rotate_system_keys"),
-					i18n.T("menu.deploy_to_fleet"),
-					i18n.T("menu.view_audit_log"),
-					i18n.T("menu.audit_hosts"),
-					i18n.T("menu.view_accounts_by_tag"),
-				}
+				// "L" now opens the language menu
+				m.state = languageView
+				m.language = newLanguageModel()
 				return m, nil
 			}
 		}
@@ -396,6 +405,8 @@ func (m mainModel) View() string {
 		return m.tags.View()
 	case bootstrapView:
 		return m.bootstrap.View()
+	case languageView:
+		return m.language.View()
 	default: // menuView
 		return m.menu.View(m.dashboard, m.width, m.height)
 	}
@@ -502,6 +513,57 @@ func (m menuModel) View(data dashboardData, width, height int) string {
 	footer := footerStyle.Render(i18n.T("dashboard.footer"))
 
 	return lipgloss.JoinVertical(lipgloss.Top, header, mainArea, footer)
+}
+
+// newLanguageModel creates a new model for the language selection view.
+func newLanguageModel() languageModel {
+	// The keys are the language codes (e.g., "en"), and values are the display names.
+	choices := map[string]string{
+		"en":      "English",
+		"de":      "Deutsch",
+		"en-olde": "Ænglisc (Olde English)",
+	}
+	// We need a stable order for the cursor.
+	keys := []string{"en", "de", "en-olde"}
+
+	return languageModel{
+		choices:     choices,
+		orderedKeys: keys,
+		cursor:      0,
+	}
+}
+
+// Init for languageModel.
+func (m languageModel) Init() tea.Cmd { return nil }
+
+// Update for languageModel.
+func (m languageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return m, nil }
+
+// View for languageModel.
+func (m languageModel) View() string {
+	title := mainTitleStyle.Render("🌐 " + i18n.T("menu.language"))
+
+	var listItems []string
+	listItems = append(listItems, titleStyle.Render(i18n.T("language.select")), "")
+
+	for i, langCode := range m.orderedKeys {
+		displayName := m.choices[langCode]
+		line := "  " + displayName
+		if m.cursor == i {
+			line = "▸ " + displayName
+			listItems = append(listItems, selectedItemStyle.Render(line))
+		} else {
+			listItems = append(listItems, itemStyle.Render(line))
+		}
+	}
+
+	paneStyle := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorSubtle).Padding(1, 2)
+	listPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, listItems...))
+
+	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
+	helpLine := footerStyle.Render(i18n.T("language.help"))
+
+	return lipgloss.JoinVertical(lipgloss.Left, title, "", listPane, "", helpLine)
 }
 
 // Run is the main entrypoint for the TUI. It initializes and runs the Bubble Tea program.

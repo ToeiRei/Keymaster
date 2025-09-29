@@ -28,6 +28,10 @@ dashboard.recent_activity: "Letzte Aktivitäten"
 dashboard.no_recent_activity: "Keine letzten Aktivitäten."
 dashboard.footer: "j/k hoch/runter: navigieren   enter: auswählen   q: beenden   L: Sprache"
 
+# Language selection view
+language.select: "Sprache auswählen:"
+language.help: "up/down: navigieren   enter: auswählen  q/esc: zurück"
+
 # Account form translations
 account_form.username_label: "Benutzername:           "
 account_form.username_placeholder: "benutzer"

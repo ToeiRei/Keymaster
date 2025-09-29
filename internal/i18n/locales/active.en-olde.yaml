@@ -15,6 +15,7 @@ menu.view_audit_log: "Ġesīene Gewritrǣdinge"
 menu.audit_hosts: "Ƿeardas Smeagan"
 menu.view_accounts_by_tag: "Rǣdmanna be Mearcum Sēon"
 menu.navigation: "Sīðfæt"
+menu.language: "Sprǣċ"
 
 # Dashboard page translations
 dashboard.title: "Cǣġhealdend"
@@ -22,12 +23,16 @@ dashboard.subtitle: "Ān unġesandboda SSH cǣġgerefa þe þæt ƿeorc dēþ."
 dashboard.system_status: "Systemstede"
 dashboard.system_key.not_generated: "Nā Ġeċeafd"
 dashboard.system_key.active: "Dǣdlīċ (Endebyrdnes #%d)"
-dashboard.accounts: "Ġerihte Rǣdmenn: %d (%d dǣdlīċe)"
-dashboard.public_keys: "     Opene Cǣgan: %d (%d eorþlīċe)"
-dashboard.system_key: "      Systemcǣġ: %s"
+dashboard.accounts: "Ġerihte Rǣdmenn: %d (%d dǣdlīċe)" 
+dashboard.public_keys: "Opene Cǣgan: %d (%d eorþlīċe)"
+dashboard.system_key: "Systemcǣġ: %s"
 dashboard.recent_activity: "Nīƿe Dǣda"
 dashboard.no_recent_activity: "Nān nīƿu dǣd."
 dashboard.footer: "j/k ūp/niþer: faran   enter: ċēosan   q: forlǣtan   L: sprǣċ"
+
+# Language selection view
+language.select: "Ċēos sprǣċe:"
+language.help: "ūp/niþer: faran   enter: ċēosan   q/esc: eftfaran"
 
 # Account form translations
 account_form.username_label: "Brūcendnama:            "
