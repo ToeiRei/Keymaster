@@ -1,0 +1,9 @@
+{
+    "recommendations": [
+        "golang.go",
+        "furkanozalp.go-syntax",
+        "mikestead.dotenv",
+        "usernamehw.errorlens",
+        "redhat.vscode-yaml"
+    ]
+}
