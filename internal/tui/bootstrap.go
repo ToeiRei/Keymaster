@@ -9,16 +9,15 @@ package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/pkg/sftp"
 	"github.com/toeirei/keymaster/internal/bootstrap"
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"golang.org/x/crypto/ssh"
@@ -996,18 +995,19 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 
 		accountData.ID = accountID
 
-		// 2. Deploy selected keys to the account
+		// 2. Assign selected keys to the account
 		selectedKeyIDs := make([]int, 0, len(m.selectedKeys))
 		for keyID := range m.selectedKeys {
 			selectedKeyIDs = append(selectedKeyIDs, keyID)
 		}
 
-		// Add global keys
+		// Add global keys (they will be automatically included by GenerateKeysContent)
+		// but we still need to track them for assignment
 		for _, key := range m.globalKeys {
 			selectedKeyIDs = append(selectedKeyIDs, key.ID)
 		}
 
-		// Deploy keys to account
+		// Assign keys to account in database
 		for _, keyID := range selectedKeyIDs {
 			if err := db.AssignKeyToAccount(keyID, accountID); err != nil {
 				// Cleanup: delete the account if key assignment fails
@@ -1016,14 +1016,35 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			}
 		}
 
-		// 3. Deploy to remote host via SSH
-		if err := deployKeysToRemoteHost(m.session, selectedKeyIDs); err != nil {
+		// 3. Generate the authorized_keys content using the existing system
+		content, err := deploy.GenerateKeysContent(accountID)
+		if err != nil {
+			// Cleanup: delete the account if content generation fails
+			db.DeleteAccount(accountID)
+			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to generate keys content: %w", err)}
+		}
+
+		// 4. Deploy to remote host via SSH using bootstrap deployer
+		tempPrivateKey := string(m.session.TempKeyPair.GetPrivateKeyPEM())
+		deployer, err := deploy.NewBootstrapDeployer(
+			accountData.Hostname,
+			accountData.Username,
+			tempPrivateKey,
+		)
+		if err != nil {
+			// Cleanup: delete the account if deployer creation fails
+			db.DeleteAccount(accountID)
+			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to create bootstrap deployer: %w", err)}
+		}
+		defer deployer.Close()
+
+		if err := deployer.DeployAuthorizedKeys(content); err != nil {
 			// Cleanup: delete the account if SSH deployment fails
 			db.DeleteAccount(accountID)
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to deploy keys to remote host: %w", err)}
 		}
 
-		// 4. Update account with current system key serial
+		// 5. Update account with current system key serial
 		systemKey, err := db.GetActiveSystemKey()
 		if err == nil && systemKey != nil {
 			if err := db.UpdateAccountSerial(accountID, systemKey.Serial); err != nil {
@@ -1033,7 +1054,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			}
 		}
 
-		// 5. Cleanup bootstrap session
+		// 6. Cleanup bootstrap session
 		bootstrap.UnregisterSession(m.session.ID)
 		m.session.Delete()
 
@@ -1041,193 +1062,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 	}
 }
 
-// deployKeysToRemoteHost deploys the selected SSH keys to the remote host
-func deployKeysToRemoteHost(session *bootstrap.BootstrapSession, keyIDs []int) error {
-	if session.TempKeyPair == nil {
-		return fmt.Errorf("no temporary key pair in session")
-	}
 
-	// Get all public keys to find the ones we need to deploy
-	allKeys, err := db.GetAllPublicKeys()
-	if err != nil {
-		return fmt.Errorf("failed to get public keys: %w", err)
-	}
-
-	// Filter keys that we need to deploy
-	var keysToDeploy []model.PublicKey
-	keyIDSet := make(map[int]bool)
-	for _, keyID := range keyIDs {
-		keyIDSet[keyID] = true
-	}
-
-	for _, key := range allKeys {
-		if keyIDSet[key.ID] {
-			keysToDeploy = append(keysToDeploy, key)
-		}
-	}
-
-	if len(keysToDeploy) == 0 {
-		return fmt.Errorf("no keys found to deploy")
-	}
-
-	// Parse the temporary private key for SSH connection
-	signer, err := ssh.ParsePrivateKey(session.TempKeyPair.GetPrivateKeyPEM())
-	if err != nil {
-		return fmt.Errorf("failed to parse temporary private key: %w", err)
-	}
-
-	// Create SSH client configuration
-	config := &ssh.ClientConfig{
-		User: session.PendingAccount.Username,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // For bootstrap we accept any host key
-		Timeout:         30 * time.Second,
-	}
-
-	// Connect to the remote host
-	conn, err := ssh.Dial("tcp", session.PendingAccount.Hostname+":22", config)
-	if err != nil {
-		return fmt.Errorf("failed to connect to %s: %w", session.PendingAccount.Hostname, err)
-	}
-	defer conn.Close()
-
-	// Create SFTP session
-	sftpClient, err := sftp.NewClient(conn)
-	if err != nil {
-		return fmt.Errorf("failed to create SFTP client: %w", err)
-	}
-	defer sftpClient.Close()
-
-	// Read current authorized_keys file
-	authKeysPath := ".ssh/authorized_keys"
-	var currentContent string
-
-	file, err := sftpClient.Open(authKeysPath)
-	if err != nil {
-		// File might not exist, that's okay
-		currentContent = ""
-	} else {
-		defer file.Close()
-		content := make([]byte, 0, 4096)
-		buffer := make([]byte, 1024)
-		for {
-			n, err := file.Read(buffer)
-			if err != nil && err != io.EOF {
-				return fmt.Errorf("failed to read authorized_keys: %w", err)
-			}
-			content = append(content, buffer[:n]...)
-			if err == io.EOF {
-				break
-			}
-		}
-		currentContent = string(content)
-	}
-
-	// Build new authorized_keys content
-	newContent := currentContent
-	if newContent != "" && !strings.HasSuffix(newContent, "\n") {
-		newContent += "\n"
-	}
-
-	// First, add the system key (this is critical for Keymaster to manage the host)
-	systemKey, err := db.GetActiveSystemKey()
-	if err != nil {
-		return fmt.Errorf("failed to get active system key: %w", err)
-	}
-
-	if systemKey != nil {
-		systemKeyLine := systemKey.PublicKey + " # Keymaster System Key (Serial #" + fmt.Sprintf("%d", systemKey.Serial) + ")"
-		// Check if system key is already present
-		if !strings.Contains(currentContent, systemKey.PublicKey) {
-			newContent += systemKeyLine + "\n"
-		}
-	}
-
-	// Add each selected key to deploy
-	for _, key := range keysToDeploy {
-		keyLine := key.KeyData
-		// Add comment with key comment and Keymaster info
-		if key.Comment != "" {
-			keyLine += " # " + key.Comment + " (deployed by Keymaster)"
-		} else {
-			keyLine += " # deployed by Keymaster"
-		}
-
-		// Check if this key is already present
-		if !strings.Contains(currentContent, key.KeyData) {
-			newContent += keyLine + "\n"
-		}
-	}
-
-	// Remove the temporary key from the content (cleanup)
-	// The temp key might have been added with additional comments, so we search by key data
-	tempKeyData := session.TempKeyPair.GetPublicKey()
-	newContent = removeKeyByData(newContent, tempKeyData)
-
-	// Write back the new authorized_keys content
-	outFile, err := sftpClient.Create(authKeysPath)
-	if err != nil {
-		return fmt.Errorf("failed to create authorized_keys: %w", err)
-	}
-	defer outFile.Close()
-
-	if _, err := outFile.Write([]byte(newContent)); err != nil {
-		return fmt.Errorf("failed to write authorized_keys: %w", err)
-	}
-
-	return nil
-}
-
-// removeLine removes a specific line from a multi-line string.
-func removeLine(content, lineToRemove string) string {
-	lines := strings.Split(content, "\n")
-	var filteredLines []string
-
-	for _, line := range lines {
-		if strings.TrimSpace(line) != strings.TrimSpace(lineToRemove) {
-			filteredLines = append(filteredLines, line)
-		}
-	}
-
-	return strings.Join(filteredLines, "\n")
-}
-
-// removeKeyByData removes SSH key lines that contain the specified key data.
-// This is more robust than removeLine as it matches by key data rather than exact line.
-func removeKeyByData(content, keyData string) string {
-	lines := strings.Split(content, "\n")
-	var filteredLines []string
-
-	// Extract just the key part (algorithm + key data) without comments
-	keyParts := strings.Fields(strings.TrimSpace(keyData))
-	if len(keyParts) < 2 {
-		// If we can't parse the key properly, fall back to exact line matching
-		return removeLine(content, keyData)
-	}
-	keyAlgorithm := keyParts[0] // e.g., "ssh-ed25519"
-	keyDataPart := keyParts[1]  // e.g., the base64 encoded key
-
-	for _, line := range lines {
-		trimmedLine := strings.TrimSpace(line)
-		if trimmedLine == "" {
-			filteredLines = append(filteredLines, line)
-			continue
-		}
-
-		// Check if this line contains our key data
-		lineParts := strings.Fields(trimmedLine)
-		if len(lineParts) >= 2 && lineParts[0] == keyAlgorithm && lineParts[1] == keyDataPart {
-			// This line contains our temporary key, skip it
-			continue
-		}
-
-		filteredLines = append(filteredLines, line)
-	}
-
-	return strings.Join(filteredLines, "\n")
-}
 
 // advanceStep advances to the next step in the workflow.
 func (m *bootstrapModel) advanceStep() (tea.Model, tea.Cmd) {
