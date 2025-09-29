@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/internal/bootstrap"
+	"github.com/toeirei/keymaster/internal/config"
 	internalkey "github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
@@ -85,7 +86,22 @@ system key per account and uses it as a foothold to rewrite and
 version-control access. A database becomes the source of truth.
 
 Running without a subcommand will launch the interactive TUI.`,
+		// PreRun for all subsequent commands
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Load config
+			config, err := config.LoadConfig[config.Config](cmd, config.Defauls)
+			if err != nil {
+				return fmt.Errorf("Error loading config: %w", err)
+			}
+
+			// Initialize i18n
+			i18n.Init(config.Language)
+
+			// Initialize the database
+			if err := db.InitDB(config.Database.Type, config.Database.Dsn); err != nil {
+				return errors.New(i18n.T("config.error_init_db", err))
+			}
+
 			// Initialize the database for all commands.
 			// Viper has already read the config by this point.
 			dbType := viper.GetString("database.type")
