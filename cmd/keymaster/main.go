@@ -11,6 +11,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -20,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/klauspost/compress/zstd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/internal/bootstrap"
@@ -109,6 +111,7 @@ Running without a subcommand will launch the interactive TUI.`,
 	cmd.AddCommand(importCmd)
 	cmd.AddCommand(trustHostCmd)
 	cmd.AddCommand(exportSSHConfigCmd)
+	cmd.AddCommand(backupCmd)
 
 	// Set version
 	cmd.Version = version
@@ -614,4 +617,77 @@ func normalizeKnownHostKeyName(h string) string {
 // deployment logic from the deploy package.
 func runDeploymentForAccount(account model.Account) error {
 	return deploy.RunDeploymentForAccount(account, false)
+}
+
+// backupCmd represents the 'backup' command.
+// It dumps all data from the database into a single JSON file.
+var backupCmd = &cobra.Command{ //
+	Use:   "backup [output-file]", //
+	Short: "Create a compressed (zstd) JSON backup of the database",
+	Long: `Dumps the entire contents of the Keymaster database (accounts, keys, audit logs, etc.)
+into a single, Zstandard-compressed JSON file.
+
+If an output file is specified, '.zst' will be appended to the name if it's not already present.
+If no output file is specified, a default filename 'keymaster-backup-YYYY-MM-DD.json.zst' is used.
+
+This file can be used for disaster recovery or for migrating to a different database backend.
+
+Examples:
+  # Backup to a default file (e.g., keymaster-backup-2025-10-26.json.zst)
+  keymaster backup
+
+  # Backup to a specific file
+  keymaster backup my-backup.json`, // .zst will be appended
+	Args: cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		i18n.Init(viper.GetString("language"))
+
+		var outputFile string
+		if len(args) == 0 {
+			outputFile = fmt.Sprintf("keymaster-backup-%s.json.zst", time.Now().Format("2006-01-02"))
+		} else {
+			outputFile = args[0]
+			if !strings.HasSuffix(outputFile, ".zst") {
+				outputFile += ".zst"
+			}
+		}
+
+		fmt.Println(i18n.T("backup.cli_starting"))
+
+		backupData, err := db.ExportDataForBackup()
+		if err != nil {
+			log.Fatalf(i18n.T("backup.cli_error_export", err))
+		}
+
+		if err := writeCompressedBackup(outputFile, backupData); err != nil {
+			log.Fatalf(i18n.T("backup.cli_error_write", err))
+		}
+
+		fmt.Println(i18n.T("backup.cli_success", outputFile))
+	},
+}
+
+// writeCompressedBackup handles the process of writing the backup data to a zstd-compressed file.
+// It streams the JSON encoding directly to the gzip writer for memory efficiency.
+func writeCompressedBackup(filename string, data *model.BackupData) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("could not create file: %w", err)
+	}
+	defer file.Close()
+
+	zstdWriter, err := zstd.NewWriter(file)
+	if err != nil {
+		return fmt.Errorf("could not create zstd writer: %w", err)
+	}
+	defer zstdWriter.Close()
+
+	encoder := json.NewEncoder(zstdWriter)
+	encoder.SetIndent("", "  ") // Pretty-print the JSON inside the compressed file
+
+	if err := encoder.Encode(data); err != nil {
+		return fmt.Errorf("could not encode json to zstd writer: %w", err)
+	}
+
+	return nil
 }

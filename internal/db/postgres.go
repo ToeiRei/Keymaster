@@ -605,3 +605,124 @@ func (s *PostgresStore) GetOrphanedBootstrapSessions() ([]*model.BootstrapSessio
 
 	return sessions, nil
 }
+
+// ExportDataForBackup retrieves all data from the database for a backup.
+// It uses a transaction to ensure a consistent snapshot of the data.
+func (s *PostgresStore) ExportDataForBackup() (*model.BackupData, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback() // Rollback on any error.
+
+	backup := &model.BackupData{
+		SchemaVersion: 1, // Set a schema version for future migrations.
+	}
+
+	// --- Export Accounts ---
+	rows, err := tx.Query("SELECT id, username, hostname, label, tags, serial, is_active FROM accounts")
+	if err != nil {
+		return nil, fmt.Errorf("failed to export accounts: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var acc model.Account
+		var label, tags sql.NullString
+		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &tags, &acc.Serial, &acc.IsActive); err != nil {
+			return nil, fmt.Errorf("failed to scan account: %w", err)
+		}
+		acc.Label = label.String
+		acc.Tags = tags.String
+		backup.Accounts = append(backup.Accounts, acc)
+	}
+
+	// --- Export Public Keys ---
+	rows, err = tx.Query("SELECT id, algorithm, key_data, comment, is_global FROM public_keys")
+	if err != nil {
+		return nil, fmt.Errorf("failed to export public keys: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var pk model.PublicKey
+		if err := rows.Scan(&pk.ID, &pk.Algorithm, &pk.KeyData, &pk.Comment, &pk.IsGlobal); err != nil {
+			return nil, fmt.Errorf("failed to scan public key: %w", err)
+		}
+		backup.PublicKeys = append(backup.PublicKeys, pk)
+	}
+
+	// --- Export AccountKeys (many-to-many) ---
+	rows, err = tx.Query("SELECT key_id, account_id FROM account_keys")
+	if err != nil {
+		return nil, fmt.Errorf("failed to export account_keys: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var ak model.AccountKey
+		if err := rows.Scan(&ak.KeyID, &ak.AccountID); err != nil {
+			return nil, fmt.Errorf("failed to scan account_key: %w", err)
+		}
+		backup.AccountKeys = append(backup.AccountKeys, ak)
+	}
+
+	// --- Export System Keys ---
+	rows, err = tx.Query("SELECT id, serial, public_key, private_key, is_active FROM system_keys")
+	if err != nil {
+		return nil, fmt.Errorf("failed to export system keys: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var sk model.SystemKey
+		if err := rows.Scan(&sk.ID, &sk.Serial, &sk.PublicKey, &sk.PrivateKey, &sk.IsActive); err != nil {
+			return nil, fmt.Errorf("failed to scan system key: %w", err)
+		}
+		backup.SystemKeys = append(backup.SystemKeys, sk)
+	}
+
+	// --- Export Known Hosts ---
+	rows, err = tx.Query(`SELECT hostname, "key" FROM known_hosts`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to export known hosts: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var kh model.KnownHost
+		if err := rows.Scan(&kh.Hostname, &kh.Key); err != nil {
+			return nil, fmt.Errorf("failed to scan known host: %w", err)
+		}
+		backup.KnownHosts = append(backup.KnownHosts, kh)
+	}
+
+	// --- Export Audit Log Entries ---
+	rows, err = tx.Query("SELECT id, timestamp, username, action, details FROM audit_log")
+	if err != nil {
+		return nil, fmt.Errorf("failed to export audit log: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var ale model.AuditLogEntry
+		if err := rows.Scan(&ale.ID, &ale.Timestamp, &ale.Username, &ale.Action, &ale.Details); err != nil {
+			return nil, fmt.Errorf("failed to scan audit log entry: %w", err)
+		}
+		backup.AuditLogEntries = append(backup.AuditLogEntries, ale)
+	}
+
+	// --- Export Bootstrap Sessions ---
+	rows, err = tx.Query("SELECT id, username, hostname, label, tags, temp_public_key, created_at, expires_at, status FROM bootstrap_sessions")
+	if err != nil {
+		return nil, fmt.Errorf("failed to export bootstrap sessions: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var bs model.BootstrapSession
+		var label, tags sql.NullString
+		if err := rows.Scan(&bs.ID, &bs.Username, &bs.Hostname, &label, &tags, &bs.TempPublicKey, &bs.CreatedAt, &bs.ExpiresAt, &bs.Status); err != nil {
+			return nil, fmt.Errorf("failed to scan bootstrap session: %w", err)
+		}
+		bs.Label = label.String
+		bs.Tags = tags.String
+		backup.BootstrapSessions = append(backup.BootstrapSessions, bs)
+	}
+
+	// If we got here, all queries were successful.
+	return backup, tx.Commit()
+}

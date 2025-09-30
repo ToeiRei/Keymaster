@@ -298,3 +298,8 @@ func GetExpiredBootstrapSessions() ([]*model.BootstrapSession, error) {
 func GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error) {
 	return store.GetOrphanedBootstrapSessions()
 }
+
+// ExportDataForBackup retrieves all data from the database for a backup.
+func ExportDataForBackup() (*model.BackupData, error) {
+	return store.ExportDataForBackup()
+}
