@@ -1,0 +1,642 @@
+{
+  "schema_version": 1,
+  "accounts": [
+    {
+      "ID": 2,
+      "Username": "root",
+      "Hostname": "10.0.0.7",
+      "Label": "Webserver",
+      "Tags": "dc:stargazer",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 4,
+      "Username": "vbauer",
+      "Hostname": "192.168.10.248",
+      "Label": "Terminalserver",
+      "Tags": "dc:stargazer",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 5,
+      "Username": "root",
+      "Hostname": "192.168.10.3",
+      "Label": "Univention UCS",
+      "Tags": "dc:stargazer",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 6,
+      "Username": "root",
+      "Hostname": "10.0.0.4",
+      "Label": "Matrix",
+      "Tags": "dc:stargazer",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 7,
+      "Username": "root",
+      "Hostname": "192.168.10.5",
+      "Label": "Mini",
+      "Tags": "dc:stargazer",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 8,
+      "Username": "core",
+      "Hostname": "192.168.10.6",
+      "Label": "CoreOS",
+      "Tags": "dc:stargazer",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 9,
+      "Username": "root",
+      "Hostname": "10.0.0.2",
+      "Label": "Mailserver",
+      "Tags": "dc:stargazer,",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 10,
+      "Username": "root",
+      "Hostname": "10.0.0.10",
+      "Label": "MySQL",
+      "Tags": "dc:stargazer, pve:ct",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 11,
+      "Username": "root",
+      "Hostname": "10.0.0.13",
+      "Label": "PostgreSQL",
+      "Tags": "dc:stargazer, pve:ct,",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 12,
+      "Username": "root",
+      "Hostname": "10.0.0.14",
+      "Label": "OpenSearch",
+      "Tags": "pve:ct, dc:stargazer,",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 13,
+      "Username": "root",
+      "Hostname": "10.0.0.15",
+      "Label": "MongoDB",
+      "Tags": "dc:stargazer, pve:ct,",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 14,
+      "Username": "root",
+      "Hostname": "192.168.10.2",
+      "Label": "Proxmox VE",
+      "Tags": "dc:stargazer,",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 15,
+      "Username": "root",
+      "Hostname": "192.168.10.10",
+      "Label": "TrueNAS",
+      "Tags": "dc:stargazer,",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 16,
+      "Username": "root",
+      "Hostname": "167.235.14.66",
+      "Label": "AlexServer",
+      "Tags": "dc:alex",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 17,
+      "Username": "root",
+      "Hostname": "195.201.110.222",
+      "Label": "Tail-Too",
+      "Tags": "dc:tailco",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 19,
+      "Username": "root",
+      "Hostname": "pve.notburga-haus.com",
+      "Label": "PVE Notburga-Haus",
+      "Tags": "dc:notburga-haus,",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 20,
+      "Username": "root",
+      "Hostname": "192.168.77.99",
+      "Label": "Officer",
+      "Tags": "dc:notburga-haus,",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 21,
+      "Username": "root",
+      "Hostname": "192.168.10.248",
+      "Label": "Terminalserver",
+      "Tags": "dc:stargazer, ",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 22,
+      "Username": "root",
+      "Hostname": "192.168.10.115",
+      "Label": "Jetson",
+      "Tags": "dc:stargazer,hw:jetson",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 23,
+      "Username": "vbauer",
+      "Hostname": "192.168.10.115",
+      "Label": "Jetson",
+      "Tags": "dc:stargazer, hw:jetson, ",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 24,
+      "Username": "pi",
+      "Hostname": "192.168.10.136",
+      "Label": "PiZero",
+      "Tags": "dc:stargazer, hw:raspi",
+      "Serial": 2,
+      "IsActive": true
+    },
+    {
+      "ID": 25,
+      "Username": "root",
+      "Hostname": "192.168.10.136",
+      "Label": "PiZero",
+      "Tags": "dc:stargazer, hw:raspi,",
+      "Serial": 2,
+      "IsActive": true
+    }
+  ],
+  "public_keys": [
+    {
+      "ID": 2,
+      "Algorithm": "ssh-ed25519",
+      "KeyData": "AAAAC3NzaC1lZDI1NTE5AAAAICZriDCNnQErKubWoUM8A2RQPitESiPhxQd/q4ydgdxk",
+      "Comment": "JuiceSSH",
+      "IsGlobal": true
+    },
+    {
+      "ID": 3,
+      "Algorithm": "ssh-ed25519",
+      "KeyData": "AAAAC3NzaC1lZDI1NTE5AAAAIHNZuTjW6AbvvMeio0XRGrHNAKEnf5x5iIIYZJ5wni1J",
+      "Comment": "root@ansible",
+      "IsGlobal": true
+    },
+    {
+      "ID": 4,
+      "Algorithm": "ecdsa-sha2-nistp256",
+      "KeyData": "AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBKBXZdpmt+ZkkwRoN8EucuFWXxNeqb98GtDqiM8I4mMKFbEBoY0FmoHuyvUSQcWos1RK5wfgv2PuEEL9tFdGiCc=",
+      "Comment": "vbauer@framework",
+      "IsGlobal": true
+    },
+    {
+      "ID": 5,
+      "Algorithm": "ssh-ed25519",
+      "KeyData": "AAAAC3NzaC1lZDI1NTE5AAAAID16rd9Qbn3iXQ3g+EOXKboVN7WZ2Fo+/KcxKRWnyDpc",
+      "Comment": "vbauer@stargazer.at",
+      "IsGlobal": true
+    },
+    {
+      "ID": 8,
+      "Algorithm": "ssh-rsa",
+      "KeyData": "AAAAB3NzaC1yc2EAAAADAQABAAABAQDmhF/R6I20YQH5fth7MIov+I58lA3IPzrLt2+AimlAlKOBjGfHukfwmiOavPxc/bPhf/pLII24YNgJ/VO9h0TWR7NZmTj6I87rG9GfqeEGWE+6qu/qulkwpsfzWYPhaTjeaoYJPTh2bc5JNsvHxM7ZLWftUAmEoufKWsDkQjDK4BR1wo1qZm/OkPpmqpeKwnUDXthr0Vao3RtiZedrUYAST73J/9z8Q1Dp3yb7FaeGQA0sCQDbJ/FxEinVhqKOlFyqwFq8HYoqMbyRIqfXZ1frC72JgvOEGmKcVCdKhGgk3Jrw9etT4YpKiebvmBvNQn8dTyvKviVaw8gAvAjDqH9P",
+      "Comment": "root@pve",
+      "IsGlobal": false
+    },
+    {
+      "ID": 9,
+      "Algorithm": "ssh-rsa",
+      "KeyData": "AAAAB3NzaC1yc2EAAAADAQABAAABAQDaEyKwz9ml/ybgdKR0Os0+VI0SDFD/X0KlQ6ENv0b5sQu2DmeClXevjlfCzWSbJ2Oj4SKmB/ajtkmDpaph8+hjYsskSIjAAet1Qgcea0ieHrTvyXAY9vtdHLxPcA1jgegf+wd6vxxmfi9EXQFeAz4AoOgObXnTY8wbHN1Lj7xR+1CyBi9JUPspaJuzTMa/+gxQBFQwPqx3HH+7NQM7gsqzUInjdzwPidVY/4tLf1jORZzmfo009VZc+yQYoDG1ngFDOmafv12cGvB0GsknLAkDd1NDtTwy2Sz1/CQn3Q0vJoyWXf6geHf46AvMqzP+d6/23yBIwU8tFTf6PfPO39FL",
+      "Comment": "root@freenas.notburga-haus.com",
+      "IsGlobal": false
+    },
+    {
+      "ID": 11,
+      "Algorithm": "ssh-ed25519",
+      "KeyData": "AAAAC3NzaC1lZDI1NTE5AAAAILVJT+dJtXz7zsKsHSPj7FSo2QRJYgYSbH1o4C+P+jDM",
+      "Comment": "alex@acsnetworx.com",
+      "IsGlobal": false
+    },
+    {
+      "ID": 12,
+      "Algorithm": "ecdsa-sha2-nistp256",
+      "KeyData": "AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEKoNUxK3bcfnMYX+f2cfTJtppau7W7Fs/OdD+esMxIJCHaoDAjKRxFIbQ4zCtgMvo/KAV5k6N6lO1tPa7DaTwY=",
+      "Comment": "mastertailer",
+      "IsGlobal": false
+    }
+  ],
+  "account_keys": [
+    {
+      "key_id": 8,
+      "account_id": 14
+    },
+    {
+      "key_id": 9,
+      "account_id": 15
+    },
+    {
+      "key_id": 11,
+      "account_id": 16
+    },
+    {
+      "key_id": 12,
+      "account_id": 17
+    }
+  ],
+  "system_keys": [
+    {
+      "ID": 1,
+      "Serial": 1,
+      "PublicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF6+oU1y6QDMVCB20kDdPX0vGa9fJ4JVg5NUuqVszXHt keymaster-system-key",
+      "PrivateKey": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtz\nc2gtZWQyNTUxOQAAACBevqFNcukAzFQgdtJA3T19LxmvXyeCVYOTVLqlbM1x7QAA\nAIhs/GFXbPxhVwAAAAtzc2gtZWQyNTUxOQAAACBevqFNcukAzFQgdtJA3T19Lxmv\nXyeCVYOTVLqlbM1x7QAAAEBlosSIljSNsKbM7NVqssqw6en05lCNIIukSdZtsPsG\nzV6+oU1y6QDMVCB20kDdPX0vGa9fJ4JVg5NUuqVszXHtAAAAAAECAwQF\n-----END OPENSSH PRIVATE KEY-----\n",
+      "IsActive": false
+    },
+    {
+      "ID": 2,
+      "Serial": 2,
+      "PublicKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAe+m1tlskFw/Ja3d+C7juaxKKKKULGsU8mUr8bpTyxK keymaster-system-key",
+      "PrivateKey": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtz\nc2gtZWQyNTUxOQAAACAHvptbZbJBcPyWt3fgu47msSiiilCxrFPJlK/G6U8sSgAA\nAIgzSiMYM0ojGAAAAAtzc2gtZWQyNTUxOQAAACAHvptbZbJBcPyWt3fgu47msSii\nilCxrFPJlK/G6U8sSgAAAEDgcEIOEhu/zeQZ0Yyb1v5R7QBgQDa901XQito4w8at\nNQe+m1tlskFw/Ja3d+C7juaxKKKKULGsU8mUr8bpTyxKAAAAAAECAwQF\n-----END OPENSSH PRIVATE KEY-----\n",
+      "IsActive": true
+    }
+  ],
+  "known_hosts": [
+    {
+      "hostname": "10.0.0.7",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDmOHMcoyvZ6yVzDMVLrgtlfW7MVBF+pe53F3kB4w1WIOnvI3PKh+2hbJUTaBV4jLtHPSpjQYXUJW1ba/91amwM=\n"
+    },
+    {
+      "hostname": "192.168.10.248",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBHpqNzPeUkfs0P/6vqiaJjdmBDpd4LEJaBnTQby8DBiDHUgfha0U7MvX9ihe/rxIIkaXa2gSJhuDPdpuHtLJjMs=\n"
+    },
+    {
+      "hostname": "192.168.10.3",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBN68j1XGuWnChtd8kglE2vuu3ke4SFjq5dqiFMdkk/2ARLMKpzNcNfApUpqrnroeTCQl6u5q8OIr7nM8S22loYQ=\n"
+    },
+    {
+      "hostname": "10.0.0.4",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBHaUeoYMojzSSj1BWJRjgYLWwuXCRf4TLLjgAJ70mZMlndqM+DaHoiv8d+7SyyOOIB9YkGJxDEtOsohsUhgDQIA=\n"
+    },
+    {
+      "hostname": "192.168.10.5",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBGRE17SLM1ZuRNn33PMR6HrvwhmEKMgp7KKSY4WOcK5oeAvIeZMdfTmO2HzY+qqSqwh9w0rlYwdI0qqq0HaLve8=\n"
+    },
+    {
+      "hostname": "192.168.10.6",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBLFZ1cueOj4JljnIiaNrsmwTe40+vvlnz/siDQT7NRktN2a71lVIWtkayRrBAjmGAAog5VAbDuiMuzO6W/hAAEw=\n"
+    },
+    {
+      "hostname": "10.0.0.2",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBD/Wwixm0847JtkU4PYEDG0Fu5G+P2/Owpbenh5MYuf+5Gi/L2JL3f6+e9KTLip7aCRlQyH1MhRjuhayBiLqI5s=\n"
+    },
+    {
+      "hostname": "10.0.0.10",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBBm1fzdulYXJLsotRldLt/wjCLNFLNbHvk3OctSYXgBJ0L/F0WHLl6mzDZq5Z1gzuunnWzbZqrUX9Mfs+dVQdHI=\n"
+    },
+    {
+      "hostname": "10.0.0.13",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBHQsTbqmdhHezFd6bSOSotBHhQFE72GogamHX0bh2MaHHisgdRj0gQM1pMipo9p/FD3OruGduqlYnhLBxkoB3R8=\n"
+    },
+    {
+      "hostname": "10.0.0.14",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFhh/zqZ3HyEXXtcprLu4Ma7UtZeWhaBWT66cApxIiLh7PRtyrqXXUAyRelCDkulEzur4oGcYdQEkVJi5aFNtMo=\n"
+    },
+    {
+      "hostname": "10.0.0.15",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBM5RdCgkEXAwvQoWw+EQCrQVr9CeEcGHRmUJP0BY8tB7mrhP8hKfsPv9vmSL5KJEFRVWzMkgKygzeuEVCbJ/MQg=\n"
+    },
+    {
+      "hostname": "192.168.10.2",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBMdkV0fwGRstZdbv7HICHRlc5BVTH8fgygJWX8XLx1kPpyr/dz7UWMdmuOwg9NqYhB6v9QnLloRS2yfGisR9qoI=\n"
+    },
+    {
+      "hostname": "192.168.10.10",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJkbAYmSqtZtP2afleHn+9gkJDR4plJKHTcWIzDHBTLxraoXDSj5HqKab2Lv+mhIJqWFui5i221E98rAOf5zvTw=\n"
+    },
+    {
+      "hostname": "167.235.14.66",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOWz7NZNdBSG94FwxH4nw8VP7meyXsXNlCxAnNfrzm6KVZQDJQ2PgzlcIXjlXocMaJzaBafHZ+vU4Dey4SNpMPE=\n"
+    },
+    {
+      "hostname": "195.201.110.222",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBNUXW7Og6ppwCz9D7qxsqOAhXsWsJBhmBERaiVLF1bWyU4iHUBjR3OnBprIDJyFXeQvI7jK+6FZmspkvRiyNMDU=\n"
+    },
+    {
+      "hostname": "pve.notburga-haus.com",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBGiv/blCNsUznrIUYCNFYC2892xsPK8chEj+r4ynJ1PiZ7fKNyl18qFZZr/d+pGnTfZQRuxbSOpTEhIMxu+qPh4=\n"
+    },
+    {
+      "hostname": "192.168.77.99",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBD83y/YfISboolvtoDi8emS9eC2QbruslzAZTUtwkoLalFsgteRZBLh9nn0l5S3p6nGW0G1byjEt9/e+GTGGA7o=\n"
+    },
+    {
+      "hostname": "192.168.10.115",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBPEf9k1u99Mgb+C+2h+I6KNg8h4ayx/y/DsxKfeoMmYfyJdK8Tt8oLTiMyyI69wrEhC7j9WWkyjqlZyOazORJ0Q=\n"
+    },
+    {
+      "hostname": "192.168.10.136",
+      "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBGrvBB80SRNoZRxmWVjP7velD0zVZfY/f+5+aBcqrJm7xGZ4SP13rgsgN4hE7FuagNqfLFmGiX5ofZ+ng0Z71Yo=\n"
+    }
+  ],
+  "audit_log_entries": [
+    {
+      "ID": 1,
+      "Timestamp": "2025-09-24T14:33:39Z",
+      "Username": "vbauer",
+      "Action": "ADD_ACCOUNT",
+      "Details": "account: root@195.201.110.222"
+    },
+    {
+      "ID": 2,
+      "Timestamp": "2025-09-24T14:33:39Z",
+      "Username": "vbauer",
+      "Action": "TRUST_HOST",
+      "Details": "hostname: 195.201.110.222"
+    },
+    {
+      "ID": 3,
+      "Timestamp": "2025-09-24T15:30:05Z",
+      "Username": "vbauer",
+      "Action": "ADD_PUBLIC_KEY",
+      "Details": "comment: mastertailer"
+    },
+    {
+      "ID": 4,
+      "Timestamp": "2025-09-24T15:30:19Z",
+      "Username": "vbauer",
+      "Action": "ASSIGN_KEY",
+      "Details": "key: 'mastertailer' to account: root@195.201.110.222"
+    },
+    {
+      "ID": 5,
+      "Timestamp": "2025-09-24T15:48:31Z",
+      "Username": "vbauer",
+      "Action": "ADD_ACCOUNT",
+      "Details": "account: root@192.168.77.99"
+    },
+    {
+      "ID": 6,
+      "Timestamp": "2025-09-24T15:49:03Z",
+      "Username": "vbauer",
+      "Action": "ADD_ACCOUNT",
+      "Details": "account: root@pve.notburga-haus.com"
+    },
+    {
+      "ID": 7,
+      "Timestamp": "2025-09-24T15:49:03Z",
+      "Username": "vbauer",
+      "Action": "TRUST_HOST",
+      "Details": "hostname: pve.notburga-haus.com"
+    },
+    {
+      "ID": 8,
+      "Timestamp": "2025-09-24T15:59:24Z",
+      "Username": "vbauer",
+      "Action": "DELETE_ACCOUNT",
+      "Details": "account: root@192.168.77.99"
+    },
+    {
+      "ID": 9,
+      "Timestamp": "2025-09-24T15:59:48Z",
+      "Username": "vbauer",
+      "Action": "ADD_ACCOUNT",
+      "Details": "account: root@192.168.77.99"
+    },
+    {
+      "ID": 10,
+      "Timestamp": "2025-09-24T15:59:48Z",
+      "Username": "vbauer",
+      "Action": "TRUST_HOST",
+      "Details": "hostname: 192.168.77.99"
+    },
+    {
+      "ID": 11,
+      "Timestamp": "2025-09-24T19:04:07Z",
+      "Username": "vbauer",
+      "Action": "ADD_ACCOUNT",
+      "Details": "account: root@192.168.10.248"
+    },
+    {
+      "ID": 12,
+      "Timestamp": "2025-09-24T19:04:07Z",
+      "Username": "vbauer",
+      "Action": "TRUST_HOST",
+      "Details": "hostname: 192.168.10.248"
+    },
+    {
+      "ID": 13,
+      "Timestamp": "2025-09-24T19:04:18Z",
+      "Username": "vbauer",
+      "Action": "UPDATE_ACCOUNT_LABEL",
+      "Details": "account_id: 21, new_label: 'Terminalserver Root'"
+    },
+    {
+      "ID": 14,
+      "Timestamp": "2025-09-24T19:04:18Z",
+      "Username": "vbauer",
+      "Action": "UPDATE_ACCOUNT_TAGS",
+      "Details": "account_id: 21, new_tags: 'dc:stargazer, '"
+    },
+    {
+      "ID": 15,
+      "Timestamp": "2025-09-24T19:04:30Z",
+      "Username": "vbauer",
+      "Action": "TRUST_HOST",
+      "Details": "hostname: 192.168.10.248"
+    },
+    {
+      "ID": 16,
+      "Timestamp": "2025-09-24T19:15:01Z",
+      "Username": "vbauer",
+      "Action": "UNASSIGN_KEY",
+      "Details": "key: 'alex@acsnetworx.com' from account: root@167.235.14.66"
+    },
+    {
+      "ID": 17,
+      "Timestamp": "2025-09-24T19:15:02Z",
+      "Username": "vbauer",
+      "Action": "ASSIGN_KEY",
+      "Details": "key: 'alex@acsnetworx.com' to account: root@167.235.14.66"
+    },
+    {
+      "ID": 18,
+      "Timestamp": "2025-09-24T22:32:07Z",
+      "Username": "vbauer",
+      "Action": "TOGGLE_ACCOUNT_STATUS",
+      "Details": "account: root@167.235.14.66, new_status: false"
+    },
+    {
+      "ID": 19,
+      "Timestamp": "2025-09-24T22:32:09Z",
+      "Username": "vbauer",
+      "Action": "TOGGLE_ACCOUNT_STATUS",
+      "Details": "account: root@167.235.14.66, new_status: true"
+    },
+    {
+      "ID": 20,
+      "Timestamp": "2025-09-24T22:32:35Z",
+      "Username": "vbauer",
+      "Action": "TRUST_HOST",
+      "Details": "hostname: 167.235.14.66"
+    },
+    {
+      "ID": 21,
+      "Timestamp": "2025-09-25T12:42:19Z",
+      "Username": "vbauer",
+      "Action": "ADD_ACCOUNT",
+      "Details": "account: root@192.168.10.115"
+    },
+    {
+      "ID": 22,
+      "Timestamp": "2025-09-25T12:42:19Z",
+      "Username": "vbauer",
+      "Action": "TRUST_HOST",
+      "Details": "hostname: 192.168.10.115"
+    },
+    {
+      "ID": 23,
+      "Timestamp": "2025-09-25T12:42:53Z",
+      "Username": "vbauer",
+      "Action": "ADD_ACCOUNT",
+      "Details": "account: vbauer@192.168.10.115"
+    },
+    {
+      "ID": 24,
+      "Timestamp": "2025-09-25T12:42:53Z",
+      "Username": "vbauer",
+      "Action": "TRUST_HOST",
+      "Details": "hostname: 192.168.10.115"
+    },
+    {
+      "ID": 25,
+      "Timestamp": "2025-09-25T13:16:19Z",
+      "Username": "vbauer",
+      "Action": "UPDATE_ACCOUNT_LABEL",
+      "Details": "account_id: 22, new_label: 'Jetson'"
+    },
+    {
+      "ID": 26,
+      "Timestamp": "2025-09-25T13:16:19Z",
+      "Username": "vbauer",
+      "Action": "UPDATE_ACCOUNT_TAGS",
+      "Details": "account_id: 22, new_tags: 'dc:stargazer,'"
+    },
+    {
+      "ID": 27,
+      "Timestamp": "2025-09-25T13:16:29Z",
+      "Username": "vbauer",
+      "Action": "UPDATE_ACCOUNT_LABEL",
+      "Details": "account_id: 21, new_label: 'Terminalserver'"
+    },
+    {
+      "ID": 28,
+      "Timestamp": "2025-09-25T13:16:29Z",
+      "Username": "vbauer",
+      "Action": "UPDATE_ACCOUNT_TAGS",
+      "Details": "account_id: 21, new_tags: 'dc:stargazer, '"
+    },
+    {
+      "ID": 29,
+      "Timestamp": "2025-09-25T14:19:47Z",
+      "Username": "vbauer",
+      "Action": "UPDATE_ACCOUNT_LABEL",
+      "Details": "account_id: 22, new_label: 'Jetson'"
+    },
+    {
+      "ID": 30,
+      "Timestamp": "2025-09-25T14:19:47Z",
+      "Username": "vbauer",
+      "Action": "UPDATE_ACCOUNT_TAGS",
+      "Details": "account_id: 22, new_tags: 'dc:stargazer,hw:jetson'"
+    },
+    {
+      "ID": 31,
+      "Timestamp": "2025-09-25T14:24:39Z",
+      "Username": "vbauer",
+      "Action": "UPDATE_ACCOUNT_LABEL",
+      "Details": "account_id: 23, new_label: 'Jetson'"
+    },
+    {
+      "ID": 32,
+      "Timestamp": "2025-09-25T14:24:39Z",
+      "Username": "vbauer",
+      "Action": "UPDATE_ACCOUNT_TAGS",
+      "Details": "account_id: 23, new_tags: 'dc:stargazer, hw:jetson, '"
+    },
+    {
+      "ID": 33,
+      "Timestamp": "2025-09-28T21:10:54Z",
+      "Username": "vbauer",
+      "Action": "TRUST_HOST",
+      "Details": "hostname: 167.235.14.66"
+    },
+    {
+      "ID": 34,
+      "Timestamp": "2025-09-30T00:49:45Z",
+      "Username": "vbauer",
+      "Action": "ADD_ACCOUNT",
+      "Details": "account: pi@192.168.10.136"
+    },
+    {
+      "ID": 35,
+      "Timestamp": "2025-09-30T00:49:46Z",
+      "Username": "vbauer",
+      "Action": "TRUST_HOST",
+      "Details": "hostname: 192.168.10.136"
+    },
+    {
+      "ID": 36,
+      "Timestamp": "2025-09-30T00:49:56Z",
+      "Username": "vbauer",
+      "Action": "TRUST_HOST",
+      "Details": "hostname: 192.168.10.136"
+    },
+    {
+      "ID": 37,
+      "Timestamp": "2025-09-30T00:51:34Z",
+      "Username": "vbauer",
+      "Action": "ADD_ACCOUNT",
+      "Details": "account: root@192.168.10.136"
+    },
+    {
+      "ID": 38,
+      "Timestamp": "2025-09-30T00:51:38Z",
+      "Username": "vbauer",
+      "Action": "TRUST_HOST",
+      "Details": "hostname: 192.168.10.136"
+    }
+  ],
+  "bootstrap_sessions": null
+}
