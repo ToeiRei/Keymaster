@@ -16,6 +16,7 @@ import (
 	"io"
 	"net"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -23,6 +24,71 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"golang.org/x/crypto/ssh"
 )
+
+// CanonicalizeHostPort returns a normalized host:port string.
+// - If no port is provided, :22 is assumed.
+// - IPv6 literals will be bracketed as needed (e.g., [2001:db8::1]:22).
+// - If input is of the form user@host, the user part is discarded.
+// StripIPv6Brackets removes surrounding [ ] from an IPv6 literal if present.
+func StripIPv6Brackets(host string) string {
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		return strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
+	}
+	return host
+}
+
+// ParseHostPort splits an address into host and port.
+// Behavior:
+// - Accepts host, host:port, [ipv6], [ipv6]:port, ipv6, ipv6:port
+// - Returns port "" if not specified
+// - Returns host without IPv6 brackets
+func ParseHostPort(addr string) (host string, port string, err error) {
+	s := strings.TrimSpace(addr)
+	if s == "" {
+		return "", "", fmt.Errorf("empty address")
+	}
+	// Strip user@ part if present
+	if at := strings.LastIndex(s, "@"); at != -1 {
+		s = s[at+1:]
+	}
+
+	// If bracketed IPv6
+	if strings.HasPrefix(s, "[") {
+		// regex: ^\[([^\]]+)\](?::(\d+))?$ -> capture host and optional port
+		re := regexp.MustCompile(`^\[([^\]]+)\](?::(\d+))?$`)
+		m := re.FindStringSubmatch(s)
+		if m == nil {
+			return "", "", fmt.Errorf("invalid bracketed IPv6: %s", s)
+		}
+		return m[1], m[2], nil
+	}
+
+	// Try net.SplitHostPort for host:port or ipv6:port (unbracketed)
+	if h, p, e := net.SplitHostPort(s); e == nil {
+		return h, p, nil
+	}
+
+	// No port specified, whole string is host (could be ipv4, name, or unbracketed ipv6)
+	return s, "", nil
+}
+
+// JoinHostPort joins host and port into a canonical host:port.
+// - If port is empty, defaultPort is used.
+// - IPv6 hosts will be bracketed.
+func JoinHostPort(host, port, defaultPort string) string {
+	h := StripIPv6Brackets(strings.TrimSpace(host))
+	p := strings.TrimSpace(port)
+	if p == "" {
+		p = defaultPort
+	}
+	return net.JoinHostPort(h, p)
+}
+
+// CanonicalizeHostPort returns host:port form using default 22 if missing.
+func CanonicalizeHostPort(input string) string {
+	host, port, _ := ParseHostPort(input)
+	return JoinHostPort(host, port, "22")
+}
 
 // Default timeout values for SSH operations
 const (
@@ -89,17 +155,13 @@ func newDeployerInternal(host, user, privateKey string, config *ConnectionConfig
 	var hostKeyCallback ssh.HostKeyCallback
 
 	if isBootstrap {
-		// For bootstrap, accept any host key and save it
+		// For bootstrap, accept any host key and save it as canonical host:port
 		hostKeyCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-			// Strip port if present
-			hostOnly, _, err := net.SplitHostPort(hostname)
-			if err != nil {
-				hostOnly = hostname
-			}
+			canonical := CanonicalizeHostPort(hostname)
 
 			// Save the host key for future connections
 			presentedKey := string(ssh.MarshalAuthorizedKey(key))
-			if err := db.AddKnownHostKey(hostOnly, presentedKey); err != nil {
+			if err := db.AddKnownHostKey(canonical, presentedKey); err != nil {
 				// Log error but don't fail the connection
 				// The host key can be added manually later
 			}
@@ -109,31 +171,38 @@ func newDeployerInternal(host, user, privateKey string, config *ConnectionConfig
 	} else {
 		// Normal mode: verify host keys
 		hostKeyCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-			// The hostname passed to the callback can include the port. We need to strip it
-			// to ensure we're looking up the correct key in our database.
-			host, _, err := net.SplitHostPort(hostname)
-			if err != nil {
-				// If SplitHostPort fails, it means there was no port, so we use the original string.
-				host = hostname
-			}
+			// Always check canonical host:port first
+			canonical := CanonicalizeHostPort(hostname)
 
 			// The key is presented in the format "ssh-ed25519 AAA..."
 			presentedKey := string(ssh.MarshalAuthorizedKey(key))
 
-			// Check if we have a trusted key for this host in our database.
-			knownKey, err := db.GetKnownHostKey(host)
+			// Check if we have a trusted key for this canonical host:port in our database.
+			knownKey, err := db.GetKnownHostKey(canonical)
 			if err != nil {
 				return fmt.Errorf("failed to query known_hosts database: %w", err)
 			}
 
 			// If we don't have a key, this is the first connection.
 			if knownKey == "" {
-				return fmt.Errorf("unknown host key for %s. run 'keymaster trust-host' to add it", host)
+				// Backward compatibility: try legacy host-only key (without port)
+				if hostOnly, _, err := net.SplitHostPort(canonical); err == nil {
+					legacyKey, lerr := db.GetKnownHostKey(hostOnly)
+					if lerr != nil {
+						return fmt.Errorf("failed to query known_hosts database: %w", lerr)
+					}
+					if legacyKey != "" {
+						knownKey = legacyKey
+					}
+				}
+				if knownKey == "" {
+					return fmt.Errorf("unknown host key for %s. run 'keymaster trust-host' to add it", canonical)
+				}
 			}
 
 			// If the key exists, it must match exactly.
 			if knownKey != presentedKey {
-				return fmt.Errorf("!!! HOST KEY MISMATCH FOR %s !!!\nRemote key presented: %s\nThis could be a man-in-the-middle attack", host, presentedKey)
+				return fmt.Errorf("!!! HOST KEY MISMATCH FOR %s !!!\nRemote key presented: %s\nThis could be a man-in-the-middle attack", canonical, presentedKey)
 			}
 
 			return nil // Host key is trusted.
@@ -141,10 +210,7 @@ func newDeployerInternal(host, user, privateKey string, config *ConnectionConfig
 	}
 
 	// Add port 22 if not specified.
-	addr := host
-	if _, _, err := net.SplitHostPort(host); err != nil {
-		addr = net.JoinHostPort(host, "22")
-	}
+	addr := CanonicalizeHostPort(host)
 	var client *ssh.Client
 
 	// If a private key is provided, use it exclusively. This is the standard path
@@ -234,10 +300,7 @@ func newDeployerWithExpectedHostKey(host, user, privateKey string, config *Conne
 	}
 
 	// Add port 22 if not specified
-	addr := host
-	if _, _, err := net.SplitHostPort(host); err != nil {
-		addr = net.JoinHostPort(host, "22")
-	}
+	addr := CanonicalizeHostPort(host)
 
 	// Parse the private key
 	signer, err := ssh.ParsePrivateKey([]byte(privateKey))
@@ -459,10 +522,7 @@ func GetRemoteHostKeyWithTimeout(host string, timeout time.Duration) (ssh.Public
 		Timeout: timeout,
 	}
 
-	addr := host
-	if _, _, err := net.SplitHostPort(host); err != nil {
-		addr = net.JoinHostPort(host, "22")
-	}
+	addr := CanonicalizeHostPort(host)
 
 	// We expect ssh.Dial to fail with our specific error.
 	_, err := ssh.Dial("tcp", addr, config)
