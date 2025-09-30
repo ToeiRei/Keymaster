@@ -4,6 +4,7 @@
 
 # General
 all: "Alle"
+
 # German translations for Keymaster
 menu.manage_accounts: "Konten verwalten"
 menu.manage_public_keys: "Öffentliche Schlüssel verwalten"
@@ -214,7 +215,6 @@ deploy.failed_accounts: "\n\nFehlgeschlagene Ausrollungen:\n%s"
 deploy.pending: "ausstehend..."
 deploy.failed_short: "fehlgeschlagen"
 deploy.success_short: "erfolgreich"
-deploy.please_wait: "(Bitte warten...)"
 deploy.help_menu: "j/k oder hoch/runter: navigieren   enter: auswählen   q: beenden"
 deploy.help_select: "enter: auswählen   esc: zurück"
 deploy.help_keys: "c: kopieren   esc: zurück"
@@ -258,7 +258,6 @@ audit.tui.no_tags: "Keine Tags in Konten gefunden."
 audit.tui.no_accounts_tag: "Keine aktiven Konten mit Tag '%s' zum Auditieren."
 audit.tui.starting_fleet: "Starte Flotten-Audit..."
 audit.tui.starting_tag: "Starte Audit für Tag '%s'..."
-audit.tui.auditing_to: "Auditiere %s..."
 audit.tui.ok_short: "ok"
 audit.tui.failed_short: "drift"
 audit.tui.pending: "ausstehend..."
@@ -272,28 +271,7 @@ audit.tui.filtering: "Filter: %s█"
 audit.tui.filter_active: "Filter: %s (mit 'esc' löschen)"
 audit.tui.filter_hint: "Mit / filtern..."
 
-# Config
-config.created_default: "Keine Konfigurationsdatei gefunden. Eine Standard '.keymaster.yaml' wurde im aktuellen Verzeichnis erstellt."
-
 # CLI specific translations
-
-# Deploy CLI command
-deploy.cli_error_get_accounts: "Fehler beim Abrufen der Konten: %v"
-deploy.cli_account_not_found: "Konto '%s' nicht gefunden oder nicht aktiv."
-deploy.error_get_bootstrap_key: "Fehler beim Abrufen des aktiven Systemschlüssels für Bootstrap: %w"
-deploy.error_no_bootstrap_key: "Kein aktiver Systemschlüssel für Bootstrap gefunden"
-deploy.error_get_serial_key: "Fehler beim Abrufen des Systemschlüssels mit Seriennummer %d: %w"
-deploy.error_no_serial_key: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer %d gefunden"
-deploy.error_get_active_key_for_serial: "Aktiver Systemschlüssel für Seriennummer-Update konnte nicht abgerufen werden"
-deploy.error_connection_failed: "Verbindung fehlgeschlagen: %w"
-deploy.error_db_update_failed: "DB-Update nach erfolgreichem Deployment fehlgeschlagen: %w"
-deploy.error_no_bootstrap_key_tui: "Kein aktiver Systemschlüssel für Bootstrap gefunden. Bitte einen erzeugen"
-deploy.error_no_serial_key_tui: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer %d auf Konto %s gefunden"
-deploy.error_connection_failed_tui: "Verbindung zu %s fehlgeschlagen: %w"
-deploy.error_deployment_failed_tui: "Deployment auf %s fehlgeschlagen: %w"
-deploy.error_db_update_failed_tui: "Deployment erfolgreich, aber DB-Seriennummer konnte nicht aktualisiert werden: %w"
-deploy.error_get_serial_for_status: "Deployment erfolgreich, aber neue Seriennummer konnte für Statusmeldung nicht gelesen werden: %w"
-deploy.error_deployment_failed: "Deployment fehlgeschlagen: %w"
 
 # Audit CLI command
 audit.cli_error_get_accounts: "Fehler beim Abrufen der Konten: %v"
@@ -330,17 +308,6 @@ export_ssh_config.date: "Datum"
 export_ssh_config.error_write_file: "Fehler beim Schreiben der Datei: %v"
 export_ssh_config.success: "✅ SSH-Konfiguration erfolgreich exportiert nach %s"
 
-# Trust Host CLI command
-trust_host.error_invalid_format: "Ungültiges Kontoformat. Erwartet: benutzer@host."
-trust_host.retrieving_key: "Versuche, Host-Schlüssel von %s abzurufen..."
-trust_host.error_get_key: "Host-Schlüssel konnte nicht abgerufen werden: %v"
-trust_host.authenticity_warning_1: "Die Authentizität des Hosts '%s' kann nicht festgestellt werden."
-trust_host.authenticity_warning_2: "%s Schlüssel-Fingerabdruck ist %s."
-trust_host.confirm_prompt: "Sind Sie sicher, dass Sie die Verbindung fortsetzen möchten (ja/nein)? "
-trust_host.not_trusted_abort: "Host-Schlüssel nicht vertraut. Abbruch."
-trust_host.error_save_key: "Fehler beim Speichern des Host-Schlüssels in der Datenbank: %v"
-trust_host.added_success: "Warnung: '%s' (Typ %s) wurde dauerhaft zur Liste der bekannten Hosts hinzugefügt."
-
 # Parallel task messages (used by runParallelTasks)
 parallel_task.no_accounts: "Keine aktiven Konten für %s."
 parallel_task.start_message: "🚀 Starte %s für %d Konto(en)..."
@@ -349,12 +316,6 @@ parallel_task.deploy_fail_message: "💥 Fehler beim Ausrollen auf %s: %v"
 parallel_task.audit_success_message: "✅ OK: %s"
 parallel_task.audit_fail_message: "🚨 Drift auf %s erkannt: %v"
 parallel_task.complete_message: "%s abgeschlossen."
-
-# Backup CLI command
-backup.cli_starting: "📦 Erstelle Datenbanksicherung..."
-backup.cli_error_export: "Fehler beim Exportieren der Daten aus der Datenbank: %v"
-backup.cli_error_write: "Fehler beim Schreiben der Sicherungsdatei: %v"
-backup.cli_success: "✅ Sicherung erfolgreich erstellt unter %s"
 
 # Bootstrap workflow translations
 bootstrap.creating_session: "Bootstrap-Sitzung wird erstellt..."
@@ -369,8 +330,6 @@ bootstrap.confirm_yes: "Ja, ich habe ihn installiert"
 bootstrap.confirm_no: "Neuen Befehl generieren"
 bootstrap.confirm_help: "(links/rechts zum Navigieren, Enter zum Bestätigen)"
 bootstrap.testing_title: "Verbindung testen"
-bootstrap.testing_progress: "Verbindung mit temporärem Schlüssel wird getestet..."
-bootstrap.testing_failed: "Verbindungstest fehlgeschlagen: %s"
 bootstrap.testing_success: "Verbindungstest erfolgreich!"
 bootstrap.testing_retry_help: "(r zum Wiederholen, Tab zum Zurückgehen, Esc zum Abbrechen)"
 bootstrap.verify_hostkey_title: "Server Host-Key Verifikation"
@@ -392,9 +351,7 @@ bootstrap.verify_hostkey_help: "Pfeile/h/l: navigieren • Enter: auswählen •
 bootstrap.select_keys_title: "Schlüssel zum Ausrollen auswählen"
 bootstrap.select_keys_description: "Wählen Sie, welche öffentlichen Schlüssel diesem Konto zugewiesen werden sollen:"
 bootstrap.select_keys_help: "(j/k zum Navigieren, Leertaste zum Umschalten, Enter zum Fortfahren)"
-bootstrap.confirm_deploy_title: "Ausrollung bestätigen"
-bootstrap.will_create_account: "Wird Konto erstellen: %s@%s"
-bootstrap.will_deploy_keys: "Wird %d ausgewählte Schlüssel ausrollen"
+bootstrap.confirm_deploy_title: "Ausrollen bestätigen"
 bootstrap.will_replace_temp_key: "Wird temporären Schlüssel durch Systemschlüssel ersetzen"
 bootstrap.deploy: "Ausrollen"
 bootstrap.back: "Zurück"
@@ -419,12 +376,32 @@ bootstrap.error_regenerate: "Neuen Schlüssel generieren"
 bootstrap.error_cancel: "Bootstrap abbrechen"
 bootstrap.error_help: "(links/rechts zum Navigieren, Enter zum Bestätigen, Esc zum Abbrechen)"
 
-# Restore CLI command
-restore.cli_starting: "🔄 Stelle Datenbank aus %s wieder her..."
-restore.cli_error_read: "Fehler beim Lesen oder Dekodieren der Sicherungsdatei: %v"
-restore.cli_error_import: "Fehler beim Importieren der Daten in die Datenbank: %v"
-restore.cli_success: "✅ Datenbank erfolgreich aus der Sicherung wiederhergestellt."
+# Config
+config.error_init_db: "Fehler beim Initialisieren der Datenbank: %w"
 
+# Deploy CLI command
+deploy.cli_account_not_found: "Konto '%s' nicht gefunden oder nicht aktiv."
+deploy.error_get_bootstrap_key: "Fehler beim Abrufen des aktiven Systemschlüssels für Bootstrap: %w"
+deploy.error_no_bootstrap_key: "Kein aktiver Systemschlüssel für Bootstrap gefunden"
+deploy.error_get_serial_key: "Fehler beim Abrufen des Systemschlüssels mit Seriennummer %d: %w"
+deploy.error_no_serial_key: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer %d gefunden"
+deploy.error_get_active_key_for_serial: "Aktiver Systemschlüssel für Seriennummer-Update konnte nicht abgerufen werden"
+deploy.error_connection_failed: "Verbindung fehlgeschlagen: %w"
+deploy.error_no_bootstrap_key_tui: "Kein aktiver Systemschlüssel für Bootstrap gefunden. Bitte einen erzeugen"
+deploy.error_no_serial_key_tui: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer %d auf Konto %s gefunden"
+deploy.error_connection_failed_tui: "Verbindung zu %s fehlgeschlagen: %w"
+deploy.error_get_serial_for_status: "Deployment erfolgreich, aber neue Seriennummer konnte für Statusmeldung nicht gelesen werden: %w"
+deploy.error_deployment_failed: "Deployment fehlgeschlagen: %w"
+
+# Trust Host CLI command
+trust_host.retrieving_key: "Versuche, Host-Schlüssel von %s abzurufen..."
+trust_host.error_get_key: "Host-Schlüssel konnte nicht abgerufen werden: %v"
+trust_host.authenticity_warning_1: "Die Authentizität des Hosts '%s' kann nicht festgestellt werden."
+trust_host.authenticity_warning_2: "%s Schlüssel-Fingerabdruck ist %s."
+trust_host.confirm_prompt: "Sind Sie sicher, dass Sie die Verbindung fortsetzen möchten (ja/nein)? "
+trust_host.not_trusted_abort: "Host-Schlüssel nicht vertraut. Abbruch."
+trust_host.error_save_key: "Fehler beim Speichern des Host-Schlüssels in der Datenbank: %v"
+trust_host.added_success: "Warnung: '%s' (Typ %s) wurde dauerhaft zur Liste der bekannten Hosts hinzugefügt."
 # Migrate CLI command
 migrate.cli_error_flags: "Fehler: --type und --dsn Flags sind für die Migration erforderlich."
 migrate.cli_starting_backup: "📦 Erstelle In-Memory-Backup von der Quelldatenbank..."
