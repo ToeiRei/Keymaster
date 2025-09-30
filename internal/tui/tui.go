@@ -53,6 +53,8 @@ type dashboardData struct {
 	activeAccountCount int
 	publicKeyCount     int
 	globalKeyCount     int
+	hostsUpToDate      int
+	hostsOutdated      int
 	systemKeySerial    int // 0 if none
 	recentLogs         []model.AuditLogEntry
 	err                error
@@ -449,12 +451,21 @@ func (m menuModel) View(data dashboardData, width, height int) string {
 		sysKeyStatus = successStyle.Render(i18n.T("dashboard.system_key.active", data.systemKeySerial))
 	}
 	dashboardItems = append(dashboardItems, lipgloss.JoinVertical(lipgloss.Left,
-		i18n.T("dashboard.accounts", data.accountCount, data.activeAccountCount),
-		i18n.T("dashboard.public_keys", data.publicKeyCount, data.globalKeyCount),
-		i18n.T("dashboard.system_key", sysKeyStatus),
+		i18n.T("dashboard.accounts", data.accountCount, data.activeAccountCount),  //
+		i18n.T("dashboard.public_keys", data.publicKeyCount, data.globalKeyCount), //
+		i18n.T("dashboard.system_key", sysKeyStatus),                              //
 	))
 
-	// Recent Activity
+	// Deployment Status
+	dashboardItems = append(dashboardItems, "", "", paneTitleStyle.Render(i18n.T("dashboard.deployment_status")), "")
+	currentKeyLine := successStyle.Render(i18n.T("dashboard.hosts_current_key", data.hostsUpToDate))
+	pastKeysLine := i18n.T("dashboard.hosts_past_keys", data.hostsOutdated)
+	if data.hostsOutdated > 0 {
+		pastKeysLine = specialStyle.Render(pastKeysLine)
+	}
+	dashboardItems = append(dashboardItems, currentKeyLine, pastKeysLine)
+
+	// Recent Activity (moved down)
 	dashboardItems = append(dashboardItems, "", "", paneTitleStyle.Render(i18n.T("dashboard.recent_activity")), "")
 
 	// --- Layout ---
@@ -609,6 +620,14 @@ func refreshDashboardCmd() tea.Cmd {
 		for _, acc := range accounts {
 			if acc.IsActive {
 				data.activeAccountCount++
+				// Compare account serial with active system key serial
+				if sysKey != nil && sysKey.Serial > 0 {
+					if acc.Serial == sysKey.Serial {
+						data.hostsUpToDate++
+					} else {
+						data.hostsOutdated++
+					}
+				}
 			}
 		}
 
