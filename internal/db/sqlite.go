@@ -764,3 +764,189 @@ func (s *SqliteStore) ExportDataForBackup() (*model.BackupData, error) {
 	// If we got here, all queries were successful.
 	return backup, tx.Commit()
 }
+
+// ImportDataFromBackup restores the database from a backup data structure.
+// It performs a full wipe-and-replace within a single transaction to ensure atomicity.
+func (s *SqliteStore) ImportDataFromBackup(backup *model.BackupData) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback() // Rollback on any error.
+
+	// --- 1. DB Wipe ---
+	// Delete data in an order that respects foreign key constraints.
+	tables := []string{
+		"account_keys",
+		"bootstrap_sessions",
+		"audit_log",
+		"known_hosts",
+		"system_keys",
+		"public_keys",
+		"accounts",
+	}
+	for _, table := range tables {
+		if _, err := tx.Exec(fmt.Sprintf("DELETE FROM %s", table)); err != nil {
+			return fmt.Errorf("failed to wipe table %s: %w", table, err)
+		}
+	}
+
+	// --- 2. DB Integration (Insertion) ---
+	// Insert data in an order that respects foreign key constraints.
+
+	// Accounts
+	stmt, err := tx.Prepare("INSERT INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare account insert: %w", err)
+	}
+	for _, acc := range backup.Accounts {
+		if _, err := stmt.Exec(acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
+			return fmt.Errorf("failed to insert account %d: %w", acc.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// Public Keys
+	stmt, err = tx.Prepare("INSERT INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?, ?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare public_key insert: %w", err)
+	}
+	for _, pk := range backup.PublicKeys {
+		if _, err := stmt.Exec(pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal); err != nil {
+			return fmt.Errorf("failed to insert public key %d: %w", pk.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// AccountKeys (Junction Table)
+	stmt, err = tx.Prepare("INSERT INTO account_keys (key_id, account_id) VALUES (?, ?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare account_key insert: %w", err)
+	}
+	for _, ak := range backup.AccountKeys {
+		if _, err := stmt.Exec(ak.KeyID, ak.AccountID); err != nil {
+			return fmt.Errorf("failed to insert account_key for key %d and account %d: %w", ak.KeyID, ak.AccountID, err)
+		}
+	}
+	stmt.Close()
+
+	// System Keys
+	stmt, err = tx.Prepare("INSERT INTO system_keys (id, serial, public_key, private_key, is_active) VALUES (?, ?, ?, ?, ?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare system_key insert: %w", err)
+	}
+	for _, sk := range backup.SystemKeys {
+		if _, err := stmt.Exec(sk.ID, sk.Serial, sk.PublicKey, sk.PrivateKey, sk.IsActive); err != nil {
+			return fmt.Errorf("failed to insert system key %d: %w", sk.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// Known Hosts
+	stmt, err = tx.Prepare("INSERT INTO known_hosts (hostname, key) VALUES (?, ?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare known_host insert: %w", err)
+	}
+	for _, kh := range backup.KnownHosts {
+		if _, err := stmt.Exec(kh.Hostname, kh.Key); err != nil {
+			return fmt.Errorf("failed to insert known host %s: %w", kh.Hostname, err)
+		}
+	}
+	stmt.Close()
+
+	// Audit Log Entries
+	stmt, err = tx.Prepare("INSERT INTO audit_log (id, timestamp, username, action, details) VALUES (?, ?, ?, ?, ?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare audit_log insert: %w", err)
+	}
+	for _, ale := range backup.AuditLogEntries {
+		if _, err := stmt.Exec(ale.ID, ale.Timestamp, ale.Username, ale.Action, ale.Details); err != nil {
+			return fmt.Errorf("failed to insert audit log %d: %w", ale.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// Bootstrap Sessions
+	// Note: Restoring sessions might not always be desired, but we include it for completeness.
+	// The schema for bootstrap_sessions does not have an explicit ID column for insert.
+	// We will rely on the auto-incrementing ID.
+
+	// If we got here, all inserts were successful.
+	return tx.Commit()
+}
+
+// IntegrateDataFromBackup restores data from a backup in a non-destructive way,
+// skipping entries that already exist.
+func (s *SqliteStore) IntegrateDataFromBackup(backup *model.BackupData) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback() // Rollback on any error.
+
+	// Use "INSERT OR IGNORE" to skip duplicates based on unique constraints.
+
+	// Accounts (UNIQUE on username, hostname)
+	stmt, err := tx.Prepare("INSERT OR IGNORE INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare account insert: %w", err)
+	}
+	for _, acc := range backup.Accounts {
+		if _, err := stmt.Exec(acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
+			return fmt.Errorf("failed to integrate account %d: %w", acc.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// Public Keys (UNIQUE on comment)
+	stmt, err = tx.Prepare("INSERT OR IGNORE INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?, ?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare public_key insert: %w", err)
+	}
+	for _, pk := range backup.PublicKeys {
+		if _, err := stmt.Exec(pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal); err != nil {
+			return fmt.Errorf("failed to integrate public key %d: %w", pk.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// AccountKeys (PRIMARY KEY on key_id, account_id)
+	stmt, err = tx.Prepare("INSERT OR IGNORE INTO account_keys (key_id, account_id) VALUES (?, ?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare account_key insert: %w", err)
+	}
+	for _, ak := range backup.AccountKeys {
+		if _, err := stmt.Exec(ak.KeyID, ak.AccountID); err != nil {
+			return fmt.Errorf("failed to integrate account_key for key %d and account %d: %w", ak.KeyID, ak.AccountID, err)
+		}
+	}
+	stmt.Close()
+
+	// System Keys (UNIQUE on serial)
+	stmt, err = tx.Prepare("INSERT OR IGNORE INTO system_keys (id, serial, public_key, private_key, is_active) VALUES (?, ?, ?, ?, ?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare system_key insert: %w", err)
+	}
+	for _, sk := range backup.SystemKeys {
+		if _, err := stmt.Exec(sk.ID, sk.Serial, sk.PublicKey, sk.PrivateKey, sk.IsActive); err != nil {
+			return fmt.Errorf("failed to integrate system key %d: %w", sk.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// Known Hosts (PRIMARY KEY on hostname)
+	stmt, err = tx.Prepare("INSERT OR IGNORE INTO known_hosts (hostname, key) VALUES (?, ?)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare known_host insert: %w", err)
+	}
+	for _, kh := range backup.KnownHosts {
+		if _, err := stmt.Exec(kh.Hostname, kh.Key); err != nil {
+			return fmt.Errorf("failed to integrate known host %s: %w", kh.Hostname, err)
+		}
+	}
+	stmt.Close()
+
+	// Audit logs and bootstrap sessions are generally not integrated to avoid confusion.
+
+	return tx.Commit()
+}

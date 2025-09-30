@@ -64,4 +64,6 @@ type Store interface {
 
 	// Backup/Restore methods
 	ExportDataForBackup() (*model.BackupData, error)
+	ImportDataFromBackup(*model.BackupData) error
+	IntegrateDataFromBackup(*model.BackupData) error
 }

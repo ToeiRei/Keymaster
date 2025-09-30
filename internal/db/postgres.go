@@ -726,3 +726,190 @@ func (s *PostgresStore) ExportDataForBackup() (*model.BackupData, error) {
 	// If we got here, all queries were successful.
 	return backup, tx.Commit()
 }
+
+// ImportDataFromBackup restores the database from a backup data structure.
+// It performs a full wipe-and-replace within a single transaction to ensure atomicity.
+func (s *PostgresStore) ImportDataFromBackup(backup *model.BackupData) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback() // Rollback on any error.
+
+	// --- 1. DB Wipe ---
+	// TRUNCATE is faster than DELETE and also resets auto-incrementing counters.
+	// RESTART IDENTITY resets sequences, and CASCADE handles foreign keys automatically.
+	tables := []string{
+		"accounts",
+		"public_keys",
+		"system_keys",
+		"known_hosts",
+		"audit_log",
+		"bootstrap_sessions",
+	}
+	truncateQuery := fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY CASCADE", strings.Join(tables, ", "))
+	if _, err := tx.Exec(truncateQuery); err != nil {
+		return fmt.Errorf("failed to wipe tables: %w", err)
+	}
+
+	// --- 2. DB Integration (Insertion) ---
+
+	// Accounts
+	stmt, err := tx.Prepare("INSERT INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare account insert: %w", err)
+	}
+	for _, acc := range backup.Accounts {
+		if _, err := stmt.Exec(acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
+			return fmt.Errorf("failed to insert account %d: %w", acc.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// Public Keys
+	stmt, err = tx.Prepare("INSERT INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES ($1, $2, $3, $4, $5)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare public_key insert: %w", err)
+	}
+	for _, pk := range backup.PublicKeys {
+		if _, err := stmt.Exec(pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal); err != nil {
+			return fmt.Errorf("failed to insert public key %d: %w", pk.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// AccountKeys
+	stmt, err = tx.Prepare("INSERT INTO account_keys (key_id, account_id) VALUES ($1, $2)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare account_key insert: %w", err)
+	}
+	for _, ak := range backup.AccountKeys {
+		if _, err := stmt.Exec(ak.KeyID, ak.AccountID); err != nil {
+			return fmt.Errorf("failed to insert account_key for key %d and account %d: %w", ak.KeyID, ak.AccountID, err)
+		}
+	}
+	stmt.Close()
+
+	// System Keys
+	stmt, err = tx.Prepare("INSERT INTO system_keys (id, serial, public_key, private_key, is_active) VALUES ($1, $2, $3, $4, $5)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare system_key insert: %w", err)
+	}
+	for _, sk := range backup.SystemKeys {
+		if _, err := stmt.Exec(sk.ID, sk.Serial, sk.PublicKey, sk.PrivateKey, sk.IsActive); err != nil {
+			return fmt.Errorf("failed to insert system key %d: %w", sk.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// Known Hosts
+	stmt, err = tx.Prepare(`INSERT INTO known_hosts (hostname, "key") VALUES ($1, $2)`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare known_host insert: %w", err)
+	}
+	for _, kh := range backup.KnownHosts {
+		if _, err := stmt.Exec(kh.Hostname, kh.Key); err != nil {
+			return fmt.Errorf("failed to insert known host %s: %w", kh.Hostname, err)
+		}
+	}
+	stmt.Close()
+
+	// Audit Log Entries
+	stmt, err = tx.Prepare("INSERT INTO audit_log (id, timestamp, username, action, details) VALUES ($1, $2, $3, $4, $5)")
+	if err != nil {
+		return fmt.Errorf("failed to prepare audit_log insert: %w", err)
+	}
+	for _, ale := range backup.AuditLogEntries {
+		if _, err := stmt.Exec(ale.ID, ale.Timestamp, ale.Username, ale.Action, ale.Details); err != nil {
+			return fmt.Errorf("failed to insert audit log %d: %w", ale.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// After all data is inserted, we need to manually update the sequences for the tables
+	// where we inserted explicit IDs, so that new inserts don't have conflicting IDs.
+	if _, err := tx.Exec("SELECT setval('accounts_id_seq', (SELECT MAX(id) FROM accounts))"); err != nil {
+		return fmt.Errorf("failed to update accounts sequence: %w", err)
+	}
+	if _, err := tx.Exec("SELECT setval('public_keys_id_seq', (SELECT MAX(id) FROM public_keys))"); err != nil {
+		return fmt.Errorf("failed to update public_keys sequence: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+// IntegrateDataFromBackup restores data from a backup in a non-destructive way,
+// skipping entries that already exist.
+func (s *PostgresStore) IntegrateDataFromBackup(backup *model.BackupData) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback() // Rollback on any error.
+
+	// Use "ON CONFLICT DO NOTHING" to skip duplicates based on unique constraints.
+
+	// Accounts (UNIQUE on username, hostname)
+	stmt, err := tx.Prepare("INSERT INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (username, hostname) DO NOTHING")
+	if err != nil {
+		return fmt.Errorf("failed to prepare account insert: %w", err)
+	}
+	for _, acc := range backup.Accounts {
+		if _, err := stmt.Exec(acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
+			return fmt.Errorf("failed to integrate account %d: %w", acc.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// Public Keys (UNIQUE on comment)
+	stmt, err = tx.Prepare("INSERT INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (comment) DO NOTHING")
+	if err != nil {
+		return fmt.Errorf("failed to prepare public_key insert: %w", err)
+	}
+	for _, pk := range backup.PublicKeys {
+		if _, err := stmt.Exec(pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal); err != nil {
+			return fmt.Errorf("failed to integrate public key %d: %w", pk.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// AccountKeys (PRIMARY KEY on key_id, account_id)
+	stmt, err = tx.Prepare("INSERT INTO account_keys (key_id, account_id) VALUES ($1, $2) ON CONFLICT (key_id, account_id) DO NOTHING")
+	if err != nil {
+		return fmt.Errorf("failed to prepare account_key insert: %w", err)
+	}
+	for _, ak := range backup.AccountKeys {
+		if _, err := stmt.Exec(ak.KeyID, ak.AccountID); err != nil {
+			return fmt.Errorf("failed to integrate account_key for key %d and account %d: %w", ak.KeyID, ak.AccountID, err)
+		}
+	}
+	stmt.Close()
+
+	// System Keys (UNIQUE on serial)
+	stmt, err = tx.Prepare("INSERT INTO system_keys (id, serial, public_key, private_key, is_active) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (serial) DO NOTHING")
+	if err != nil {
+		return fmt.Errorf("failed to prepare system_key insert: %w", err)
+	}
+	for _, sk := range backup.SystemKeys {
+		if _, err := stmt.Exec(sk.ID, sk.Serial, sk.PublicKey, sk.PrivateKey, sk.IsActive); err != nil {
+			return fmt.Errorf("failed to integrate system key %d: %w", sk.ID, err)
+		}
+	}
+	stmt.Close()
+
+	// Known Hosts (PRIMARY KEY on hostname)
+	stmt, err = tx.Prepare(`INSERT INTO known_hosts (hostname, "key") VALUES ($1, $2) ON CONFLICT (hostname) DO NOTHING`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare known_host insert: %w", err)
+	}
+	for _, kh := range backup.KnownHosts {
+		if _, err := stmt.Exec(kh.Hostname, kh.Key); err != nil {
+			return fmt.Errorf("failed to integrate known host %s: %w", kh.Hostname, err)
+		}
+	}
+	stmt.Close()
+
+	// Audit logs and bootstrap sessions are generally not integrated to avoid confusion.
+
+	return tx.Commit()
+}
