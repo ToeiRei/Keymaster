@@ -167,3 +167,40 @@ func stringContains(s, substr string) bool {
 	}
 	return false
 }
+
+func TestHostPortHelpers(t *testing.T) {
+	cases := []struct {
+		in    string
+		host  string
+		port  string
+		canon string
+	}{
+		{"example.com", "example.com", "", "example.com:22"},
+		{"example.com:2222", "example.com", "2222", "example.com:2222"},
+		{"192.168.1.10", "192.168.1.10", "", "192.168.1.10:22"},
+		{"192.168.1.10:2200", "192.168.1.10", "2200", "192.168.1.10:2200"},
+		{"[2001:db8::1]", "2001:db8::1", "", "[2001:db8::1]:22"},
+		{"[2001:db8::1]:2200", "2001:db8::1", "2200", "[2001:db8::1]:2200"},
+		{"2001:db8::1", "2001:db8::1", "", "[2001:db8::1]:22"},
+		{"user@example.com", "example.com", "", "example.com:22"},
+		{"user@[2001:db8::1]:2222", "2001:db8::1", "2222", "[2001:db8::1]:2222"},
+	}
+	for _, c := range cases {
+		h, p, err := ParseHostPort(c.in)
+		if err != nil {
+			t.Fatalf("unexpected error parsing %q: %v", c.in, err)
+		}
+		if h != c.host || p != c.port {
+			t.Errorf("ParseHostPort(%q) => host=%q port=%q; want host=%q port=%q", c.in, h, p, c.host, c.port)
+		}
+		canon := CanonicalizeHostPort(c.in)
+		if canon != c.canon {
+			t.Errorf("CanonicalizeHostPort(%q) => %q; want %q", c.in, canon, c.canon)
+		}
+		// Join should reconstruct canon from components
+		joined := JoinHostPort(h, p, "22")
+		if joined != c.canon {
+			t.Errorf("JoinHostPort(%q,%q,22) => %q; want %q", h, p, joined, c.canon)
+		}
+	}
+}
