@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
@@ -55,6 +56,7 @@ type dashboardData struct {
 	globalKeyCount     int
 	hostsUpToDate      int
 	hostsOutdated      int
+	keyAlgoBreakdown   string
 	systemKeySerial    int // 0 if none
 	recentLogs         []model.AuditLogEntry
 	err                error
@@ -465,6 +467,13 @@ func (m menuModel) View(data dashboardData, width, height int) string {
 	}
 	dashboardItems = append(dashboardItems, currentKeyLine, pastKeysLine)
 
+	// Security Posture
+	dashboardItems = append(dashboardItems, "", "", paneTitleStyle.Render(i18n.T("dashboard.security_posture")), "")
+	var postureItems []string
+	// Add color to key algo breakdown
+	postureItems = append(postureItems, lipgloss.JoinHorizontal(lipgloss.Left, i18n.T("dashboard.key_type_spread", ""), data.keyAlgoBreakdown))
+	dashboardItems = append(dashboardItems, postureItems...)
+
 	// Recent Activity (moved down)
 	dashboardItems = append(dashboardItems, "", "", paneTitleStyle.Render(i18n.T("dashboard.recent_activity")), "")
 
@@ -632,11 +641,32 @@ func refreshDashboardCmd() tea.Cmd {
 		}
 
 		data.publicKeyCount = len(keys)
+		algoCounts := make(map[string]int)
 		for _, key := range keys {
 			if key.IsGlobal {
 				data.globalKeyCount++
 			}
+			algoCounts[key.Algorithm]++
 		}
+
+		// Format algorithm breakdown
+		var algoParts []string
+		// Sort for consistent order
+		var sortedAlgos []string
+		for algo := range algoCounts {
+			sortedAlgos = append(sortedAlgos, algo)
+		}
+		sort.Strings(sortedAlgos)
+
+		for _, algo := range sortedAlgos {
+			count := algoCounts[algo]
+			style := successStyle
+			if algo == "ssh-rsa" || algo == "ssh-dss" {
+				style = specialStyle
+			}
+			algoParts = append(algoParts, style.Render(fmt.Sprintf("%s: %d", algo, count)))
+		}
+		data.keyAlgoBreakdown = strings.Join(algoParts, ", ")
 
 		if sysKey != nil {
 			data.systemKeySerial = sysKey.Serial
