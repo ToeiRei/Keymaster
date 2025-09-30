@@ -64,10 +64,17 @@ type accountsModel struct {
 	filter                 string
 	isFiltering            bool
 	// For delete confirmation
-	isConfirmingDelete bool
-	accountToDelete    model.Account
-	confirmCursor      int // 0 for No, 1 for Yes
-	width, height      int
+	isConfirmingDelete       bool
+	accountToDelete          model.Account
+	confirmCursor            int  // 0 for No, 1 for Yes, 2 for checkbox
+	withDecommission         bool // Checkbox state - whether to decommission (default true)
+	isConfirmingKeySelection bool // True when showing key selection dialog
+	availableKeys            []model.PublicKey
+	selectedKeysToKeep       map[int]bool // Keys selected to keep
+	keySelectionCursor       int          // Cursor position in key list
+	keySelectionButtonCursor int          // 0 for Cancel, 1 for Continue
+	keySelectionInButtonMode bool         // True when navigating buttons instead of keys
+	width, height            int
 }
 
 func newAccountsModel() accountsModel {
@@ -198,43 +205,200 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Handle delete confirmation
-	if m.isConfirmingDelete {
+	// Handle key selection dialog
+	if m.isConfirmingKeySelection {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
-			case "y":
-				// Fallthrough to confirm
-			case "n", "q", "esc":
-				m.isConfirmingDelete = false
+			case "q", "esc":
+				m.isConfirmingKeySelection = false
+				m.isConfirmingDelete = false // Cancel everything, go to account overview
+				m.keySelectionInButtonMode = false
 				m.status = i18n.T("accounts.status.delete_cancelled")
 				return m, nil
-			case "right", "tab", "l":
-				m.confirmCursor = 1 // Yes
+			case "up", "k":
+				if m.keySelectionInButtonMode {
+					// Switch from buttons to keys list
+					m.keySelectionInButtonMode = false
+					m.keySelectionCursor = len(m.availableKeys) - 1
+				} else if m.keySelectionCursor > 0 {
+					m.keySelectionCursor--
+				}
 				return m, nil
-			case "left", "shift+tab", "h":
-				m.confirmCursor = 0 // No
+			case "down", "j":
+				if !m.keySelectionInButtonMode && m.keySelectionCursor < len(m.availableKeys)-1 {
+					m.keySelectionCursor++
+				} else if !m.keySelectionInButtonMode && m.keySelectionCursor == len(m.availableKeys)-1 {
+					// At last key, move to buttons
+					m.keySelectionInButtonMode = true
+					m.keySelectionButtonCursor = 0
+				}
 				return m, nil
-			case "enter":
-				if m.confirmCursor == 1 { // Yes is selected
-					if err := db.DeleteAccount(m.accountToDelete.ID); err != nil {
-						m.err = err
-					} else {
-						m.status = i18n.T("accounts.status.delete_success", m.accountToDelete.String())
-						m.accounts, m.err = db.GetAllAccounts()
-						m.rebuildDisplayedAccounts()
-						m.viewport.SetContent(m.listContentView())
+			case "tab":
+				if !m.keySelectionInButtonMode {
+					// Tab from keys to buttons
+					m.keySelectionInButtonMode = true
+					m.keySelectionButtonCursor = 0
+				} else {
+					// Tab between buttons
+					m.keySelectionButtonCursor = (m.keySelectionButtonCursor + 1) % 2
+				}
+				return m, nil
+			case "shift+tab":
+				if m.keySelectionInButtonMode && m.keySelectionButtonCursor > 0 {
+					m.keySelectionButtonCursor--
+				} else if m.keySelectionInButtonMode && m.keySelectionButtonCursor == 0 {
+					// Go back to keys list
+					m.keySelectionInButtonMode = false
+					if len(m.availableKeys) > 0 {
+						m.keySelectionCursor = len(m.availableKeys) - 1
 					}
 				}
-				m.isConfirmingDelete = false
+				return m, nil
+			case "left":
+				if m.keySelectionInButtonMode {
+					m.keySelectionButtonCursor = 0 // Cancel
+				}
+				return m, nil
+			case "right":
+				if m.keySelectionInButtonMode {
+					m.keySelectionButtonCursor = 1 // Continue
+				}
+				return m, nil
+			case " ": // Toggle selection (only for keys, not buttons)
+				if !m.keySelectionInButtonMode && m.keySelectionCursor < len(m.availableKeys) {
+					keyID := m.availableKeys[m.keySelectionCursor].ID
+					m.selectedKeysToKeep[keyID] = !m.selectedKeysToKeep[keyID]
+				}
+				return m, nil
+			case "enter":
+				if m.keySelectionInButtonMode {
+					// Button action
+					if m.keySelectionButtonCursor == 0 { // Cancel
+						m.isConfirmingKeySelection = false
+						m.isConfirmingDelete = false // Cancel everything, go to account overview
+						m.keySelectionInButtonMode = false
+						m.status = i18n.T("accounts.status.delete_cancelled")
+						return m, nil
+					} else { // Continue
+						m.isConfirmingKeySelection = false
+						m.keySelectionInButtonMode = false
+						return m, m.performDecommissionWithKeys()
+					}
+				} else {
+					// Toggle key selection
+					if m.keySelectionCursor < len(m.availableKeys) {
+						keyID := m.availableKeys[m.keySelectionCursor].ID
+						m.selectedKeysToKeep[keyID] = !m.selectedKeysToKeep[keyID]
+					}
+				}
+				return m, nil
+			case "a": // Select all (keep all)
+				for _, key := range m.availableKeys {
+					m.selectedKeysToKeep[key.ID] = true
+				}
+				return m, nil
+			case "n": // Select none (keep none)
+				for _, key := range m.availableKeys {
+					m.selectedKeysToKeep[key.ID] = false
+				}
 				return m, nil
 			}
 		}
 		return m, nil
 	}
 
+	// Handle delete confirmation
+	if m.isConfirmingDelete {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "n", "q", "esc":
+				m.isConfirmingDelete = false
+				m.status = i18n.T("accounts.status.delete_cancelled")
+				return m, nil
+			case "right", "tab", "down":
+				m.confirmCursor = (m.confirmCursor + 1) % 3 // Navigate through No/Yes/Checkbox
+				return m, nil
+			case "left", "shift+tab", "up":
+				m.confirmCursor = (m.confirmCursor + 2) % 3 // Navigate backwards through No/Yes/Checkbox
+				return m, nil
+			case " ": // Toggle decommission checkbox when focused
+				if m.confirmCursor == 2 {
+					m.withDecommission = !m.withDecommission
+				}
+				return m, nil
+			case "enter":
+				switch m.confirmCursor {
+				case 1: // Yes is selected
+					if m.withDecommission {
+						// Show key selection dialog - don't close delete dialog yet
+						return m, m.loadKeysForSelection()
+					} else {
+						// Simple delete without decommission
+						if err := db.DeleteAccount(m.accountToDelete.ID); err != nil {
+							m.err = err
+						} else {
+							m.status = i18n.T("accounts.status.delete_success", m.accountToDelete.String())
+							m.accounts, m.err = db.GetAllAccounts()
+							m.rebuildDisplayedAccounts()
+							m.viewport.SetContent(m.listContentView())
+						}
+						m.isConfirmingDelete = false
+						return m, nil
+					}
+				case 2: // Checkbox is selected
+					m.withDecommission = !m.withDecommission
+					return m, nil
+				case 0: // No is selected
+					m.isConfirmingDelete = false
+					m.status = i18n.T("accounts.status.delete_cancelled")
+					return m, nil
+				}
+				return m, nil
+			}
+		}
+		// Don't return here - allow other message types (like keySelectionLoadedMsg) to pass through
+	}
+
 	// Handle async messages for the list view
 	switch msg := msg.(type) {
+	case error:
+		// Handle errors from async operations
+		m.err = msg
+		m.isConfirmingDelete = false
+		m.isConfirmingKeySelection = false
+		return m, nil
+	case keySelectionLoadedMsg:
+		// Keys loaded, initialize selection state
+		m.availableKeys = msg.keys
+		m.selectedKeysToKeep = make(map[int]bool)
+		// Default: keep all keys (user can deselect what they want to remove)
+		for _, key := range m.availableKeys {
+			m.selectedKeysToKeep[key.ID] = true
+		}
+		m.keySelectionCursor = 0
+		m.isConfirmingKeySelection = true
+		m.isConfirmingDelete = false
+		return m, nil
+	case decommissionCompletedMsg:
+		// Decommission completed, show result
+		result := msg.result
+		if result.DatabaseDeleteError != nil {
+			m.err = result.DatabaseDeleteError
+			m.status = i18n.T("accounts.status.decommission_failed", result.DatabaseDeleteError)
+		} else if result.RemoteCleanupError != nil {
+			m.status = i18n.T("accounts.status.decommission_partial", result.AccountString, result.RemoteCleanupError)
+			m.accounts, m.err = db.GetAllAccounts()
+			m.rebuildDisplayedAccounts()
+			m.viewport.SetContent(m.listContentView())
+		} else {
+			m.status = i18n.T("accounts.status.decommission_success", result.AccountString)
+			m.accounts, m.err = db.GetAllAccounts()
+			m.rebuildDisplayedAccounts()
+			m.viewport.SetContent(m.listContentView())
+		}
+		return m, nil
 	case hostKeyVerifiedMsg:
 		if msg.err != nil {
 			m.status = i18n.T("accounts.status.verify_fail", msg.hostname, msg.err)
@@ -347,7 +511,8 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.displayedAccounts) > 0 {
 				m.accountToDelete = m.displayedAccounts[m.cursor]
 				m.isConfirmingDelete = true
-				m.confirmCursor = 0 // Default to No
+				m.withDecommission = true // Default to decommission
+				m.confirmCursor = 0       // Default to No
 			}
 			return m, nil
 
@@ -490,22 +655,115 @@ func (m *accountsModel) footerView() string {
 }
 
 func (m *accountsModel) viewConfirmation() string {
+	if m.isConfirmingKeySelection {
+		return m.viewKeySelection()
+	}
+
 	var b strings.Builder
 	b.WriteString(titleStyle.Render(i18n.T("accounts.delete_confirm.title")))
+	b.WriteString("\n\n")
 	question := i18n.T("accounts.delete_confirm.question", m.accountToDelete.String())
 	b.WriteString(question)
 	b.WriteString("\n\n")
+
+	// Decommission checkbox
+	var checkbox string
+	if m.withDecommission {
+		checkbox = "☑ " + i18n.T("accounts.delete_confirm.decommission")
+	} else {
+		checkbox = "☐ " + i18n.T("accounts.delete_confirm.decommission")
+	}
+
+	if m.confirmCursor == 2 { // Checkbox focused
+		checkbox = formSelectedItemStyle.Render(checkbox)
+	} else {
+		checkbox = formItemStyle.Render(checkbox)
+	}
+	b.WriteString(checkbox + "\n\n")
+
+	// Yes/No buttons
 	var yesButton, noButton string
-	if m.confirmCursor == 1 { // Yes
+	if m.confirmCursor == 1 { // Yes focused
 		yesButton = activeButtonStyle.Render(i18n.T("accounts.delete_confirm.yes"))
 		noButton = buttonStyle.Render(i18n.T("accounts.delete_confirm.no"))
-	} else { // No
+	} else if m.confirmCursor == 0 { // No focused
 		yesButton = buttonStyle.Render(i18n.T("accounts.delete_confirm.yes"))
 		noButton = activeButtonStyle.Render(i18n.T("accounts.delete_confirm.no"))
+	} else { // Checkbox focused (2)
+		yesButton = buttonStyle.Render(i18n.T("accounts.delete_confirm.yes"))
+		noButton = buttonStyle.Render(i18n.T("accounts.delete_confirm.no"))
 	}
 	buttons := lipgloss.JoinHorizontal(lipgloss.Top, noButton, "  ", yesButton)
 	b.WriteString(buttons)
-	b.WriteString("\n" + helpStyle.Render("\n"+i18n.T("accounts.delete_confirm.help")))
+	b.WriteString("\n" + helpStyle.Render("\n"+i18n.T("accounts.delete_confirm.help_checkbox")))
+
+	return lipgloss.Place(m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		dialogBoxStyle.Render(b.String()),
+	)
+}
+
+func (m *accountsModel) viewKeySelection() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render(i18n.T("accounts.key_selection.title")))
+	b.WriteString("\n\n")
+	b.WriteString(i18n.T("accounts.key_selection.question", m.accountToDelete.String()))
+	b.WriteString("\n\n")
+
+	// Show keys list
+	if len(m.availableKeys) == 0 {
+		b.WriteString(helpStyle.Render(i18n.T("accounts.key_selection.no_keys")))
+	} else {
+		for i, key := range m.availableKeys {
+			var line string
+			// Show cursor only when in key selection mode
+			if !m.keySelectionInButtonMode && i == m.keySelectionCursor {
+				line = "▸ "
+			} else {
+				line = "  "
+			}
+
+			// Checkbox
+			if m.selectedKeysToKeep[key.ID] {
+				line += "☑ "
+			} else {
+				line += "☐ "
+			}
+
+			// Key info
+			line += fmt.Sprintf("%s (...%s)", key.Comment, key.KeyData[len(key.KeyData)-12:])
+
+			if !m.keySelectionInButtonMode && i == m.keySelectionCursor {
+				b.WriteString(selectedItemStyle.Render(line))
+			} else {
+				b.WriteString(itemStyle.Render(line))
+			}
+			b.WriteString("\n")
+		}
+	}
+
+	b.WriteString("\n")
+
+	// Buttons
+	var cancelButton, continueButton string
+	if m.keySelectionInButtonMode {
+		if m.keySelectionButtonCursor == 0 {
+			cancelButton = activeButtonStyle.Render(i18n.T("accounts.key_selection.cancel"))
+			continueButton = buttonStyle.Render(i18n.T("accounts.key_selection.continue"))
+		} else {
+			cancelButton = buttonStyle.Render(i18n.T("accounts.key_selection.cancel"))
+			continueButton = activeButtonStyle.Render(i18n.T("accounts.key_selection.continue"))
+		}
+	} else {
+		cancelButton = buttonStyle.Render(i18n.T("accounts.key_selection.cancel"))
+		continueButton = buttonStyle.Render(i18n.T("accounts.key_selection.continue"))
+	}
+	buttons := lipgloss.JoinHorizontal(lipgloss.Top, cancelButton, "  ", continueButton)
+	b.WriteString(buttons)
+
+	b.WriteString("\n\n")
+	b.WriteString(helpStyle.Render(i18n.T("accounts.key_selection.help")))
+
 	return lipgloss.Place(m.width, m.height,
 		lipgloss.Center, lipgloss.Center,
 		dialogBoxStyle.Render(b.String()),
@@ -529,7 +787,7 @@ func (m *accountsModel) View() string {
 		return lipgloss.JoinVertical(lipgloss.Left, viewItems...)
 	}
 
-	if m.isConfirmingDelete {
+	if m.isConfirmingDelete || m.isConfirmingKeySelection {
 		return m.viewConfirmation()
 	}
 
@@ -602,4 +860,82 @@ func importRemoteKeysCmd(account model.Account) tea.Cmd {
 		imported, skipped, warning, err := deploy.ImportRemoteKeys(account)
 		return remoteKeysImportedMsg{accountID: account.ID, importedKeys: imported, skippedCount: skipped, warning: warning, err: err}
 	}
+}
+
+// loadKeysForSelection loads available keys for the account and shows selection dialog
+func (m *accountsModel) loadKeysForSelection() tea.Cmd {
+	return func() tea.Msg {
+		// Get global keys
+		globalKeys, err := db.GetGlobalPublicKeys()
+		if err != nil {
+			return fmt.Errorf("failed to get global keys: %w", err)
+		}
+
+		// Get account-specific keys
+		accountKeys, err := db.GetKeysForAccount(m.accountToDelete.ID)
+		if err != nil {
+			return fmt.Errorf("failed to get account keys: %w", err)
+		}
+
+		// Combine keys and deduplicate
+		keyMap := make(map[int]model.PublicKey)
+		for _, key := range globalKeys {
+			keyMap[key.ID] = key
+		}
+		for _, key := range accountKeys {
+			keyMap[key.ID] = key
+		}
+
+		// Convert to slice
+		var allKeys []model.PublicKey
+		for _, key := range keyMap {
+			allKeys = append(allKeys, key)
+		}
+
+		return keySelectionLoadedMsg{
+			keys: allKeys,
+		}
+	}
+}
+
+// performDecommissionWithKeys performs decommission with selected keys to remove
+func (m *accountsModel) performDecommissionWithKeys() tea.Cmd {
+	return func() tea.Msg {
+		// Get active system key
+		systemKey, err := db.GetActiveSystemKey()
+		if err != nil || systemKey == nil {
+			return fmt.Errorf("no active system key found")
+		}
+
+		// Build list of key IDs to remove (inverse of keys to keep)
+		var keysToRemove []int
+		for keyID, shouldKeep := range m.selectedKeysToKeep {
+			if !shouldKeep {
+				keysToRemove = append(keysToRemove, keyID)
+			}
+		}
+
+		// Perform selective decommission
+		options := deploy.DecommissionOptions{
+			SkipRemoteCleanup: false,
+			KeepFile:          true, // Keep file, remove selected keys
+			Force:             false,
+			DryRun:            false,
+			SelectiveKeys:     keysToRemove,
+		}
+		result := deploy.DecommissionAccount(m.accountToDelete, systemKey.PrivateKey, options)
+
+		return decommissionCompletedMsg{
+			result: result,
+		}
+	}
+}
+
+// Message types for async operations
+type keySelectionLoadedMsg struct {
+	keys []model.PublicKey
+}
+
+type decommissionCompletedMsg struct {
+	result deploy.DecommissionResult
 }

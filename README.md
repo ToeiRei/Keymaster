@@ -135,6 +135,25 @@ You are now ready to manage this host with Keymaster!
   keymaster export-ssh-client-config ~/.ssh/config
   ```
 
+- **Decommission an account:**
+
+  ```sh
+  # Remove entire authorized_keys file
+  keymaster decommission user@new-host
+
+  # Remove only Keymaster-managed content, keep other keys
+  keymaster decommission user@hostname --keep-file
+
+  # Decommission all accounts with a specific tag
+  keymaster decommission --tag env:staging
+
+  # Skip remote cleanup (database only)
+  keymaster decommission user@hostname --skip-remote
+
+  # Force decommission even if remote cleanup fails
+  keymaster decommission user@hostname --force
+  ```
+
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Third-Party Licenses

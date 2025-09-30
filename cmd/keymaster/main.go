@@ -118,6 +118,7 @@ Running without a subcommand will launch the interactive TUI.`,
 	cmd.AddCommand(importCmd)
 	cmd.AddCommand(trustHostCmd)
 	cmd.AddCommand(exportSSHConfigCmd)
+	cmd.AddCommand(decommissionCmd)
 
 	// Set version
 	cmd.Version = version
@@ -615,4 +616,216 @@ func normalizeKnownHostKeyName(h string) string {
 // deployment logic from the deploy package.
 func runDeploymentForAccount(account model.Account) error {
 	return deploy.RunDeploymentForAccount(account, false)
+}
+
+// decommissionCmd represents the 'decommission' command.
+// It removes SSH access by cleaning up authorized_keys files and deleting accounts from the database.
+var decommissionCmd = &cobra.Command{
+	Use:   "decommission [account-identifier]",
+	Short: "Decommission one or more accounts by removing SSH access and deleting from database",
+	Long: `Decommissions accounts by first removing their authorized_keys files from remote hosts,
+then deleting them from the database. This ensures clean removal of SSH access.
+
+Account can be identified by:
+- Account ID (e.g., "5")
+- User@host format (e.g., "deploy@server-01")
+- Label (e.g., "prod-web-01")
+
+If no account is specified, you will be prompted to select from a list.
+
+Use --tag to decommission all accounts with specific tags (e.g., --tag env:staging).`,
+	Args: cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		// Parse flags
+		skipRemote, _ := cmd.Flags().GetBool("skip-remote")
+		keepFile, _ := cmd.Flags().GetBool("keep-file")
+		force, _ := cmd.Flags().GetBool("force")
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		tagFilter, _ := cmd.Flags().GetString("tag")
+
+		options := deploy.DecommissionOptions{
+			SkipRemoteCleanup: skipRemote,
+			KeepFile:          keepFile,
+			Force:             force,
+			DryRun:            dryRun,
+		}
+
+		// Get active system key
+		systemKey, err := db.GetActiveSystemKey()
+		if err != nil {
+			log.Fatalf("Error getting active system key: %v", err)
+		}
+		if systemKey == nil {
+			log.Fatal("No active system key found. Run 'keymaster rotate-key' to generate one.")
+		}
+
+		// Get all accounts
+		allAccounts, err := db.GetAllAccounts()
+		if err != nil {
+			log.Fatalf("Error getting accounts: %v", err)
+		}
+
+		var targetAccounts []model.Account
+
+		if tagFilter != "" {
+			// Filter accounts by tag
+			for _, acc := range allAccounts {
+				if strings.Contains(acc.Tags, tagFilter) {
+					targetAccounts = append(targetAccounts, acc)
+				}
+			}
+			if len(targetAccounts) == 0 {
+				fmt.Printf("No accounts found with tag: %s\n", tagFilter)
+				return
+			}
+			fmt.Printf("Found %d accounts with tag '%s':\n", len(targetAccounts), tagFilter)
+			for _, acc := range targetAccounts {
+				fmt.Printf("  - %s\n", acc.String())
+			}
+		} else if len(args) > 0 {
+			// Find specific account
+			target := args[0]
+			account, err := findAccountByIdentifier(target, allAccounts)
+			if err != nil {
+				log.Fatalf("Error finding account: %v", err)
+			}
+			targetAccounts = []model.Account{*account}
+			fmt.Printf("Selected account: %s\n", account.String())
+		} else {
+			// No specific target - show interactive selection
+			fmt.Println("Available accounts:")
+			for i, acc := range allAccounts {
+				status := "active"
+				if !acc.IsActive {
+					status = "inactive"
+				}
+				fmt.Printf("  %d: %s (%s)\n", i+1, acc.String(), status)
+			}
+			fmt.Print("Enter account number to decommission (or 'q' to quit): ")
+
+			reader := bufio.NewReader(os.Stdin)
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(input)
+
+			if input == "q" || input == "quit" {
+				fmt.Println("Cancelled.")
+				return
+			}
+
+			var selection int
+			if _, err := fmt.Sscanf(input, "%d", &selection); err != nil || selection < 1 || selection > len(allAccounts) {
+				log.Fatal("Invalid selection")
+			}
+
+			targetAccounts = []model.Account{allAccounts[selection-1]}
+			fmt.Printf("Selected account: %s\n", allAccounts[selection-1].String())
+		}
+
+		// Confirmation prompt (unless dry-run)
+		if !dryRun && !force {
+			fmt.Printf("\nWARNING: This will decommission %d account(s) by:\n", len(targetAccounts))
+			if !skipRemote {
+				if keepFile {
+					fmt.Println("  1. Removing Keymaster-managed content from authorized_keys files")
+				} else {
+					fmt.Println("  1. Removing authorized_keys files (with backup)")
+				}
+			}
+			fmt.Println("  2. Deleting accounts from the database")
+			fmt.Print("\nDo you want to continue? (yes/no): ")
+
+			reader := bufio.NewReader(os.Stdin)
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(strings.ToLower(input))
+
+			if input != "yes" && input != "y" {
+				fmt.Println("Operation cancelled.")
+				return
+			}
+		}
+
+		// Process accounts
+		if len(targetAccounts) == 1 {
+			// Single account
+			account := targetAccounts[0]
+			fmt.Printf("Decommissioning account: %s\n", account.String())
+			result := deploy.DecommissionAccount(account, systemKey.PrivateKey, options)
+			fmt.Printf("Result: %s\n", result.String())
+		} else {
+			// Multiple accounts - use bulk operation
+			fmt.Printf("Decommissioning %d accounts...\n", len(targetAccounts))
+			results := deploy.BulkDecommissionAccounts(targetAccounts, systemKey.PrivateKey, options)
+
+			// Summary
+			successful := 0
+			failed := 0
+			skipped := 0
+
+			for _, result := range results {
+				if result.Skipped {
+					skipped++
+				} else if result.DatabaseDeleteError != nil {
+					failed++
+				} else {
+					successful++
+				}
+			}
+
+			fmt.Printf("\nSummary: %d successful, %d failed, %d skipped\n", successful, failed, skipped)
+
+			if failed > 0 {
+				fmt.Println("\nFailed operations:")
+				for _, result := range results {
+					if !result.Skipped && result.DatabaseDeleteError != nil {
+						fmt.Printf("  - %s\n", result.String())
+					}
+				}
+			}
+		}
+	},
+}
+
+func init() {
+	// Add flags for decommission command
+	decommissionCmd.Flags().Bool("skip-remote", false, "Skip remote SSH cleanup (only delete from database)")
+	decommissionCmd.Flags().Bool("keep-file", false, "Remove only Keymaster content, keep other keys in authorized_keys")
+	decommissionCmd.Flags().Bool("force", false, "Continue even if remote cleanup fails")
+	decommissionCmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
+	decommissionCmd.Flags().String("tag", "", "Decommission all accounts with this tag (format: key:value)")
+}
+
+// findAccountByIdentifier finds an account by ID, user@host, or label
+func findAccountByIdentifier(identifier string, accounts []model.Account) (*model.Account, error) {
+	// Try to parse as account ID first
+	if accountID, err := fmt.Sscanf(identifier, "%d", new(int)); accountID == 1 && err == nil {
+		var id int
+		fmt.Sscanf(identifier, "%d", &id)
+		for _, acc := range accounts {
+			if acc.ID == id {
+				return &acc, nil
+			}
+		}
+		return nil, fmt.Errorf("no account found with ID: %s", identifier)
+	}
+
+	// Try user@host format
+	if strings.Contains(identifier, "@") {
+		normalizedTarget := strings.ToLower(identifier)
+		for _, acc := range accounts {
+			accountIdentifier := fmt.Sprintf("%s@%s", acc.Username, acc.Hostname)
+			if strings.ToLower(accountIdentifier) == normalizedTarget {
+				return &acc, nil
+			}
+		}
+		return nil, fmt.Errorf("no account found with identifier: %s", identifier)
+	}
+
+	// Try label
+	for _, acc := range accounts {
+		if strings.EqualFold(acc.Label, identifier) {
+			return &acc, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no account found with identifier: %s (try ID, user@host, or label)", identifier)
 }
