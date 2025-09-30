@@ -391,3 +391,28 @@ parallel_task.deploy_fail_message: "ðŸ'¥ Mislāmp tō sendenne tō %s: %v"
 parallel_task.audit_success_message: "âœ… ĠŌD: %s"
 parallel_task.audit_fail_message: "ðŸš¨ Drīf ġefunden on %s: %v"
 parallel_task.complete_message: "%s fullfremmed."
+
+# Backup CLI command
+backup.cli_starting: "📦 Ċeafiġende dætafates ġeheald..."
+backup.cli_error_export: "Gedƿola ūtsendende dæta fram dætafate: %v"
+backup.cli_error_write: "Gedƿola ƿrītende ġehealdes truman: %v"
+backup.cli_success: "✅ Ġesundfullīċe ġeċeafod ġeheald æt %s"
+
+# Restore CLI command
+restore.cli_starting: "🔄 Edstaðoliġende dætafate fram %s..."
+restore.cli_error_read: "Gedƿola rǣdende oþþe unƿrēonde ġehealdes truman: %v"
+restore.cli_error_import: "Gedƿola inbringende dæta in dætafate: %v"
+restore.cli_success: "✅ Ġesundfullīċe edstaðolod dætafate fram ġehealde."
+
+# Migrate CLI command
+migrate.cli_error_flags: "Gedƿola: --type and --dsn tācn sind nēodbeþearf for flutunge."
+migrate.cli_starting_backup: "📦 Ċeafiġende in-ġemynde ġeheald fram fruman dætafate..."
+migrate.cli_error_backup: "Gedƿola ūtsendende dæta fram fruman dætafate: %v"
+migrate.cli_backup_success: "✅ Ġeheald fullfremmed."
+migrate.cli_connecting_target: "🔗 Ġebindende tō ġemǣrcedan %s dætafate and ƿyrcende flutunga..."
+migrate.cli_error_connect: "Gedƿola ġebindende oþþe flutende ġemǣrcedne dætafate: %v"
+migrate.cli_connect_success: "✅ Ġebindung and flutunga ġesundfullīċe."
+migrate.cli_starting_restore: "🔄 Edstaðoliġende dæta in ġemǣrcedan dætafate..."
+migrate.cli_error_restore: "Gedƿola inbringende dæta in ġemǣrcedan dætafate: %v"
+migrate.cli_success: "🎉 Flutung fullfremmed! Eall dæta is ġefluten tō þǣm nīƿan dætafate."
+migrate.cli_next_steps: "➡️ Nīehsta Stæpe: Ġeēdnīƿa þīne .keymaster.yaml tō tācnienne þone nīƿan dætafate."

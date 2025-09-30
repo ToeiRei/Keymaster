@@ -345,6 +345,12 @@ parallel_task.audit_success_message: "✅ OK: %s"
 parallel_task.audit_fail_message: "🚨 Drift auf %s erkannt: %v"
 parallel_task.complete_message: "%s abgeschlossen."
 
+# Backup CLI command
+backup.cli_starting: "📦 Erstelle Datenbanksicherung..."
+backup.cli_error_export: "Fehler beim Exportieren der Daten aus der Datenbank: %v"
+backup.cli_error_write: "Fehler beim Schreiben der Sicherungsdatei: %v"
+backup.cli_success: "✅ Sicherung erfolgreich erstellt unter %s"
+
 # Bootstrap workflow translations
 bootstrap.creating_session: "Bootstrap-Sitzung wird erstellt..."
 bootstrap.title: "Neuen Host bootstrappen"
@@ -407,3 +413,22 @@ bootstrap.error_retry: "Wiederholen"
 bootstrap.error_regenerate: "Neuen Schlüssel generieren"
 bootstrap.error_cancel: "Bootstrap abbrechen"
 bootstrap.error_help: "(links/rechts zum Navigieren, Enter zum Bestätigen, Esc zum Abbrechen)"
+
+# Restore CLI command
+restore.cli_starting: "🔄 Stelle Datenbank aus %s wieder her..."
+restore.cli_error_read: "Fehler beim Lesen oder Dekodieren der Sicherungsdatei: %v"
+restore.cli_error_import: "Fehler beim Importieren der Daten in die Datenbank: %v"
+restore.cli_success: "✅ Datenbank erfolgreich aus der Sicherung wiederhergestellt."
+
+# Migrate CLI command
+migrate.cli_error_flags: "Fehler: --type und --dsn Flags sind für die Migration erforderlich."
+migrate.cli_starting_backup: "📦 Erstelle In-Memory-Backup von der Quelldatenbank..."
+migrate.cli_error_backup: "Fehler beim Exportieren der Daten aus der Quelldatenbank: %v"
+migrate.cli_backup_success: "✅ Backup abgeschlossen."
+migrate.cli_connecting_target: "🔗 Verbinde mit Zieldatenbank (%s) und führe Migrationen aus..."
+migrate.cli_error_connect: "Fehler beim Verbinden oder Migrieren der Zieldatenbank: %v"
+migrate.cli_connect_success: "✅ Verbindung und Migrationen erfolgreich."
+migrate.cli_starting_restore: "🔄 Stelle Daten in der Zieldatenbank wieder her..."
+migrate.cli_error_restore: "Fehler beim Importieren der Daten in die Zieldatenbank: %v"
+migrate.cli_success: "🎉 Migration abgeschlossen! Alle Daten wurden in die neue Datenbank verschoben."
+migrate.cli_next_steps: "➡️ Nächster Schritt: Aktualisieren Sie Ihre .keymaster.yaml, um auf die neue Datenbank zu verweisen."

@@ -11,6 +11,7 @@ package main
 
 import (
 	"bufio"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,6 +22,8 @@ import (
 	"sync"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql" // Blank import for migrate command
+	_ "github.com/jackc/pgx/v5/stdlib" // Blank import for migrate command
 	"github.com/klauspost/compress/zstd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -38,6 +41,7 @@ import (
 var version = "dev" // this will be set by the linker
 var cfgFile string
 var auditMode string // audit mode flag: "strict" (default) or "serial"
+var fullRestore bool // Flag for the restore command
 
 // main is the entry point of the application.
 func main() {
@@ -112,6 +116,8 @@ Running without a subcommand will launch the interactive TUI.`,
 	cmd.AddCommand(trustHostCmd)
 	cmd.AddCommand(exportSSHConfigCmd)
 	cmd.AddCommand(backupCmd)
+	cmd.AddCommand(restoreCmd)
+	cmd.AddCommand(migrateCmd)
 
 	// Set version
 	cmd.Version = version
@@ -338,6 +344,9 @@ Use --mode=serial to only verify the Keymaster header serial number on the remot
 func init() {
 	// Attach flags after auditCmd is defined
 	auditCmd.Flags().StringVarP(&auditMode, "mode", "m", "strict", "Audit mode: 'strict' (full file comparison) or 'serial' (header serial only)")
+	restoreCmd.Flags().BoolVar(&fullRestore, "full", false, "Perform a full, destructive restore (wipes all existing data first)")
+	migrateCmd.Flags().String("type", "", "The target database type (sqlite, postgres, mysql)")
+	migrateCmd.Flags().String("dsn", "", "The DSN for the target database")
 }
 
 // importCmd represents the 'import' command.
@@ -619,6 +628,75 @@ func runDeploymentForAccount(account model.Account) error {
 	return deploy.RunDeploymentForAccount(account, false)
 }
 
+// restoreCmd represents the 'restore' command.
+// It restores the database from a compressed JSON backup file.
+var restoreCmd = &cobra.Command{
+	Use:   "restore <backup-file.zst>",
+	Short: "Restore the database from a compressed JSON backup",
+	Long: `Restores the entire Keymaster database from a Zstandard-compressed JSON backup file.
+By default, this command performs a non-destructive "integration" restore, only adding
+data that does not already exist.
+ 
+To perform a full, destructive restore that WIPES all existing data before importing, use the --full flag.
+WARNING: The --full flag is destructive and not reversible.
+This command is intended for disaster recovery or for migrating between
+database backends (e.g., from SQLite to PostgreSQL).
+
+Example (Integrate):
+  keymaster restore ./keymaster-backup-2025-10-26.json.zst
+
+Example (Full Restore):
+  keymaster restore --full ./keymaster-backup-2025-10-26.json.zst`,
+	Args: cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		inputFile := args[0]
+		i18n.Init(viper.GetString("language"))
+
+		fmt.Println(i18n.T("restore.cli_starting", inputFile))
+
+		backupData, err := readCompressedBackup(inputFile)
+		if err != nil {
+			log.Fatalf(i18n.T("restore.cli_error_read", err))
+		}
+
+		if fullRestore {
+			// Destructive, full restore path. No confirmation for CLI operations.
+			err = db.ImportDataFromBackup(backupData)
+		} else {
+			// Default, non-destructive integration path
+			err = db.IntegrateDataFromBackup(backupData)
+		}
+
+		if err != nil {
+			log.Fatalf(i18n.T("restore.cli_error_import", err))
+		}
+
+		fmt.Println(i18n.T("restore.cli_success"))
+	},
+}
+
+// readCompressedBackup handles reading and decoding a zstd-compressed JSON backup file.
+func readCompressedBackup(filename string) (*model.BackupData, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("could not open file: %w", err)
+	}
+	defer file.Close()
+
+	zstdReader, err := zstd.NewReader(file)
+	if err != nil {
+		return nil, fmt.Errorf("could not create zstd reader: %w", err)
+	}
+	defer zstdReader.Close()
+
+	var backupData model.BackupData
+	if err := json.NewDecoder(zstdReader).Decode(&backupData); err != nil {
+		return nil, fmt.Errorf("could not decode json from zstd reader: %w", err)
+	}
+
+	return &backupData, nil
+}
+
 // backupCmd represents the 'backup' command.
 // It dumps all data from the database into a single JSON file.
 var backupCmd = &cobra.Command{ //
@@ -690,4 +768,103 @@ func writeCompressedBackup(filename string, data *model.BackupData) error {
 	}
 
 	return nil
+}
+
+// migrateCmd represents the 'migrate' command.
+var migrateCmd = &cobra.Command{
+	Use:   "migrate --type <db-type> --dsn <target-dsn>",
+	Short: "Migrate data from the current database to a new one",
+	Long: `Performs a database migration by exporting all data from the current database
+(configured in .keymaster.yaml) and importing it into a new target database.
+
+This command automates the following steps:
+1. Exports data from the source database in-memory.
+2. Connects to the target database specified by --type and --dsn.
+3. Applies all necessary database schema migrations to the target.
+4. Performs a full, destructive restore into the target database.
+
+Example:
+  keymaster migrate --type postgres --dsn "host=localhost user=keymaster dbname=keymaster"`,
+	Run: func(cmd *cobra.Command, args []string) {
+		i18n.Init(viper.GetString("language"))
+
+		targetType, _ := cmd.Flags().GetString("type")
+		targetDSN, _ := cmd.Flags().GetString("dsn")
+
+		if targetType == "" || targetDSN == "" {
+			log.Fatalf(i18n.T("migrate.cli_error_flags"))
+		}
+
+		// --- 1. Backup from source DB ---
+		fmt.Println(i18n.T("migrate.cli_starting_backup"))
+		backupData, err := db.ExportDataForBackup()
+		if err != nil {
+			log.Fatalf(i18n.T("migrate.cli_error_backup", err))
+		}
+		fmt.Println(i18n.T("migrate.cli_backup_success"))
+
+		// --- 2. Connect to target DB and run migrations ---
+		fmt.Println(i18n.T("migrate.cli_connecting_target", targetType))
+		targetStore, err := initTargetDB(targetType, targetDSN)
+		if err != nil {
+			log.Fatalf(i18n.T("migrate.cli_error_connect", err))
+		}
+		fmt.Println(i18n.T("migrate.cli_connect_success"))
+
+		// --- 3. Restore to target DB ---
+		fmt.Println(i18n.T("migrate.cli_starting_restore"))
+		// We call the method directly on our temporary store instance.
+		if err := targetStore.ImportDataFromBackup(backupData); err != nil {
+			log.Fatalf(i18n.T("migrate.cli_error_restore", err))
+		}
+
+		fmt.Println(i18n.T("migrate.cli_success"))
+		fmt.Println(i18n.T("migrate.cli_next_steps"))
+	},
+}
+
+// initTargetDB is a helper function that initializes a new database connection
+// for the migration target, runs migrations, and returns a Store instance.
+// It is a simplified, one-off version of db.InitDB that does not affect the
+// global `store` variable.
+func initTargetDB(dbType, dsn string) (db.Store, error) {
+	// This logic is intentionally duplicated from db.InitDB to create an
+	// isolated instance for the migration target without modifying the global state.
+	var targetDB *sql.DB
+	var err error
+
+	switch dbType {
+	case "sqlite":
+		if !strings.Contains(dsn, "_busy_timeout") {
+			dsn += "?_busy_timeout=5000"
+		}
+		targetDB, err = sql.Open("sqlite", dsn)
+		if err == nil {
+			if _, err = targetDB.Exec("PRAGMA foreign_keys = ON;"); err != nil {
+				return nil, err
+			}
+			if _, err = targetDB.Exec("PRAGMA journal_mode=WAL;"); err != nil {
+				return nil, err
+			}
+		}
+	case "postgres":
+		targetDB, err = sql.Open("pgx", dsn)
+	case "mysql":
+		targetDB, err = sql.Open("mysql", dsn)
+	default:
+		return nil, fmt.Errorf("unsupported database type: '%s'", dbType)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to open target database: %w", err)
+	}
+
+	// Run migrations on the target DB.
+	// We can reuse the migration logic from the db package.
+	if err := db.RunMigrations(targetDB, dbType); err != nil {
+		return nil, fmt.Errorf("failed to apply migrations to target database: %w", err)
+	}
+
+	// Return a new store instance for the target.
+	return db.NewStore(dbType, targetDB)
 }
