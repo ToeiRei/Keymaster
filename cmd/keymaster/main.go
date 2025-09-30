@@ -16,7 +16,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"strings"
 	"sync"
@@ -450,15 +449,17 @@ step before Keymaster can manage a new host.`,
 		} else {
 			hostname = target // Assume the whole string is the hostname if no '@'
 		}
+		// Always use host:port form with default :22
+		canonicalHost := deploy.CanonicalizeHostPort(hostname)
 
-		fmt.Println(i18n.T("trust_host.retrieving_key", hostname))
-		key, err := deploy.GetRemoteHostKey(hostname)
+		fmt.Println(i18n.T("trust_host.retrieving_key", canonicalHost))
+		key, err := deploy.GetRemoteHostKey(canonicalHost)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("trust_host.error_get_key", err))
 		}
 
 		fingerprint := ssh.FingerprintSHA256(key) // Use standard ssh package
-		fmt.Printf("\n%s\n", i18n.T("trust_host.authenticity_warning_1", hostname))
+		fmt.Printf("\n%s\n", i18n.T("trust_host.authenticity_warning_1", canonicalHost))
 		fmt.Printf("%s\n", i18n.T("trust_host.authenticity_warning_2", key.Type(), fingerprint))
 
 		if warning := sshkey.CheckHostKeyAlgorithm(key); warning != "" {
@@ -473,12 +474,11 @@ step before Keymaster can manage a new host.`,
 		}
 
 		keyStr := string(ssh.MarshalAuthorizedKey(key)) // Use standard ssh package
-		normalized := normalizeKnownHostKeyName(hostname)
-		if err := db.AddKnownHostKey(normalized, keyStr); err != nil {
+		if err := db.AddKnownHostKey(canonicalHost, keyStr); err != nil {
 			log.Fatalf("%s", i18n.T("trust_host.error_save_key", err))
 		}
 
-		fmt.Printf("%s\n", i18n.T("trust_host.added_success", normalized, key.Type()))
+		fmt.Printf("%s\n", i18n.T("trust_host.added_success", canonicalHost, key.Type()))
 	},
 }
 
@@ -564,13 +564,10 @@ Each account with a label will use the label as the Host alias.`,
 			output.WriteString(fmt.Sprintf("    HostName %s\n", account.Hostname))
 			output.WriteString(fmt.Sprintf("    User %s\n", account.Username))
 
-			// Parse hostname for port if it contains one
-			_, port := account.Hostname, "22"
-			if idx := strings.LastIndex(account.Hostname, ":"); idx > 0 {
-				// Check if it's IPv6 by looking for multiple colons
-				if strings.Count(account.Hostname, ":") == 1 {
-					port = account.Hostname[idx+1:]
-				}
+			// Parse hostname for port (supports IPv4/IPv6 and names)
+			_, port, _ := deploy.ParseHostPort(account.Hostname)
+			if port == "" {
+				port = "22"
 			}
 			if port != "22" {
 				output.WriteString(fmt.Sprintf("    Port %s\n", port))
@@ -598,27 +595,6 @@ func promptForConfirmation(prompt string) string {
 	reader := bufio.NewReader(os.Stdin)
 	answer, _ := reader.ReadString('\n')
 	return strings.TrimSpace(strings.ToLower(answer))
-}
-
-// normalizeKnownHostKeyName normalizes a hostname for storage in the known hosts database
-// so that it matches lookups performed during SSH handshakes. It removes any port and
-// strips IPv6 brackets, returning just the host portion.
-func normalizeKnownHostKeyName(h string) string {
-	h = strings.TrimSpace(h)
-	if h == "" {
-		return h
-	}
-	// If a port is present (e.g., "example.com:2222" or "[2001:db8::1]:2222"),
-	// SplitHostPort returns the host without brackets for IPv6.
-	if host, _, err := net.SplitHostPort(h); err == nil {
-		return host
-	}
-	// If it's a bracketed IPv6 without port like "[2001:db8::1]", trim brackets.
-	if strings.HasPrefix(h, "[") && strings.HasSuffix(h, "]") {
-		return strings.TrimSuffix(strings.TrimPrefix(h, "["), "]")
-	}
-	// Otherwise, return as-is (covers plain hostnames or raw IPv6 without brackets/port).
-	return h
 }
 
 // runDeploymentForAccount is a simple wrapper for the CLI to match the
@@ -656,7 +632,7 @@ Example (Full Restore):
 
 		backupData, err := readCompressedBackup(inputFile)
 		if err != nil {
-			log.Fatalf(i18n.T("restore.cli_error_read", err))
+			log.Fatalf("%s", i18n.T("restore.cli_error_read", err))
 		}
 
 		if fullRestore {
@@ -668,7 +644,7 @@ Example (Full Restore):
 		}
 
 		if err != nil {
-			log.Fatalf(i18n.T("restore.cli_error_import", err))
+			log.Fatalf("%s", i18n.T("restore.cli_error_import", err))
 		}
 
 		fmt.Println(i18n.T("restore.cli_success"))
@@ -734,11 +710,11 @@ Examples:
 
 		backupData, err := db.ExportDataForBackup()
 		if err != nil {
-			log.Fatalf(i18n.T("backup.cli_error_export", err))
+			log.Fatalf("%s", i18n.T("backup.cli_error_export", err))
 		}
 
 		if err := writeCompressedBackup(outputFile, backupData); err != nil {
-			log.Fatalf(i18n.T("backup.cli_error_write", err))
+			log.Fatalf("%s", i18n.T("backup.cli_error_write", err))
 		}
 
 		fmt.Println(i18n.T("backup.cli_success", outputFile))
@@ -792,14 +768,14 @@ Example:
 		targetDSN, _ := cmd.Flags().GetString("dsn")
 
 		if targetType == "" || targetDSN == "" {
-			log.Fatalf(i18n.T("migrate.cli_error_flags"))
+			log.Fatalf("%s", i18n.T("migrate.cli_error_flags"))
 		}
 
 		// --- 1. Backup from source DB ---
 		fmt.Println(i18n.T("migrate.cli_starting_backup"))
 		backupData, err := db.ExportDataForBackup()
 		if err != nil {
-			log.Fatalf(i18n.T("migrate.cli_error_backup", err))
+			log.Fatalf("%s", i18n.T("migrate.cli_error_backup", err))
 		}
 		fmt.Println(i18n.T("migrate.cli_backup_success"))
 
@@ -807,7 +783,7 @@ Example:
 		fmt.Println(i18n.T("migrate.cli_connecting_target", targetType))
 		targetStore, err := initTargetDB(targetType, targetDSN)
 		if err != nil {
-			log.Fatalf(i18n.T("migrate.cli_error_connect", err))
+			log.Fatalf("%s", i18n.T("migrate.cli_error_connect", err))
 		}
 		fmt.Println(i18n.T("migrate.cli_connect_success"))
 
@@ -815,7 +791,7 @@ Example:
 		fmt.Println(i18n.T("migrate.cli_starting_restore"))
 		// We call the method directly on our temporary store instance.
 		if err := targetStore.ImportDataFromBackup(backupData); err != nil {
-			log.Fatalf(i18n.T("migrate.cli_error_restore", err))
+			log.Fatalf("%s", i18n.T("migrate.cli_error_restore", err))
 		}
 
 		fmt.Println(i18n.T("migrate.cli_success"))
