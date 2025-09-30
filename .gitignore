@@ -17,3 +17,4 @@ vendor/
 .keymaster.yaml
 keymaster.db-wal
 keymaster.db-shm
+keymaster-backup*.json.zst
