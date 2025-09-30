@@ -153,6 +153,9 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case languageChangedMsg:
 		// The language has changed. Re-initialize the entire model to apply new translations everywhere.
 		newModel := initialModel()
+		// Preserve the current window dimensions so the layout remains correct.
+		newModel.width = m.width
+		newModel.height = m.height
 		return newModel, newModel.Init()
 	}
 
