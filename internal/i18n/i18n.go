@@ -2,78 +2,131 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-// package i18n provides internationalization and localization support for Keymaster.
-// It uses the go-i18n library to load and manage translation files, allowing the
-// user interface to be displayed in multiple languages.
-package i18n
+// package i18n handles internationalization for Keymaster.
+// It uses go-i18n to load and manage translation files, and provides
+// a simple interface for the rest of the application to get translated strings.
+package i18n // import "github.com/toeirei/keymaster/internal/i18n"
 
 import (
 	"embed"
 	"fmt"
-	"io/fs"
+	"path" // Use the 'path' package for consistent forward slashes
+	"strings"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
+	"golang.org/x/text/language/display"
 	"gopkg.in/yaml.v3"
 )
 
-// localeFS embeds the YAML translation files from the 'locales' directory
-// into the application binary.
-//
 //go:embed locales/*.yaml
 var localeFS embed.FS
 
-// bundle stores all the loaded translation messages from the locale files.
-var bundle *i18n.Bundle
-
 var (
-	// localizer is used to translate messages into a specific language.
-	localizer *i18n.Localizer
-	// currentLang stores the tag of the currently active language.
-	currentLang string
+	bundle           *i18n.Bundle
+	localizer        *i18n.Localizer
+	currentLang      string
+	availableLocales map[string]string
 )
 
-// Init initializes the i18n bundle and sets up the localizer for a specific language.
-// It parses all embedded YAML files from the 'locales' directory.
-func Init(lang string) {
-	currentLang = lang
-	bundle = i18n.NewBundle(language.English)
+// Init initializes the i18n bundle, discovers available locales, and sets the default language.
+func Init(defaultLang string) {
+	bundle = i18n.NewBundle(language.English) // English is the fallback
+
 	bundle.RegisterUnmarshalFunc("yaml", yaml.Unmarshal)
 
-	files, _ := fs.ReadDir(localeFS, "locales")
-	for _, f := range files {
-		if f.IsDir() {
-			continue
-		}
-		data, _ := localeFS.ReadFile("locales/" + f.Name())
-		bundle.ParseMessageFileBytes(data, f.Name())
+	availableLocales = make(map[string]string)
+
+	// Discover and load all locale files from the embedded filesystem.
+	files, err := localeFS.ReadDir("locales")
+	if err != nil {
+		// This should not happen with a valid embed.
+		panic(fmt.Sprintf("failed to read embedded locales directory: %v", err))
 	}
 
+	for _, file := range files {
+		fileName := file.Name()
+		if strings.HasPrefix(fileName, "active.") && (strings.HasSuffix(fileName, ".yaml")) {
+			// Extract language code, e.g., "en" from "active.en.yaml"
+			langCode := strings.TrimPrefix(fileName, "active.")
+			langCode = strings.TrimSuffix(langCode, ".yaml")
+
+			var displayName string
+			// Special case for Old English, which has a custom display name.
+			if langCode == "art-x-ang" {
+				displayName = "Ænglisc (Olde English)"
+			} else {
+				// For all other languages, try to get the native display name.
+				tag, err := language.Parse(langCode)
+				if err == nil {
+					displayName = display.Self.Name(tag)
+				} else {
+					displayName = langCode // Fallback to the code itself if parsing fails.
+				}
+			}
+			availableLocales[langCode] = displayName
+
+			// Load the file into the bundle
+			filePath := path.Join("locales", fileName)
+			_, err := bundle.LoadMessageFileFS(localeFS, filePath)
+			if err != nil {
+				panic(fmt.Sprintf("failed to load locale file %s: %v", fileName, err))
+			}
+		}
+	}
+
+	SetLang(defaultLang)
+}
+
+// SetLang changes the current language for the application.
+func SetLang(lang string) {
+	currentLang = lang
+	// Using 'art-x-ang' treats it as a standalone language, so no special
+	// fallback logic is needed. The library will just use the messages as-is.
 	localizer = i18n.NewLocalizer(bundle, lang)
 }
 
-// T is a convenience function to translate a message by its ID.
-// If the i18n system has not been initialized, it will default to English.
-// If a translation for the given ID is not found, it returns the ID itself.
-func T(messageID string, args ...any) string {
-	if localizer == nil {
-		Init("en")
-	}
-	msg, err := localizer.Localize(&i18n.LocalizeConfig{MessageID: messageID})
-	if err != nil {
-		// If the message ID is not found, go-i18n returns an error.
-		// In this case, we return the message ID itself as a fallback.
-		return messageID
-	}
-	return fmt.Sprintf(msg, args...)
-}
-
-// SetLang changes the active language of the localizer.
-func SetLang(lang string) {
-	Init(lang)
-}
-
-// GetLang returns the string tag of the currently active language.
+// GetLang returns the currently active language code.
 func GetLang() string {
 	return currentLang
+}
+
+// GetAvailableLocales returns a map of language codes to their display names.
+func GetAvailableLocales() map[string]string {
+	return availableLocales
+}
+
+// T is the main translation function. It retrieves a translated string by its ID.
+// It supports pluralization and template variables.
+func T(messageID string, templateData ...interface{}) string {
+	// Only use pluralization when a template data map provides a Count value.
+	var data map[string]interface{}
+	var pluralCount interface{}
+	if len(templateData) > 0 {
+		if m, ok := templateData[0].(map[string]interface{}); ok {
+			data = m
+			if c, ok := m["Count"]; ok {
+				pluralCount = c
+			}
+		}
+	}
+
+	msg, err := localizer.Localize(&i18n.LocalizeConfig{
+		MessageID:    messageID,
+		TemplateData: data,
+		PluralCount:  pluralCount,
+	})
+	if err != nil {
+		// Fallback for missing translations
+		msg = messageID
+	}
+
+	// Support for legacy `printf` style formatting when args are provided and not a map.
+	if len(templateData) > 0 {
+		if _, isMap := templateData[0].(map[string]interface{}); !isMap {
+			return fmt.Sprintf(msg, templateData...)
+		}
+	}
+
+	return msg
 }

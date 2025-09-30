@@ -10,6 +10,8 @@ package tui // import "github.com/toeirei/keymaster/internal/tui"
 import (
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
@@ -35,6 +37,7 @@ const (
 	auditView
 	tagsView
 	bootstrapView
+	languageView
 )
 
 // dashboardDataMsg is a message containing the data for the main menu dashboard.
@@ -42,12 +45,18 @@ type dashboardDataMsg struct {
 	data dashboardData
 }
 
+// languageChangedMsg is a message to signal that the language has changed and the UI should be re-initialized.
+type languageChangedMsg struct{}
+
 // dashboardData holds the summary information for the main menu view.
 type dashboardData struct {
 	accountCount       int
 	activeAccountCount int
 	publicKeyCount     int
 	globalKeyCount     int
+	hostsUpToDate      int
+	hostsOutdated      int
+	keyAlgoBreakdown   string
 	systemKeySerial    int // 0 if none
 	recentLogs         []model.AuditLogEntry
 	err                error
@@ -67,6 +76,7 @@ type mainModel struct {
 	auditLog   *auditLogModel
 	tags       tagsViewModel
 	bootstrap  *bootstrapModel
+	language   languageModel
 	dashboard  dashboardData
 	width      int
 	height     int
@@ -77,6 +87,13 @@ type mainModel struct {
 type menuModel struct {
 	choices []string // The menu items to show.
 	cursor  int      // Which menu item our cursor is pointing at.
+}
+
+// languageModel holds the state for the language selection menu.
+type languageModel struct {
+	choices     map[string]string // map of lang code to display name
+	orderedKeys []string          // for stable iteration
+	cursor      int
 }
 
 // initialModel creates the starting state of the TUI, beginning at the main menu.
@@ -93,6 +110,7 @@ func initialModel() mainModel {
 				i18n.T("menu.view_audit_log"),
 				i18n.T("menu.audit_hosts"),
 				i18n.T("menu.view_accounts_by_tag"),
+				i18n.T("menu.language"),
 			},
 		},
 	}
@@ -131,6 +149,11 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = bootstrapView
 		m.bootstrap = newBootstrapModel(msg.username, msg.hostname, msg.label, msg.tags)
 		return m, m.bootstrap.Init()
+
+	case languageChangedMsg:
+		// The language has changed. Re-initialize the entire model to apply new translations everywhere.
+		newModel := initialModel()
+		return newModel, newModel.Init()
 	}
 
 	// Delegate updates to the currently active view.
@@ -249,6 +272,35 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newBootstrapModel, cmd = m.bootstrap.Update(msg)
 		m.bootstrap = newBootstrapModel.(*bootstrapModel)
 
+	case languageView:
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			switch keyMsg.String() {
+			case "q", "esc":
+				m.state = menuView
+				return m, refreshDashboardCmd()
+			case "up", "k":
+				if m.language.cursor > 0 {
+					m.language.cursor--
+				}
+			case "down", "j":
+				if m.language.cursor < len(m.language.orderedKeys)-1 {
+					m.language.cursor++
+				}
+			case "enter":
+				langCode := m.language.orderedKeys[m.language.cursor]
+				i18n.SetLang(langCode)
+				viper.Set("language", langCode)
+				// We can ignore the error here as it's not critical for the session.
+				_ = viper.WriteConfig()
+
+				// Signal that the language has changed so the entire UI can be re-initialized.
+				return m, func() tea.Msg { return languageChangedMsg{} }
+			}
+		}
+		var newLangModel tea.Model
+		newLangModel, cmd = m.language.Update(msg)
+		m.language = newLangModel.(languageModel)
+
 	default: // menuView
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
 			switch keyMsg.String() {
@@ -316,49 +368,15 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.state = tagsView
 					m.tags = newTagsViewModel()
 					return m, nil
-				default:
-					// For now, other options just quit.
-					return m, tea.Quit
+				case 8: // Language
+					m.state = languageView
+					m.language = newLanguageModel()
+					return m, nil
 				}
 			case "L":
-				// Cycle through available languages: en -> de -> en-olde -> en
-				currentLang := i18n.GetLang()
-				switch currentLang {
-				case "en":
-					i18n.SetLang("de")
-				case "de":
-					i18n.SetLang("en-olde")
-				default: // en-olde or any other case
-					i18n.SetLang("en")
-				}
-				m.menu.choices = []string{
-					i18n.T("menu.manage_accounts"),
-					i18n.T("menu.manage_public_keys"),
-					i18n.T("menu.assign_keys"),
-					i18n.T("menu.rotate_system_keys"),
-					i18n.T("menu.deploy_to_fleet"),
-					i18n.T("menu.view_audit_log"),
-					i18n.T("menu.audit_hosts"),
-					i18n.T("menu.view_accounts_by_tag"),
-				}
-				// Save the new language setting
-				viper.Set("language", i18n.GetLang())
-				if err := viper.WriteConfig(); err != nil {
-					// This is not a fatal error, so we just note it.
-					// The language will still change for the current session.
-					m.err = fmt.Errorf("could not save language setting: %w", err)
-				}
-				// Re-initialize models that depend on i18n strings
-				m.menu.choices = []string{
-					i18n.T("menu.manage_accounts"),
-					i18n.T("menu.manage_public_keys"),
-					i18n.T("menu.assign_keys"),
-					i18n.T("menu.rotate_system_keys"),
-					i18n.T("menu.deploy_to_fleet"),
-					i18n.T("menu.view_audit_log"),
-					i18n.T("menu.audit_hosts"),
-					i18n.T("menu.view_accounts_by_tag"),
-				}
+				// "L" now opens the language menu
+				m.state = languageView
+				m.language = newLanguageModel()
 				return m, nil
 			}
 		}
@@ -396,6 +414,8 @@ func (m mainModel) View() string {
 		return m.tags.View()
 	case bootstrapView:
 		return m.bootstrap.View()
+	case languageView:
+		return m.language.View()
 	default: // menuView
 		return m.menu.View(m.dashboard, m.width, m.height)
 	}
@@ -433,12 +453,28 @@ func (m menuModel) View(data dashboardData, width, height int) string {
 		sysKeyStatus = successStyle.Render(i18n.T("dashboard.system_key.active", data.systemKeySerial))
 	}
 	dashboardItems = append(dashboardItems, lipgloss.JoinVertical(lipgloss.Left,
-		i18n.T("dashboard.accounts", data.accountCount, data.activeAccountCount),
-		i18n.T("dashboard.public_keys", data.publicKeyCount, data.globalKeyCount),
-		i18n.T("dashboard.system_key", sysKeyStatus),
+		i18n.T("dashboard.accounts", data.accountCount, data.activeAccountCount),  //
+		i18n.T("dashboard.public_keys", data.publicKeyCount, data.globalKeyCount), //
+		i18n.T("dashboard.system_key", sysKeyStatus),                              //
 	))
 
-	// Recent Activity
+	// Deployment Status
+	dashboardItems = append(dashboardItems, "", "", paneTitleStyle.Render(i18n.T("dashboard.deployment_status")), "")
+	currentKeyLine := successStyle.Render(i18n.T("dashboard.hosts_current_key", data.hostsUpToDate))
+	pastKeysLine := i18n.T("dashboard.hosts_past_keys", data.hostsOutdated)
+	if data.hostsOutdated > 0 {
+		pastKeysLine = specialStyle.Render(pastKeysLine)
+	}
+	dashboardItems = append(dashboardItems, currentKeyLine, pastKeysLine)
+
+	// Security Posture
+	dashboardItems = append(dashboardItems, "", "", paneTitleStyle.Render(i18n.T("dashboard.security_posture")), "")
+	var postureItems []string
+	// Add color to key algo breakdown
+	postureItems = append(postureItems, lipgloss.JoinHorizontal(lipgloss.Left, i18n.T("dashboard.key_type_spread", ""), data.keyAlgoBreakdown))
+	dashboardItems = append(dashboardItems, postureItems...)
+
+	// Recent Activity (moved down)
 	dashboardItems = append(dashboardItems, "", "", paneTitleStyle.Render(i18n.T("dashboard.recent_activity")), "")
 
 	// --- Layout ---
@@ -504,11 +540,60 @@ func (m menuModel) View(data dashboardData, width, height int) string {
 	return lipgloss.JoinVertical(lipgloss.Top, header, mainArea, footer)
 }
 
+// newLanguageModel creates a new model for the language selection view.
+func newLanguageModel() languageModel {
+	// Get the dynamically discovered locales from the i18n package.
+	choices := i18n.GetAvailableLocales()
+
+	// Create a sorted list of keys for stable iteration and display order.
+	keys := make([]string, 0, len(choices))
+	for k := range choices {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	return languageModel{
+		choices:     choices,
+		orderedKeys: keys,
+		cursor:      0,
+	}
+}
+
+// Init for languageModel.
+func (m languageModel) Init() tea.Cmd { return nil }
+
+// Update for languageModel.
+func (m languageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return m, nil }
+
+// View for languageModel.
+func (m languageModel) View() string {
+	title := mainTitleStyle.Render("🌐 " + i18n.T("menu.language"))
+
+	var listItems []string
+	listItems = append(listItems, titleStyle.Render(i18n.T("language.select")), "")
+
+	for i, langCode := range m.orderedKeys {
+		displayName := m.choices[langCode]
+		line := "  " + displayName
+		if m.cursor == i {
+			line = "▸ " + displayName
+			listItems = append(listItems, selectedItemStyle.Render(line))
+		} else {
+			listItems = append(listItems, itemStyle.Render(line))
+		}
+	}
+
+	paneStyle := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorSubtle).Padding(1, 2)
+	listPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, listItems...))
+
+	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
+	helpLine := footerStyle.Render(i18n.T("language.help"))
+
+	return lipgloss.JoinVertical(lipgloss.Left, title, "", listPane, "", helpLine)
+}
+
 // Run is the main entrypoint for the TUI. It initializes and runs the Bubble Tea program.
 func Run() {
-	// Initialize i18n with the language from config
-	i18n.Init(viper.GetString("language"))
-
 	if _, err := tea.NewProgram(initialModel()).Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
@@ -544,15 +629,44 @@ func refreshDashboardCmd() tea.Cmd {
 		for _, acc := range accounts {
 			if acc.IsActive {
 				data.activeAccountCount++
+				// Compare account serial with active system key serial
+				if sysKey != nil && sysKey.Serial > 0 {
+					if acc.Serial == sysKey.Serial {
+						data.hostsUpToDate++
+					} else {
+						data.hostsOutdated++
+					}
+				}
 			}
 		}
 
 		data.publicKeyCount = len(keys)
+		algoCounts := make(map[string]int)
 		for _, key := range keys {
 			if key.IsGlobal {
 				data.globalKeyCount++
 			}
+			algoCounts[key.Algorithm]++
 		}
+
+		// Format algorithm breakdown
+		var algoParts []string
+		// Sort for consistent order
+		var sortedAlgos []string
+		for algo := range algoCounts {
+			sortedAlgos = append(sortedAlgos, algo)
+		}
+		sort.Strings(sortedAlgos)
+
+		for _, algo := range sortedAlgos {
+			count := algoCounts[algo]
+			style := successStyle
+			if algo == "ssh-rsa" || algo == "ssh-dss" {
+				style = specialStyle
+			}
+			algoParts = append(algoParts, style.Render(fmt.Sprintf("%s: %d", algo, count)))
+		}
+		data.keyAlgoBreakdown = strings.Join(algoParts, ", ")
 
 		if sysKey != nil {
 			data.systemKeySerial = sysKey.Serial

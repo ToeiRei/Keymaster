@@ -43,7 +43,6 @@ var embeddedMigrations embed.FS
 func InitDB(dbType, dsn string) error {
 	var err error
 	var db *sql.DB
-	var driver database.Driver
 	dbType = strings.ToLower(dbType)
 
 	switch dbType {
@@ -52,7 +51,7 @@ func InitDB(dbType, dsn string) error {
 		// a busy_timeout is set. This makes SQLite wait for a lock to be released
 		// instead of failing immediately. 5000ms is a reasonable default.
 		if !strings.Contains(dsn, "_busy_timeout") {
-			if strings.Contains(dsn, "?") {
+			if strings.Contains(dsn, "?") && !strings.HasSuffix(dsn, "?") {
 				dsn += "&_busy_timeout=5000"
 			} else {
 				dsn += "?_busy_timeout=5000"
@@ -68,21 +67,18 @@ func InitDB(dbType, dsn string) error {
 			if _, err = db.Exec("PRAGMA journal_mode=WAL;"); err != nil {
 				return fmt.Errorf("failed to enable WAL mode for sqlite: %w", err)
 			}
-			driver, err = sqlite.WithInstance(db, &sqlite.Config{})
 			store = &SqliteStore{db: db}
 		}
 	case "postgres":
 		// The pgx driver is imported in postgres.go
 		db, err = sql.Open("pgx", dsn)
 		if err == nil {
-			driver, err = postgres.WithInstance(db, &postgres.Config{})
 			store = &PostgresStore{db: db}
 		}
 	case "mysql":
 		// The mysql driver is imported in mysql.go
 		db, err = sql.Open("mysql", dsn)
 		if err == nil {
-			driver, err = mysql.WithInstance(db, &mysql.Config{})
 			store = &MySQLStore{db: db}
 		}
 	default:
@@ -97,6 +93,31 @@ func InitDB(dbType, dsn string) error {
 		return fmt.Errorf("failed to connect to %s database: %w", dbType, err)
 	}
 
+	if err := RunMigrations(db, dbType); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// NewStore creates and returns a new store instance for the given database type and connection.
+// This is used by InitDB and the migrate command.
+func NewStore(dbType string, db *sql.DB) (Store, error) {
+	switch dbType {
+	case "sqlite":
+		return &SqliteStore{db: db}, nil
+	case "postgres":
+		return &PostgresStore{db: db}, nil
+	case "mysql":
+		return &MySQLStore{db: db}, nil
+	}
+	return nil, fmt.Errorf("unsupported database type for store creation: '%s'", dbType)
+}
+
+// RunMigrations applies the necessary database migrations for a given database connection.
+func RunMigrations(db *sql.DB, dbType string) error {
+	var driver database.Driver
+	var err error
 	// Define the path to the migrations for the specific database type.
 	migrationsPath := fmt.Sprintf("migrations/%s", dbType)
 
@@ -104,6 +125,17 @@ func InitDB(dbType, dsn string) error {
 	sourceInstance, err := iofs.New(embeddedMigrations, migrationsPath)
 	if err != nil {
 		return fmt.Errorf("failed to create migration source: %w", err)
+	}
+
+	switch dbType {
+	case "sqlite":
+		driver, err = sqlite.WithInstance(db, &sqlite.Config{})
+	case "postgres":
+		driver, err = postgres.WithInstance(db, &postgres.Config{})
+	case "mysql":
+		driver, err = mysql.WithInstance(db, &mysql.Config{})
+	default:
+		return fmt.Errorf("unsupported database type for migrations: '%s'", dbType)
 	}
 
 	m, err := migrate.NewWithInstance("iofs", sourceInstance, dbType, driver)
@@ -114,7 +146,6 @@ func InitDB(dbType, dsn string) error {
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("failed to apply migrations: %w", err)
 	}
-
 	return nil
 }
 
@@ -297,4 +328,19 @@ func GetExpiredBootstrapSessions() ([]*model.BootstrapSession, error) {
 // GetOrphanedBootstrapSessions returns all orphaned bootstrap sessions.
 func GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error) {
 	return store.GetOrphanedBootstrapSessions()
+}
+
+// ExportDataForBackup retrieves all data from the database for a backup.
+func ExportDataForBackup() (*model.BackupData, error) {
+	return store.ExportDataForBackup()
+}
+
+// ImportDataFromBackup restores the database from a backup data structure.
+func ImportDataFromBackup(backup *model.BackupData) error {
+	return store.ImportDataFromBackup(backup)
+}
+
+// IntegrateDataFromBackup restores the database from a backup data structure in a non-destructive way.
+func IntegrateDataFromBackup(backup *model.BackupData) error {
+	return store.IntegrateDataFromBackup(backup)
 }
