@@ -36,7 +36,8 @@ setup.
     migrate to PostgreSQL or MySQL as your needs grow.
 - **Multi-Language Support:** The TUI is fully internationalized. We are actively
     looking for translators! You can see the current status and contribute here:
-    [![Translation status](https://weblate.stargazer.at/widget/keymaster/multi-auto.svg)](https://weblate.stargazer.at/engage/keymaster/)
+
+[![Translation status](https://weblate.stargazer.at/widget/keymaster/multi-auto.svg)](https://weblate.stargazer.at/engage/keymaster/)
 
 ## The Interface
 
