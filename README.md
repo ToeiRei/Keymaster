@@ -87,8 +87,11 @@ An agentless SSH key manager that just does the job.
 
 2. **Initialize the Database:**
     Run Keymaster for the first time. It will automatically create `keymaster.db`
-    and a default `.keymaster.yaml` configuration file in the current directory.
+    and a default `config.yaml` in the standard user configuration directory.
+    - **Linux/macOS:** `~/.config/keymaster/`
+    - **Windows:** `C:\Users\<user>\AppData\Roaming\keymaster\`
 
+    For backward compatibility, it will also read an existing `.keymaster.yaml` from the current directory.
     ```sh
     keymaster
     ```
