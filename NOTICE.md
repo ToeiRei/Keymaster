@@ -13,6 +13,7 @@ The following third-party libraries are used by this project. All licenses are p
 | github.com/charmbracelet/bubbles      | MIT            |
 | github.com/charmbracelet/bubbletea    | MIT            |
 | github.com/charmbracelet/lipgloss     | MIT            |
+| github.com/klauspost/compress         | BSD-3-Clause   |
 | github.com/nicksnyder/go-i18n/v2      | MIT            |
 | github.com/pkg/sftp                   | BSD-2-Clause   |
 | github.com/spf13/cobra                | Apache-2.0     |
@@ -29,6 +30,7 @@ The following third-party libraries are used by this project. All licenses are p
 ### The MIT License (MIT)
 
 The following components are licensed under the MIT License:
+
 - `github.com/charmbracelet/bubbles`
 - `github.com/charmbracelet/bubbletea`
 - `github.com/charmbracelet/lipgloss`
@@ -36,7 +38,7 @@ The following components are licensed under the MIT License:
 - `github.com/spf13/viper`
 - `gopkg.in/yaml.v3`
 
-```
+```text
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -59,6 +61,7 @@ SOFTWARE.
 ### Apache License 2.0 (Apache-2.0)
 
 The following components are licensed under the Apache License 2.0:
+
 - `github.com/spf13/cobra`
 - `gopkg.in/yaml.v3`
 
@@ -67,9 +70,10 @@ The full text of the license can be found at: http://www.apache.org/licenses/LIC
 ### BSD 2-Clause "Simplified" License (BSD-2-Clause)
 
 The following components are licensed under the BSD 2-Clause License:
+
 - `github.com/pkg/sftp`
 
-```
+```text
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -81,7 +85,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 ### BSD 3-Clause "New" or "Revised" License (BSD-3-Clause)
 
 The following components are licensed under the BSD 3-Clause License:
+
 - `golang.org/x/crypto`
+- `github.com/klauspost/compress`
 - `golang.org/x/sys`
 - `golang.org/x/text`
 
