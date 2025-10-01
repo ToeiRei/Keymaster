@@ -12,13 +12,46 @@
             "program": "${workspaceFolder}/cmd/keymaster",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "CLI: deploy",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/keymaster",
+            "args": ["deploy"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "CLI: audit",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/keymaster",
+            "args": ["audit"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "CLI: backup",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/keymaster",
+            "args": ["backup", "test-backup.json.zst"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "CLI: migrate",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/keymaster",
+            "args": ["migrate", "--type", "sqlite", "--dsn", "migrated.db"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
         }
-        // TODO: Add configurations for the following commands:
-        // deploy
-        // rotateKey
-        // audit
-        // import
-        // trustHost
-        // exportSSHConfig
     ]
 }
