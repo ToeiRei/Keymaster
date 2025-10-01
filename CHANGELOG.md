@@ -5,7 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [UNRELEASED]
+## [1.4.0] - 2025-10-01
+
+This is a major feature release that introduces powerful database management capabilities, a more resilient and user-friendly bootstrap process, and significant enhancements to the dashboard and configuration handling.
+
+### Added
+
+- **Database Portability:**
+  - `backup` command to create a full, Zstandard-compressed JSON backup of the database.
+  - `restore` command to restore from a backup, with both non-destructive (integrate) and full (wipe) modes.
+  - `migrate` command to seamlessly migrate all data from one database backend to another (e.g., SQLite to PostgreSQL).
+- **Resilient Bootstrap Workflow:**
+  - The "Add Account" flow now provides a one-liner command to securely bootstrap a new host using a temporary key.
+  - Implemented crash recovery to find and clean up orphaned temporary keys on application startup.
+  - A background "reaper" goroutine now automatically cleans up expired bootstrap sessions.
+- **Decommission Command:** New `decommission` command in both the CLI and TUI to securely remove an account by cleaning up its remote `authorized_keys` file before deleting it from the database.
+- **Dashboard Enhancements:**
+  - "Deployment Status" widget shows how many hosts are on the current vs. past system keys.
+  - "Security Posture" widget displays a breakdown of the types of public keys in use (e.g., ed25519, ecdsa, rsa).
+
+### Changed
+
+- **Configuration File Location:** Keymaster now respects platform-specific standards for configuration files.
+  - The default location is now `~/.config/keymaster/config.yaml` on Linux and `C:\Users\<user>\AppData\Roaming\keymaster\config.yaml` on Windows.
+  - The default `keymaster.db` is also created in this directory.
+  - The application maintains backward compatibility by checking for `.keymaster.yaml` in the current directory if the new config is not found.
+- **Improved Host Parsing:** Hostname and port parsing is now more robust, correctly handling IPv6 addresses and various `host:port` formats.
+- **Internationalization:** Completed and vetted all German translations.
+
+### Fixed
+
+- **Configuration Loading:** Corrected a bug where an existing `config.yaml` in the new standard location would not be loaded.
+- **TUI Window Size:** The terminal window size is now preserved when switching languages.
+
+### Security
+
+- **Bootstrap Hardening:** The bootstrap cleanup process now requires a host to be trusted, preventing a potential key replacement vulnerability on untrusted hosts.
 
 ---
 
