@@ -112,3 +112,94 @@ func GenerateKeysContentForSerial(accountID int, serial int) (string, error) {
 
 	return content.String(), nil
 }
+
+// GenerateSelectiveKeysContent constructs authorized_keys content excluding specific keys.
+// The system key is always included unless removeSystemKey is true.
+func GenerateSelectiveKeysContent(accountID int, serial int, excludeKeyIDs []int, removeSystemKey bool) (string, error) {
+	var content strings.Builder
+
+	// 1. Get the system key (always included unless removeSystemKey is true)
+	if !removeSystemKey {
+		systemKey, err := db.GetSystemKeyBySerial(serial)
+		if err != nil {
+			return "", fmt.Errorf("could not retrieve system key: %w", err)
+		}
+		if systemKey == nil {
+			return "", fmt.Errorf("no system key found for serial %d", serial)
+		}
+
+		// Add the Keymaster header and the restricted system key.
+		content.WriteString(fmt.Sprintf("# Keymaster Managed Keys (Serial: %d)\n", systemKey.Serial))
+		restrictedSystemKey := fmt.Sprintf("%s %s", SystemKeyRestrictions, systemKey.PublicKey)
+		content.WriteString(restrictedSystemKey)
+	}
+
+	// 2. Get all global public keys.
+	globalKeys, err := db.GetGlobalPublicKeys()
+	if err != nil {
+		return "", fmt.Errorf("could not retrieve global public keys: %w", err)
+	}
+
+	// 3. Get keys specifically assigned to this account.
+	accountKeys, err := db.GetKeysForAccount(accountID)
+	if err != nil {
+		return "", fmt.Errorf("could not retrieve keys for account ID %d: %w", accountID, err)
+	}
+
+	// 4. Combine and de-duplicate keys, excluding specified keys.
+	type keyInfo struct {
+		id      int
+		line    string
+		comment string
+	}
+	allUserKeysMap := make(map[int]keyInfo)
+	excludeSet := make(map[int]bool)
+
+	// Create exclude set for fast lookup
+	for _, keyID := range excludeKeyIDs {
+		excludeSet[keyID] = true
+	}
+
+	formatKey := func(key model.PublicKey) string {
+		if key.Comment != "" {
+			return fmt.Sprintf("%s %s %s", key.Algorithm, key.KeyData, key.Comment)
+		}
+		return fmt.Sprintf("%s %s", key.Algorithm, key.KeyData)
+	}
+
+	// Add global keys (excluding those in excludeSet)
+	for _, key := range globalKeys {
+		if !excludeSet[key.ID] {
+			allUserKeysMap[key.ID] = keyInfo{id: key.ID, line: formatKey(key), comment: key.Comment}
+		}
+	}
+
+	// Add account keys (excluding those in excludeSet)
+	for _, key := range accountKeys {
+		if !excludeSet[key.ID] {
+			allUserKeysMap[key.ID] = keyInfo{id: key.ID, line: formatKey(key), comment: key.Comment}
+		}
+	}
+
+	// Convert map to slice for sorting by comment to ensure stable output
+	var sortedKeys []keyInfo
+	for _, ki := range allUserKeysMap {
+		sortedKeys = append(sortedKeys, ki)
+	}
+	sort.Slice(sortedKeys, func(i, j int) bool {
+		return sortedKeys[i].comment < sortedKeys[j].comment
+	})
+
+	// Add user keys to the content
+	for _, ki := range sortedKeys {
+		content.WriteString("\n")
+		content.WriteString(ki.line)
+	}
+
+	// Ensure file ends with newline
+	if len(sortedKeys) > 0 {
+		content.WriteString("\n")
+	}
+
+	return content.String(), nil
+}
