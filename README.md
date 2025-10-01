@@ -116,59 +116,70 @@ That's it! The host is now fully managed by Keymaster.
 
 - **Interactive TUI (Default):**
 
-  `keymaster`
+```sh
+keymaster
+```
 
 - **Deploy to all hosts:**
 
-  `keymaster deploy`
+```sh
+keymaster deploy
+```
 
 - **Audit the fleet for drift (full file comparison):**
 
-  `keymaster audit`
+```sh
+keymaster audit
+```
 
 - **Trust a new host:**
 
-  `keymaster trust-host user@new-host`
+```sh
+keymaster trust-host user@new-host
+```
 
 - **Import keys from a file:**
 
-  `keymaster import /path/to/authorized_keys`
+```sh
+keymaster import /path/to/authorized_keys
+```
 
 - **Export SSH config:**
 
-  `keymaster export-ssh-client-config ~/.ssh/config`
+```bash
+keymaster export-ssh-client-config ~/.ssh/config
 
 - **Database Management:**
 
-  ```sh
-  # Create a compressed backup
-  keymaster backup
+```sh
+# Create a compressed backup
+keymaster backup
 
-  # Restore from a backup (non-destructive by default)
-  keymaster restore ./keymaster-backup.json.zst
+# Restore from a backup (non-destructive by default)
+keymaster restore ./keymaster-backup.json.zst
 
-  # Migrate from SQLite to PostgreSQL
-  keymaster migrate --type postgres --dsn "host=localhost user=keymaster dbname=keymaster"
-  ```
+# Migrate from SQLite to PostgreSQL
+keymaster migrate --type postgres --dsn "host=localhost user=keymaster dbname=keymaster"
+```
 
 - **Decommission an account:**
 
-  ```sh
-  # Remove entire authorized_keys file
-  keymaster decommission user@new-host
+```sh
+# Remove entire authorized_keys file
+keymaster decommission user@new-host
 
-  # Remove only Keymaster-managed content, keep other keys
-  keymaster decommission user@hostname --keep-file
+# Remove only Keymaster-managed content, keep other keys
+keymaster decommission user@hostname --keep-file
 
-  # Decommission all accounts with a specific tag
-  keymaster decommission --tag env:staging
+# Decommission all accounts with a specific tag
+keymaster decommission --tag env:staging
 
-  # Skip remote cleanup (database only)
-  keymaster decommission user@hostname --skip-remote
+# Skip remote cleanup (database only)
+keymaster decommission user@hostname --skip-remote
 
-  # Force decommission even if remote cleanup fails
-  keymaster decommission user@hostname --force
-  ```
+# Force decommission even if remote cleanup fails
+keymaster decommission user@hostname --force
+```
 
 ### A Note on Security & The System Key
 
