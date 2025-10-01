@@ -455,26 +455,65 @@ func (m menuModel) View(data dashboardData, width, height int) string {
 	if data.systemKeySerial > 0 {
 		sysKeyStatus = successStyle.Render(i18n.T("dashboard.system_key.active", data.systemKeySerial))
 	}
-	dashboardItems = append(dashboardItems, lipgloss.JoinVertical(lipgloss.Left,
-		i18n.T("dashboard.accounts", data.accountCount, data.activeAccountCount),  //
-		i18n.T("dashboard.public_keys", data.publicKeyCount, data.globalKeyCount), //
-		i18n.T("dashboard.system_key", sysKeyStatus),                              //
-	))
+
+	// --- Refactored Status Items with dynamic padding ---
+	// Define labels and values separately to calculate padding
+	statusItems := []struct {
+		label string
+		value string
+	}{
+		{i18n.T("dashboard.accounts"), fmt.Sprintf("%d (%d active)", data.accountCount, data.activeAccountCount)},
+		{i18n.T("dashboard.public_keys"), fmt.Sprintf("%d (%d global)", data.publicKeyCount, data.globalKeyCount)},
+		{i18n.T("dashboard.system_key"), sysKeyStatus},
+	}
+
+	// Extract just the label part of the string (before the first '%')
+	var labelsOnly []string
+	for _, item := range statusItems {
+		labelPart := item.label
+		if idx := strings.Index(labelPart, "%"); idx != -1 {
+			labelPart = labelPart[:idx]
+		}
+		labelsOnly = append(labelsOnly, labelPart)
+	}
+
+	// Find the longest label to align all values
+	maxLabelLen := 0
+	for _, label := range labelsOnly {
+		if len(label) > maxLabelLen {
+			maxLabelLen = len(label)
+		}
+	}
+
+	for i, label := range labelsOnly {
+		padding := strings.Repeat(" ", maxLabelLen-len(label))
+		dashboardItems = append(dashboardItems, fmt.Sprintf("%s%s%s", label, padding, statusItems[i].value))
+	}
 
 	// Deployment Status
 	dashboardItems = append(dashboardItems, "", "", paneTitleStyle.Render(i18n.T("dashboard.deployment_status")), "")
-	currentKeyLine := successStyle.Render(i18n.T("dashboard.hosts_current_key", data.hostsUpToDate))
-	pastKeysLine := i18n.T("dashboard.hosts_past_keys", data.hostsOutdated)
+	currentKeyLine := i18n.T("dashboard.hosts_current_key", data.hostsUpToDate)
+	pastKeysLine := i18n.T("dashboard.hosts_past_keys", data.hostsOutdated) // This line no longer needs manual padding
+
+	// Apply styles after calculating layout
+	styledCurrentKeyLine := successStyle.Render(currentKeyLine)
 	if data.hostsOutdated > 0 {
 		pastKeysLine = specialStyle.Render(pastKeysLine)
 	}
-	dashboardItems = append(dashboardItems, currentKeyLine, pastKeysLine)
+	// Find the longest line to align the second line
+	maxDeployLen := lipgloss.Width(styledCurrentKeyLine)
+	deployPadding := ""
+	if maxDeployLen > lipgloss.Width(pastKeysLine) {
+		deployPadding = strings.Repeat(" ", maxDeployLen-lipgloss.Width(pastKeysLine))
+	}
+	dashboardItems = append(dashboardItems, styledCurrentKeyLine, deployPadding+pastKeysLine)
 
 	// Security Posture
 	dashboardItems = append(dashboardItems, "", "", paneTitleStyle.Render(i18n.T("dashboard.security_posture")), "")
 	var postureItems []string
 	// Add color to key algo breakdown
-	postureItems = append(postureItems, lipgloss.JoinHorizontal(lipgloss.Left, i18n.T("dashboard.key_type_spread", ""), data.keyAlgoBreakdown))
+	keyTypeLabel := i18n.T("dashboard.key_type_spread", "")
+	postureItems = append(postureItems, lipgloss.JoinHorizontal(lipgloss.Left, keyTypeLabel, data.keyAlgoBreakdown))
 	dashboardItems = append(dashboardItems, postureItems...)
 
 	// Recent Activity (moved down)
