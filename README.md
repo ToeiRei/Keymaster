@@ -14,55 +14,67 @@ setup.
 ## Core Features
 
 - **Modern Interactive TUI:** A beautiful and responsive terminal UI built with
-    `lipgloss`. Features a main dashboard, filterable lists, color-coded tables,
-    and a consistent, professional design.
-- **Multi-Language Support:** The TUI is fully internationalized, with initial
-    support for English and German.
-- **Centralized Management:** A single SQLite database (`keymaster.db`) acts as
-    the source of truth for all public keys and account assignments.
+    `lipgloss` that makes key management intuitive and efficient.
 - **Agentless Deployment:** Uses standard SSH/SFTP to connect to hosts and manage
     `authorized_keys` files. No remote agents required.
-- **Safe Key Rotation:** Features a robust system key rotation mechanism. Old keys
-    are retained to ensure you can always regain access to hosts that were
-    offline during a rotation.
-- **Fleet-Wide Operations:** Deploy key changes or audit your entire fleet of
-    active hosts with a single command.
-- **Drift Detection:** The `audit` command connects to each host and compares the
-    fully rendered, normalized `authorized_keys` content against the expected state
-    from the database (including the Keymaster header with the current system key
-    serial). Any difference is reported as drift.
+- **Automatic System Key Hardening:** Enforces the principle of least privilege by
+    automatically applying strict, SFTP-only restrictions to its own system key
+    on every deployment. This is a critical, zero-config security feature.
+- **Database Portability:** Easily `backup` your entire database to a compressed
+    JSON file, `restore` it for disaster recovery, or `migrate` seamlessly from
+    SQLite to PostgreSQL/MySQL.
+- **Robust Operations:**
+  - **Safe Key Rotation:** Rotate system keys without losing access to hosts
+      that were offline during the change.
+  - **Fleet-Wide Actions:** Deploy key updates or `audit` your entire fleet for
+      configuration drift with a single command.
+  - **Resilient Bootstrapping:** A crash-proof bootstrap process ensures no
+      orphaned temporary keys are left on remote hosts.
 - **Scriptable CLI:** All core features are available as command-line arguments,
     making Keymaster perfect for automation.
-- **SSH Agent Integration:** Can use a running SSH agent (including
-    Pageant/gpg-agent on Windows) for authentication for certain features, like
-    remote key importing.
+- **Multi-Language Support:** The TUI is fully internationalized, with support
+    for English, German, and even Old English.
+- **Flexible Backend:** Start with the default zero-config SQLite database, and
+    migrate to PostgreSQL or MySQL as your needs grow.
 
 ## A New Look
 
 Keymaster 1.2 introduces a completely redesigned user interface to make managing your keys a pleasure.
 
 ```text
-      🔑 Keymaster
-  An agentless SSH key manager that just does the job.
+   🔑 Keymaster
 
-╭──────────────────────────────────────╮  ╭──────────────────────────────────────────────────╮
-│ Navigation                           │  │ System Status                                    │
-│                                      │  │                                                  │
-│   ▸ Manage Accounts                  │  │ Managed Accounts: 5 (5 active)                   │
-│     Manage Public Keys               │  │      Public Keys: 3 (1 global)                   │
-│     Assign Keys to Accounts          │  │       System Key: Active (Serial #1)             │
-│     Rotate System Keys               │  │                                                  │
-│     Deploy to Fleet                  │  │                                                  │
-│     View Audit Log                   │  │ Recent Activity                                  │
-│     View Accounts by Tag             │  │                                                  │
-│                                      │  │ 09-23 10:45  ADD_ACCOUNT      account: new@host  │
-│                                      │  │ 09-23 10:44  TRUST_HOST       hostname: new@host │
-│                                      │  │ 09-23 10:42  ROTATE_SYSTEM_KEY  new_serial: 1    │
-│                                      │  │ 09-23 10:40  DELETE_PUBLIC_KEY  comment: old-key │
-│                                      │  │ 09-23 10:39  ADD_PUBLIC_KEY   comment: new-key   │
-╰──────────────────────────────────────╯  ╰──────────────────────────────────────────────────╯
-
-  j/k up/down: navigate  enter: select  q: quit
+An agentless SSH key manager that just does the job.
+╭──────────────────────────────────────╮  ╭────────────────────────────────────────────────────────────────────────────╮
+│                                      │  │                                                                            │
+│  Navigation                          │  │  System Status                                                             │
+│                                      │  │                                                                            │
+│  ▸ Manage Accounts                   │  │  Managed Accounts: 22 (22 active)                                          │
+│    Manage Public Keys                │  │       Public Keys: 8 (4 global)                                            │
+│    Assign Keys to Accounts           │  │        System Key: Active (Serial #3)                                      │
+│    Rotate System Keys                │  │                                                                            │
+│    Deploy to Fleet                   │  │                                                                            │
+│    View Audit Log                    │  │  Deployment Status                                                         │
+│    Audit Hosts                       │  │                                                                            │
+│    View Accounts by Tag              │  │  Hosts using current key: 21                                               │
+│    Language                          │  │  Hosts using past key(s): 1                                                │
+│                                      │  │                                                                            │
+│                                      │  │                                                                            │
+│                                      │  │  Security Posture                                                          │
+│                                      │  │                                                                            │
+│                                      │  │  Key-Type Spread: ecdsa-sha2-nistp256: 2, ssh-ed25519: 4, ssh-rsa: 2       │
+│                                      │  │                                                                            │
+│                                      │  │                                                                            │
+│                                      │  │  Recent Activity                                                           │
+│                                      │  │                                                                            │
+│                                      │  │  09-30T17:35 ROTATE_SYSTEM_KEY new_serial: 3                               │
+│                                      │  │  09-30T00:51 TRUST_HOST hostname: 192.168.10.136                           │
+│                                      │  │  09-30T00:51 ADD_ACCOUNT account: root@192.168.10.136                      │
+│                                      │  │  09-30T00:49 TRUST_HOST hostname: 192.168.10.136                           │
+│                                      │  │  09-30T00:49 TRUST_HOST hostname: 192.168.10.136                           │
+│                                      │  │                                                                            │
+╰──────────────────────────────────────╯  ╰────────────────────────────────────────────────────────────────────────────╯
+ j/k up/down: navigate   enter: select   q: quit   L: language                         
 ```
 
 ## Getting Started
