@@ -1,7 +1,5 @@
 # 🔑 Keymaster
 
-[![Translation status](https://weblate.stargazer.at/widget/keymaster/multi-auto.svg)](https://weblate.stargazer.at/engage/keymaster/)
-
 A lightweight, agentless SSH key manager that just does the job.
 
 ## What is Keymaster?
@@ -34,10 +32,11 @@ setup.
       orphaned temporary keys are left on remote hosts.
 - **Scriptable CLI:** All core features are available as command-line arguments,
     making Keymaster perfect for automation.
-- **Multi-Language Support:** The TUI is fully internationalized, with support
-    for English and German (more to come with your help)
 - **Flexible Backend:** Start with the default zero-config SQLite database, and
     migrate to PostgreSQL or MySQL as your needs grow.
+- **Multi-Language Support:** The TUI is fully internationalized. We are actively
+    looking for translators! You can see the current status and contribute here:
+    [![Translation status](https://weblate.stargazer.at/widget/keymaster/multi-auto.svg)](https://weblate.stargazer.at/engage/keymaster/)
 
 ## The Interface
 
