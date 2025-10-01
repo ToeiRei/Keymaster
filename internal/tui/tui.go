@@ -56,6 +56,7 @@ type dashboardData struct {
 	globalKeyCount     int
 	hostsUpToDate      int
 	hostsOutdated      int
+	hostsWithDrift     int
 	keyAlgoBreakdown   string
 	systemKeySerial    int // 0 if none
 	recentLogs         []model.AuditLogEntry
@@ -366,6 +367,8 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case 6: // Audit Hosts
 					m.state = auditView
 					m.auditor = newAuditModel()
+					m.auditor.width = m.width
+					m.auditor.height = m.height
 					return m, nil
 				case 7: // View Accounts by Tag
 					m.state = tagsView
@@ -468,7 +471,13 @@ func (m menuModel) View(data dashboardData, width, height int) string {
 	if data.hostsOutdated > 0 {
 		pastKeysLine = specialStyle.Render(pastKeysLine)
 	}
-	dashboardItems = append(dashboardItems, currentKeyLine, pastKeysLine)
+	driftLine := i18n.T("dashboard.hosts_with_drift", data.hostsWithDrift)
+	if data.hostsWithDrift > 0 {
+		driftLine = errorStyle.Render(driftLine)
+	} else {
+		driftLine = successStyle.Render(driftLine)
+	}
+	dashboardItems = append(dashboardItems, currentKeyLine, pastKeysLine, driftLine)
 
 	// Security Posture
 	dashboardItems = append(dashboardItems, "", "", paneTitleStyle.Render(i18n.T("dashboard.security_posture")), "")
@@ -626,8 +635,16 @@ func refreshDashboardCmd() tea.Cmd {
 			return dashboardDataMsg{data: dashboardData{err: err}}
 		}
 
+		// Get drift statistics
+		driftStats, err := db.GetHostsWithFrequentDrift(100)
+		hostsWithDrift := 0
+		if err == nil {
+			hostsWithDrift = len(driftStats)
+		}
+
 		// Process data
 		data := dashboardData{}
+		data.hostsWithDrift = hostsWithDrift
 		data.accountCount = len(accounts)
 		for _, acc := range accounts {
 			if acc.IsActive {

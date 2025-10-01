@@ -35,11 +35,20 @@ const (
 	auditStateFleetInProgress
 	auditStateInProgress
 	auditStateComplete
+	auditStateRemediationConfirm
+	auditStateRemediationInProgress
 )
 
 // auditResultMsg is a message to signal audit completion for one account.
 type auditResultMsg struct {
 	account model.Account
+	err     error
+}
+
+// remediationResultMsg is a message to signal remediation completion.
+type remediationResultMsg struct {
+	account model.Account
+	result  *model.RemediationResult
 	err     error
 }
 
@@ -52,26 +61,41 @@ type auditModel struct {
 	tagCursor          int
 	accounts           []model.Account
 	accountsInFleet    []model.Account
-	fleetResults       map[int]error // map account ID to error
+	fleetResults       map[int]error          // map account ID to error
+	driftAnalysis      map[int]*model.DriftAnalysis // map account ID to drift analysis
 	selectedAccount    model.Account
 	tags               []string
 	status             string
 	err                error
 	accountFilter      string
 	isFilteringAccount bool
+	remediationResults map[int]*model.RemediationResult // map account ID to remediation result
+	width              int                              // Terminal width for responsive layout
+	height             int                              // Terminal height for responsive layout
 }
 
 func newAuditModel() auditModel {
 	return auditModel{
-		state:        auditStateMenu,
-		mode:         auditModeStrict,
-		fleetResults: make(map[int]error),
+		state:              auditStateMenu,
+		mode:               auditModeStrict,
+		fleetResults:       make(map[int]error),
+		driftAnalysis:      make(map[int]*model.DriftAnalysis),
+		remediationResults: make(map[int]*model.RemediationResult),
+		width:              120, // Default width
+		height:             40,  // Default height
 	}
 }
 
 func (m auditModel) Init() tea.Cmd { return nil }
 
 func (m auditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		return m, nil
+	}
+
 	switch m.state {
 	case auditStateMenu:
 		return m.updateMenu(msg)
@@ -102,6 +126,21 @@ func (m auditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case auditStateComplete:
 		return m.updateComplete(msg)
+	case auditStateRemediationConfirm:
+		return m.updateRemediationConfirm(msg)
+	case auditStateRemediationInProgress:
+		if res, ok := msg.(remediationResultMsg); ok {
+			m.remediationResults[res.account.ID] = res.result
+			// If remediation was successful, remove the drift from fleetResults
+			if res.result != nil && res.result.Success {
+				m.fleetResults[res.account.ID] = nil
+			}
+			if len(m.remediationResults) == len(m.accountsInFleet) {
+				m.state = auditStateComplete
+				m.status = i18n.T("remediation.tui.complete")
+			}
+		}
+		return m, nil
 	}
 	return m, nil
 }
@@ -110,7 +149,7 @@ func (m auditModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "q", "esc":
+		case "q":
 			return m, func() tea.Msg { return backToMenuMsg{} }
 		case "up", "k":
 			if m.menuCursor > 0 {
@@ -214,15 +253,27 @@ func (m auditModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
+		case "q":
+			if m.accountFilter != "" && !m.isFilteringAccount {
+				m.accountFilter = ""
+				m.accountCursor = 0
+				return m, nil
+			}
+			return m, func() tea.Msg { return backToMenuMsg{} }
 		case "esc":
 			if m.isFilteringAccount {
 				m.isFilteringAccount = false
+				// Do NOT clear m.accountFilter; persist filter after exiting filter mode
+				m.status = ""
 				return m, nil
 			}
 			if m.accountFilter != "" {
 				m.accountFilter = ""
+				m.status = ""
+				m.accountCursor = 0
 				return m, nil
 			}
+			m.status = ""
 			m.state = auditStateMenu
 			m.err = nil
 			return m, nil
@@ -243,7 +294,7 @@ func (m auditModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.selectedAccount = fa[m.accountCursor]
 			m.state = auditStateInProgress
-			m.status = i18n.T("audit.tui.auditing", m.selectedAccount.String())
+			m.status = ""
 			return m, performAuditCmd(m.selectedAccount, m.mode)
 		default:
 			if m.isFilteringAccount && len(msg.String()) == 1 && msg.Type == tea.KeyRunes {
@@ -326,6 +377,22 @@ func (m auditModel) updateComplete(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "r":
+			// Initiate remediation for accounts with drift
+			if len(m.fleetResults) > 0 {
+				// Filter accounts with drift
+				var accountsWithDrift []model.Account
+				for _, acc := range m.accountsInFleet {
+					if err, ok := m.fleetResults[acc.ID]; ok && err != nil {
+						accountsWithDrift = append(accountsWithDrift, acc)
+					}
+				}
+				if len(accountsWithDrift) > 0 {
+					m.accountsInFleet = accountsWithDrift
+					m.state = auditStateRemediationConfirm
+					return m, nil
+				}
+			}
 		case "esc", "enter":
 			if len(m.fleetResults) > 0 {
 				m.fleetResults = make(map[int]error)
@@ -340,67 +407,146 @@ func (m auditModel) updateComplete(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// updateRemediationConfirm handles the remediation confirmation screen.
+func (m auditModel) updateRemediationConfirm(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "y", "enter":
+			// Start remediation
+			m.state = auditStateRemediationInProgress
+			m.status = i18n.T("remediation.tui.starting")
+			m.remediationResults = make(map[int]*model.RemediationResult, len(m.accountsInFleet))
+			cmds := make([]tea.Cmd, len(m.accountsInFleet))
+			for i, acc := range m.accountsInFleet {
+				cmds[i] = performRemediationCmd(acc)
+			}
+			return m, tea.Batch(cmds...)
+		case "n", "esc":
+			m.state = auditStateComplete
+			return m, nil
+		}
+	}
+	return m, nil
+}
+
 // View renders the audit UI.
 func (m auditModel) View() string {
-	paneStyle := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorSubtle).Padding(1, 2)
-	helpFooterStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
-
-	if m.err != nil {
-		title := titleStyle.Render(i18n.T("audit.tui.failed"))
-		help := helpFooterStyle.Render(i18n.T("audit.tui.help_failed"))
-		content := fmt.Sprintf(i18n.T("account_form.error"), m.err)
-		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", content))
-		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
-	}
+	// Header
+	title := mainTitleStyle.Render("🔍 " + i18n.T("audit.tui.title"))
 
 	modeLabel := i18n.T("audit.tui.mode_strict")
 	if m.mode == auditModeSerial {
 		modeLabel = i18n.T("audit.tui.mode_serial")
 	}
+	subTitle := helpStyle.Render(fmt.Sprintf("%s: %s", i18n.T("audit.tui.menu.toggle_mode"), modeLabel))
+	header := lipgloss.JoinVertical(lipgloss.Left, title, subTitle)
+
+	// Pane styles
+	paneStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorSubtle).
+		Padding(1, 2)
+
+	paneTitleStyle := lipgloss.NewStyle().Bold(true)
+	helpFooterStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
+
+	// Calculate dimensions
+	headerHeight := lipgloss.Height(header)
+	footerHeight := lipgloss.Height(helpFooterStyle.Render(""))
+	paneHeight := m.height - headerHeight - footerHeight - 2
+
+	leftPaneWidth := 38
+	rightPaneWidth := m.width - 4 - leftPaneWidth - 2
+
+	if m.err != nil {
+		content := errorStyle.Render(fmt.Sprintf(i18n.T("account_form.error"), m.err))
+		leftPane := paneStyle.Width(leftPaneWidth).Height(paneHeight).Render(content)
+		rightPane := paneStyle.Width(rightPaneWidth).Height(paneHeight).MarginLeft(2).Render("")
+		mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
+		help := helpFooterStyle.Render(i18n.T("audit.tui.help_failed"))
+		return lipgloss.JoinVertical(lipgloss.Left, header, "", mainArea, "", help)
+	}
 
 	switch m.state {
 	case auditStateMenu:
-		title := titleStyle.Render(i18n.T("audit.tui.title"))
-		var listItems []string
+		// Left pane - Menu
+		var leftItems []string
+		leftItems = append(leftItems, paneTitleStyle.Render(i18n.T("audit.tui.menu.title")), "")
 		menuItems := []string{"audit.tui.menu.audit_fleet", "audit.tui.menu.audit_single", "audit.tui.menu.audit_tag", "audit.tui.menu.toggle_mode"}
 		for i, key := range menuItems {
 			label := i18n.T(key)
 			if key == "audit.tui.menu.toggle_mode" {
-				label = fmt.Sprintf("%s: %s", label, modeLabel)
+				label = i18n.T(key)
 			}
 			if m.menuCursor == i {
-				listItems = append(listItems, selectedItemStyle.Render("▸ "+label))
+				leftItems = append(leftItems, selectedItemStyle.Render("▸ "+label))
 			} else {
-				listItems = append(listItems, itemStyle.Render("  "+label))
+				leftItems = append(leftItems, itemStyle.Render("  "+label))
 			}
 		}
-		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, listItems...)))
-		help := helpFooterStyle.Render(i18n.T("audit.tui.help_menu"))
+		leftContent := lipgloss.JoinVertical(lipgloss.Left, leftItems...)
+
+		// Right pane - Info/Status
+		var rightItems []string
 		if m.status != "" {
-			mainPane += "\n" + helpFooterStyle.Render(m.status)
+			rightItems = append(rightItems, statusMessageStyle.Render(m.status))
+		} else {
+			rightItems = append(rightItems, paneTitleStyle.Render(i18n.T("audit.tui.current_mode")), "")
+			rightItems = append(rightItems, helpStyle.Render(modeLabel))
 		}
-		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+		rightContent := lipgloss.JoinVertical(lipgloss.Left, rightItems...)
+
+		leftPane := paneStyle.Width(leftPaneWidth).Height(paneHeight).Render(leftContent)
+		rightPane := paneStyle.Width(rightPaneWidth).Height(paneHeight).MarginLeft(2).Render(rightContent)
+		mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
+		help := helpFooterStyle.Render(i18n.T("audit.tui.help_menu"))
+		return lipgloss.JoinVertical(lipgloss.Left, header, "", mainArea, "", help)
 
 	case auditStateSelectAccount:
-		title := titleStyle.Render(i18n.T("audit.tui.select_account"))
-		var listItems []string
+		// Calculate 50/50 split
+		halfWidth := (m.width - 6) / 2 // -6 for borders and spacing
+
+		// Left pane - Account list
+		var leftItems []string
+		leftItems = append(leftItems, paneTitleStyle.Render(i18n.T("audit.tui.select_account")), "")
 		filtered := m.getFilteredAccounts()
 		if m.accountCursor >= len(filtered) {
 			m.accountCursor = 0
 		}
 		if len(filtered) == 0 {
-			listItems = append(listItems, helpStyle.Render(i18n.T("audit.tui.no_accounts")))
+			leftItems = append(leftItems, helpStyle.Render(i18n.T("audit.tui.no_accounts")))
 		} else {
 			for i, acc := range filtered {
 				line := acc.String()
 				if m.accountCursor == i {
-					listItems = append(listItems, selectedItemStyle.Render("▸ "+line))
+					leftItems = append(leftItems, selectedItemStyle.Render("▸ "+line))
 				} else {
-					listItems = append(listItems, itemStyle.Render("  "+line))
+					leftItems = append(leftItems, itemStyle.Render("  "+line))
 				}
 			}
 		}
-		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, listItems...)))
+		leftContent := lipgloss.JoinVertical(lipgloss.Left, leftItems...)
+
+		// Right pane - Host details for selected account
+		var rightItems []string
+		if len(filtered) > 0 && m.accountCursor < len(filtered) {
+			selectedAcc := filtered[m.accountCursor]
+			rightItems = append(rightItems, paneTitleStyle.Render(i18n.T("audit.tui.account_details")), "")
+			rightItems = append(rightItems, fmt.Sprintf("%s: %s", i18n.T("audit.tui.detail_username"), selectedAcc.Username))
+			rightItems = append(rightItems, fmt.Sprintf("%s: %s", i18n.T("audit.tui.detail_hostname"), selectedAcc.Hostname))
+			if selectedAcc.Label != "" {
+				rightItems = append(rightItems, fmt.Sprintf("%s: %s", i18n.T("audit.tui.detail_label"), selectedAcc.Label))
+			}
+			if selectedAcc.Tags != "" {
+				rightItems = append(rightItems, fmt.Sprintf("%s: %s", i18n.T("audit.tui.detail_tags"), selectedAcc.Tags))
+			}
+			rightItems = append(rightItems, "")
+			rightItems = append(rightItems, paneTitleStyle.Render(i18n.T("audit.tui.filter")), "")
+		} else {
+			rightItems = append(rightItems, paneTitleStyle.Render(i18n.T("audit.tui.filter")), "")
+		}
+
 		var filterStatus string
 		if m.isFilteringAccount {
 			filterStatus = i18n.T("audit.tui.filtering", m.accountFilter)
@@ -409,76 +555,147 @@ func (m auditModel) View() string {
 		} else {
 			filterStatus = i18n.T("audit.tui.filter_hint")
 		}
-		help := helpFooterStyle.Render(fmt.Sprintf("%s  %s", i18n.T("audit.tui.help_select"), filterStatus))
-		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+		rightItems = append(rightItems, helpStyle.Render(filterStatus))
+		rightContent := lipgloss.JoinVertical(lipgloss.Left, rightItems...)
 
-	case auditStateSelectTag:
-		title := titleStyle.Render(i18n.T("audit.tui.select_tag"))
-		var listItems []string
-		if len(m.tags) == 0 {
-			listItems = append(listItems, helpStyle.Render(i18n.T("audit.tui.no_tags")))
-		} else {
-			for i, tag := range m.tags {
-				if m.tagCursor == i {
-					listItems = append(listItems, selectedItemStyle.Render("▸ "+tag))
-				} else {
-					listItems = append(listItems, itemStyle.Render("  "+tag))
-				}
-			}
-		}
-		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, listItems...)))
+		leftPane := paneStyle.Width(halfWidth).Height(paneHeight).Render(leftContent)
+		rightPane := paneStyle.Width(halfWidth).Height(paneHeight).MarginLeft(2).Render(rightContent)
+		mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
 		help := helpFooterStyle.Render(i18n.T("audit.tui.help_select"))
-		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+		return lipgloss.JoinVertical(lipgloss.Left, header, "", mainArea, "", help)
 
-	case auditStateFleetInProgress:
-		title := titleStyle.Render(i18n.T("audit.tui.auditing_fleet"))
-		var statusLines []string
-		for _, acc := range m.accountsInFleet {
-			res, ok := m.fleetResults[acc.ID]
-			var status string
-			if !ok {
-				status = helpStyle.Render(i18n.T("audit.tui.pending"))
-			} else if res != nil {
-				status = "🚨 " + helpStyle.Render(i18n.T("audit.tui.failed_short"))
+	case auditStateSelectTag, auditStateFleetInProgress, auditStateInProgress, auditStateComplete, auditStateRemediationConfirm, auditStateRemediationInProgress:
+		// Calculate 50/50 split
+		halfWidth := (m.width - 6) / 2 // -6 for borders and spacing
+
+		var leftItems []string
+		var rightItems []string
+		var helpText string
+
+		switch m.state {
+		case auditStateSelectTag:
+			leftItems = append(leftItems, paneTitleStyle.Render(i18n.T("audit.tui.select_tag")), "")
+			if len(m.tags) == 0 {
+				leftItems = append(leftItems, helpStyle.Render(i18n.T("audit.tui.no_tags")))
 			} else {
-				status = "✅ " + successStyle.Render(i18n.T("audit.tui.ok_short"))
-			}
-			statusLines = append(statusLines, fmt.Sprintf("  %s %s", acc.String(), status))
-		}
-		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, statusLines...)))
-		help := helpFooterStyle.Render(i18n.T("audit.tui.help_wait"))
-		if m.status != "" {
-			mainPane += "\n" + helpFooterStyle.Render(m.status)
-		}
-		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
-
-	case auditStateInProgress:
-		title := titleStyle.Render(i18n.T("audit.tui.auditing"))
-		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", m.status))
-		return lipgloss.JoinVertical(lipgloss.Left, mainPane)
-
-	case auditStateComplete:
-		title := titleStyle.Render(i18n.T("audit.tui.complete"))
-		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", m.status))
-		if len(m.fleetResults) > 0 {
-			okCount := 0
-			var failed []string
-			for _, acc := range m.accountsInFleet {
-				if err, ok := m.fleetResults[acc.ID]; ok {
-					if err == nil {
-						okCount++
+				for i, tag := range m.tags {
+					if m.tagCursor == i {
+						leftItems = append(leftItems, selectedItemStyle.Render("▸ "+tag))
 					} else {
-						failed = append(failed, fmt.Sprintf("  - %s: %v", acc.String(), err))
+						leftItems = append(leftItems, itemStyle.Render("  "+tag))
 					}
 				}
 			}
-			mainPane += i18n.T("audit.tui.summary", okCount, len(failed))
-			if len(failed) > 0 {
-				mainPane += i18n.T("audit.tui.failed_accounts", strings.Join(failed, "\n"))
+			helpText = i18n.T("audit.tui.help_select")
+
+		case auditStateFleetInProgress:
+			leftItems = append(leftItems, paneTitleStyle.Render(i18n.T("audit.tui.auditing_fleet")), "")
+			for _, acc := range m.accountsInFleet {
+				res, ok := m.fleetResults[acc.ID]
+				var status string
+				if !ok {
+					status = helpStyle.Render(i18n.T("audit.tui.pending"))
+				} else if res != nil {
+					status = "💥 " + errorStyle.Render(i18n.T("audit.tui.failed_short"))
+				} else {
+					status = "✅ " + successStyle.Render(i18n.T("audit.tui.ok_short"))
+				}
+				leftItems = append(leftItems, fmt.Sprintf("  %s %s", acc.String(), status))
 			}
+			helpText = i18n.T("audit.tui.help_wait")
+			if m.status != "" {
+				rightItems = append(rightItems, paneTitleStyle.Render(i18n.T("audit.tui.status")), "")
+				rightItems = append(rightItems, statusMessageStyle.Render(m.status))
+			}
+
+		case auditStateInProgress:
+			leftItems = append(leftItems, paneTitleStyle.Render(i18n.T("audit.tui.auditing")), "")
+			if m.selectedAccount.ID > 0 {
+				leftItems = append(leftItems, fmt.Sprintf("%s: %s", i18n.T("audit.tui.detail_username"), m.selectedAccount.Username))
+				leftItems = append(leftItems, fmt.Sprintf("%s: %s", i18n.T("audit.tui.detail_hostname"), m.selectedAccount.Hostname))
+				if m.selectedAccount.Label != "" {
+					leftItems = append(leftItems, fmt.Sprintf("%s: %s", i18n.T("audit.tui.detail_label"), m.selectedAccount.Label))
+				}
+			}
+			rightItems = append(rightItems, paneTitleStyle.Render(i18n.T("audit.tui.status")), "")
+			rightItems = append(rightItems, helpStyle.Render(i18n.T("audit.tui.help_wait")))
+			helpText = i18n.T("audit.tui.help_wait")
+
+		case auditStateComplete:
+			leftItems = append(leftItems, paneTitleStyle.Render(i18n.T("audit.tui.complete")), "")
+			if len(m.fleetResults) > 0 {
+				okCount := 0
+				driftCount := 0
+				for _, acc := range m.accountsInFleet {
+					if err, ok := m.fleetResults[acc.ID]; ok {
+						if err == nil {
+							okCount++
+						} else {
+							driftCount++
+						}
+					}
+				}
+				leftItems = append(leftItems, successStyle.Render(fmt.Sprintf("✅ %s: %d", i18n.T("audit.tui.ok_short"), okCount)))
+				if driftCount > 0 {
+					leftItems = append(leftItems, errorStyle.Render(fmt.Sprintf("💥 %s: %d", i18n.T("audit.tui.failed_short"), driftCount)))
+				}
+				leftItems = append(leftItems, "")
+				// Show failed accounts in right pane
+				for _, acc := range m.accountsInFleet {
+					if err, ok := m.fleetResults[acc.ID]; ok && err != nil {
+						rightItems = append(rightItems, errorStyle.Render(fmt.Sprintf("✗ %s: %v", acc.String(), err)))
+					}
+				}
+			} else {
+				leftItems = append(leftItems, m.status)
+			}
+			hasDrift := false
+			for _, err := range m.fleetResults {
+				if err != nil {
+					hasDrift = true
+					break
+				}
+			}
+			if hasDrift {
+				helpText = i18n.T("audit.tui.help_complete_with_drift")
+			} else {
+				helpText = i18n.T("audit.tui.help_complete")
+			}
+
+		case auditStateRemediationConfirm:
+			leftItems = append(leftItems, paneTitleStyle.Render(i18n.T("remediation.tui.confirm_title")), "")
+			leftItems = append(leftItems, i18n.T("remediation.tui.confirm_message", len(m.accountsInFleet)), "")
+			for _, acc := range m.accountsInFleet {
+				leftItems = append(leftItems, fmt.Sprintf("  • %s", acc.String()))
+			}
+			leftItems = append(leftItems, "", i18n.T("remediation.tui.confirm_question"))
+			helpText = i18n.T("remediation.tui.help_confirm")
+
+		case auditStateRemediationInProgress:
+			leftItems = append(leftItems, paneTitleStyle.Render(i18n.T("remediation.tui.in_progress_title")), "")
+			for _, acc := range m.accountsInFleet {
+				result, ok := m.remediationResults[acc.ID]
+				var status string
+				if !ok {
+					status = helpStyle.Render(i18n.T("remediation.tui.pending"))
+				} else if result.Success {
+					status = "✅ " + successStyle.Render(i18n.T("remediation.tui.success"))
+				} else {
+					status = "❌ " + errorStyle.Render(i18n.T("remediation.tui.failed"))
+				}
+				leftItems = append(leftItems, fmt.Sprintf("  %s %s", acc.String(), status))
+			}
+			helpText = i18n.T("remediation.tui.help_wait")
 		}
-		help := helpFooterStyle.Render(i18n.T("audit.tui.help_complete"))
-		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+
+		leftContent := lipgloss.JoinVertical(lipgloss.Left, leftItems...)
+		rightContent := lipgloss.JoinVertical(lipgloss.Left, rightItems...)
+
+		leftPane := paneStyle.Width(halfWidth).Height(paneHeight).Render(leftContent)
+		rightPane := paneStyle.Width(halfWidth).Height(paneHeight).MarginLeft(2).Render(rightContent)
+		mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
+		help := helpFooterStyle.Render(helpText)
+		return lipgloss.JoinVertical(lipgloss.Left, header, "", mainArea, "", help)
 	}
 	return ""
 }
@@ -493,5 +710,13 @@ func performAuditCmd(account model.Account, mode auditModeType) tea.Cmd {
 			err = deploy.AuditAccountStrict(account)
 		}
 		return auditResultMsg{account: account, err: err}
+	}
+}
+
+// performRemediationCmd executes remediation for an account.
+func performRemediationCmd(account model.Account) tea.Cmd {
+	return func() tea.Msg {
+		result, err := deploy.RemediateAccount(account, false)
+		return remediationResultMsg{account: account, result: result, err: err}
 	}
 }
