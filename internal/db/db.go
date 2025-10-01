@@ -344,3 +344,33 @@ func ImportDataFromBackup(backup *model.BackupData) error {
 func IntegrateDataFromBackup(backup *model.BackupData) error {
 	return store.IntegrateDataFromBackup(backup)
 }
+
+// RecordDriftEvent records a drift event in the database.
+func RecordDriftEvent(accountID int, driftType, details string) error {
+	return store.RecordDriftEvent(accountID, driftType, details)
+}
+
+// MarkDriftRemediated marks a drift event as remediated.
+func MarkDriftRemediated(eventID int) error {
+	return store.MarkDriftRemediated(eventID)
+}
+
+// GetDriftEventsForAccount retrieves drift events for a specific account.
+func GetDriftEventsForAccount(accountID int, limit int) ([]model.DriftEvent, error) {
+	return store.GetDriftEventsForAccount(accountID, limit)
+}
+
+// GetDriftStatistics retrieves statistics about drift events.
+func GetDriftStatistics() (totalDrifts, remediatedDrifts int, err error) {
+	return store.GetDriftStatistics()
+}
+
+// GetHostsWithFrequentDrift retrieves hosts with the most frequent drift events.
+func GetHostsWithFrequentDrift(limit int) ([]model.AccountDriftStats, error) {
+	return store.GetHostsWithFrequentDrift(limit)
+}
+
+// GetRecentDriftEvents retrieves recent drift events.
+func GetRecentDriftEvents(limit int) ([]model.DriftEvent, error) {
+	return store.GetRecentDriftEvents(limit)
+}

@@ -41,6 +41,8 @@ var version = "dev" // this will be set by the linker
 var cfgFile string
 var auditMode string // audit mode flag: "strict" (default) or "serial"
 var fullRestore bool // Flag for the restore command
+var auditFix bool    // Flag for audit command: fix detected drift
+var auditAutoFix bool // Flag for audit command: auto-fix without confirmation
 
 // main is the entry point of the application.
 func main() {
@@ -306,7 +308,10 @@ var auditCmd = &cobra.Command{
 	Short: "Audit hosts for configuration drift",
 	Long: `Connects to all active hosts and compares the fully rendered, normalized authorized_keys content against the expected configuration from the database to detect drift.
 
-Use --mode=serial to only verify the Keymaster header serial number on the remote host matches the account's last deployed serial (useful during staged rotations).`,
+Use --mode=serial to only verify the Keymaster header serial number on the remote host matches the account's last deployed serial (useful during staged rotations).
+
+Use --fix to interactively remediate detected drift.
+Use --auto-fix to automatically remediate detected drift without confirmation.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
 		i18n.Init(viper.GetString("language")) // Initialize i18n for CLI output
@@ -315,6 +320,13 @@ Use --mode=serial to only verify the Keymaster header serial number on the remot
 			log.Fatalf("%s", i18n.T("audit.cli_error_get_accounts", err))
 		}
 
+		// If fix or auto-fix is enabled, run remediation workflow
+		if auditFix || auditAutoFix {
+			runAuditWithRemediation(accounts, auditMode, auditAutoFix)
+			return
+		}
+
+		// Standard audit workflow (no remediation)
 		// Select audit function based on mode
 		var auditFunc func(model.Account) error
 		switch strings.ToLower(strings.TrimSpace(auditMode)) {
@@ -343,6 +355,8 @@ Use --mode=serial to only verify the Keymaster header serial number on the remot
 func init() {
 	// Attach flags after auditCmd is defined
 	auditCmd.Flags().StringVarP(&auditMode, "mode", "m", "strict", "Audit mode: 'strict' (full file comparison) or 'serial' (header serial only)")
+	auditCmd.Flags().BoolVar(&auditFix, "fix", false, "Interactively remediate detected drift")
+	auditCmd.Flags().BoolVar(&auditAutoFix, "auto-fix", false, "Automatically remediate detected drift without confirmation")
 	restoreCmd.Flags().BoolVar(&fullRestore, "full", false, "Perform a full, destructive restore (wipes all existing data first)")
 	migrateCmd.Flags().String("type", "", "The target database type (sqlite, postgres, mysql)")
 	migrateCmd.Flags().String("dsn", "", "The DSN for the target database")
@@ -522,6 +536,97 @@ func runParallelTasks(accounts []model.Account, task parallelTask) {
 		fmt.Println(res)
 	}
 	fmt.Println("\n" + i18n.T("parallel_task.complete_message", strings.Title(task.name)))
+}
+
+// runAuditWithRemediation performs drift detection and remediation for all accounts.
+func runAuditWithRemediation(accounts []model.Account, mode string, autoFix bool) {
+	if len(accounts) == 0 {
+		fmt.Println(i18n.T("remediation.no_accounts"))
+		return
+	}
+
+	fmt.Println(i18n.T("remediation.cli_starting", len(accounts)))
+
+	type driftResult struct {
+		account  model.Account
+		analysis *model.DriftAnalysis
+		err      error
+	}
+
+	// Phase 1: Detect drift on all accounts
+	var accountsWithDrift []driftResult
+	for _, acc := range accounts {
+		fmt.Printf(i18n.T("remediation.cli_checking", acc.String()))
+
+		analysis, err := deploy.AnalyzeDrift(acc)
+		if err != nil {
+			fmt.Printf(" %s\n", i18n.T("remediation.cli_check_failed", err))
+			_ = db.LogAction("DRIFT_CHECK_FAILED", fmt.Sprintf("account: %s, error: %v", acc.String(), err))
+			continue
+		}
+
+		if analysis.HasDrift {
+			accountsWithDrift = append(accountsWithDrift, driftResult{
+				account:  acc,
+				analysis: analysis,
+			})
+			fmt.Printf(" %s (%s)\n", i18n.T("remediation.cli_drift_detected"), analysis.Classification)
+
+			// Record drift event in database
+			details := fmt.Sprintf("missing_keys: %d, extra_keys: %d, serial_mismatch: %v",
+				len(analysis.MissingKeys), len(analysis.ExtraKeys), analysis.SerialMismatch)
+			_ = db.RecordDriftEvent(acc.ID, string(analysis.Classification), details)
+		} else {
+			fmt.Printf(" %s\n", i18n.T("remediation.cli_no_drift"))
+		}
+	}
+
+	if len(accountsWithDrift) == 0 {
+		fmt.Println("\n" + i18n.T("remediation.cli_no_drift_found"))
+		return
+	}
+
+	fmt.Printf("\n%s\n", i18n.T("remediation.cli_drift_summary", len(accountsWithDrift), len(accounts)))
+
+	// Phase 2: Remediate drift
+	remediatedCount := 0
+	skippedCount := 0
+
+	for _, result := range accountsWithDrift {
+		shouldFix := autoFix
+
+		if !autoFix {
+			// Interactive mode: ask for confirmation
+			fmt.Printf("\n%s\n", i18n.T("remediation.cli_account_drift", result.account.String()))
+			fmt.Printf("  %s: %s\n", i18n.T("remediation.cli_classification"), result.analysis.Classification)
+			fmt.Printf("  %s: %d\n", i18n.T("remediation.cli_missing_keys"), len(result.analysis.MissingKeys))
+			fmt.Printf("  %s: %d\n", i18n.T("remediation.cli_extra_keys"), len(result.analysis.ExtraKeys))
+
+			answer := promptForConfirmation(i18n.T("remediation.cli_confirm", result.account.String()))
+			shouldFix = (answer == "yes" || answer == "y")
+		}
+
+		if !shouldFix {
+			fmt.Println(i18n.T("remediation.cli_skipped", result.account.String()))
+			skippedCount++
+			continue
+		}
+
+		// Perform remediation
+		fmt.Printf(i18n.T("remediation.cli_fixing", result.account.String()))
+		remResult, err := deploy.RemediateAccount(result.account, false)
+		if err != nil || !remResult.Success {
+			fmt.Printf(" %s\n", i18n.T("remediation.cli_failed", err))
+			_ = db.LogAction("REMEDIATION_FAILED", fmt.Sprintf("account: %s, error: %v", result.account.String(), err))
+		} else {
+			fmt.Printf(" %s\n", i18n.T("remediation.cli_success_short"))
+			remediatedCount++
+			_ = db.LogAction("REMEDIATION_SUCCESS", fmt.Sprintf("account: %s, drift_type: %s", result.account.String(), result.analysis.Classification))
+		}
+	}
+
+	// Summary
+	fmt.Printf("\n%s\n", i18n.T("remediation.cli_complete_summary", remediatedCount, skippedCount))
 }
 
 // audit implementations moved to internal/deploy/audit.go

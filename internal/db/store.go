@@ -66,4 +66,12 @@ type Store interface {
 	ExportDataForBackup() (*model.BackupData, error)
 	ImportDataFromBackup(*model.BackupData) error
 	IntegrateDataFromBackup(*model.BackupData) error
+
+	// Drift Event methods
+	RecordDriftEvent(accountID int, driftType, details string) error
+	MarkDriftRemediated(eventID int) error
+	GetDriftEventsForAccount(accountID int, limit int) ([]model.DriftEvent, error)
+	GetDriftStatistics() (totalDrifts, remediatedDrifts int, err error)
+	GetHostsWithFrequentDrift(limit int) ([]model.AccountDriftStats, error)
+	GetRecentDriftEvents(limit int) ([]model.DriftEvent, error)
 }

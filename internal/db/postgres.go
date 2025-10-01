@@ -913,3 +913,126 @@ func (s *PostgresStore) IntegrateDataFromBackup(backup *model.BackupData) error 
 
 	return tx.Commit()
 }
+
+// RecordDriftEvent records a drift event in the database.
+func (s *PostgresStore) RecordDriftEvent(accountID int, driftType, details string) error {
+	query := `INSERT INTO drift_events (account_id, detected_at, drift_type, details, was_remediated)
+	          VALUES ($1, $2, $3, $4, FALSE)`
+	_, err := s.db.Exec(query, accountID, time.Now(), driftType, details)
+	return err
+}
+
+// MarkDriftRemediated marks a drift event as remediated.
+func (s *PostgresStore) MarkDriftRemediated(eventID int) error {
+	query := `UPDATE drift_events SET was_remediated = TRUE, remediated_at = $1 WHERE id = $2`
+	_, err := s.db.Exec(query, time.Now(), eventID)
+	return err
+}
+
+// GetDriftEventsForAccount retrieves drift events for a specific account.
+func (s *PostgresStore) GetDriftEventsForAccount(accountID int, limit int) ([]model.DriftEvent, error) {
+	query := `SELECT id, account_id, detected_at, drift_type, details, was_remediated, remediated_at
+	          FROM drift_events
+	          WHERE account_id = $1
+	          ORDER BY detected_at DESC
+	          LIMIT $2`
+
+	rows, err := s.db.Query(query, accountID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []model.DriftEvent
+	for rows.Next() {
+		var e model.DriftEvent
+		if err := rows.Scan(&e.ID, &e.AccountID, &e.DetectedAt, &e.DriftType, &e.Details, &e.WasRemediated, &e.RemediatedAt); err != nil {
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	return events, rows.Err()
+}
+
+// GetDriftStatistics retrieves statistics about drift events.
+func (s *PostgresStore) GetDriftStatistics() (totalDrifts, remediatedDrifts int, err error) {
+	err = s.db.QueryRow(`SELECT COUNT(*), SUM(CASE WHEN was_remediated THEN 1 ELSE 0 END) FROM drift_events`).Scan(&totalDrifts, &remediatedDrifts)
+	return
+}
+
+// GetHostsWithFrequentDrift retrieves hosts with the most frequent drift events.
+func (s *PostgresStore) GetHostsWithFrequentDrift(limit int) ([]model.AccountDriftStats, error) {
+	query := `
+		SELECT a.id, a.username, a.hostname, a.label, a.tags, a.serial, a.is_active,
+		       COUNT(d.id) as drift_count,
+		       MAX(d.detected_at) as last_drift,
+		       (SELECT drift_type FROM drift_events WHERE account_id = a.id ORDER BY detected_at DESC LIMIT 1) as last_type
+		FROM accounts a
+		INNER JOIN drift_events d ON a.id = d.account_id
+		GROUP BY a.id
+		ORDER BY drift_count DESC
+		LIMIT $1`
+
+	rows, err := s.db.Query(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stats []model.AccountDriftStats
+	for rows.Next() {
+		var stat model.AccountDriftStats
+		var label, tags sql.NullString
+		var lastType sql.NullString
+		err := rows.Scan(
+			&stat.Account.ID,
+			&stat.Account.Username,
+			&stat.Account.Hostname,
+			&label,
+			&tags,
+			&stat.Account.Serial,
+			&stat.Account.IsActive,
+			&stat.DriftCount,
+			&stat.LastDriftAt,
+			&lastType,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if label.Valid {
+			stat.Account.Label = label.String
+		}
+		if tags.Valid {
+			stat.Account.Tags = tags.String
+		}
+		if lastType.Valid {
+			stat.LastDriftType = model.DriftClassification(lastType.String)
+		}
+		stats = append(stats, stat)
+	}
+	return stats, rows.Err()
+}
+
+// GetRecentDriftEvents retrieves recent drift events.
+func (s *PostgresStore) GetRecentDriftEvents(limit int) ([]model.DriftEvent, error) {
+	query := `SELECT id, account_id, detected_at, drift_type, details, was_remediated, remediated_at
+	          FROM drift_events
+	          ORDER BY detected_at DESC
+	          LIMIT $1`
+
+	rows, err := s.db.Query(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []model.DriftEvent
+	for rows.Next() {
+		var e model.DriftEvent
+		if err := rows.Scan(&e.ID, &e.AccountID, &e.DetectedAt, &e.DriftType, &e.Details, &e.WasRemediated, &e.RemediatedAt); err != nil {
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	return events, rows.Err()
+}
