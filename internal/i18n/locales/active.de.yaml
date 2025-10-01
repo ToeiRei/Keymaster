@@ -24,29 +24,30 @@ dashboard.system_status: "Systemstatus"
 dashboard.system_key.not_generated: "Nicht erzeugt"
 dashboard.deployment_status: "Deployment-Status"
 dashboard.hosts_current_key: "Hosts mit aktuellem Schlüssel: %d"
-dashboard.hosts_past_keys: "   Hosts mit alten Schlüsseln: %d"
+dashboard.hosts_past_keys: "Hosts mit alten Schlüsseln: %d"
 dashboard.system_key.active: "Aktiv (Seriennr. %d)"
 dashboard.security_posture: "Sicherheitsstatus"
-dashboard.accounts: "    Verwaltete Konten: %d (%d aktiv)"
-dashboard.key_type_spread: "         Schlüssel-Typen: %s"
-dashboard.public_keys: "Öffentliche Schlüssel: %d (%d global)"
+dashboard.accounts: "Verwaltete Konten: %d (%d aktiv)"
+dashboard.key_type_spread: "Schlüssel-Typen: %s"
+dashboard.public_keys: "     Öffentliche Schlüssel: %d (%d global)"
 dashboard.system_key: "      Systemschlüssel: %s"
 dashboard.recent_activity: "Letzte Aktivitäten"
 dashboard.no_recent_activity: "Keine letzten Aktivitäten."
-dashboard.footer: "j/k hoch/runter: navigieren   enter: auswählen   q: beenden   L: Sprache"
+dashboard.footer: "j/k hoch/runter: navigieren   enter: auswählen   q: beenden   L:
+  Sprache"
 
 # Language selection view
 language.select: "Sprache auswählen:"
 language.help: "up/down: navigieren   enter: auswählen  q/esc: zurück"
 
 # Account form translations
-account_form.username_label: "Benutzername:           "
+account_form.username_label: "Benutzername:"
 account_form.username_placeholder: "benutzer"
 account_form.hostname_label: "Hostname:               "
 account_form.hostname_placeholder: "www.beispiel.de"
-account_form.label_label: "Bezeichnung (optional): "
+account_form.label_label: "Bezeichnung (optional):"
 account_form.label_placeholder: "prod-web-01"
-account_form.tags_label: "Tags (kommagetrennt):   "
+account_form.tags_label: "Tags (kommagetrennt):"
 account_form.tags_placeholder: "rolle:db,dc:berlin"
 account_form.edit_title: "Konto bearbeiten"
 account_form.add_title: "Neues Konto hinzufügen"
@@ -63,11 +64,12 @@ accounts.empty: "Keine Konten gefunden. Mit 'a' hinzufügen."
 accounts.empty_filtered: "Keine Konten passen zum Filter."
 accounts.filtering: "Filter: %s█"
 accounts.filter_active: "Filter: %s (mit 'esc' löschen)"
-accounts.filter_hint: "Mit / filtern..."
-accounts.footer: "a: hinzufügen e: bearbeiten d: löschen t: umschalten v: verifizieren i: importieren q: beenden"
+accounts.filter_hint: "Mit / filtern…"
+accounts.footer: "a: hinzufügen e: bearbeiten d: löschen t: umschalten v: verifizieren
+  i: importieren q: beenden"
 accounts.list_title: "Konten"
 accounts.status.modified_success: "Konto erfolgreich geändert."
-accounts.status.trust_attempt: "Versuche, Host %s zu vertrauen..."
+accounts.status.trust_attempt: "Versuche, Host %s zu vertrauen…"
 accounts.status.import_assigned: "%d importierte Schlüssel zugewiesen."
 accounts.status.import_skipped_assign: "%d neue Schlüssel importiert, ohne sie zuzuweisen."
 accounts.status.delete_cancelled: "Löschen abgebrochen."
@@ -75,36 +77,46 @@ accounts.status.delete_success: "Konto gelöscht: %s"
 accounts.status.verify_fail: "Fehler beim Verifizieren von Host %s: %v"
 accounts.status.verify_success: "Host-Schlüssel für %s erfolgreich vertraut."
 accounts.status.import_fail: "Import fehlgeschlagen: %v"
-accounts.status.import_no_new: "Keine neuen Schlüssel zum Importieren gefunden. %d Duplikate übersprungen."
-accounts.status.toggle_success: "Status für %s umgeschaltet."
-accounts.status.verify_start: "Verifiziere Host-Schlüssel für %s..."
-accounts.status.import_start: "Importiere Schlüssel von %s..."
+accounts.status.import_no_new: "Keine neuen Schlüssel zum Importieren gefunden. %d
+  Duplikate übersprungen."
+accounts.status.toggle_success: "Status umgeschaltet für: %s"
+accounts.status.verify_start: "Verifiziere Host-Schlüssel für %s…"
+accounts.status.import_start: "Importiere Schlüssel von %s…"
 accounts.import_confirm.title: "✨ Remote-Import Bestätigung"
-accounts.import_confirm.found_keys: "%d neue öffentliche Schlüssel auf dem Remote-Host gefunden:"
-accounts.import_confirm.question: "Diese %d neuen Schlüssel diesem Konto zuweisen? (j/n)"
+accounts.import_confirm.found_keys: "%d neue öffentliche Schlüssel auf dem Remote-Host
+  gefunden:"
+accounts.import_confirm.question: "Diese %d neuen Schlüssel diesem Konto zuweisen?
+  (j/n)"
 accounts.delete_confirm.title: "🗑️ Löschen bestätigen"
-accounts.delete_confirm.question: "Sind Sie sicher, dass Sie das Konto %s löschen möchten?"
+accounts.delete_confirm.question: "Sind Sie sicher, dass Sie das Konto %s löschen
+  möchten?"
 accounts.delete_confirm.yes: "Ja, löschen"
 accounts.delete_confirm.no: "Nein, abbrechen"
 accounts.delete_confirm.help: "(links/rechts navigieren, Enter bestätigen, Esc abbrechen)"
-accounts.delete_confirm.help_checkbox: "(↑/↓/Tab: navigieren, Leer/Enter: Checkbox umschalten, Enter bei Ja: weiter, Esc: abbrechen)"
+accounts.delete_confirm.help_checkbox: "(↑/↓/Tab: navigieren, Leer/Enter: Checkbox
+  umschalten, Enter bei Ja: weiter, Esc: abbrechen)"
 accounts.delete_confirm.decommission: "SSH-Schlüssel auch vom Remote-Host entfernen"
 accounts.decommission_confirm.title: "🚮 Konto entfernen"
 accounts.decommission_confirm.question: "Wie möchten Sie das Konto\n\n%s\n\nentfernen?"
 accounts.decommission_confirm.cancel: "Abbrechen"
 accounts.decommission_confirm.delete_only: "Nur löschen"
 accounts.decommission_confirm.decommission: "Außer Betrieb nehmen"
-accounts.decommission_confirm.help: "(links/rechts navigieren, Enter bestätigen, Esc abbrechen)"
+accounts.decommission_confirm.help: "(links/rechts navigieren, Enter bestätigen, Esc
+  abbrechen)"
 accounts.status.decommission_cancelled: "Außerbetriebnahme abgebrochen."
 accounts.status.decommission_success: "Konto erfolgreich außer Betrieb genommen: %s"
-accounts.status.decommission_failed: "Konto konnte nicht außer Betrieb genommen werden: %v"
-accounts.status.decommission_partial: "%s teilweise außer Betrieb genommen - Datenbank gelöscht, aber Remote-Bereinigung fehlgeschlagen: %v"
+accounts.status.decommission_failed: "Konto konnte nicht außer Betrieb genommen werden:
+  %v"
+accounts.status.decommission_partial: "%s teilweise außer Betrieb genommen - Datenbank
+  gelöscht, aber Remote-Bereinigung fehlgeschlagen: %v"
 accounts.key_selection.title: "🔑 SSH-Schlüssel zum Behalten auswählen"
-accounts.key_selection.question: "Welche SSH-Schlüssel sollen auf %s BEHALTEN werden?\nHinweis: Der Systemschlüssel wird bei der Außerbetriebnahme immer entfernt."
+accounts.key_selection.question: "Welche SSH-Schlüssel sollen auf %s BEHALTEN werden?\n\
+  Hinweis: Der Systemschlüssel wird bei der Außerbetriebnahme immer entfernt."
 accounts.key_selection.no_keys: "Keine Schlüssel für dieses Konto gefunden."
 accounts.key_selection.cancel: "Abbrechen"
 accounts.key_selection.continue: "Weiter"
-accounts.key_selection.help: "(↑/↓: navigieren, Leer/Enter: umschalten, Tab: zu Buttons, a: alle behalten, n: keine behalten, Esc: zurück)"
+accounts.key_selection.help: "(↑/↓: navigieren, Leer/Enter: umschalten, Tab: zu Buttons,
+  a: alle behalten, n: keine behalten, Esc: zurück)"
 accounts.tags: "Tags: %s"
 
 # Public keys overview translations
@@ -114,8 +126,9 @@ public_keys.empty: "Keine öffentlichen Schlüssel gefunden. Mit 'a' hinzufügen
 public_keys.empty_filtered: "Keine Schlüssel passen zum Filter."
 public_keys.filtering: "Filter: %s█"
 public_keys.filter_active: "Filter: %s (mit 'esc' löschen)"
-public_keys.filter_hint: "Mit / filtern..."
-public_keys.footer: "a: hinzufügen c: kopieren d: löschen g: global umschalten u: verwendung anzeigen q: beenden"
+public_keys.filter_hint: "Mit / filtern…"
+public_keys.footer: "a: hinzufügen c: kopieren d: löschen g: global umschalten u:
+  verwendung anzeigen q: beenden"
 public_keys.list_title: "Öffentliche Schlüssel"
 public_keys.detail_comment: "Kommentar: %s"
 public_keys.detail_algorithm: "Algorithmus: %s"
@@ -130,11 +143,14 @@ public_keys.status.toggle_success: "Globaler Status für Schlüssel umgeschaltet
 public_keys.status.copy_success: "Schlüssel '%s' in Zwischenablage kopiert."
 public_keys.status.copy_failed: "Fehler beim Kopieren in Zwischenablage: %s"
 public_keys.delete_confirm.title: "🗑️ Löschen bestätigen"
-public_keys.delete_confirm.question: "Sind Sie sicher, dass Sie den öffentlichen Schlüssel\n\n%s\n\nlöschen möchten?"
-public_keys.delete_confirm.warning: "Dadurch wird er von allen Konten entfernt, denen er zugewiesen ist."
+public_keys.delete_confirm.question: "Sind Sie sicher, dass Sie den öffentlichen Schlüssel\n\
+  \n%s\n\nlöschen möchten?"
+public_keys.delete_confirm.warning: "Dadurch wird er von allen Konten entfernt, denen
+  er zugewiesen ist."
 public_keys.delete_confirm.yes: "Ja, löschen"
 public_keys.delete_confirm.no: "Nein, abbrechen"
-public_keys.delete_confirm.help: "(links/rechts navigieren, Enter bestätigen, Esc abbrechen)"
+public_keys.delete_confirm.help: "(links/rechts navigieren, Enter bestätigen, Esc
+  abbrechen)"
 public_keys.usage_report.title: "📜 Verwendungsbericht für Schlüssel: %s"
 public_keys.usage_report.not_assigned: "Dieser Schlüssel ist keinen Konten zugewiesen."
 public_keys.usage_report.assigned_to: "Dieser Schlüssel ist den folgenden Konten zugewiesen:"
@@ -143,23 +159,30 @@ public_keys.usage_report.help: "(esc oder q zum Zurückkehren)"
 # Public key form translations
 public_key_form.add_title: "Neuen öffentlichen Schlüssel hinzufügen"
 public_key_form.prompt: "Öffentlichen Schlüssel einfügen: "
-public_key_form.placeholder: "ssh-ed25519 AAAA... benutzer@host"
-public_key_form.checkbox_unchecked: "[ ] Als globalen Schlüssel setzen (wird allen Konten zugewiesen)"
-public_key_form.checkbox_checked: "[x] Als globalen Schlüssel setzen (wird allen Konten zugewiesen)"
-public_key_form.help: "(tab zum Navigieren, Leertaste/Enter für Checkbox, Enter zum Speichern, esc zum Abbrechen)"
+public_key_form.placeholder: "ssh-ed25519 AAAA… benutzer@host"
+public_key_form.checkbox_unchecked: "[ ] Als globalen Schlüssel setzen (wird allen
+  Konten zugewiesen)"
+public_key_form.checkbox_checked: "[x] Als globalen Schlüssel setzen (wird allen Konten
+  zugewiesen)"
+public_key_form.help: "(tab zum Navigieren, Leertaste/Enter für Checkbox, Enter zum
+  Speichern, esc zum Abbrechen)"
 public_key_form.error: "Fehler: %v"
-public_key_form.info: "Fügen Sie einen gültigen SSH-Öffentlichen Schlüssel ein. Sie können ihn als global setzen, um ihn allen Konten zuzuweisen."
+public_key_form.info: "Fügen Sie einen gültigen SSH-Öffentlichen Schlüssel ein. Sie
+  können ihn als global setzen, um ihn allen Konten zuzuweisen."
 
 # Assign keys view translations
-assign_keys.help_bar_accounts: "j/k hoch/runter: navigieren   enter: auswählen   /: suchen   esc: zurück   q: beenden"
-assign_keys.help_bar_keys: "j/k hoch/runter: navigieren   leertaste: umschalten   /: suchen   esc: zurück   q: beenden"
+assign_keys.help_bar_accounts: "j/k hoch/runter: navigieren   enter: auswählen   /:
+  suchen   esc: zurück   q: beenden"
+assign_keys.help_bar_keys: "j/k hoch/runter: navigieren   leertaste: umschalten  \
+  \ /: suchen   esc: zurück   q: beenden"
 assign_keys.accounts_title: "Konten"
 assign_keys.no_accounts: "Keine Konten gefunden. Mit 'a' hinzufügen."
-assign_keys.search_hint: "Mit / suchen..."
+assign_keys.search_hint: "Mit / suchen…"
 assign_keys.keys_title: "Schlüssel zuweisen für: %s"
 assign_keys.keys_title_short: "Schlüssel"
 assign_keys.no_keys: "Keine öffentlichen Schlüssel gefunden. Mit 'a' hinzufügen."
-assign_keys.select_account_prompt: "Wählen Sie links ein Konto aus, um dessen Schlüssel zu verwalten."
+assign_keys.select_account_prompt: "Wählen Sie links ein Konto aus, um dessen Schlüssel
+  zu verwalten."
 assign_keys.filtering: "Filter: %s█"
 assign_keys.filter_active: "Filter: %s (esc zum Löschen)"
 assign_keys.status.selected_account: "Konto %s ausgewählt, %d Schlüssel zugewiesen"
@@ -167,7 +190,8 @@ assign_keys.status.unassign_attempt: "Versuche, Schlüssel zu entfernen: %s"
 assign_keys.status.unassign_error: "Fehler beim Entfernen des Schlüssels: %v"
 assign_keys.status.unassign_success: "Schlüssel entfernt: %s"
 assign_keys.status.assign_attempt: "Versuche, Schlüssel zuzuweisen: %s"
-assign_keys.status.assign_error_deleted: "Fehler: Schlüssel wurde möglicherweise gelöscht: %v"
+assign_keys.status.assign_error_deleted: "Fehler: Schlüssel wurde möglicherweise gelöscht:
+  %v"
 assign_keys.status.assign_error: "Fehler beim Zuweisen des Schlüssels: %v"
 assign_keys.status.assign_success: "Schlüssel zugewiesen: %s"
 assign_keys.key_item_format: "%s%s %s%s (%s)"
@@ -178,33 +202,46 @@ assign_keys.global_marker: "🌍 "
 # Rotate key translations
 rotate_key.title: "Systemschlüssel-Verwaltung"
 rotate_key.confirm_rotate_title: "⚠️ Systemschlüssel-Rotation bestätigen"
-rotate_key.confirm_rotate_question: "Sind Sie sicher, dass Sie den Systemschlüssel rotieren möchten?\n\nEs wird ein neues Schlüsselpaar erstellt.\n\nDiese Aktion betrifft ALLE verwalteten Hosts.\nSie sollten den neuen Schlüssel unmittelbar nach der Rotation auf Ihre Flotte ausrollen.\n\nFahren Sie nur fort, wenn Sie wissen, was Sie tun!"
+rotate_key.confirm_rotate_question: "Sind Sie sicher, dass Sie den Systemschlüssel
+  rotieren möchten?\n\nEs wird ein neues Schlüsselpaar erstellt.\n\nDiese Aktion betrifft
+  ALLE verwalteten Hosts.\nSie sollten den neuen Schlüssel unmittelbar nach der Rotation
+  auf Ihre Flotte ausrollen.\n\nFahren Sie nur fort, wenn Sie wissen, was Sie tun!"
 rotate_key.confirm_generate_title: "⚙️ Initialen Systemschlüssel erzeugen"
-rotate_key.confirm_generate_question: "Kein Keymaster-Systemschlüssel gefunden.\n\nDieser Schlüssel ist erforderlich, damit Keymaster sich mit verwalteten Hosts verbinden kann.\n\nMöchten Sie jetzt einen erzeugen?"
-rotate_key.checking: "Prüfe auf vorhandenen Systemschlüssel..."
-rotate_key.generating: "Neues ed25519-Schlüsselpaar wird erzeugt, bitte warten..."
-rotate_key.generated: "✅ Systemschlüssel mit Seriennummer #%d erfolgreich erzeugt und gespeichert."
+rotate_key.confirm_generate_question: "Kein Keymaster-Systemschlüssel gefunden.\n\n\
+  Dieser Schlüssel ist erforderlich, damit Keymaster sich mit verwalteten Hosts verbinden
+  kann.\n\nMöchten Sie jetzt einen erzeugen?"
+rotate_key.checking: "Prüfe auf vorhandenen Systemschlüssel…"
+rotate_key.generating: "Neues ed25519-Schlüsselpaar wird erzeugt, bitte warten…"
+rotate_key.generated: "✅ Systemschlüssel mit Seriennummer #%d erfolgreich erzeugt
+  und gespeichert."
 rotate_key.bootstrap_header: "🚨 BOOTSTRAP-AKTION ERFORDERLICH 🚨"
-rotate_key.bootstrap_body: "Sie müssen den folgenden öffentlichen Schlüssel manuell zur `authorized_keys`-Datei jedes zu verwaltenden Kontos hinzufügen:"
-rotate_key.rotating: "Systemschlüssel wird rotiert, bitte warten..."
-rotate_key.rotated: "✅ Systemschlüssel erfolgreich rotiert. Der neue aktive Schlüssel hat die Seriennummer #%d."
-rotate_key.deploy_reminder: "Rollen Sie den neuen Schlüssel auf Ihre Flotte aus, um ihn zu aktivieren."
+rotate_key.bootstrap_body: "Sie müssen den folgenden öffentlichen Schlüssel manuell
+  zur `authorized_keys`-Datei jedes zu verwaltenden Kontos hinzufügen:"
+rotate_key.rotating: "Systemschlüssel wird rotiert, bitte warten…"
+rotate_key.rotated: "✅ Systemschlüssel erfolgreich rotiert. Der neue aktive Schlüssel
+  hat die Seriennummer #%d."
+rotate_key.deploy_reminder: "Rollen Sie den neuen Schlüssel auf Ihre Flotte aus, um
+  ihn zu aktivieren."
 rotate_key.error_generate: "Fehler beim Erzeugen des Systemschlüssels: %w"
-rotate_key.error_save: "Fehler beim Speichern des Systemschlüssels in der Datenbank: %w"
-rotate_key.error_save_rotated: "Fehler beim Speichern des rotierten Systemschlüssels in der Datenbank: %w"
+rotate_key.error_save: "Fehler beim Speichern des Systemschlüssels in der Datenbank:
+  %w"
+rotate_key.error_save_rotated: "Fehler beim Speichern des rotierten Systemschlüssels
+  in der Datenbank: %w"
 rotate_key.error: "Fehler: %v"
 rotate_key.yes_rotate: "Ja, rotieren"
 rotate_key.no_cancel: "Nein, abbrechen"
 rotate_key.yes_generate: "Ja, erzeugen"
-rotate_key.help_modal: "(links/rechts zum Navigieren, Enter zum Bestätigen, Esc zum Abbrechen)"
+rotate_key.help_modal: "(links/rechts zum Navigieren, Enter zum Bestätigen, Esc zum
+  Abbrechen)"
 rotate_key.help_done: "Mit 'q' zum Hauptmenü zurückkehren."
 
 # Tags view translations
 tags_view.title: "Konten nach Tag"
-tags_view.empty: "Keine Tags oder Konten gefunden. Fügen Sie Tags zu Konten hinzu, um sie hier anzuzeigen."
+tags_view.empty: "Keine Tags oder Konten gefunden. Fügen Sie Tags zu Konten hinzu,
+  um sie hier anzuzeigen."
 tags_view.filtering: "Filter: %s█"
 tags_view.filter_active: "Filter: %s (mit 'esc' löschen)"
-tags_view.filter_hint: "Mit / filtern..."
+tags_view.filter_hint: "Mit / filtern…"
 tags_view.footer: "(enter) auf-/zuklappen   /: filtern   esc: zurück   q: beenden"
 
 # Deployment view translations
@@ -216,32 +253,33 @@ deploy.title: "🚀 Auf Flotte ausrollen"
 deploy.select_account: "🚀 Konto auswählen"
 deploy.select_tag: "🚀 Tag auswählen"
 deploy.show_keys: "📄 authorized_keys für %s"
-deploy.deploying_fleet: "🚀 Ausrollen auf Flotte..."
-deploy.deploying: "🚀 Ausrollen..."
+deploy.deploying_fleet: "🚀 Ausrollen auf Flotte…"
+deploy.deploying: "🚀 Ausrollen…"
 deploy.complete: "✅ Ausrollen abgeschlossen"
 deploy.failed: "💥 Ausrollen fehlgeschlagen"
-deploy.no_accounts: "Keine aktiven Konten gefunden. Bitte fügen Sie eines hinzu oder aktivieren Sie ein bestehendes."
+deploy.no_accounts: "Keine aktiven Konten gefunden. Bitte fügen Sie eines hinzu oder
+  aktivieren Sie ein bestehendes."
 deploy.no_tags: "Keine Tags in Konten gefunden."
 deploy.no_accounts_tag: "Keine aktiven Konten mit Tag '%s' zum Ausrollen gefunden."
-deploy.starting_fleet: "Starte Ausrollen auf Flotte..."
-deploy.starting_tag: "Starte Ausrollen für Tag '%s'..."
-deploy.deploying_to: "Rolle aus auf %s..."
+deploy.starting_fleet: "Starte Ausrollen auf Flotte…"
+deploy.starting_tag: "Starte Ausrollen für Tag '%s'…"
+deploy.deploying_to: "Rolle aus auf %s…"
 deploy.success: "Erfolgreich ausgerollt auf %s und Seriennummer auf #%d aktualisiert."
 deploy.fleet_complete: "Ausrollen auf Flotte abgeschlossen."
 deploy.summary: "\n\nZusammenfassung: %d erfolgreich, %d fehlgeschlagen."
 deploy.failed_accounts: "\n\nFehlgeschlagene Ausrollungen:\n%s"
-deploy.pending: "ausstehend..."
+deploy.pending: "ausstehend…"
 deploy.failed_short: "fehlgeschlagen"
 deploy.success_short: "erfolgreich"
 deploy.help_menu: "j/k oder hoch/runter: navigieren   enter: auswählen   q: beenden"
 deploy.help_select: "enter: auswählen   esc: zurück"
 deploy.help_keys: "c: kopieren   esc: zurück"
-deploy.help_wait: "(Bitte warten...)"
+deploy.help_wait: "(Bitte warten…)"
 deploy.help_complete: "(enter oder esc zum Fortfahren)"
 deploy.help_failed: "esc: zurück"
 deploy.filtering: "Filter: %s█"
 deploy.filter_active: "Filter: %s (mit 'esc' löschen)"
-deploy.filter_hint: "Mit / filtern..."
+deploy.filter_hint: "Mit / filtern…"
 deploy.status.copy_success: "Inhalt von authorized_keys in die Zwischenablage kopiert."
 deploy.status.copy_failed: "Fehler beim Kopieren in die Zwischenablage: %s"
 
@@ -264,55 +302,68 @@ audit.tui.menu.audit_tag: "Nach Tag auditieren"
 audit.tui.menu.toggle_mode: "Modus"
 audit.tui.mode_strict: "Strict (vollständiger Vergleich)"
 audit.tui.mode_serial: "Serial (nur Header)"
-audit.tui.help_menu: "j/k oder hoch/runter: navigieren   enter: auswählen   m: Modus umschalten   q: beenden"
+audit.tui.help_menu: "j/k oder hoch/runter: navigieren   enter: auswählen   m: Modus
+  umschalten   q: beenden"
 audit.tui.select_account: "🔎 Audit: Konto auswählen"
 audit.tui.select_tag: "🔎 Audit: Tag auswählen"
-audit.tui.auditing_fleet: "🔎 Flotte wird auditiert..."
-audit.tui.auditing: "🔎 Auditing..."
+audit.tui.auditing_fleet: "🔎 Flotte wird auditiert…"
+audit.tui.auditing: "🔎 Auditiere…"
 audit.tui.complete: "✅ Audit abgeschlossen"
 audit.tui.failed: "💥 Audit fehlgeschlagen"
-audit.tui.no_accounts: "Keine aktiven Konten gefunden. Bitte fügen Sie eines hinzu oder aktivieren Sie ein bestehendes."
+audit.tui.no_accounts: "Keine aktiven Konten gefunden. Bitte fügen Sie eines hinzu
+  oder aktivieren Sie ein bestehendes."
 audit.tui.no_tags: "Keine Tags in Konten gefunden."
 audit.tui.no_accounts_tag: "Keine aktiven Konten mit Tag '%s' zum Auditieren."
-audit.tui.starting_fleet: "Starte Flotten-Audit..."
-audit.tui.starting_tag: "Starte Audit für Tag '%s'..."
+audit.tui.starting_fleet: "Starte Flotten-Audit…"
+audit.tui.starting_tag: "Starte Audit für Tag '%s'…"
 audit.tui.ok_short: "ok"
-audit.tui.failed_short: "drift"
-audit.tui.pending: "ausstehend..."
+audit.tui.failed_short: "Abweichung"
+audit.tui.pending: "ausstehend…"
 audit.tui.summary: "\n\nZusammenfassung: %d ok, %d drift."
 audit.tui.failed_accounts: "\n\nDrift erkannt:\n%s"
 audit.tui.help_select: "enter: auswählen   esc: zurück"
-audit.tui.help_wait: "(Bitte warten...)"
+audit.tui.help_wait: "(Bitte warten…)"
 audit.tui.help_complete: "(enter oder esc zum Fortfahren)"
 audit.tui.help_failed: "esc: zurück"
 audit.tui.filtering: "Filter: %s█"
 audit.tui.filter_active: "Filter: %s (mit 'esc' löschen)"
-audit.tui.filter_hint: "Mit / filtern..."
+audit.tui.filter_hint: "Mit / filtern…"
 
 # CLI specific translations
 
 # Audit CLI command
-audit.cli_error_get_accounts: "Fehler beim Abrufen der Konten: %v"
+audit.cli_error_get_accounts: "Fehler beim Abruf der Konten: %v"
 audit.error_not_deployed: "Host wurde noch nicht ausgerollt (Seriennummer ist 0)"
-audit.error_get_serial_key: "Systemschlüssel %d konnte nicht aus DB gelesen werden: %w"
-audit.error_no_serial_key: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer %d gefunden"
-audit.error_connection_failed: "Verbindung mit Schlüssel-Seriennummer %d fehlgeschlagen: %w"
-audit.error_read_remote_file: "authorized_keys auf dem Host konnte nicht gelesen werden: %w"
-audit.error_generate_expected: "Erwarteter authorized_keys-Inhalt konnte nicht generiert werden: %w"
-audit.error_drift_detected: "Konfigurationsdrift erkannt. Remote-Datei stimmt nicht mit der erwarteten Konfiguration überein"
+audit.error_get_serial_key: "Systemschlüssel %d konnte nicht aus DB gelesen werden:
+  %w"
+audit.error_no_serial_key: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer
+  %d gefunden"
+audit.error_connection_failed: "Verbindung mit Schlüssel-Seriennummer %d fehlgeschlagen:
+  %w"
+audit.error_read_remote_file: "authorized_keys auf dem Host konnte nicht gelesen werden:
+  %w"
+audit.error_generate_expected: "Erwarteter authorized_keys-Inhalt konnte nicht generiert
+  werden: %w"
+audit.error_drift_detected: "Konfigurationsdrift erkannt. Remote-Datei stimmt nicht
+  mit der erwarteten Konfiguration überein"
 
 # Rotate Key CLI command
-rotate_key.cli_rotating: "⚙️  Systemschlüssel wird rotiert..."
-rotate_key.cli_error_generate: "Fehler beim Generieren des neuen Systemschlüssels: %v"
-rotate_key.cli_error_save: "Fehler beim Speichern des rotierten Schlüssels in der Datenbank: %v"
-rotate_key.cli_rotated_success: "\n✅ Systemschlüssel erfolgreich rotiert. Der neue aktive Schlüssel hat die Seriennummer #%d."
-rotate_key.cli_deploy_reminder: "Führen Sie 'keymaster deploy' aus, um den neuen Schlüssel auf Ihre Flotte anzuwenden."
+rotate_key.cli_rotating: "⚙️  Systemschlüssel wird rotiert…"
+rotate_key.cli_error_generate: "Fehler beim Generieren des neuen Systemschlüssels:
+  %v"
+rotate_key.cli_error_save: "Fehler beim Speichern des rotierten Schlüssels in der
+  Datenbank: %v"
+rotate_key.cli_rotated_success: "\n✅ Systemschlüssel erfolgreich rotiert. Der neue
+  aktive Schlüssel hat die Seriennummer #%d."
+rotate_key.cli_deploy_reminder: "Führen Sie 'keymaster deploy' aus, um den neuen Schlüssel
+  auf Ihre Flotte anzuwenden."
 
 # Import CLI command
-import.start: "🔑 Schlüssel werden aus %s importiert..."
+import.start: "🔑 Schlüssel werden aus %s importiert…"
 import.skip_invalid_line: "  - Ungültige Schlüsselzeile übersprungen: %v"
-import.skip_empty_comment: "  - Schlüssel mit leerem Kommentar übersprungen: %.20s..."
-import.skip_duplicate: "  - Duplizierten Schlüssel übersprungen (Kommentar existiert): %s"
+import.skip_empty_comment: "  - Schlüssel mit leerem Kommentar übersprungen: %.20s…"
+import.skip_duplicate: "  - Duplizierten Schlüssel übersprungen (Kommentar existiert):
+  %s"
 import.error_opening_file: "Fehler beim Öffnen der Datei: %v"
 import.error_adding_key: "  - Fehler beim Hinzufügen des Schlüssels '%s': %v"
 import.imported_key: "  + Schlüssel importiert: %s"
@@ -328,7 +379,7 @@ export_ssh_config.success: "✅ SSH-Konfiguration erfolgreich exportiert nach %s
 
 # Parallel task messages (used by runParallelTasks)
 parallel_task.no_accounts: "Keine aktiven Konten für %s."
-parallel_task.start_message: "🚀 Starte %s für %d Konto(en)..."
+parallel_task.start_message: "🚀 Starte %s für %d Konto(en)…"
 parallel_task.deploy_success_message: "✅ Erfolgreich auf %s ausgerollt"
 parallel_task.deploy_fail_message: "💥 Fehler beim Ausrollen auf %s: %v"
 parallel_task.audit_success_message: "✅ OK: %s"
@@ -336,14 +387,16 @@ parallel_task.audit_fail_message: "🚨 Drift auf %s erkannt: %v"
 parallel_task.complete_message: "%s abgeschlossen."
 
 # Bootstrap workflow translations
-bootstrap.creating_session: "Bootstrap-Sitzung wird erstellt..."
+bootstrap.creating_session: "Bootstrap-Sitzung wird erstellt…"
 bootstrap.title: "Neuen Host bootstrappen"
-bootstrap.step1_description: "Führen Sie den folgenden Befehl auf dem Ziel-Host aus, um den temporären Schlüssel zu installieren:"
+bootstrap.step1_description: "Führen Sie den folgenden Befehl auf dem Ziel-Host aus,
+  um den temporären Schlüssel zu installieren:"
 bootstrap.step1_copy_hint: "'c' drücken zum Kopieren des Befehls in die Zwischenablage"
 bootstrap.step1_copied: "✓ Befehl in Zwischenablage kopiert!"
 bootstrap.step1_help: "Enter zum Fortfahren, Esc zum Abbrechen"
 bootstrap.confirm_title: "Schlüssel-Installation bestätigen"
-bootstrap.confirm_description: "Haben Sie den Befehl erfolgreich auf dem Ziel-Host eingefügt und ausgeführt?"
+bootstrap.confirm_description: "Haben Sie den Befehl erfolgreich auf dem Ziel-Host
+  eingefügt und ausgeführt?"
 bootstrap.confirm_yes: "Ja, ich habe ihn installiert"
 bootstrap.confirm_no: "Neuen Befehl generieren"
 bootstrap.confirm_help: "(links/rechts zum Navigieren, Enter zum Bestätigen)"
@@ -353,29 +406,39 @@ bootstrap.testing_retry_help: "(r zum Wiederholen, Tab zum Zurückgehen, Esc zum
 bootstrap.verify_hostkey_title: "Server Host-Key Verifikation"
 bootstrap.verify_hostkey_retrieving: "Server Host-Key wird abgerufen..."
 bootstrap.verify_hostkey_error_retrieving: "Fehler beim Abrufen des Host-Keys: %s"
-bootstrap.verify_hostkey_error_retry_help: "'r' zum Wiederholen, 'Tab' zum Zurückgehen oder 'Esc' zum Abbrechen"
+bootstrap.verify_hostkey_error_retry_help: "'r' zum Wiederholen, 'Tab' zum Zurückgehen
+  oder 'Esc' zum Abbrechen"
 bootstrap.verify_hostkey_server_key: "Server Host-Key:"
 bootstrap.verify_hostkey_type_label: "Typ"
 bootstrap.verify_hostkey_invalid_format: "❌ Ungültiges Host-Key Format"
-bootstrap.verify_hostkey_fingerprint_error: "❌ Fingerprint konnte nicht berechnet werden"
-bootstrap.verify_hostkey_warning: "⚠️ Bitte überprüfen Sie, ob dieser Fingerprint mit dem Host-Key Ihres Servers übereinstimmt."
-bootstrap.verify_hostkey_check_command: "Sie können ihn auf dem Server überprüfen mit:"
+bootstrap.verify_hostkey_fingerprint_error: "❌ Fingerprint konnte nicht berechnet
+  werden"
+bootstrap.verify_hostkey_warning: "⚠️ Bitte überprüfen Sie, ob dieser Fingerprint
+  mit dem Host-Key Ihres Servers übereinstimmt."
+bootstrap.verify_hostkey_check_command: "Sie können ihn auf dem Server überprüfen
+  mit:"
 bootstrap.verify_hostkey_ssh_keygen: "ssh-keygen -lf /etc/ssh/ssh_host_*_key.pub"
 bootstrap.verify_hostkey_accept: "✓ Akzeptieren & Fortfahren"
 bootstrap.verify_hostkey_reject: "✗ Ablehnen"
-bootstrap.verify_hostkey_copy_hint: "'c' drücken, um Verify-Befehl in die Zwischenablage zu kopieren"
+bootstrap.verify_hostkey_copy_hint: "'c' drücken, um Verify-Befehl in die Zwischenablage
+  zu kopieren"
 bootstrap.verify_hostkey_copied: "✓ Verify-Befehl in Zwischenablage kopiert!"
-bootstrap.verify_hostkey_help: "Pfeile/h/l: navigieren • Enter: auswählen • c: Verify-Befehl kopieren • r: wiederholen • Tab: zurück • Esc: abbrechen"
+bootstrap.verify_hostkey_help: "Pfeile/h/l: navigieren • Enter: auswählen • c: Verify-Befehl
+  kopieren • r: wiederholen • Tab: zurück • Esc: abbrechen"
 bootstrap.select_keys_title: "Schlüssel zum Ausrollen auswählen"
-bootstrap.select_keys_description: "Wählen Sie, welche öffentlichen Schlüssel diesem Konto zugewiesen werden sollen:"
-bootstrap.select_keys_help: "(j/k zum Navigieren, Leertaste zum Umschalten, Enter zum Fortfahren)"
+bootstrap.select_keys_description: "Wählen Sie, welche öffentlichen Schlüssel diesem
+  Konto zugewiesen werden sollen:"
+bootstrap.select_keys_help: "(j/k zum Navigieren, Leertaste zum Umschalten, Enter
+  zum Fortfahren)"
 bootstrap.confirm_deploy_title: "Ausrollen bestätigen"
-bootstrap.will_replace_temp_key: "Wird temporären Schlüssel durch Systemschlüssel ersetzen"
+bootstrap.will_replace_temp_key: "Wird temporären Schlüssel durch Systemschlüssel
+  ersetzen"
 bootstrap.deploy: "Ausrollen"
 bootstrap.back: "Zurück"
 bootstrap.confirm_deploy_help: "(links/rechts zum Navigieren, Enter zum Bestätigen)"
-bootstrap.deploying_title: "Wird ausgerollt..."
-bootstrap.deploying_progress: "Schlüssel werden ausgerollt und Konto-Einrichtung wird abgeschlossen..."
+bootstrap.deploying_title: "Wird ausgerollt…"
+bootstrap.deploying_progress: "Schlüssel werden ausgerollt und Konto-Einrichtung wird
+  abgeschlossen…"
 bootstrap.deploying_help: "(bitte warten, nicht unterbrechen)"
 bootstrap.success_title: "Bootstrap abgeschlossen"
 bootstrap.success_message: "%s@%s erfolgreich gebootstrappt"
@@ -392,43 +455,62 @@ bootstrap.error_options: "Wählen Sie, wie Sie fortfahren möchten:"
 bootstrap.error_retry: "Wiederholen"
 bootstrap.error_regenerate: "Neuen Schlüssel generieren"
 bootstrap.error_cancel: "Bootstrap abbrechen"
-bootstrap.error_help: "(links/rechts zum Navigieren, Enter zum Bestätigen, Esc zum Abbrechen)"
+bootstrap.error_help: "(links/rechts zum Navigieren, Enter zum Bestätigen, Esc zum
+  Abbrechen)"
 
 # Config
 config.error_init_db: "Fehler beim Initialisieren der Datenbank: %w"
 
 # Deploy CLI command
 deploy.cli_account_not_found: "Konto '%s' nicht gefunden oder nicht aktiv."
-deploy.error_get_bootstrap_key: "Fehler beim Abrufen des aktiven Systemschlüssels für Bootstrap: %w"
+deploy.error_get_bootstrap_key: "Fehler beim Abrufen des aktiven Systemschlüssels
+  für Bootstrap: %w"
 deploy.error_no_bootstrap_key: "Kein aktiver Systemschlüssel für Bootstrap gefunden"
-deploy.error_get_serial_key: "Fehler beim Abrufen des Systemschlüssels mit Seriennummer %d: %w"
-deploy.error_no_serial_key: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer %d gefunden"
-deploy.error_get_active_key_for_serial: "Aktiver Systemschlüssel für Seriennummer-Update konnte nicht abgerufen werden"
+deploy.error_get_serial_key: "Fehler beim Abrufen des Systemschlüssels mit Seriennummer
+  %d: %w"
+deploy.error_no_serial_key: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer
+  %d gefunden"
+deploy.error_get_active_key_for_serial: "Aktiver Systemschlüssel für Seriennummer-Update
+  konnte nicht abgerufen werden"
 deploy.error_connection_failed: "Verbindung fehlgeschlagen: %w"
-deploy.error_no_bootstrap_key_tui: "Kein aktiver Systemschlüssel für Bootstrap gefunden. Bitte einen erzeugen"
-deploy.error_no_serial_key_tui: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer %d auf Konto %s gefunden"
+deploy.error_no_bootstrap_key_tui: "Kein aktiver Systemschlüssel für Bootstrap gefunden.
+  Bitte einen erzeugen"
+deploy.error_no_serial_key_tui: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer
+  %d auf Konto %s gefunden"
 deploy.error_connection_failed_tui: "Verbindung zu %s fehlgeschlagen: %w"
-deploy.error_get_serial_for_status: "Deployment erfolgreich, aber neue Seriennummer konnte für Statusmeldung nicht gelesen werden: %w"
+deploy.error_get_serial_for_status: "Deployment erfolgreich, aber neue Seriennummer
+  konnte für Statusmeldung nicht gelesen werden: %w"
 deploy.error_deployment_failed: "Deployment fehlgeschlagen: %w"
 
 # Trust Host CLI command
-trust_host.retrieving_key: "Versuche, Host-Schlüssel von %s abzurufen..."
+trust_host.retrieving_key: "Versuche, Host-Schlüssel von %s abzurufen…"
 trust_host.error_get_key: "Host-Schlüssel konnte nicht abgerufen werden: %v"
-trust_host.authenticity_warning_1: "Die Authentizität des Hosts '%s' kann nicht festgestellt werden."
+trust_host.authenticity_warning_1: "Die Authentizität des Hosts '%s' kann nicht festgestellt
+  werden."
 trust_host.authenticity_warning_2: "%s Schlüssel-Fingerabdruck ist %s."
-trust_host.confirm_prompt: "Sind Sie sicher, dass Sie die Verbindung fortsetzen möchten (ja/nein)? "
+trust_host.confirm_prompt: "Sind Sie sicher, dass Sie die Verbindung fortsetzen möchten
+  (ja/nein)? "
 trust_host.not_trusted_abort: "Host-Schlüssel nicht vertraut. Abbruch."
-trust_host.error_save_key: "Fehler beim Speichern des Host-Schlüssels in der Datenbank: %v"
-trust_host.added_success: "Warnung: '%s' (Typ %s) wurde dauerhaft zur Liste der bekannten Hosts hinzugefügt."
+trust_host.error_save_key: "Fehler beim Speichern des Host-Schlüssels in der Datenbank:
+  %v"
+trust_host.added_success: "Warnung: '%s' (Typ %s) wurde dauerhaft zur Liste der bekannten
+  Hosts hinzugefügt."
 # Migrate CLI command
 migrate.cli_error_flags: "Fehler: --type und --dsn Flags sind für die Migration erforderlich."
 migrate.cli_starting_backup: "📦 Erstelle In-Memory-Backup von der Quelldatenbank..."
-migrate.cli_error_backup: "Fehler beim Exportieren der Daten aus der Quelldatenbank: %v"
+migrate.cli_error_backup: "Fehler beim Exportieren der Daten aus der Quelldatenbank:
+  %v"
 migrate.cli_backup_success: "✅ Backup abgeschlossen."
-migrate.cli_connecting_target: "🔗 Verbinde mit Zieldatenbank (%s) und führe Migrationen aus..."
-migrate.cli_error_connect: "Fehler beim Verbinden oder Migrieren der Zieldatenbank: %v"
+migrate.cli_connecting_target: "🔗 Verbinde mit Zieldatenbank (%s) und führe Migrationen
+  aus..."
+migrate.cli_error_connect: "Fehler beim Verbinden oder Migrieren der Zieldatenbank:
+  %v"
 migrate.cli_connect_success: "✅ Verbindung und Migrationen erfolgreich."
 migrate.cli_starting_restore: "🔄 Stelle Daten in der Zieldatenbank wieder her..."
-migrate.cli_error_restore: "Fehler beim Importieren der Daten in die Zieldatenbank: %v"
-migrate.cli_success: "🎉 Migration abgeschlossen! Alle Daten wurden in die neue Datenbank verschoben."
-migrate.cli_next_steps: "➡️ Nächster Schritt: Aktualisieren Sie Ihre .keymaster.yaml, um auf die neue Datenbank zu verweisen."
+migrate.cli_error_restore: "Fehler beim Importieren der Daten in die Zieldatenbank:
+  %v"
+migrate.cli_success: "🎉 Migration abgeschlossen! Alle Daten wurden in die neue Datenbank
+  verschoben."
+migrate.cli_next_steps: "➡️ Nächster Schritt: Aktualisieren Sie Ihre .keymaster.yaml,
+  um auf die neue Datenbank zu verweisen."
+audit.tui.fleet_complete: Audit der Flotte komplett.

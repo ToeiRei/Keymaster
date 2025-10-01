@@ -40,13 +40,13 @@ language.help: "up/down: navigate   enter: select   q/esc: back"
 
 
 # Account form translations
-account_form.username_label: "Username:               "
+account_form.username_label: "Username:"
 account_form.username_placeholder: "user"
-account_form.hostname_label: "Hostname:               "
+account_form.hostname_label: "Hostname:"
 account_form.hostname_placeholder: "www.example.com"
-account_form.label_label: "Label (optional):       "
+account_form.label_label: "Label (optional):"
 account_form.label_placeholder: "prod-web-01"
-account_form.tags_label: "Tags (comma-separated): "
+account_form.tags_label: "Tags (comma-separated):"
 account_form.tags_placeholder: "role:db,dc:nyc"
 account_form.edit_title: "Edit Account"
 account_form.add_title: "Add New Account"
