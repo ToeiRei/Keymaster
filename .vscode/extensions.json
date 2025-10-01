@@ -4,6 +4,7 @@
         "furkanozalp.go-syntax",
         "mikestead.dotenv",
         "usernamehw.errorlens",
-        "redhat.vscode-yaml"
+        "redhat.vscode-yaml",
+        "gruntfuggly.todo-tree"
     ]
 }
