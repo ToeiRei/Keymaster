@@ -86,66 +86,69 @@ An agentless SSH key manager that just does the job.
     ```
 
 2. **Initialize the Database:**
-    Simply run Keymaster for the first time. It will automatically create
-    `keymaster.db` and a default `.keymaster.yaml` configuration file in the
-    current directory.
+    Run Keymaster for the first time. It will automatically create `keymaster.db`
+    and a default `.keymaster.yaml` configuration file in the current directory.
 
     ```sh
     keymaster
     ```
 
 3. **Generate System Key:**
-    Inside the TUI, navigate to "Rotate System Keys" and follow the prompt to
-    generate your initial system key. This is the key Keymaster will use to
-    manage your hosts.
+    Inside the TUI, navigate to **"Rotate System Keys"** and follow the prompt.
+    This generates the initial key Keymaster will use to manage your hosts.
 
 4. **Bootstrap Your First Host:**
-    Manually add the new Keymaster public key (displayed in the previous step) to the `~/.ssh/authorized_keys` file of an account you want to manage.
+    This is where the magic happens.
+    - In the TUI, go to **"Manage Accounts"** and select **"Add Account"**.
+    - A dialog will appear with a one-line shell command. Copy it.
+    - Paste and run this command on the remote host you want to manage. It will
+      install a temporary key to allow Keymaster to connect.
 
 5. **Add the Account in Keymaster:**
-    In the TUI, go to "Manage Accounts" and add the account (e.g., `root@your-server`).
+    - Back in the TUI, fill in the account details (e.g., `root@your-server`) and
+      confirm. Keymaster will connect using the temporary key, deploy the final
+      `authorized_keys` file (with the hardened system key), and clean up after
+      itself.
 
-6. **Trust the Host:**
-    Still in "Manage Accounts," select the new account and press `v` to verify and trust the host's public key.
-
-You are now ready to manage this host with Keymaster!
+That's it! The host is now fully managed by Keymaster.
 
 ## Usage
 
 - **Interactive TUI (Default):**
 
-  ```sh
-  keymaster
-  ```
+  `keymaster`
 
 - **Deploy to all hosts:**
 
-  ```sh
-  keymaster deploy
-  ```
+  `keymaster deploy`
 
 - **Audit the fleet for drift (full file comparison):**
 
-  ```sh
-  keymaster audit
-  ```
+  `keymaster audit`
 
 - **Trust a new host:**
 
-  ```sh
-  keymaster trust-host user@new-host
-  ```
+  `keymaster trust-host user@new-host`
 
 - **Import keys from a file:**
 
-  ```sh
-  keymaster import /path/to/authorized_keys
-  ```
+  `keymaster import /path/to/authorized_keys`
 
 - **Export SSH config:**
 
+  `keymaster export-ssh-client-config ~/.ssh/config`
+
+- **Database Management:**
+
   ```sh
-  keymaster export-ssh-client-config ~/.ssh/config
+  # Create a compressed backup
+  keymaster backup
+
+  # Restore from a backup (non-destructive by default)
+  keymaster restore ./keymaster-backup.json.zst
+
+  # Migrate from SQLite to PostgreSQL
+  keymaster migrate --type postgres --dsn "host=localhost user=keymaster dbname=keymaster"
   ```
 
 - **Decommission an account:**
@@ -166,22 +169,6 @@ You are now ready to manage this host with Keymaster!
   # Force decommission even if remote cleanup fails
   keymaster decommission user@hostname --force
   ```
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Third-Party Licenses
-
-Keymaster utilizes several third-party libraries, each with its own license. All dependency licenses are permissive and compatible with the MIT License. For a detailed list of dependencies and their license texts, please see the `NOTICE.md` file.
-
-## Philosophy
-
-This tool was born out of frustration. Existing solutions for SSH key management often felt like using a sledgehammer to crack a nut—requiring complex configuration, server daemons, and constant management. This is especially true for smaller teams or homelabs where simplicity is paramount.
-
-Keymaster is different. It's built on a simple premise:
-
-> A tool should do the job without making you manage the tool itself.
-
-It's designed for sysadmins and developers who want a straightforward, reliable way to control SSH access without the overhead. It's powerful enough for a fleet but simple enough for a home lab.
 
 ### A Note on Security & The System Key
 
@@ -217,8 +204,20 @@ command="internal-sftp",no-port-forwarding,no-x11-forwarding,no-agent-forwarding
 
 **What these options do:**
 
-- `command="internal-sftp"`: This is the most important restriction. It forces the key to only be used for SFTP sessions and prevents shell command execution. Keymaster's deployment and audit logic is designed to work with this restriction.
+- command="internal-sftp": The most critical restriction. It forces the key to only be used for SFTP sessions and prevents shell command execution.
+- no-port-forwarding, no-x11-forwarding, no-agent-forwarding: Disables various forms of SSH tunneling to prevent the key from being used to pivot.
+- no-pty: Prevents the allocation of a pseudo-terminal, reinforcing that no interactive session is possible.
+
+## Philosophy
+
+This tool was born out of frustration. Existing solutions for SSH key management often felt like using a sledgehammer to crack a nut—requiring complex configuration, server daemons, and constant management. This is especially true for smaller teams or homelabs where simplicity is paramount.
+
+Keymaster is different. It's built on a simple premise:
+
+> A tool should do the job without making you manage the tool itself.
+
+It's designed for sysadmins and developers who want a straightforward, reliable way to control SSH access without the overhead. It's powerful enough for a fleet but simple enough for a home lab.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. For a detailed list of third-party dependencies and their license texts, please see the `NOTICE.md` file.
+This project is licensed under the MIT License - see the `LICENSE` file for details. For a detailed list of third-party dependencies and their license texts, please see the `NOTICE.md` file.
