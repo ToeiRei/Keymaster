@@ -288,7 +288,7 @@ audit.tui.help_failed: "esc: back"
 audit.tui.filtering: "Filter: %s█"
 audit.tui.filter_active: "Filter: %s (press 'esc' to clear)"
 audit.tui.filter_hint: "Press / to filter..."
-
+audit.tui.fleet_complete: "Fleet audit complete."
 # CLI specific translations
 
 # Audit CLI command
