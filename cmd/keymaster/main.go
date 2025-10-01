@@ -11,15 +11,20 @@ package main
 
 import (
 	"bufio"
+	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
-	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql" // Blank import for migrate command
+	_ "github.com/jackc/pgx/v5/stdlib" // Blank import for migrate command
+	"github.com/klauspost/compress/zstd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/internal/bootstrap"
@@ -37,6 +42,7 @@ import (
 var version = "dev" // this will be set by the linker
 var cfgFile string
 var auditMode string // audit mode flag: "strict" (default) or "serial"
+var fullRestore bool // Flag for the restore command
 
 // main is the entry point of the application.
 func main() {
@@ -47,6 +53,8 @@ func main() {
 	defer func() {
 		if err := bootstrap.CleanupAllActiveSessions(); err != nil {
 			log.Printf("Error during final cleanup: %v", err)
+		} else {
+			log.Println("Bootstrap cleanup complete.")
 		}
 	}()
 
@@ -59,18 +67,7 @@ func main() {
 var rootCmd *cobra.Command
 
 func init() {
-	// cobra.OnInitialize can't handle errors, so we wrap initConfig.
-	// The error is checked and handled inside newRootCmd's PersistentPreRunE,
-	// which is a more appropriate place for error handling that needs to
-	// stop command execution. For now, we just log if there's an issue
-	// during the initial setup phase.
-	cobra.OnInitialize(func() { _ = initConfig() })
 	rootCmd = newRootCmd()
-
-	// Set defaults in viper. These are used if not set in the config file or by flags.
-	viper.SetDefault("database.type", "sqlite")
-	viper.SetDefault("database.dsn", "./keymaster.db")
-	viper.SetDefault("language", "en")
 }
 
 // newRootCmd creates and configures a new root cobra command.
@@ -105,7 +102,6 @@ Running without a subcommand will launch the interactive TUI.`,
 			// Initialize the database for all commands.
 			// Viper has already read the config by this point.
 			dbType := viper.GetString("database.type")
-			i18n.Init(viper.GetString("language")) // Initialize i18n here
 			dsn := viper.GetString("database.dsn")
 			if err := db.InitDB(dbType, dsn); err != nil {
 				return errors.New(i18n.T("config.error_init_db", err))
@@ -123,6 +119,7 @@ Running without a subcommand will launch the interactive TUI.`,
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			// The database is already initialized by PersistentPreRunE.
+			i18n.Init(viper.GetString("language")) // Initialize i18n for the TUI
 			tui.Run()
 		},
 	}
@@ -134,10 +131,20 @@ Running without a subcommand will launch the interactive TUI.`,
 	cmd.AddCommand(importCmd)
 	cmd.AddCommand(trustHostCmd)
 	cmd.AddCommand(exportSSHConfigCmd)
+	cmd.AddCommand(backupCmd)
+	cmd.AddCommand(restoreCmd)
+	cmd.AddCommand(migrateCmd)
+	cmd.AddCommand(decommissionCmd)
 
 	// Set version
 	cmd.Version = version
 
+	// Initialize config on every command execution.
+	cobra.OnInitialize(func() { _ = initConfig() })
+
+	// Set defaults in viper. These are used if not set in the config file or by flags.
+	viper.SetDefault("database.type", "sqlite")
+	viper.SetDefault("database.dsn", "./keymaster.db")
 	// Define flags
 	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keymaster.yaml or ./keymaster.yaml)")
 	cmd.PersistentFlags().String("db-type", "sqlite", "Database type (e.g., sqlite, postgres)")
@@ -148,10 +155,6 @@ Running without a subcommand will launch the interactive TUI.`,
 	viper.BindPFlag("database.type", cmd.PersistentFlags().Lookup("db-type"))
 	viper.BindPFlag("database.dsn", cmd.PersistentFlags().Lookup("db-dsn"))
 	viper.BindPFlag("language", cmd.PersistentFlags().Lookup("lang"))
-
-	// Note: Flags are configured in the init() function on the global rootCmd.
-	// Cobra automatically handles making these flags available on new command
-	// instances created for tests, so we don't need to re-declare them here.
 
 	return cmd
 }
@@ -165,69 +168,80 @@ func initConfig() error {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Find home directory.
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
+		// Search for config in standard locations.
+		// 1. Look for the new 'config.yaml' in the user's config directory.
+		configDir, err := os.UserConfigDir()
+		if err == nil {
+			keymasterConfigDir := filepath.Join(configDir, "keymaster")
+			newConfigPath := filepath.Join(keymasterConfigDir, "config.yaml")
+			if _, err := os.Stat(newConfigPath); err == nil {
+				// If the new config file exists, use it exclusively.
+				viper.SetConfigFile(newConfigPath)
+			}
+		}
 
-		// Search config in home directory and current directory with name ".keymaster" (without extension).
-		viper.AddConfigPath(home)
-		viper.AddConfigPath(".")
-		viper.SetConfigType("yaml")
-		viper.SetConfigName(".keymaster")
+		// 2. If no new config was found, fall back to searching for the old
+		// '.keymaster.yaml' in the current directory for backward compatibility.
+		if viper.ConfigFileUsed() == "" {
+			viper.AddConfigPath(".")
+			viper.SetConfigName(".keymaster")
+			viper.SetConfigType("yaml")
+		}
 	}
 
 	viper.SetEnvPrefix("KEYMASTER")
 	viper.AutomaticEnv() // read in environment variables that match
 
-	// If a config file is found, read it in.
+	// Attempt to read the config file.
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// We only do this if no config file was found and none was specified via flag.
-			// We'll attempt to write a default config to the current directory if cfgFile is empty.
+			// Config file not found. If no specific file was requested, create a default one.
 			if cfgFile == "" {
-				const defaultConfigPath = ".keymaster.yaml"
+				return createDefaultConfig()
+			}
+		} else {
+			// Config file was found but another error was produced
+			return fmt.Errorf("error reading config file: %w", err)
+		}
+	}
+	return nil
+}
 
-				defaultContent := `# Keymaster configuration file.
+// createDefaultConfig creates a default configuration file in the user's
+// standard config directory (e.g., ~/.config/keymaster/config.yaml).
+func createDefaultConfig() error {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		// Cannot find a standard config dir, so we don't create a file.
+		// The app will run with in-memory defaults.
+		return nil
+	}
+
+	keymasterConfigDir := filepath.Join(configDir, "keymaster")
+	if err := os.MkdirAll(keymasterConfigDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	defaultConfigPath := filepath.Join(keymasterConfigDir, "config.yaml")
+
+	// Only write the file if it doesn't already exist.
+	if _, err := os.Stat(defaultConfigPath); os.IsNotExist(err) {
+		// The default DSN should be an absolute path to a database file in the same config directory.
+		defaultDBPath := filepath.Join(keymasterConfigDir, "keymaster.db")
+		// On Windows, we need to escape backslashes for the YAML string.
+		escapedDBPath := strings.ReplaceAll(defaultDBPath, `\`, `\\`)
+
+		defaultContent := `# Keymaster configuration file.
 # This file is automatically generated with default values.
 # You can modify these settings to configure Keymaster.
 
 database:
-  # The type of database to use. Supported values: "sqlite", "postgres", "mysql".
-  # Note: PostgreSQL and MySQL support is experimental.
   type: sqlite
+  dsn: ` + escapedDBPath + `
 
-  # The Data Source Name (DSN) for the database connection.
-  # For SQLite, this is the path to the database file.
-  dsn: ./keymaster.db
-
-# The default language for the TUI. Supported: "en", "de".
 language: en
-
-# Example for future PostgreSQL configuration:
-# database:
-#   type: postgres
-#   dsn: "host=localhost user=keymaster password=secret dbname=keymaster port=5432 sslmode=disable"
-
-# Example for future MySQL configuration:
-# database:
-#   type: mysql
-#   dsn: "keymaster:password@tcp(127.0.0.1:3306)/keymaster?parseTime=true"
 `
-				// If writing fails (e.g., due to permissions), we don't treat it as a
-				// fatal error. The app will simply run with the default values set in memory.
-				if err := os.WriteFile(defaultConfigPath, []byte(defaultContent), 0644); err == nil {
-					// Return a specific error/message that can be handled by the caller.
-					// We also re-read the config we just wrote to ensure viper is in a clean state.
-					_ = viper.ReadInConfig()
-					// The message is useful for the CLI user, but for tests, returning nil is cleaner.
-					return nil
-				}
-			}
-		} else {
-			// The config file was found but was malformed or unreadable.
-			// We return the error but don't exit, allowing the app to proceed with defaults.
-			return fmt.Errorf("error reading config file: %w", err)
-		}
+		return os.WriteFile(defaultConfigPath, []byte(defaultContent), 0644)
 	}
 	return nil
 }
@@ -244,6 +258,7 @@ If no account is specified, deploys to all active accounts in the database.`,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
+		i18n.Init(viper.GetString("language")) // Initialize i18n for CLI output
 		allAccounts, err := db.GetAllActiveAccounts()
 		if err != nil {
 			log.Fatalf("Error getting accounts: %v", err)
@@ -294,6 +309,7 @@ var rotateKeyCmd = &cobra.Command{
 	Long: `Generates a new ed25519 key pair, saves it to the database, and sets it as the active key.
 The previous key is kept for accessing hosts that have not yet been updated.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		i18n.Init(viper.GetString("language")) // Initialize i18n for CLI output
 		fmt.Println(i18n.T("rotate_key.cli_rotating"))
 		// DB is initialized in PersistentPreRunE.
 		publicKeyString, privateKeyString, err := internalkey.GenerateAndMarshalEd25519Key("keymaster-system-key")
@@ -322,6 +338,7 @@ var auditCmd = &cobra.Command{
 Use --mode=serial to only verify the Keymaster header serial number on the remote host matches the account's last deployed serial (useful during staged rotations).`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
+		i18n.Init(viper.GetString("language")) // Initialize i18n for CLI output
 		accounts, err := db.GetAllActiveAccounts()
 		if err != nil {
 			log.Fatalf("%s", i18n.T("audit.cli_error_get_accounts", err))
@@ -355,6 +372,9 @@ Use --mode=serial to only verify the Keymaster header serial number on the remot
 func init() {
 	// Attach flags after auditCmd is defined
 	auditCmd.Flags().StringVarP(&auditMode, "mode", "m", "strict", "Audit mode: 'strict' (full file comparison) or 'serial' (header serial only)")
+	restoreCmd.Flags().BoolVar(&fullRestore, "full", false, "Perform a full, destructive restore (wipes all existing data first)")
+	migrateCmd.Flags().String("type", "", "The target database type (sqlite, postgres, mysql)")
+	migrateCmd.Flags().String("dsn", "", "The DSN for the target database")
 }
 
 // importCmd represents the 'import' command.
@@ -367,6 +387,7 @@ var importCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1), // Ensures we get exactly one file path
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
+		i18n.Init(viper.GetString("language")) // Initialize i18n for CLI output
 		// DB and i18n are initialized in PersistentPreRunE.
 		fmt.Println(i18n.T("import.start", filePath))
 
@@ -448,6 +469,7 @@ step before Keymaster can manage a new host.`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
+		i18n.Init(viper.GetString("language")) // Initialize i18n for CLI output
 		target := args[0]
 		var hostname string
 		if strings.Contains(target, "@") {
@@ -456,15 +478,17 @@ step before Keymaster can manage a new host.`,
 		} else {
 			hostname = target // Assume the whole string is the hostname if no '@'
 		}
+		// Always use host:port form with default :22
+		canonicalHost := deploy.CanonicalizeHostPort(hostname)
 
-		fmt.Println(i18n.T("trust_host.retrieving_key", hostname))
-		key, err := deploy.GetRemoteHostKey(hostname)
+		fmt.Println(i18n.T("trust_host.retrieving_key", canonicalHost))
+		key, err := deploy.GetRemoteHostKey(canonicalHost)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("trust_host.error_get_key", err))
 		}
 
 		fingerprint := ssh.FingerprintSHA256(key) // Use standard ssh package
-		fmt.Printf("\n%s\n", i18n.T("trust_host.authenticity_warning_1", hostname))
+		fmt.Printf("\n%s\n", i18n.T("trust_host.authenticity_warning_1", canonicalHost))
 		fmt.Printf("%s\n", i18n.T("trust_host.authenticity_warning_2", key.Type(), fingerprint))
 
 		if warning := sshkey.CheckHostKeyAlgorithm(key); warning != "" {
@@ -479,12 +503,11 @@ step before Keymaster can manage a new host.`,
 		}
 
 		keyStr := string(ssh.MarshalAuthorizedKey(key)) // Use standard ssh package
-		normalized := normalizeKnownHostKeyName(hostname)
-		if err := db.AddKnownHostKey(normalized, keyStr); err != nil {
+		if err := db.AddKnownHostKey(canonicalHost, keyStr); err != nil {
 			log.Fatalf("%s", i18n.T("trust_host.error_save_key", err))
 		}
 
-		fmt.Printf("%s\n", i18n.T("trust_host.added_success", normalized, key.Type()))
+		fmt.Printf("%s\n", i18n.T("trust_host.added_success", canonicalHost, key.Type()))
 	},
 }
 
@@ -543,6 +566,7 @@ Each account with a label will use the label as the Host alias.`,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		// DB is initialized in PersistentPreRunE.
+		i18n.Init(viper.GetString("language")) // Initialize i18n for CLI output
 		accounts, err := db.GetAllActiveAccounts()
 		if err != nil {
 			log.Fatalf("%s", i18n.T("export_ssh_config.error_get_accounts", err))
@@ -569,13 +593,10 @@ Each account with a label will use the label as the Host alias.`,
 			output.WriteString(fmt.Sprintf("    HostName %s\n", account.Hostname))
 			output.WriteString(fmt.Sprintf("    User %s\n", account.Username))
 
-			// Parse hostname for port if it contains one
-			_, port := account.Hostname, "22"
-			if idx := strings.LastIndex(account.Hostname, ":"); idx > 0 {
-				// Check if it's IPv6 by looking for multiple colons
-				if strings.Count(account.Hostname, ":") == 1 {
-					port = account.Hostname[idx+1:]
-				}
+			// Parse hostname for port (supports IPv4/IPv6 and names)
+			_, port, _ := deploy.ParseHostPort(account.Hostname)
+			if port == "" {
+				port = "22"
 			}
 			if port != "22" {
 				output.WriteString(fmt.Sprintf("    Port %s\n", port))
@@ -605,30 +626,462 @@ func promptForConfirmation(prompt string) string {
 	return strings.TrimSpace(strings.ToLower(answer))
 }
 
-// normalizeKnownHostKeyName normalizes a hostname for storage in the known hosts database
-// so that it matches lookups performed during SSH handshakes. It removes any port and
-// strips IPv6 brackets, returning just the host portion.
-func normalizeKnownHostKeyName(h string) string {
-	h = strings.TrimSpace(h)
-	if h == "" {
-		return h
-	}
-	// If a port is present (e.g., "example.com:2222" or "[2001:db8::1]:2222"),
-	// SplitHostPort returns the host without brackets for IPv6.
-	if host, _, err := net.SplitHostPort(h); err == nil {
-		return host
-	}
-	// If it's a bracketed IPv6 without port like "[2001:db8::1]", trim brackets.
-	if strings.HasPrefix(h, "[") && strings.HasSuffix(h, "]") {
-		return strings.TrimSuffix(strings.TrimPrefix(h, "["), "]")
-	}
-	// Otherwise, return as-is (covers plain hostnames or raw IPv6 without brackets/port).
-	return h
-}
-
 // runDeploymentForAccount is a simple wrapper for the CLI to match the
 // signature required by runParallelTasks. It calls the centralized
 // deployment logic from the deploy package.
 func runDeploymentForAccount(account model.Account) error {
 	return deploy.RunDeploymentForAccount(account, false)
+}
+
+// decommissionCmd represents the 'decommission' command.
+// It removes SSH access by cleaning up authorized_keys files and deleting accounts from the database.
+var decommissionCmd = &cobra.Command{
+	Use:   "decommission [account-identifier]",
+	Short: "Decommission one or more accounts by removing SSH access and deleting from database",
+	Long: `Decommissions accounts by first removing their authorized_keys files from remote hosts,
+then deleting them from the database. This ensures clean removal of SSH access.
+
+Account can be identified by:
+- Account ID (e.g., "5")
+- User@host format (e.g., "deploy@server-01")
+- Label (e.g., "prod-web-01")
+
+If no account is specified, you will be prompted to select from a list.
+
+Use --tag to decommission all accounts with specific tags (e.g., --tag env:staging).`,
+	Args: cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		// Parse flags
+		skipRemote, _ := cmd.Flags().GetBool("skip-remote")
+		keepFile, _ := cmd.Flags().GetBool("keep-file")
+		force, _ := cmd.Flags().GetBool("force")
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		tagFilter, _ := cmd.Flags().GetString("tag")
+
+		options := deploy.DecommissionOptions{
+			SkipRemoteCleanup: skipRemote,
+			KeepFile:          keepFile,
+			Force:             force,
+			DryRun:            dryRun,
+		}
+
+		// Get active system key
+		systemKey, err := db.GetActiveSystemKey()
+		if err != nil {
+			log.Fatalf("Error getting active system key: %v", err)
+		}
+		if systemKey == nil {
+			log.Fatal("No active system key found. Run 'keymaster rotate-key' to generate one.")
+		}
+
+		// Get all accounts
+		allAccounts, err := db.GetAllAccounts()
+		if err != nil {
+			log.Fatalf("Error getting accounts: %v", err)
+		}
+
+		var targetAccounts []model.Account
+
+		if tagFilter != "" {
+			// Filter accounts by tag
+			for _, acc := range allAccounts {
+				if strings.Contains(acc.Tags, tagFilter) {
+					targetAccounts = append(targetAccounts, acc)
+				}
+			}
+			if len(targetAccounts) == 0 {
+				fmt.Printf("No accounts found with tag: %s\n", tagFilter)
+				return
+			}
+			fmt.Printf("Found %d accounts with tag '%s':\n", len(targetAccounts), tagFilter)
+			for _, acc := range targetAccounts {
+				fmt.Printf("  - %s\n", acc.String())
+			}
+		} else if len(args) > 0 {
+			// Find specific account
+			target := args[0]
+			account, err := findAccountByIdentifier(target, allAccounts)
+			if err != nil {
+				log.Fatalf("Error finding account: %v", err)
+			}
+			targetAccounts = []model.Account{*account}
+			fmt.Printf("Selected account: %s\n", account.String())
+		} else {
+			// No specific target - show interactive selection
+			fmt.Println("Available accounts:")
+			for i, acc := range allAccounts {
+				status := "active"
+				if !acc.IsActive {
+					status = "inactive"
+				}
+				fmt.Printf("  %d: %s (%s)\n", i+1, acc.String(), status)
+			}
+			fmt.Print("Enter account number to decommission (or 'q' to quit): ")
+
+			reader := bufio.NewReader(os.Stdin)
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(input)
+
+			if input == "q" || input == "quit" {
+				fmt.Println("Cancelled.")
+				return
+			}
+
+			var selection int
+			if _, err := fmt.Sscanf(input, "%d", &selection); err != nil || selection < 1 || selection > len(allAccounts) {
+				log.Fatal("Invalid selection")
+			}
+
+			targetAccounts = []model.Account{allAccounts[selection-1]}
+			fmt.Printf("Selected account: %s\n", allAccounts[selection-1].String())
+		}
+
+		// Confirmation prompt (unless dry-run)
+		if !dryRun && !force {
+			fmt.Printf("\nWARNING: This will decommission %d account(s) by:\n", len(targetAccounts))
+			if !skipRemote {
+				if keepFile {
+					fmt.Println("  1. Removing Keymaster-managed content from authorized_keys files")
+				} else {
+					fmt.Println("  1. Removing authorized_keys files (with backup)")
+				}
+			}
+			fmt.Println("  2. Deleting accounts from the database")
+			fmt.Print("\nDo you want to continue? (yes/no): ")
+
+			reader := bufio.NewReader(os.Stdin)
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(strings.ToLower(input))
+
+			if input != "yes" && input != "y" {
+				fmt.Println("Operation cancelled.")
+				return
+			}
+		}
+
+		// Process accounts
+		if len(targetAccounts) == 1 {
+			// Single account
+			account := targetAccounts[0]
+			fmt.Printf("Decommissioning account: %s\n", account.String())
+			result := deploy.DecommissionAccount(account, systemKey.PrivateKey, options)
+			fmt.Printf("Result: %s\n", result.String())
+		} else {
+			// Multiple accounts - use bulk operation
+			fmt.Printf("Decommissioning %d accounts...\n", len(targetAccounts))
+			results := deploy.BulkDecommissionAccounts(targetAccounts, systemKey.PrivateKey, options)
+
+			// Summary
+			successful := 0
+			failed := 0
+			skipped := 0
+
+			for _, result := range results {
+				if result.Skipped {
+					skipped++
+				} else if result.DatabaseDeleteError != nil {
+					failed++
+				} else {
+					successful++
+				}
+			}
+
+			fmt.Printf("\nSummary: %d successful, %d failed, %d skipped\n", successful, failed, skipped)
+
+			if failed > 0 {
+				fmt.Println("\nFailed operations:")
+				for _, result := range results {
+					if !result.Skipped && result.DatabaseDeleteError != nil {
+						fmt.Printf("  - %s\n", result.String())
+					}
+				}
+			}
+		}
+	},
+}
+
+func init() {
+	// Add flags for decommission command
+	decommissionCmd.Flags().Bool("skip-remote", false, "Skip remote SSH cleanup (only delete from database)")
+	decommissionCmd.Flags().Bool("keep-file", false, "Remove only Keymaster content, keep other keys in authorized_keys")
+	decommissionCmd.Flags().Bool("force", false, "Continue even if remote cleanup fails")
+	decommissionCmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
+	decommissionCmd.Flags().String("tag", "", "Decommission all accounts with this tag (format: key:value)")
+}
+
+// findAccountByIdentifier finds an account by ID, user@host, or label
+func findAccountByIdentifier(identifier string, accounts []model.Account) (*model.Account, error) {
+	// Try to parse as account ID first
+	if accountID, err := fmt.Sscanf(identifier, "%d", new(int)); accountID == 1 && err == nil {
+		var id int
+		fmt.Sscanf(identifier, "%d", &id)
+		for _, acc := range accounts {
+			if acc.ID == id {
+				return &acc, nil
+			}
+		}
+		return nil, fmt.Errorf("no account found with ID: %s", identifier)
+	}
+
+	// Try user@host format
+	if strings.Contains(identifier, "@") {
+		normalizedTarget := strings.ToLower(identifier)
+		for _, acc := range accounts {
+			accountIdentifier := fmt.Sprintf("%s@%s", acc.Username, acc.Hostname)
+			if strings.ToLower(accountIdentifier) == normalizedTarget {
+				return &acc, nil
+			}
+		}
+		return nil, fmt.Errorf("no account found with identifier: %s", identifier)
+	}
+
+	// Try label
+	for _, acc := range accounts {
+		if strings.EqualFold(acc.Label, identifier) {
+			return &acc, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no account found with identifier: %s (try ID, user@host, or label)", identifier)
+}
+
+// restoreCmd represents the 'restore' command.
+// It restores the database from a compressed JSON backup file.
+var restoreCmd = &cobra.Command{
+	Use:   "restore <backup-file.zst>",
+	Short: "Restore the database from a compressed JSON backup",
+	Long: `Restores the entire Keymaster database from a Zstandard-compressed JSON backup file.
+By default, this command performs a non-destructive "integration" restore, only adding
+data that does not already exist.
+ 
+To perform a full, destructive restore that WIPES all existing data before importing, use the --full flag.
+WARNING: The --full flag is destructive and not reversible.
+This command is intended for disaster recovery or for migrating between
+database backends (e.g., from SQLite to PostgreSQL).
+
+Example (Integrate):
+  keymaster restore ./keymaster-backup-2025-10-26.json.zst
+
+Example (Full Restore):
+  keymaster restore --full ./keymaster-backup-2025-10-26.json.zst`,
+	Args: cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		inputFile := args[0]
+		i18n.Init(viper.GetString("language"))
+
+		fmt.Println(i18n.T("restore.cli_starting", inputFile))
+
+		backupData, err := readCompressedBackup(inputFile)
+		if err != nil {
+			log.Fatalf("%s", i18n.T("restore.cli_error_read", err))
+		}
+
+		if fullRestore {
+			// Destructive, full restore path. No confirmation for CLI operations.
+			err = db.ImportDataFromBackup(backupData)
+		} else {
+			// Default, non-destructive integration path
+			err = db.IntegrateDataFromBackup(backupData)
+		}
+
+		if err != nil {
+			log.Fatalf("%s", i18n.T("restore.cli_error_import", err))
+		}
+
+		fmt.Println(i18n.T("restore.cli_success"))
+	},
+}
+
+// readCompressedBackup handles reading and decoding a zstd-compressed JSON backup file.
+func readCompressedBackup(filename string) (*model.BackupData, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("could not open file: %w", err)
+	}
+	defer file.Close()
+
+	zstdReader, err := zstd.NewReader(file)
+	if err != nil {
+		return nil, fmt.Errorf("could not create zstd reader: %w", err)
+	}
+	defer zstdReader.Close()
+
+	var backupData model.BackupData
+	if err := json.NewDecoder(zstdReader).Decode(&backupData); err != nil {
+		return nil, fmt.Errorf("could not decode json from zstd reader: %w", err)
+	}
+
+	return &backupData, nil
+}
+
+// backupCmd represents the 'backup' command.
+// It dumps all data from the database into a single JSON file.
+var backupCmd = &cobra.Command{ //
+	Use:   "backup [output-file]", //
+	Short: "Create a compressed (zstd) JSON backup of the database",
+	Long: `Dumps the entire contents of the Keymaster database (accounts, keys, audit logs, etc.)
+into a single, Zstandard-compressed JSON file.
+
+If an output file is specified, '.zst' will be appended to the name if it's not already present.
+If no output file is specified, a default filename 'keymaster-backup-YYYY-MM-DD.json.zst' is used.
+
+This file can be used for disaster recovery or for migrating to a different database backend.
+
+Examples:
+  # Backup to a default file (e.g., keymaster-backup-2025-10-26.json.zst)
+  keymaster backup
+
+  # Backup to a specific file
+  keymaster backup my-backup.json`, // .zst will be appended
+	Args: cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		i18n.Init(viper.GetString("language"))
+
+		var outputFile string
+		if len(args) == 0 {
+			outputFile = fmt.Sprintf("keymaster-backup-%s.json.zst", time.Now().Format("2006-01-02"))
+		} else {
+			outputFile = args[0]
+			if !strings.HasSuffix(outputFile, ".zst") {
+				outputFile += ".zst"
+			}
+		}
+
+		fmt.Println(i18n.T("backup.cli_starting"))
+
+		backupData, err := db.ExportDataForBackup()
+		if err != nil {
+			log.Fatalf("%s", i18n.T("backup.cli_error_export", err))
+		}
+
+		if err := writeCompressedBackup(outputFile, backupData); err != nil {
+			log.Fatalf("%s", i18n.T("backup.cli_error_write", err))
+		}
+
+		fmt.Println(i18n.T("backup.cli_success", outputFile))
+	},
+}
+
+// writeCompressedBackup handles the process of writing the backup data to a zstd-compressed file.
+// It streams the JSON encoding directly to the gzip writer for memory efficiency.
+func writeCompressedBackup(filename string, data *model.BackupData) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("could not create file: %w", err)
+	}
+	defer file.Close()
+
+	zstdWriter, err := zstd.NewWriter(file)
+	if err != nil {
+		return fmt.Errorf("could not create zstd writer: %w", err)
+	}
+	defer zstdWriter.Close()
+
+	encoder := json.NewEncoder(zstdWriter)
+	encoder.SetIndent("", "  ") // Pretty-print the JSON inside the compressed file
+
+	if err := encoder.Encode(data); err != nil {
+		return fmt.Errorf("could not encode json to zstd writer: %w", err)
+	}
+
+	return nil
+}
+
+// migrateCmd represents the 'migrate' command.
+var migrateCmd = &cobra.Command{
+	Use:   "migrate --type <db-type> --dsn <target-dsn>",
+	Short: "Migrate data from the current database to a new one",
+	Long: `Performs a database migration by exporting all data from the current database
+(configured in .keymaster.yaml) and importing it into a new target database.
+
+This command automates the following steps:
+1. Exports data from the source database in-memory.
+2. Connects to the target database specified by --type and --dsn.
+3. Applies all necessary database schema migrations to the target.
+4. Performs a full, destructive restore into the target database.
+
+Example:
+  keymaster migrate --type postgres --dsn "host=localhost user=keymaster dbname=keymaster"`,
+	Run: func(cmd *cobra.Command, args []string) {
+		i18n.Init(viper.GetString("language"))
+
+		targetType, _ := cmd.Flags().GetString("type")
+		targetDSN, _ := cmd.Flags().GetString("dsn")
+
+		if targetType == "" || targetDSN == "" {
+			log.Fatalf("%s", i18n.T("migrate.cli_error_flags"))
+		}
+
+		// --- 1. Backup from source DB ---
+		fmt.Println(i18n.T("migrate.cli_starting_backup"))
+		backupData, err := db.ExportDataForBackup()
+		if err != nil {
+			log.Fatalf("%s", i18n.T("migrate.cli_error_backup", err))
+		}
+		fmt.Println(i18n.T("migrate.cli_backup_success"))
+
+		// --- 2. Connect to target DB and run migrations ---
+		fmt.Println(i18n.T("migrate.cli_connecting_target", targetType))
+		targetStore, err := initTargetDB(targetType, targetDSN)
+		if err != nil {
+			log.Fatalf("%s", i18n.T("migrate.cli_error_connect", err))
+		}
+		fmt.Println(i18n.T("migrate.cli_connect_success"))
+
+		// --- 3. Restore to target DB ---
+		fmt.Println(i18n.T("migrate.cli_starting_restore"))
+		// We call the method directly on our temporary store instance.
+		if err := targetStore.ImportDataFromBackup(backupData); err != nil {
+			log.Fatalf("%s", i18n.T("migrate.cli_error_restore", err))
+		}
+
+		fmt.Println(i18n.T("migrate.cli_success"))
+		fmt.Println(i18n.T("migrate.cli_next_steps"))
+	},
+}
+
+// initTargetDB is a helper function that initializes a new database connection
+// for the migration target, runs migrations, and returns a Store instance.
+// It is a simplified, one-off version of db.InitDB that does not affect the
+// global `store` variable.
+func initTargetDB(dbType, dsn string) (db.Store, error) {
+	// This logic is intentionally duplicated from db.InitDB to create an
+	// isolated instance for the migration target without modifying the global state.
+	var targetDB *sql.DB
+	var err error
+
+	switch dbType {
+	case "sqlite":
+		if !strings.Contains(dsn, "_busy_timeout") {
+			dsn += "?_busy_timeout=5000"
+		}
+		targetDB, err = sql.Open("sqlite", dsn)
+		if err == nil {
+			if _, err = targetDB.Exec("PRAGMA foreign_keys = ON;"); err != nil {
+				return nil, err
+			}
+			if _, err = targetDB.Exec("PRAGMA journal_mode=WAL;"); err != nil {
+				return nil, err
+			}
+		}
+	case "postgres":
+		targetDB, err = sql.Open("pgx", dsn)
+	case "mysql":
+		targetDB, err = sql.Open("mysql", dsn)
+	default:
+		return nil, fmt.Errorf("unsupported database type: '%s'", dbType)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to open target database: %w", err)
+	}
+
+	// Run migrations on the target DB.
+	// We can reuse the migration logic from the db package.
+	if err := db.RunMigrations(targetDB, dbType); err != nil {
+		return nil, fmt.Errorf("failed to apply migrations to target database: %w", err)
+	}
+
+	// Return a new store instance for the target.
+	return db.NewStore(dbType, targetDB)
 }

@@ -14,55 +14,69 @@ setup.
 ## Core Features
 
 - **Modern Interactive TUI:** A beautiful and responsive terminal UI built with
-    `lipgloss`. Features a main dashboard, filterable lists, color-coded tables,
-    and a consistent, professional design.
-- **Multi-Language Support:** The TUI is fully internationalized, with initial
-    support for English and German.
-- **Centralized Management:** A single SQLite database (`keymaster.db`) acts as
-    the source of truth for all public keys and account assignments.
+    `lipgloss` that makes key management intuitive and efficient.
 - **Agentless Deployment:** Uses standard SSH/SFTP to connect to hosts and manage
     `authorized_keys` files. No remote agents required.
-- **Safe Key Rotation:** Features a robust system key rotation mechanism. Old keys
-    are retained to ensure you can always regain access to hosts that were
-    offline during a rotation.
-- **Fleet-Wide Operations:** Deploy key changes or audit your entire fleet of
-    active hosts with a single command.
-- **Drift Detection:** The `audit` command connects to each host and compares the
-    fully rendered, normalized `authorized_keys` content against the expected state
-    from the database (including the Keymaster header with the current system key
-    serial). Any difference is reported as drift.
+- **Automatic System Key Hardening:** Enforces the principle of least privilege by
+    automatically applying strict, SFTP-only restrictions to its own system key
+    on every deployment. This is a critical, zero-config security feature.
+- **Database Portability:** Easily `backup` your entire database to a compressed
+    JSON file, `restore` it for disaster recovery, or `migrate` seamlessly from
+    SQLite to PostgreSQL/MySQL.
+- **Robust Operations:**
+  - **Safe Key Rotation:** Rotate system keys without losing access to hosts
+      that were offline during the change.
+  - **Fleet-Wide Actions:** Deploy key updates or `audit` your entire fleet for
+      configuration drift with a single command.
+  - **Resilient Bootstrapping:** A crash-proof bootstrap process ensures no
+      orphaned temporary keys are left on remote hosts.
 - **Scriptable CLI:** All core features are available as command-line arguments,
     making Keymaster perfect for automation.
-- **SSH Agent Integration:** Can use a running SSH agent (including
-    Pageant/gpg-agent on Windows) for authentication for certain features, like
-    remote key importing.
+- **Flexible Backend:** Start with the default zero-config SQLite database, and
+    migrate to PostgreSQL or MySQL as your needs grow.
+- **Multi-Language Support:** The TUI is fully internationalized. We are actively
+    looking for translators! You can see the current status and contribute here:
 
-## A New Look
+[![Translation status](https://weblate.stargazer.at/widget/keymaster/multi-auto.svg)](https://weblate.stargazer.at/engage/keymaster/)
 
-Keymaster 1.2 introduces a completely redesigned user interface to make managing your keys a pleasure.
+## The Interface
+
+Keymaster features a modern, intuitive Terminal User Interface (TUI) that makes managing your keys a pleasure. The dashboard gives you a complete overview of your fleet's security posture at a glance.
 
 ```text
-      🔑 Keymaster
-  An agentless SSH key manager that just does the job.
+   🔑 Keymaster
 
-╭──────────────────────────────────────╮  ╭──────────────────────────────────────────────────╮
-│ Navigation                           │  │ System Status                                    │
-│                                      │  │                                                  │
-│   ▸ Manage Accounts                  │  │ Managed Accounts: 5 (5 active)                   │
-│     Manage Public Keys               │  │      Public Keys: 3 (1 global)                   │
-│     Assign Keys to Accounts          │  │       System Key: Active (Serial #1)             │
-│     Rotate System Keys               │  │                                                  │
-│     Deploy to Fleet                  │  │                                                  │
-│     View Audit Log                   │  │ Recent Activity                                  │
-│     View Accounts by Tag             │  │                                                  │
-│                                      │  │ 09-23 10:45  ADD_ACCOUNT      account: new@host  │
-│                                      │  │ 09-23 10:44  TRUST_HOST       hostname: new@host │
-│                                      │  │ 09-23 10:42  ROTATE_SYSTEM_KEY  new_serial: 1    │
-│                                      │  │ 09-23 10:40  DELETE_PUBLIC_KEY  comment: old-key │
-│                                      │  │ 09-23 10:39  ADD_PUBLIC_KEY   comment: new-key   │
-╰──────────────────────────────────────╯  ╰──────────────────────────────────────────────────╯
-
-  j/k up/down: navigate  enter: select  q: quit
+An agentless SSH key manager that just does the job.
+╭──────────────────────────────╮  ╭────────────────────────────────────────────────────────────────────────╮
+│                              │  │                                                                        │
+│  Navigation                  │  │  System Status                                                         │
+│                              │  │                                                                        │
+│  ▸ Manage Accounts           │  │  Managed Accounts: 22 (22 active)                                      │
+│    Manage Public Keys        │  │       Public Keys: 8 (4 global)                                        │
+│    Assign Keys to Accounts   │  │        System Key: Active (Serial #3)                                  │
+│    Rotate System Keys        │  │                                                                        │
+│    Deploy to Fleet           │  │                                                                        │
+│    View Audit Log            │  │  Deployment Status                                                     │
+│    Audit Hosts               │  │                                                                        │
+│    View Accounts by Tag      │  │  Hosts using current key: 21                                           │
+│    Language                  │  │  Hosts using past key(s): 1                                            │
+│                              │  │                                                                        │
+│                              │  │                                                                        │
+│                              │  │  Security Posture                                                      │
+│                              │  │                                                                        │
+│                              │  │  Key-Type Spread: ecdsa-sha2-nistp256: 2, ssh-ed25519: 4, ssh-rsa: 2   │
+│                              │  │                                                                        │
+│                              │  │                                                                        │
+│                              │  │  Recent Activity                                                       │
+│                              │  │                                                                        │
+│                              │  │  09-30T17:35 ROTATE_SYSTEM_KEY new_serial: 3                           │
+│                              │  │  09-30T00:51 TRUST_HOST hostname: 192.168.10.136                       │
+│                              │  │  09-30T00:51 ADD_ACCOUNT account: root@192.168.10.136                  │
+│                              │  │  09-30T00:49 TRUST_HOST hostname: 192.168.10.136                       │
+│                              │  │  09-30T00:49 TRUST_HOST hostname: 192.168.10.136                       │
+│                              │  │                                                                        │
+╰──────────────────────────────╯  ╰────────────────────────────────────────────────────────────────────────╯
+ j/k up/down: navigate   enter: select   q: quit   L: language                         
 ```
 
 ## Getting Started
@@ -74,82 +88,104 @@ Keymaster 1.2 introduces a completely redesigned user interface to make managing
     ```
 
 2. **Initialize the Database:**
-    Simply run Keymaster for the first time. It will automatically create
-    `keymaster.db` in the current directory.
+    Run Keymaster for the first time. It will automatically create `keymaster.db`
+    and a default `config.yaml` in the standard user configuration directory.
+    - **Linux/macOS:** `~/.config/keymaster/`
+    - **Windows:** `C:\Users\<user>\AppData\Roaming\keymaster\`
 
+    For backward compatibility, it will also read an existing `.keymaster.yaml` from the current directory.
     ```sh
     keymaster
     ```
 
 3. **Generate System Key:**
-    Inside the TUI, navigate to "Rotate System Keys" and follow the prompt to
-    generate your initial system key. This is the key Keymaster will use to
-    manage your hosts.
+    Inside the TUI, navigate to **"Rotate System Keys"** and follow the prompt.
+    This generates the initial key Keymaster will use to manage your hosts.
 
 4. **Bootstrap Your First Host:**
-    Manually add the new Keymaster public key (displayed in the previous step) to the `~/.ssh/authorized_keys` file of an account you want to manage.
+    This is where the magic happens.
+    - In the TUI, go to **"Manage Accounts"** and select **"Add Account"**.
+    - A dialog will appear with a one-line shell command. Copy it.
+    - Paste and run this command on the remote host you want to manage. It will
+      install a temporary key to allow Keymaster to connect.
 
 5. **Add the Account in Keymaster:**
-    In the TUI, go to "Manage Accounts" and add the account (e.g., `root@your-server`).
+    - Back in the TUI, fill in the account details (e.g., `root@your-server`) and
+      confirm. Keymaster will connect using the temporary key, deploy the final
+      `authorized_keys` file (with the hardened system key), and clean up after
+      itself.
 
-6. **Trust the Host:**
-    Still in "Manage Accounts," select the new account and press `v` to verify and trust the host's public key.
-
-You are now ready to manage this host with Keymaster!
+That's it! The host is now fully managed by Keymaster.
 
 ## Usage
 
 - **Interactive TUI (Default):**
 
-  ```sh
-  keymaster
-  ```
+```sh
+keymaster
+```
 
 - **Deploy to all hosts:**
 
-  ```sh
-  keymaster deploy
-  ```
+```sh
+keymaster deploy
+```
 
 - **Audit the fleet for drift (full file comparison):**
 
-  ```sh
-  keymaster audit
-  ```
+```sh
+keymaster audit
+```
 
 - **Trust a new host:**
 
-  ```sh
-  keymaster trust-host user@new-host
-  ```
+```sh
+keymaster trust-host user@new-host
+```
 
 - **Import keys from a file:**
 
-  ```sh
-  keymaster import /path/to/authorized_keys
-  ```
+```sh
+keymaster import /path/to/authorized_keys
+```
 
 - **Export SSH config:**
 
-  ```sh
-  keymaster export-ssh-client-config ~/.ssh/config
-  ```
+```bash
+keymaster export-ssh-client-config ~/.ssh/config
+```
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+- **Database Management:**
 
-## Third-Party Licenses
+```sh
+# Create a compressed backup
+keymaster backup
 
-Keymaster utilizes several third-party libraries, each with its own license. All dependency licenses are permissive and compatible with the MIT License. For a detailed list of dependencies and their license texts, please see the `NOTICE.md` file.
+# Restore from a backup (non-destructive by default)
+keymaster restore ./keymaster-backup.json.zst
 
-## Philosophy
+# Migrate from SQLite to PostgreSQL
+keymaster migrate --type postgres --dsn "host=localhost user=keymaster dbname=keymaster"
+```
 
-This tool was born out of frustration. Existing solutions for SSH key management often felt like using a sledgehammer to crack a nut—requiring complex configuration, server daemons, and constant management. This is especially true for smaller teams or homelabs where simplicity is paramount.
+- **Decommission an account:**
 
-Keymaster is different. It's built on a simple premise:
+```sh
+# Remove entire authorized_keys file
+keymaster decommission user@new-host
 
-> A tool should do the job without making you manage the tool itself.
+# Remove only Keymaster-managed content, keep other keys
+keymaster decommission user@hostname --keep-file
 
-It's designed for sysadmins and developers who want a straightforward, reliable way to control SSH access without the overhead. It's powerful enough for a fleet but simple enough for a home lab.
+# Decommission all accounts with a specific tag
+keymaster decommission --tag env:staging
+
+# Skip remote cleanup (database only)
+keymaster decommission user@hostname --skip-remote
+
+# Force decommission even if remote cleanup fails
+keymaster decommission user@hostname --force
+```
 
 ### A Note on Security & The System Key
 
@@ -183,10 +219,32 @@ and include the current system key serial in a header for traceability:
 command="internal-sftp",no-port-forwarding,no-x11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAA... keymaster-system-key
 ```
 
-This is not something you need to configure; Keymaster handles it for you to enforce the principle of least privilege.
-
 **What these options do:**
 
-- `command="internal-sftp"`: This is the most important restriction. It forces the key to only be used for SFTP sessions and prevents shell command execution. Keymaster's deployment and audit logic is designed to work with this restriction.
-- `no-port-forwarding`, `no-x11-forwarding`, `no-agent-forwarding`: These disable various forms of SSH tunneling, further reducing the key's capabilities.
-- `no-pty`: Prevents the allocation of a terminal, which is not needed for SFTP.
+- command="internal-sftp": The most critical restriction. It forces the key to only be used for SFTP sessions and prevents shell command execution.
+- no-port-forwarding, no-x11-forwarding, no-agent-forwarding: Disables various forms of SSH tunneling to prevent the key from being used to pivot.
+- no-pty: Prevents the allocation of a pseudo-terminal, reinforcing that no interactive session is possible.
+
+## Philosophy
+
+This tool was born out of frustration. Existing solutions for SSH key management often felt like using a sledgehammer to crack a nut—requiring complex configuration, server daemons, and constant management. This is especially true for smaller teams or homelabs where simplicity is paramount.
+
+Keymaster is different. It's built on a simple premise:
+
+> A tool should do the job without making you manage the tool itself.
+
+It's designed for sysadmins and developers who want a straightforward, reliable way to control SSH access without the overhead. It's powerful enough for a fleet but simple enough for a home lab.
+
+## Contributing
+
+Keymaster is an open-source project, and contributions are always welcome! Whether it's reporting a bug, submitting a feature request, or writing code, we appreciate your help.
+
+We are particularly looking for help with **translations**. If you speak a language other than English, you can easily contribute through our [Weblate project](https://weblate.stargazer.at/engage/keymaster/).
+
+Please read our [**Contributing Guidelines**](CONTRIBUTING.md) for details on our code conventions and the development process. All contributors are expected to follow our [**Code of Conduct**](CODE_OF_CONDUCT.md).
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the `LICENSE` file for details. For a detailed list of third-party dependencies and their license texts, please see the `NOTICE.md` file.

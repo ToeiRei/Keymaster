@@ -213,11 +213,14 @@ func (m tagsViewModel) View() string {
 
 	// Help/footer line always at the bottom
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
-	filterStatus := getFilterStatusLine(m.isFiltering, m.filter, FilterI18nKeys{
-		Filtering:    "tags_view.filtering",
-		FilterActive: "tags_view.filter_active",
-		FilterHint:   "tags_view.filter_hint",
-	})
+	var filterStatus string
+	if m.isFiltering {
+		filterStatus = i18n.T("tags_view.filtering", m.filter)
+	} else if m.filter != "" {
+		filterStatus = i18n.T("tags_view.filter_active", m.filter)
+	} else {
+		filterStatus = i18n.T("tags_view.filter_hint")
+	}
 	helpLine := footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T("tags_view.footer"), filterStatus))
 
 	return lipgloss.JoinVertical(lipgloss.Left, title, "", listPane, "", helpLine)

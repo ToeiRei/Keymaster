@@ -414,24 +414,30 @@ func (m *assignKeysModel) headerView() string {
 func (m *assignKeysModel) footerView() string {
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
 	var filterStatus string
-	var helpKey string
-	keys := FilterI18nKeys{
-		Filtering:    "assign_keys.filtering",
-		FilterActive: "assign_keys.filter_active",
-		FilterHint:   "assign_keys.search_hint",
-	}
 	var helpText string
 	if m.state == assignStateSelectKeys {
-		helpKey = "assign_keys.help_bar_keys"
-		filterStatus = getFilterStatusLine(m.isFilteringKey, m.keyFilter, keys)
-		helpText = fmt.Sprintf("%s  %s", i18n.T(helpKey), filterStatus)
+		if m.isFilteringKey {
+			filterStatus = i18n.T("assign_keys.filtering", m.keyFilter)
+		} else if m.keyFilter != "" {
+			filterStatus = i18n.T("assign_keys.filter_active", m.keyFilter)
+		} else {
+			filterStatus = i18n.T("assign_keys.search_hint")
+		}
+		helpText = fmt.Sprintf("%s  %s", i18n.T("assign_keys.help_bar_keys"), filterStatus)
 		if m.status != "" {
 			return statusMessageStyle.Render(m.status)
 		}
 	} else {
-		helpKey = "assign_keys.help_bar_accounts"
-		filterStatus = getFilterStatusLine(m.isFilteringAcct, m.accountFilter, keys)
-		helpText = fmt.Sprintf("%s  %s", i18n.T(helpKey), filterStatus)
+		// This logic is duplicated in View() for the filter bar, but that's okay.
+		// It's clearer than passing it around.
+		if m.isFilteringAcct {
+			filterStatus = i18n.T("assign_keys.filtering", m.accountFilter)
+		} else if m.accountFilter != "" {
+			filterStatus = i18n.T("assign_keys.filter_active", m.accountFilter)
+		} else {
+			filterStatus = i18n.T("assign_keys.search_hint")
+		}
+		helpText = fmt.Sprintf("%s  %s", i18n.T("assign_keys.help_bar_accounts"), filterStatus)
 	}
 	return footerStyle.Render(helpText)
 }
@@ -447,7 +453,14 @@ func (m *assignKeysModel) View() string {
 
 	// Left Pane
 	accountListTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("assign_keys.accounts_title"))
-	accountFilterBar := filterStyle.Render(getFilterStatusLine(m.isFilteringAcct, m.accountFilter, FilterI18nKeys{Filtering: "assign_keys.filtering", FilterActive: "assign_keys.filter_active", FilterHint: "assign_keys.search_hint"}))
+	var accountFilterBar string
+	if m.isFilteringAcct {
+		accountFilterBar = i18n.T("assign_keys.filtering", m.accountFilter)
+	} else if m.accountFilter != "" {
+		accountFilterBar = i18n.T("assign_keys.filter_active", m.accountFilter)
+	} else {
+		accountFilterBar = i18n.T("assign_keys.search_hint")
+	}
 	leftPaneContent := lipgloss.JoinVertical(lipgloss.Left, accountListTitle, "", m.accountViewport.View(), "", accountFilterBar)
 	paneHeight := m.accountViewport.Height + 6
 	leftPane := paneStyle.Width(m.accountViewport.Width + 4).Height(paneHeight).Render(leftPaneContent)
@@ -456,7 +469,14 @@ func (m *assignKeysModel) View() string {
 	var rightPane string
 	if m.state == assignStateSelectKeys {
 		keyPaneTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("assign_keys.keys_title", m.selectedAccount.String()))
-		keyFilterBar := filterStyle.Render(getFilterStatusLine(m.isFilteringKey, m.keyFilter, FilterI18nKeys{Filtering: "assign_keys.filtering", FilterActive: "assign_keys.filter_active", FilterHint: "assign_keys.search_hint"}))
+		var keyFilterBar string
+		if m.isFilteringKey {
+			keyFilterBar = i18n.T("assign_keys.filtering", m.keyFilter)
+		} else if m.keyFilter != "" {
+			keyFilterBar = i18n.T("assign_keys.filter_active", m.keyFilter)
+		} else {
+			keyFilterBar = i18n.T("assign_keys.search_hint")
+		}
 		rightPaneContent := lipgloss.JoinVertical(lipgloss.Left, keyPaneTitle, "", m.keyViewport.View(), "", keyFilterBar)
 		rightPane = paneStyle.Width(m.keyViewport.Width + 4).Height(paneHeight).Render(rightPaneContent)
 	} else {

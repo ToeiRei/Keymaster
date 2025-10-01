@@ -10,6 +10,7 @@ package bootstrap
 import (
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/signal"
 	"strings"
@@ -220,13 +221,55 @@ func removeTempKeyFromRemoteHost(session *BootstrapSession) error {
 		return fmt.Errorf("failed to parse private key: %w", err)
 	}
 
-	// Create SSH client configuration
+	// Create SSH client configuration with proper host key verification
+	hostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		// Canonicalize hostname to host:port format
+		canonical := hostname
+		if _, _, err := net.SplitHostPort(hostname); err != nil {
+			canonical = net.JoinHostPort(hostname, "22")
+		}
+
+		// Get the presented key
+		presentedKey := string(ssh.MarshalAuthorizedKey(key))
+
+		// Verify against known_hosts database
+		knownKey, err := db.GetKnownHostKey(canonical)
+		if err != nil {
+			return fmt.Errorf("failed to query known_hosts database: %w", err)
+		}
+
+		// If no key found for canonical format, try legacy host-only format
+		if knownKey == "" {
+			if hostOnly, _, err := net.SplitHostPort(canonical); err == nil {
+				legacyKey, lerr := db.GetKnownHostKey(hostOnly)
+				if lerr != nil {
+					return fmt.Errorf("failed to query known_hosts database: %w", lerr)
+				}
+				if legacyKey != "" {
+					knownKey = legacyKey
+				}
+			}
+		}
+
+		// If still no key found, reject the connection
+		if knownKey == "" {
+			return fmt.Errorf("unknown host key for %s - cannot verify host identity", canonical)
+		}
+
+		// Verify the key matches
+		if knownKey != presentedKey {
+			return fmt.Errorf("!!! HOST KEY MISMATCH FOR %s !!! - possible man-in-the-middle attack", canonical)
+		}
+
+		return nil
+	}
+
 	config := &ssh.ClientConfig{
 		User: session.PendingAccount.Username,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // We're just cleaning up
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         10 * time.Second,
 	}
 

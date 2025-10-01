@@ -13,7 +13,9 @@ go.work.sum
 vendor/
 
 # Common editor/IDE folders
+.claude/
 .idea/
 .keymaster.yaml
 keymaster.db-wal
 keymaster.db-shm
+keymaster-backup*.json.zst

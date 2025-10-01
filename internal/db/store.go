@@ -61,4 +61,9 @@ type Store interface {
 	UpdateBootstrapSessionStatus(id string, status string) error
 	GetExpiredBootstrapSessions() ([]*model.BootstrapSession, error)
 	GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error)
+
+	// Backup/Restore methods
+	ExportDataForBackup() (*model.BackupData, error)
+	ImportDataFromBackup(*model.BackupData) error
+	IntegrateDataFromBackup(*model.BackupData) error
 }

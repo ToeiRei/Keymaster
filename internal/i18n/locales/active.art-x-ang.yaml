@@ -21,9 +21,14 @@ menu.language: "Sprǣċ"
 dashboard.title: "Cǣġhealdend"
 dashboard.subtitle: "Ān unġesandboda SSH cǣġgerefa þe þæt ƿeorc dēþ."
 dashboard.system_status: "Systemstede"
+dashboard.deployment_status: "Sendungstede"
+dashboard.hosts_current_key: "Ƿeardas mid nīƿlīċum cǣġe: %d"
+dashboard.hosts_past_keys: "Ƿeardas mid ealdum cǣġ(um): %d"
 dashboard.system_key.not_generated: "Nā Ġeċeafd"
 dashboard.system_key.active: "Dǣdlīċ (Endebyrdnes #%d)"
-dashboard.accounts: "Ġerihte Rǣdmenn: %d (%d dǣdlīċe)" 
+dashboard.security_posture: "Sċildstede"
+dashboard.key_type_spread: "Cǣġa Cræftas: %s"
+dashboard.accounts: "Ġerihte Rǣdmenn: %d (%d dǣdlīċe)"
 dashboard.public_keys: "Opene Cǣgan: %d (%d eorþlīċe)"
 dashboard.system_key: "Systemcǣġ: %s"
 dashboard.recent_activity: "Nīƿe Dǣda"
@@ -35,13 +40,13 @@ language.select: "Ċēos sprǣċe:"
 language.help: "ūp/niþer: faran   enter: ċēosan   q/esc: eftfaran"
 
 # Account form translations
-account_form.username_label: "Brūcendnama:            "
+account_form.username_label: "Brūcendnama:"
 account_form.username_placeholder: "brūcend"
-account_form.hostname_label: "Ƿeardnama:              "
+account_form.hostname_label: "Ƿeardnama:"
 account_form.hostname_placeholder: "ƿƿƿ.bisene.com"
-account_form.label_label: "Mearcung (ġif þū ƿilt): "
+account_form.label_label: "Mearcung (ġif þū ƿilt):"
 account_form.label_placeholder: "ƿyrhtaƿeb-01"
-account_form.tags_label: "Mearcan (mid commum):   "
+account_form.tags_label: "Mearcan (mid commum):"
 account_form.tags_placeholder: "ġesċeaft:db,stede:nyc"
 account_form.edit_title: "Rǣdmann Rihtan"
 account_form.add_title: "Nīƿne Rǣdmann Eċan"
@@ -58,11 +63,12 @@ accounts.empty: "Nān rǣdmann ġefunden. Cnuc 'a' tō eċenne."
 accounts.empty_filtered: "Nān rǣdmann þīnum sīfe ġefēreþ."
 accounts.filtering: "Sīfe: %s▮"
 accounts.filter_active: "Sīfe: %s (cnuc 'esc' tō clǣnsiġenne)"
-accounts.filter_hint: "Cnuc / tō sīfenne..."
-accounts.footer: "(a)eċan (e)rihtan (d)ādilgian (t)ƿendan (v)ġetrēoƿian (i)inbringan (q)forlǣtan"
+accounts.filter_hint: "Cnuc / tō sīfenne…"
+accounts.footer: "(a)eċan (e)rihtan (d)ādilgian (t)ƿendan (v)ġetrēoƿian (i)inbringan
+  (q)forlǣtan"
 accounts.list_title: "Rǣdmenn"
 accounts.status.modified_success: "Ġesundfullīċe ġerihted rǣdmann."
-accounts.status.trust_attempt: "Fandian tō ġetrēoƿiġenne ƿeard %s..."
+accounts.status.trust_attempt: "Fandian tō ġetrēoƿiġenne ƿeard %s…"
 accounts.status.import_assigned: "Ġeseted %d inbrohtne cǣgan."
 accounts.status.import_skipped_assign: "Inbrohte %d nīƿe cǣgan būtan settunge."
 accounts.status.delete_cancelled: "Ādilgung ācierred."
@@ -72,16 +78,18 @@ accounts.status.verify_success: "Ġesundfullīċe ġetrēoƿod ƿeardcǣġ for %
 accounts.status.import_fail: "Inbring mislāmp: %v"
 accounts.status.import_no_new: "Nān nīƿ cǣġ ġefunden tō inbrengenne. Oferēode %d ġelīċe."
 accounts.status.toggle_success: "Ġeƿended stede for: %s"
-accounts.status.verify_start: "Ġefæstnian ƿeardcǣġ for %s..."
-accounts.status.import_start: "Inbringende cǣgan fram %s..."
+accounts.status.verify_start: "Ġefæstnian ƿeardcǣġ for %s…"
+accounts.status.import_start: "Inbringende cǣgan fram %s…"
 accounts.import_confirm.title: "âœ¨ Feorrancumende Inbringes Ġetrēoƿung"
 accounts.import_confirm.found_keys: "Ġefunden %d nīƿe opene cǣgan on þǣm feorran ƿearde:"
 accounts.import_confirm.question: "Settan þās %d nīƿan cǣgan tō þissum rǣdmenn? (ġ/n)"
 accounts.delete_confirm.title: "ðŸ—'ï¸ Ādilgunges Ġetrēoƿung"
-accounts.delete_confirm.question: "Eart þū ġeƿiss þæt þū ƿilt ādilgian þone rǣdmann\n\n%s?"
+accounts.delete_confirm.question: "Eart þū ġeƿiss þæt þū ƿilt ādilgian þone rǣdmann
+  %s?"
 accounts.delete_confirm.yes: "Ġēa, Ādilgian"
 accounts.delete_confirm.no: "Nā, Ācierran"
-accounts.delete_confirm.help: "(ƿinstra/sƿīðra tō farenne, enter tō ġetrēoƿiġenne, esc tō ācierrenne)"
+accounts.delete_confirm.help: "(ƿinstra/sƿīðra tō farenne, enter tō ġetrēoƿiġenne,
+  esc tō ācierrenne)"
 accounts.tags: "Mearcan: %s"
 
 # Public keys overview translations
@@ -91,8 +99,9 @@ public_keys.empty: "Nān open cǣġ ġefunden. Cnuc 'a' tō eċenne."
 public_keys.empty_filtered: "Nān cǣġ þīnum sīfe ġefēreþ."
 public_keys.filtering: "Sīfe: %s▮"
 public_keys.filter_active: "Sīfe: %s (cnuc 'esc' tō clǣnsiġenne)"
-public_keys.filter_hint: "Cnuc / tō sīfenne..."
-public_keys.footer: "(a)eċan (c)ġeċīeġan (d)ādilgian (g)eorþlīċ ƿendan (u)brūcung (q)forlǣtan"
+public_keys.filter_hint: "Cnuc / tō sīfenne…"
+public_keys.footer: "(a)eċan (c)ġeċīeġan (d)ādilgian (g)eorþlīċ ƿendan (u)brūcung
+  (q)forlǣtan"
 public_keys.list_title: "Opene Cǣgan"
 public_keys.detail_comment: "Smeaung: %s"
 public_keys.detail_algorithm: "Cræft: %s"
@@ -107,11 +116,14 @@ public_keys.status.toggle_success: "Ġeƿended eorþlīċ stede for cǣġ: %s"
 public_keys.status.copy_success: "Ġeċīeġed cǣġ '%s' tō clipbordum."
 public_keys.status.copy_failed: "Mislāmp tō ġeċīeġenne tō clipbordum: %s"
 public_keys.delete_confirm.title: "ðŸ—'ï¸ Ādilgunges Ġetrēoƿung"
-public_keys.delete_confirm.question: "Eart þū ġeƿiss þæt þū ƿilt ādilgian þone openan cǣġ\n\n%s?"
-public_keys.delete_confirm.warning: "Þis ƿile hit āfeormianne fram eallum rǣdmannum þe hit is ġeseted tō."
+public_keys.delete_confirm.question: "Eart þū ġeƿiss þæt þū ƿilt ādilgian þone openan
+  cǣġ\n\n%s?"
+public_keys.delete_confirm.warning: "Þis ƿile hit āfeormianne fram eallum rǣdmannum
+  þe hit is ġeseted tō."
 public_keys.delete_confirm.yes: "Ġēa, Ādilgian"
 public_keys.delete_confirm.no: "Nā, Ācierran"
-public_keys.delete_confirm.help: "(ƿinstra/sƿīðra tō farenne, enter tō ġetrēoƿiġenne, esc tō ācierrenne)"
+public_keys.delete_confirm.help: "(ƿinstra/sƿīðra tō farenne, enter tō ġetrēoƿiġenne,
+  esc tō ācierrenne)"
 public_keys.usage_report.title: "Cǣġes Brūcunges Ġeƿrit for: %s"
 public_keys.usage_report.not_assigned: "Þes cǣġ nis ġeseted tō nānum rǣdmannum."
 public_keys.usage_report.assigned_to: "Þes cǣġ is ġeseted tō þissum rǣdmannum:"
@@ -120,19 +132,25 @@ public_keys.usage_report.help: "(esc oþþe q tō eftfarenne)"
 # Public key form translations
 public_key_form.add_title: "Nīƿne Openan Cǣġ Eċan"
 public_key_form.prompt: "Clīfan Openan Cǣġ: "
-public_key_form.placeholder: "ssh-ed25519 AAAA... brūcend@ƿeard"
-public_key_form.checkbox_unchecked: "[ ] Settan sƿā Eorþlīċne Cǣġ (bēoþ ġesended tō eallum rǣdmannum)"
-public_key_form.checkbox_checked: "[x] Settan sƿā Eorþlīċne Cǣġ (bēoþ ġesended tō eallum rǣdmannum)"
-public_key_form.help: "(tab tō farenne, space/enter tō ƿendenne, enter on innġange tō sendenne, esc tō ācierrenne)"
+public_key_form.placeholder: "ssh-ed25519 AAAA… brūcend@ƿeard"
+public_key_form.checkbox_unchecked: "[ ] Settan sƿā Eorþlīċne Cǣġ (bēoþ ġesended tō
+  eallum rǣdmannum)"
+public_key_form.checkbox_checked: "[x] Settan sƿā Eorþlīċne Cǣġ (bēoþ ġesended tō
+  eallum rǣdmannum)"
+public_key_form.help: "(tab tō farenne, space/enter tō ƿendenne, enter on innġange
+  tō sendenne, esc tō ācierrenne)"
 public_key_form.error: "Gedƿola: %v"
-public_key_form.info: "Clīfan rihte SSH openan cǣġ. Þū miht settan hit sƿā eorþlīċ tō sendenne tō eallum rǣdmannum."
+public_key_form.info: "Clīfan rihte SSH openan cǣġ. Þū miht settan hit sƿā eorþlīċ
+  tō sendenne tō eallum rǣdmannum."
 
 # Assign keys view translations
-assign_keys.help_bar_accounts: "j/k ūp/niþer: faran   enter: ċēosan   /: sēċan   esc: eftfaran   q: forlǣtan"
-assign_keys.help_bar_keys: "j/k ūp/niþer: faran   space: ƿendan   /: sēċan   esc: eftfaran   q: forlǣtan"
+assign_keys.help_bar_accounts: "j/k ūp/niþer: faran   enter: ċēosan   /: sēċan   esc:
+  eftfaran   q: forlǣtan"
+assign_keys.help_bar_keys: "j/k ūp/niþer: faran   space: ƿendan   /: sēċan   esc:
+  eftfaran   q: forlǣtan"
 assign_keys.accounts_title: "Rǣdmenn"
 assign_keys.no_accounts: "Nān rǣdmann ġefunden. Cnuc 'a' tō eċenne."
-assign_keys.search_hint: "Cnuc / tō sēċenne..."
+assign_keys.search_hint: "Cnuc / tō sēċenne…"
 assign_keys.keys_title: "Cǣgan Settan for: %s"
 assign_keys.keys_title_short: "Cǣgan"
 assign_keys.no_keys: "Nān open cǣġ ġefunden. Cnuc 'a' tō eċenne."
@@ -155,33 +173,45 @@ assign_keys.global_marker: "ðŸŒ "
 # Rotate key translations
 rotate_key.title: "Systemcǣġes Ġerihte"
 rotate_key.confirm_rotate_title: "âš ï¸ Ġetrēoƿ Systemcǣġes Ġehƿyrfunge"
-rotate_key.confirm_rotate_question: "Eart þū ġeƿiss þæt þū ƿilt ġehƿyrfan þone systemcǣġ?\n\nÞis ƿile ċeafiġan nīƿne cǣġ.\n\nÞis dǣd hrīneþ EALLE ġerihtode ƿeardas.\nÞū sċeoldest sendan þone nīƿan cǣġ tō þīnum flote hrædlīċe æfter ġehƿyrfunge.\n\nFara forþ ġif þū ƿāst hƿæt þū dēst!"
+rotate_key.confirm_rotate_question: "Eart þū ġeƿiss þæt þū ƿilt ġehƿyrfan þone systemcǣġ?\n\
+  \nÞis ƿile ċeafiġan nīƿne cǣġ.\n\nÞis dǣd hrīneþ EALLE ġerihtode ƿeardas.\nÞū sċeoldest
+  sendan þone nīƿan cǣġ tō þīnum flote hrædlīċe æfter ġehƿyrfunge.\n\nFara forþ ġif
+  þū ƿāst hƿæt þū dēst!"
 rotate_key.confirm_generate_title: "âš™ï¸ Ċeafian Fyrste Systemcǣġ"
-rotate_key.confirm_generate_question: "Nān Cǣġhealdend systemcǣġ ġefunden.\n\nÞes cǣġ is nēodbeþearf for Cǣġhealdend tō ġebindenne tō ġerihtode ƿeardas.\n\nƿilt þū ċeafiġan ānne nū?"
-rotate_key.checking: "Sēċende for ġesittendan systemcǣġe..."
-rotate_key.generating: "Ċeafiġende nīƿ ed25519 cǣġġepar, ġebīd þē..."
-rotate_key.generated: "âœ… Ġesundfullīċe ġeċeafod and ġehealden systemcǣġ mid endebyrdnesse #%d."
+rotate_key.confirm_generate_question: "Nān Cǣġhealdend systemcǣġ ġefunden.\n\nÞes
+  cǣġ is nēodbeþearf for Cǣġhealdend tō ġebindenne tō ġerihtode ƿeardas.\n\nƿilt þū
+  ċeafiġan ānne nū?"
+rotate_key.checking: "Sēċende for ġesittendan systemcǣġe…"
+rotate_key.generating: "Ċeafiġende nīƿ ed25519 cǣġġepar, ġebīd þē…"
+rotate_key.generated: "âœ… Ġesundfullīċe ġeċeafod and ġehealden systemcǣġ mid endebyrdnesse
+  #%d."
 rotate_key.bootstrap_header: "ðŸš¨ GRUNDLECGINGE DǢD NĒDBEÞEARF ðŸš¨"
-rotate_key.bootstrap_body: "Þū mōst nū mid handa eċan þone folġendan openan cǣġ tō þǣre `authorized_keys` truman for ǣlċne rǣdmann þe þū þencest tō ġerihtenne mid Cǣġhealdend:"
-rotate_key.rotating: "Ġehƿyrfende systemcǣġ, ġebīd þē..."
-rotate_key.rotated: "âœ… Ġesundfullīċe ġehƿyrfed systemcǣġ. Se nīƿa dǣdlīċa cǣġ is endebyrdnes #%d."
+rotate_key.bootstrap_body: "Þū mōst nū mid handa eċan þone folġendan openan cǣġ tō
+  þǣre `authorized_keys` truman for ǣlċne rǣdmann þe þū þencest tō ġerihtenne mid
+  Cǣġhealdend:"
+rotate_key.rotating: "Ġehƿyrfende systemcǣġ, ġebīd þē…"
+rotate_key.rotated: "âœ… Ġesundfullīċe ġehƿyrfed systemcǣġ. Se nīƿa dǣdlīċa cǣġ is
+  endebyrdnes #%d."
 rotate_key.deploy_reminder: "Send tō þīnum flote tō settenne þone nīƿan cǣġ."
 rotate_key.error_generate: "mislāmp tō ċeafiġenne systemcǣġ: %w"
 rotate_key.error_save: "mislāmp tō healdenne systemcǣġ tō dætafate: %w"
-rotate_key.error_save_rotated: "mislāmp tō healdenne ġehƿyrfedne systemcǣġ tō dætafate: %w"
+rotate_key.error_save_rotated: "mislāmp tō healdenne ġehƿyrfedne systemcǣġ tō dætafate:
+  %w"
 rotate_key.error: "Gedƿola: %v"
 rotate_key.yes_rotate: "Ġēa, Ġehƿyrfan"
 rotate_key.no_cancel: "Nā, Ācierran"
 rotate_key.yes_generate: "Ġēa, Ċeafian"
-rotate_key.help_modal: "(ƿinstra/sƿīðra tō farenne, enter tō ġetrēoƿiġenne, esc tō ācierrenne)"
+rotate_key.help_modal: "(ƿinstra/sƿīðra tō farenne, enter tō ġetrēoƿiġenne, esc tō
+  ācierrenne)"
 rotate_key.help_done: "Cnuc 'q' tō eftfarenne tō þǣm fruman menu."
 
 # Tags view translations
 tags_view.title: "Rǣdmenn be Mearcum"
-tags_view.empty: "Nān mearca oþþe rǣdmenn ġefunden. Eċ mearcan tō rǣdmannum tō sēonne hīe hēr."
+tags_view.empty: "Nān mearca oþþe rǣdmenn ġefunden. Eċ mearcan tō rǣdmannum tō sēonne
+  hīe hēr."
 tags_view.filtering: "Sīfe: %s▮"
 tags_view.filter_active: "Sīfe: %s (cnuc 'esc' tō clǣnsiġenne)"
-tags_view.filter_hint: "Cnuc / tō sīfenne..."
+tags_view.filter_hint: "Cnuc / tō sīfenne…"
 tags_view.footer: "(enter) ūtbrǣdan/tosāman   /: sīfe   esc: eftfaran   q: forlǣtan"
 
 # Deployment view translations
@@ -193,33 +223,32 @@ deploy.title: "ðŸš€ Sendan tō Flote"
 deploy.select_account: "ðŸš€ Sendung: Ċēos Rǣdmann"
 deploy.select_tag: "ðŸš€ Sendung: Ċēos Mearc"
 deploy.show_keys: "Gewritu cyninges bebodes for %s"
-deploy.deploying_fleet: "ðŸš€ Sendende tō Flote..."
-deploy.deploying: "ðŸš€ Sendende..."
+deploy.deploying_fleet: "ðŸš€ Sendende tō Flote…"
+deploy.deploying: "ðŸš€ Sendende…"
 deploy.complete: "âœ… Sendung Fullfremmed"
 deploy.failed: "ðŸ'¥ Sendung Mislāmp"
 deploy.no_accounts: "Nān dǣdlīċ rǣdmann ġefunden. Eċ ānne oþþe ġeġearƿa ġesittendne."
 deploy.no_tags: "Nān mearca ġefunden in nānum rǣdmannum."
 deploy.no_accounts_tag: "Nān dǣdlīċ rǣdmann mid mearca '%s' tō sendenne tō."
-deploy.starting_fleet: "Onġinnende flotesendunge..."
-deploy.starting_tag: "Onġinnende sendunge tō mearca '%s'..."
-deploy.deploying_to: "Sendende tō %s..."
+deploy.starting_fleet: "Onġinnende flotesendunge…"
+deploy.starting_tag: "Onġinnende sendunge tō mearca '%s'…"
+deploy.deploying_to: "Sendende tō %s…"
 deploy.success: "Ġesundfullīċe ġesended tō %s and ġeniƿod endebyrdnes tō #%d."
 deploy.fleet_complete: "Flotesendung fullfremmed."
 deploy.summary: "\n\nEndebyrsnūng: %d ġesundfullīċe, %d mislāmpe."
 deploy.failed_accounts: "\n\nMislāmpode Sendungas:\n%s"
-deploy.pending: "bīdende..."
+deploy.pending: "bīdende…"
 deploy.failed_short: "mislāmp"
 deploy.success_short: "ġesund"
-deploy.please_wait: "(Ġebīd þē...)"
 deploy.help_menu: "j/k oþþe ūp/niþer: faran   enter: ċēosan   q: forlǣtan"
 deploy.help_select: "enter: ċēosan   esc: eftfaran"
 deploy.help_keys: "c: ġeċīeġan   esc: eftfaran"
-deploy.help_wait: "(Ġebīd þē...)"
+deploy.help_wait: "(Ġebīd þē…)"
 deploy.help_complete: "(cnuc enter oþþe esc tō forþfarenne)"
 deploy.help_failed: "esc: eftfaran"
 deploy.filtering: "Sīfe: %s▮"
 deploy.filter_active: "Sīfe: %s (cnuc 'esc' tō clǣnsiġenne)"
-deploy.filter_hint: "Cnuc / tō sīfenne..."
+deploy.filter_hint: "Cnuc / tō sīfenne…"
 deploy.status.copy_success: "Ġeċīeġed authorized_keys innung tō clipbordum."
 deploy.status.copy_failed: "Mislāmp tō ġeċīeġenne tō clipbordum: %s"
 
@@ -242,75 +271,59 @@ audit.tui.menu.audit_tag: "Smeagan be Mearca"
 audit.tui.menu.toggle_mode: "Mōd"
 audit.tui.mode_strict: "Strang (full ġeliċnunge)"
 audit.tui.mode_serial: "Endebyrdnes (hēafod ānlīċe)"
-audit.tui.help_menu: "j/k oþþe ūp/niþer: faran   enter: ċēosan   m: ƿendan mōd   q: forlǣtan"
+audit.tui.help_menu: "j/k oþþe ūp/niþer: faran   enter: ċēosan   m: ƿendan mōd   q:
+  forlǣtan"
 audit.tui.select_account: "Ž Smeagung: Ċēos Rǣdmann"
 audit.tui.select_tag: "Ž Smeagung: Ċēos Mearc"
-audit.tui.auditing_fleet: "Ž Smeagende Flote..."
-audit.tui.auditing: "Ž Smeagende..."
+audit.tui.auditing_fleet: "🔎 Smeagende Flote…"
+audit.tui.auditing: "🔎 Smeagende…"
 audit.tui.complete: "âœ… Smeagung Fullfremmed"
 audit.tui.failed: "ðŸ'¥ Smeagung Mislāmp"
 audit.tui.no_accounts: "Nān dǣdlīċ rǣdmann ġefunden. Eċ ānne oþþe ġeġearƿa ġesittendne."
 audit.tui.no_tags: "Nān mearca ġefunden in nānum rǣdmannum."
 audit.tui.no_accounts_tag: "Nān dǣdlīċ rǣdmann mid mearca '%s' tō smeagenne."
-audit.tui.starting_fleet: "Onġinnende flotesmeagunge..."
-audit.tui.starting_tag: "Onġinnende smeagunge for mearca '%s'..."
-audit.tui.auditing_to: "Smeagende %s..."
+audit.tui.starting_fleet: "Onġinnende flotesmeagunge…"
+audit.tui.starting_tag: "Onġinnende smeagunge for mearca '%s'…"
 audit.tui.ok_short: "ġōd"
 audit.tui.failed_short: "drīf"
-audit.tui.pending: "bīdende..."
+audit.tui.pending: "bīdende…"
 audit.tui.summary: "\n\nEndebyrsnūng: %d ġōd, %d drīf."
 audit.tui.failed_accounts: "\n\nDrīf Ġefunden:\n%s"
 audit.tui.help_select: "enter: ċēosan   esc: eftfaran"
-audit.tui.help_wait: "(Ġebīd þē...)"
+audit.tui.help_wait: "(Ġebīd þē…)"
 audit.tui.help_complete: "(cnuc enter oþþe esc tō forþfarenne)"
 audit.tui.help_failed: "esc: eftfaran"
 audit.tui.filtering: "Sīfe: %s▮"
 audit.tui.filter_active: "Sīfe: %s (cnuc 'esc' tō clǣnsiġenne)"
-audit.tui.filter_hint: "Cnuc / tō sīfenne..."
-
-# Config
-config.error_init_db: "gedƿola onġinnende dætafate: %w"
-config.created_default: "Nān ġefylletruma ġefunden. Ġeċeafod ġeƿunelīċ '.keymaster.yaml' in þǣm andƿeardan ƿrītunge."
+audit.tui.filter_hint: "Cnuc / tō sīfenne…"
 
 # CLI specific translations - keeping technical error messages closer to modern for debugging
-deploy.cli_error_get_accounts: "Gedƿola fōnde rǣdmenn: %v"
-deploy.cli_account_not_found: "Rǣdmann '%s' nā ġefunden oþþe nis dǣdlīċ."
-deploy.error_get_bootstrap_key: "mislāmp tō fōnne dǣdlīċan systemcǣġ for grundlecginge: %w"
-deploy.error_no_bootstrap_key: "nān dǣdlīċ systemcǣġ ġefunden for grundlecginge"
-deploy.error_get_serial_key: "mislāmp tō fōnne systemcǣġ mid endebyrdnesse %d: %v"
-deploy.error_no_serial_key: "dætafates unġeliċnes: nān systemcǣġ ġefunden for endebyrdnes %d"
-deploy.error_get_active_key_for_serial: "ne mihte ġefōn dǣdlīċne systemcǣġ for endebyrdnes niƿunge"
-deploy.error_connection_failed: "ġebindung mislāmp: %w"
-deploy.error_db_update_failed: "dætafate niƿung mislāmp æfter ġesundfulle sendunge: %w"
-deploy.error_no_bootstrap_key_tui: "nān dǣdlīċ systemcǣġ ġefunden for grundlecginge. Ċeafa ānne"
-deploy.error_no_serial_key_tui: "dætafates unġeliċnes: nān systemcǣġ ġefunden for endebyrdnes %d on rǣdmenn %s"
-deploy.error_connection_failed_tui: "mislāmp tō ġebindenne tō %s: %w"
-deploy.error_deployment_failed_tui: "sendung tō %s mislāmp: %w"
-deploy.error_db_update_failed_tui: "sendung ġelāmp, ac mislāmp tō niƿiġenne dætafate endebyrdnes: %w"
-deploy.error_get_serial_for_status: "sendung ġelāmp, ac ne mihte fōn nīƿe endebyrdnes for stede ærendungan: %w"
-deploy.error_deployment_failed: "sendung mislāmp: %w"
-
 # Audit CLI command
 audit.cli_error_get_accounts: "Gedƿola fōnde rǣdmenn: %v"
 audit.error_not_deployed: "ƿeard næfþ ġiet bēon ġesended tō (endebyrdnes is 0)"
 audit.error_get_serial_key: "ne mihte fōn systemcǣġ %d fram dætafate: %v"
-audit.error_no_serial_key: "dætafates unġeliċnes: nān systemcǣġ ġefunden for endebyrdnes %d"
+audit.error_no_serial_key: "dætafates unġeliċnes: nān systemcǣġ ġefunden for endebyrdnes
+  %d"
 audit.error_connection_failed: "ġebindung mislāmp brūcende cǣġendebyrdnes %d: %w"
 audit.error_read_remote_file: "ne mihte rǣdan feorran authorized_keys: %w"
-audit.error_generate_expected: "ne mihte ċeafiġan ġeƿenedne cǣgan innung for ġeliċnunge: %w"
-audit.error_drift_detected: "innunges drīf ġefunden. Feorran truma ne ġefēreþ þǣre ġeƿenedan ġescēadƿīsnesse"
+audit.error_generate_expected: "ne mihte ċeafiġan ġeƿenedne cǣgan innung for ġeliċnunge:
+  %w"
+audit.error_drift_detected: "innunges drīf ġefunden. Feorran truma ne ġefēreþ þǣre
+  ġeƿenedan ġescēadƿīsnesse"
 
 # Rotate Key CLI command
-rotate_key.cli_rotating: "âš™ï¸  Ġehƿyrfende systemcǣġ..."
+rotate_key.cli_rotating: "âš™ï¸  Ġehƿyrfende systemcǣġ…"
 rotate_key.cli_error_generate: "Gedƿola ċeafiġende nīƿne systemcǣġ: %w"
 rotate_key.cli_error_save: "Gedƿola healdende ġehƿyrfedne cǣġ tō dætafate: %w"
-rotate_key.cli_rotated_success: "\nâœ… Ġesundfullīċe ġehƿyrfed systemcǣġ. Se nīƿa dǣdlīċa cǣġ is endebyrdnes #%d."
-rotate_key.cli_deploy_reminder: "Ryne 'keymaster deploy' tō settenne þone nīƿan cǣġ tō þīnum flote."
+rotate_key.cli_rotated_success: "\nâœ… Ġesundfullīċe ġehƿyrfed systemcǣġ. Se nīƿa
+  dǣdlīċa cǣġ is endebyrdnes #%d."
+rotate_key.cli_deploy_reminder: "Ryne 'keymaster deploy' tō settenne þone nīƿan cǣġ
+  tō þīnum flote."
 
 # Import CLI command
-import.start: "ðŸ Inbrengde cǣgan fram %s..."
+import.start: "ðŸ Inbrengde cǣgan fram %s…"
 import.skip_invalid_line: "  - Oferfarende unriht cǣġlīne: %s"
-import.skip_empty_comment: "  - Oferfarende cǣġ mid īdele smeagunge: %.20s..."
+import.skip_empty_comment: "  - Oferfarende cǣġ mid īdele smeagunge: %.20s…"
 import.skip_duplicate: "  - Oferfarende ġelīċne cǣġ (smeagung ġesitteþ): %s"
 import.error_opening_file: "Gedƿola openende truman: %v"
 import.error_adding_key: "  - Gedƿola eċende cǣġ '%s': %v"
@@ -325,46 +338,34 @@ export_ssh_config.date: "Dæġ"
 export_ssh_config.error_write_file: "Gedƿola ƿrītende truman: %v"
 export_ssh_config.success: "âœ… Ġesundfullīċe ūtsended SSH ġescēadƿīsnes tō %s"
 
-# Trust Host CLI command
-trust_host.error_invalid_format: "Unriht rǣdmannes form. Ġeƿened brūcend@ƿeard."
-trust_host.retrieving_key: "Fandian tō ġefeccenne ƿeardcǣġ fram %s..."
-trust_host.error_get_key: "Ne mihte fōn ƿeardcǣġ: %v"
-trust_host.authenticity_warning_1: "Sēo sōþfæstnes ƿeardes '%s' ne mæġ bēon ġefæstned."
-trust_host.authenticity_warning_2: "%s cǣġes fingramearca is %s."
-trust_host.confirm_prompt: "Eart þū ġeƿiss þæt þū ƿilt forþfaran ġebindende (ġēa/nā)? "
-trust_host.not_trusted_abort: "Ƿeardcǣġ nā ġetrēoƿod. Forlǣtende."
-trust_host.error_save_key: "Mislāmp tō healdenne ƿeardcǣġ tō dætafate: %v"
-trust_host.added_success: "Ƿarnung: Ēcneslīċe ġeeċed '%s' (ġesċeaft %s) tō þǣre ġecunnena ƿearda rǣdinge."
-
 # Bootstrap workflow translations
-bootstrap.creating_session: "Ċeafiġende Grundlecginges Ġesittan..."
+bootstrap.creating_session: "Ċeafiġende Grundlecginges Ġesittan…"
 bootstrap.title: "Grundlecgan Nīƿne Ƿeard"
-bootstrap.step1_description: "Clīf þās bebodu on þǣm ġemǣrceda ƿearde tō settenne þone þrāgwīlan cǣġ:"
+bootstrap.step1_description: "Clīf þās bebodu on þǣm ġemǣrceda ƿearde tō settenne
+  þone þrāgwīlan cǣġ:"
 bootstrap.step1_copy_hint: "Cnuc 'c' tō ġeċīeġenne bebod tō clipbordum"
 bootstrap.step1_copied: "âœ Bebod ġeċīeġed tō clipbordum!"
 bootstrap.step1_help: "Cnuc Enter tō forþfarenne, ESC tō ācierrenne"
 bootstrap.confirm_title: "Ġetrēoƿ Cǣġes Settunge"
-bootstrap.confirm_description: "Hæfst þū ġesundfullīċe ġeclīfed and ġeƿyrhted þæt bebod on þǣm ġemǣrceda ƿearde?"
+bootstrap.confirm_description: "Hæfst þū ġesundfullīċe ġeclīfed and ġeƿyrhted þæt
+  bebod on þǣm ġemǣrceda ƿearde?"
 bootstrap.confirm_yes: "Ġēa, iċ sette hit"
 bootstrap.confirm_no: "Ċeafa nīƿ bebod"
 bootstrap.confirm_help: "(ƿinstra/sƿīðra tō farenne, enter tō ġetrēoƿiġenne)"
 bootstrap.testing_title: "Fandiġende Ġebindunge"
-bootstrap.testing_progress: "Fandiġende ġebindunge mid þrāgwīlan cǣġe..."
-bootstrap.testing_failed: "Ġebindunges fandung mislāmp: %s"
 bootstrap.testing_success: "Ġebindunges fandung ġelāmp!"
 bootstrap.testing_retry_help: "(cnuc r tō edfarenne, tab tō eftfarenne, esc tō ācierrenne)"
 bootstrap.select_keys_title: "Ċēos Cǣgan tō Sendenne"
-bootstrap.select_keys_description: "Ċēos hwelċe opene cǣgan tō settenne tō þissum rǣdmenn:"
+bootstrap.select_keys_description: "Ċēos hwelċe opene cǣgan tō settenne tō þissum
+  rǣdmenn:"
 bootstrap.select_keys_help: "(j/k tō farenne, space tō ƿendenne, enter tō forþfarenne)"
 bootstrap.confirm_deploy_title: "Ġetrēoƿ Sendunge"
-bootstrap.will_create_account: "Ƿile ċeafiġan rǣdmann: %s@%s"
-bootstrap.will_deploy_keys: "Ƿile sendan %d ġecorene cǣgan"
 bootstrap.will_replace_temp_key: "Ƿile ġeēdnīƿian þrāgwīlne cǣġ mid systemcǣġe"
 bootstrap.deploy: "Sendan"
 bootstrap.back: "Eftfaran"
 bootstrap.confirm_deploy_help: "(ƿinstra/sƿīðra tō farenne, enter tō ġetrēoƿiġenne)"
-bootstrap.deploying_title: "Sendende..."
-bootstrap.deploying_progress: "Sendende cǣgan and fullfremmiende rǣdmannes ġesċeaft..."
+bootstrap.deploying_title: "Sendende…"
+bootstrap.deploying_progress: "Sendende cǣgan and fullfremmiende rǣdmannes ġesċeaft…"
 bootstrap.deploying_help: "(ġebīd þē, ne ġebreċ þū)"
 bootstrap.success_title: "Grundlecging Fullfremmed"
 bootstrap.success_message: "Ġesundfullīċe grundlecgod %s@%s"
@@ -381,13 +382,88 @@ bootstrap.error_options: "Ċēos hū tō forþfarenne:"
 bootstrap.error_retry: "Edfandian"
 bootstrap.error_regenerate: "Ċeafian Nīƿne Cǣġ"
 bootstrap.error_cancel: "Ācierran Grundlecginge"
-bootstrap.error_help: "(ƿinstra/sƿīðra tō farenne, enter tō ġetrēoƿiġenne, esc tō ācierrenne)"
+bootstrap.error_help: "(ƿinstra/sƿīðra tō farenne, enter tō ġetrēoƿiġenne, esc tō
+  ācierrenne)"
 
+# Config
+config.error_init_db: "gedƿola onġinnende dætafate: %w"
+
+# Deploy CLI command
+deploy.cli_account_not_found: "Rǣdmann '%s' nā ġefunden oþþe nis dǣdlīċ."
+deploy.error_get_bootstrap_key: "mislāmp tō fōnne dǣdlīċan systemcǣġ for grundlecginge:
+  %w"
+deploy.error_no_bootstrap_key: "nān dǣdlīċ systemcǣġ ġefunden for grundlecginge"
+deploy.error_get_serial_key: "mislāmp tō fōnne systemcǣġ mid endebyrdnesse %d: %v"
+deploy.error_no_serial_key: "dætafates unġeliċnes: nān systemcǣġ ġefunden for endebyrdnes
+  %d"
+deploy.error_get_active_key_for_serial: "ne mihte ġefōn dǣdlīċne systemcǣġ for endebyrdnes
+  niƿunge"
+deploy.error_connection_failed: "ġebindung mislāmp: %w"
+deploy.error_no_bootstrap_key_tui: "nān dǣdlīċ systemcǣġ ġefunden for grundlecginge.
+  Ċeafa ānne"
+deploy.error_no_serial_key_tui: "dætafates unġeliċnes: nān systemcǣġ ġefunden for
+  endebyrdnes %d on rǣdmenn %s"
+deploy.error_connection_failed_tui: "mislāmp tō ġebindenne tō %s: %w"
+deploy.error_get_serial_for_status: "sendung ġelāmp, ac ne mihte fōn nīƿe endebyrdnes
+  for stede ærendungan: %w"
+deploy.error_deployment_failed: "sendung mislāmp: %w"
+
+# Trust Host CLI command
+trust_host.retrieving_key: "Fandian tō ġefeccenne ƿeardcǣġ fram %s…"
+trust_host.error_get_key: "Ne mihte fōn ƿeardcǣġ: %v"
+trust_host.authenticity_warning_1: "Sēo sōþfæstnes ƿeardes '%s' ne mæġ bēon ġefæstned."
+trust_host.authenticity_warning_2: "%s cǣġes fingramearca is %s."
+trust_host.confirm_prompt: "Eart þū ġeƿiss þæt þū ƿilt forþfaran ġebindende (ġēa/nā)? "
+trust_host.not_trusted_abort: "Ƿeardcǣġ nā ġetrēoƿod. Forlǣtende."
+trust_host.error_save_key: "Mislāmp tō healdenne ƿeardcǣġ tō dætafate: %v"
+trust_host.added_success: "Ƿarnung: Ēcneslīċe ġeeċed '%s' (ġesċeaft %s) tō þǣre ġecunnena
+  ƿearda rǣdinge."
 # Parallel task messages (used by runParallelTasks)
 parallel_task.no_accounts: "Nān dǣdlīċ rǣdmann for %s."
-parallel_task.start_message: "ðŸš€ Onġinnende %s tō %d rǣdmann(um)..."
+parallel_task.start_message: "ðŸš€ Onġinnende %s tō %d rǣdmann(um)…"
 parallel_task.deploy_success_message: "âœ… Ġesundfullīċe ġesended tō %s"
 parallel_task.deploy_fail_message: "ðŸ'¥ Mislāmp tō sendenne tō %s: %v"
 parallel_task.audit_success_message: "âœ… ĠŌD: %s"
 parallel_task.audit_fail_message: "ðŸš¨ Drīf ġefunden on %s: %v"
 parallel_task.complete_message: "%s fullfremmed."
+
+# Migrate CLI command
+migrate.cli_error_flags: "Gedƿola: --type and --dsn tācn sind nēodbeþearf for flutunge."
+migrate.cli_starting_backup: "📦 Ċeafiġende in-ġemynde ġeheald fram fruman dætafate..."
+migrate.cli_error_backup: "Gedƿola ūtsendende dæta fram fruman dætafate: %v"
+migrate.cli_backup_success: "✅ Ġeheald fullfremmed."
+migrate.cli_connecting_target: "🔗 Ġebindende tō ġemǣrcedan %s dætafate and ƿyrcende
+  flutunga..."
+migrate.cli_error_connect: "Gedƿola ġebindende oþþe flutende ġemǣrcedne dætafate:
+  %v"
+migrate.cli_connect_success: "✅ Ġebindung and flutunga ġesundfullīċe."
+migrate.cli_starting_restore: "🔄 Edstaðoliġende dæta in ġemǣrcedan dætafate..."
+migrate.cli_error_restore: "Gedƿola inbringende dæta in ġemǣrcedan dætafate: %v"
+migrate.cli_success: "🎉 Flutung fullfremmed! Eall dæta is ġefluten tō þǣm nīƿan dætafate."
+migrate.cli_next_steps: "➡️ Nīehsta Stæpe: Ġeēdnīƿa þīne .keymaster.yaml tō tācnienne
+  þone nīƿan dætafate."
+accounts.delete_confirm.help_checkbox: '(↑/↓/tab: fære, rum/ingang: swica ceacboxe,
+  ingang on Ġēa: fōrþgange, āflīe: forlæt)'
+accounts.delete_confirm.decommission: Þās searocræftas forscrīfaþ ānfealdlīce 
+  SSH cæglocan fram feorran hūshlōdan
+accounts.decommission_confirm.title: 🚮 Adōn gerec
+accounts.decommission_confirm.question: "Hū wille þū ādōn þæt gereord?\n\n%s?"
+accounts.decommission_confirm.cancel: Forlǣt
+accounts.key_selection.cancel: Forlǣt
+accounts.decommission_confirm.delete_only: Ādīle ān
+accounts.decommission_confirm.decommission: ālēcgan
+accounts.decommission_confirm.help: (Winestra/Swiðra tō fēranne, inngang tō 
+  trumianne, flēam tō forlætanne)
+accounts.status.decommission_cancelled: Adōn forwyrned.
+accounts.status.decommission_success: 'Þæt gereord is gesænelice adilegode: %s'
+accounts.status.decommission_failed: 'Afellan tō forlætenne ræd: %v'
+accounts.status.decommission_partial: 'Tō dǣle ālȳsed %s - dæt databōc ādīlged, ac
+  feorrbeorhtung ālȳsnes fēoll: %v'
+accounts.key_selection.title: 🔑 Cēos Sēo Swutelunglocan tō Habban
+accounts.key_selection.question: "Hwylce SSH hlýstlas sculon bēon GEHEALDENE on %s?\n\
+  Gemyne: Cyninges hlýst biþ symle ādōn on dǣdum."
+accounts.key_selection.no_keys: Nā cǣgas fundne sind for þissum gerecenunge.
+accounts.key_selection.continue: Gefaraþ forþ
+accounts.key_selection.help: '(↑/↓: færeld, rým/ingang: swītlian, tāb: tō cnappum,
+  ā: geheald eall, n: geheald nān, forlæt: bæc)'
+audit.tui.fleet_complete: Sciphere geendod.
