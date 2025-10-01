@@ -32,10 +32,12 @@ setup.
       orphaned temporary keys are left on remote hosts.
 - **Scriptable CLI:** All core features are available as command-line arguments,
     making Keymaster perfect for automation.
-- **Multi-Language Support:** The TUI is fully internationalized, with support
-    for English, German, and even Old English.
 - **Flexible Backend:** Start with the default zero-config SQLite database, and
     migrate to PostgreSQL or MySQL as your needs grow.
+- **Multi-Language Support:** The TUI is fully internationalized. We are actively
+    looking for translators! You can see the current status and contribute here:
+
+[![Translation status](https://weblate.stargazer.at/widget/keymaster/multi-auto.svg)](https://weblate.stargazer.at/engage/keymaster/)
 
 ## The Interface
 
@@ -151,6 +153,7 @@ keymaster import /path/to/authorized_keys
 
 ```bash
 keymaster export-ssh-client-config ~/.ssh/config
+```
 
 - **Database Management:**
 
@@ -231,6 +234,16 @@ Keymaster is different. It's built on a simple premise:
 > A tool should do the job without making you manage the tool itself.
 
 It's designed for sysadmins and developers who want a straightforward, reliable way to control SSH access without the overhead. It's powerful enough for a fleet but simple enough for a home lab.
+
+## Contributing
+
+Keymaster is an open-source project, and contributions are always welcome! Whether it's reporting a bug, submitting a feature request, or writing code, we appreciate your help.
+
+We are particularly looking for help with **translations**. If you speak a language other than English, you can easily contribute through our [Weblate project](https://weblate.stargazer.at/engage/keymaster/).
+
+Please read our [**Contributing Guidelines**](CONTRIBUTING.md) for details on our code conventions and the development process. All contributors are expected to follow our [**Code of Conduct**](CODE_OF_CONDUCT.md).
+
+---
 
 ## License
 
