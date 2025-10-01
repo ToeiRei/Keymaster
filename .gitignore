@@ -2,8 +2,8 @@
 keymaster.db
 
 # Compiled binary for different OSs
-keymaster
-keymaster.exe
+./keymaster
+./keymaster.exe
 
 # Go workspace files
 go.work
