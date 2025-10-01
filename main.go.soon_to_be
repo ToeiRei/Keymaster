@@ -1,0 +1,32 @@
+package main
+
+import (
+	"log"
+	"os"
+
+	// will be fixed, when cmd package is migrated from main to cmd
+	cmd "github.com/toeirei/keymaster/cmd/keymaster"
+	"github.com/toeirei/keymaster/internal/bootstrap"
+)
+
+func main() {
+	// Install signal handler for graceful shutdown of bootstrap sessions
+	bootstrap.InstallSignalHandler()
+
+	// Set up cleanup store for bootstrap operations
+	defer func() {
+		if err := bootstrap.CleanupAllActiveSessions(); err != nil {
+			log.Printf("Error during final cleanup: %w", err)
+		} else {
+			log.Println("Bootstrap cleanup complete.")
+		}
+	}()
+
+	rootCmd := cmd.NewRootCmd()
+
+	if err := rootCmd.Execute(); err != nil {
+		// TODO consider adding bootstrap logic
+		// The error is already printed by Cobra on failure.
+		os.Exit(1)
+	}
+}

@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -44,6 +43,7 @@ var cfgFile string
 var auditMode string // audit mode flag: "strict" (default) or "serial"
 var fullRestore bool // Flag for the restore command
 
+// TODO should be moved to project root
 // main is the entry point of the application.
 func main() {
 	// Install signal handler for graceful shutdown of bootstrap sessions
@@ -52,28 +52,25 @@ func main() {
 	// Set up cleanup store for bootstrap operations
 	defer func() {
 		if err := bootstrap.CleanupAllActiveSessions(); err != nil {
-			log.Printf("Error during final cleanup: %v", err)
+			log.Printf("Error during final cleanup: %w", err)
 		} else {
 			log.Println("Bootstrap cleanup complete.")
 		}
 	}()
 
+	rootCmd := NewRootCmd()
+
 	if err := rootCmd.Execute(); err != nil {
+		// TODO consider adding bootstrap logic
 		// The error is already printed by Cobra on failure.
 		os.Exit(1)
 	}
 }
 
-var rootCmd *cobra.Command
-
-func init() {
-	rootCmd = newRootCmd()
-}
-
-// newRootCmd creates and configures a new root cobra command.
+// NewRootCmd creates and configures a new root cobra command.
 // This function is used to create the main application command as well as
 // fresh instances for isolated testing.
-func newRootCmd() *cobra.Command {
+func NewRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "keymaster",
 		Short: "Keymaster is a lightweight, agentless SSH access manager.",
@@ -85,10 +82,34 @@ version-control access. A database becomes the source of truth.
 Running without a subcommand will launch the interactive TUI.`,
 		// PreRun for all subsequent commands
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Load optional config file argument from cli
+			var optional_config_path *string
+			if path, err := cmd.PersistentFlags().GetString("config"); err == nil {
+				// make sure the user provided file exists, to mitigate unwanted behaivio, like loading unwanted default configs
+				if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+					return err
+				}
+				optional_config_path = &path
+			}
+
 			// Load config
-			config, err := config.LoadConfig[config.Config](cmd, config.Defauls)
+			type Config struct {
+				Database struct {
+					Type string `mapstructure:"type"`
+					Dsn  string `mapstructure:"dsn"`
+				} `mapstructure:"database"`
+				Language string `mapstructure:"language"`
+			}
+
+			defauls := map[string]any{
+				"database.type": "sqlite",
+				"database.dsn":  "./keymaster.db",
+				"language":      "en",
+			}
+
+			config, err := config.LoadConfig[Config](cmd, defauls, optional_config_path)
 			if err != nil {
-				return fmt.Errorf("Error loading config: %w", err)
+				return fmt.Errorf("error loading config: %w", err)
 			}
 
 			// Initialize i18n
@@ -99,13 +120,13 @@ Running without a subcommand will launch the interactive TUI.`,
 				return errors.New(i18n.T("config.error_init_db", err))
 			}
 
-			// Initialize the database for all commands.
-			// Viper has already read the config by this point.
-			dbType := viper.GetString("database.type")
-			dsn := viper.GetString("database.dsn")
-			if err := db.InitDB(dbType, dsn); err != nil {
-				return errors.New(i18n.T("config.error_init_db", err))
-			}
+			// // Initialize the database for all commands.
+			// // Viper has already read the config by this point.
+			// dbType := viper.GetString("database.type")
+			// dsn := viper.GetString("database.dsn")
+			// if err := db.InitDB(dbType, dsn); err != nil {
+			// 	return errors.New(i18n.T("config.error_init_db", err))
+			// }
 
 			// Recover from any previous crashes
 			if err := bootstrap.RecoverFromCrash(); err != nil {
@@ -122,39 +143,40 @@ Running without a subcommand will launch the interactive TUI.`,
 			i18n.Init(viper.GetString("language")) // Initialize i18n for the TUI
 			tui.Run()
 		},
+		Version: version,
 	}
 
 	// Add subcommands to the newly created root command.
-	cmd.AddCommand(deployCmd)
-	cmd.AddCommand(rotateKeyCmd)
-	cmd.AddCommand(auditCmd)
-	cmd.AddCommand(importCmd)
-	cmd.AddCommand(trustHostCmd)
-	cmd.AddCommand(exportSSHConfigCmd)
-	cmd.AddCommand(backupCmd)
-	cmd.AddCommand(restoreCmd)
-	cmd.AddCommand(migrateCmd)
-	cmd.AddCommand(decommissionCmd)
-
-	// Set version
-	cmd.Version = version
+	cmd.AddCommand(
+		deployCmd,
+		rotateKeyCmd,
+		auditCmd,
+		importCmd,
+		trustHostCmd,
+		exportSSHConfigCmd,
+		backupCmd,
+		restoreCmd,
+		migrateCmd,
+		decommissionCmd,
+	)
 
 	// Initialize config on every command execution.
-	cobra.OnInitialize(func() { _ = initConfig() })
+	// cobra.OnInitialize(func() { _ = initConfig() })
 
 	// Set defaults in viper. These are used if not set in the config file or by flags.
-	viper.SetDefault("database.type", "sqlite")
-	viper.SetDefault("database.dsn", "./keymaster.db")
+	// viper.SetDefault("database.type", "sqlite")
+	// viper.SetDefault("database.dsn", "./keymaster.db")
+
 	// Define flags
-	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.keymaster.yaml or ./keymaster.yaml)")
-	cmd.PersistentFlags().String("db-type", "sqlite", "Database type (e.g., sqlite, postgres)")
-	cmd.PersistentFlags().String("db-dsn", "./keymaster.db", "Database connection string (DSN)")
-	cmd.PersistentFlags().String("lang", "en", `TUI language ("en", "de")`)
+	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
+	cmd.PersistentFlags().String("database.type", "sqlite", "Database type (e.g., sqlite, postgres)")
+	cmd.PersistentFlags().String("database.dsn", "./keymaster.db", "Database connection string (DSN)")
+	cmd.PersistentFlags().String("language", "en", `TUI language ("en", "de")`)
 
 	// Bind flags to viper
-	viper.BindPFlag("database.type", cmd.PersistentFlags().Lookup("db-type"))
-	viper.BindPFlag("database.dsn", cmd.PersistentFlags().Lookup("db-dsn"))
-	viper.BindPFlag("language", cmd.PersistentFlags().Lookup("lang"))
+	// viper.BindPFlag("database.type", cmd.PersistentFlags().Lookup("db-type"))
+	// viper.BindPFlag("database.dsn", cmd.PersistentFlags().Lookup("db-dsn"))
+	// viper.BindPFlag("language", cmd.PersistentFlags().Lookup("lang"))
 
 	return cmd
 }
@@ -163,88 +185,88 @@ Running without a subcommand will launch the interactive TUI.`,
 // It uses Viper to search for a config file (e.g., .keymaster.yaml) in the home
 // and current directories. If a config file is not found, it attempts to create
 // a default one. It also binds environment variables prefixed with "KEYMASTER".
-func initConfig() error {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Search for config in standard locations.
-		// 1. Look for the new 'config.yaml' in the user's config directory.
-		configDir, err := os.UserConfigDir()
-		if err == nil {
-			keymasterConfigDir := filepath.Join(configDir, "keymaster")
-			newConfigPath := filepath.Join(keymasterConfigDir, "config.yaml")
-			if _, err := os.Stat(newConfigPath); err == nil {
-				// If the new config file exists, use it exclusively.
-				viper.SetConfigFile(newConfigPath)
-			}
-		}
+// func initConfig() error {
+// 	if cfgFile != "" {
+// 		// Use config file from the flag.
+// 		viper.SetConfigFile(cfgFile)
+// 	} else {
+// 		// Search for config in standard locations.
+// 		// 1. Look for the new 'config.yaml' in the user's config directory.
+// 		configDir, err := os.UserConfigDir()
+// 		if err == nil {
+// 			keymasterConfigDir := filepath.Join(configDir, "keymaster")
+// 			newConfigPath := filepath.Join(keymasterConfigDir, "config.yaml")
+// 			if _, err := os.Stat(newConfigPath); err == nil {
+// 				// If the new config file exists, use it exclusively.
+// 				viper.SetConfigFile(newConfigPath)
+// 			}
+// 		}
 
-		// 2. If no new config was found, fall back to searching for the old
-		// '.keymaster.yaml' in the current directory for backward compatibility.
-		if viper.ConfigFileUsed() == "" {
-			viper.AddConfigPath(".")
-			viper.SetConfigName(".keymaster")
-			viper.SetConfigType("yaml")
-		}
-	}
+// 		// 2. If no new config was found, fall back to searching for the old
+// 		// '.keymaster.yaml' in the current directory for backward compatibility.
+// 		if viper.ConfigFileUsed() == "" {
+// 			viper.AddConfigPath(".")
+// 			viper.SetConfigName(".keymaster")
+// 			viper.SetConfigType("yaml")
+// 		}
+// 	}
 
-	viper.SetEnvPrefix("KEYMASTER")
-	viper.AutomaticEnv() // read in environment variables that match
+// 	viper.SetEnvPrefix("KEYMASTER")
+// 	viper.AutomaticEnv() // read in environment variables that match
 
-	// Attempt to read the config file.
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// Config file not found. If no specific file was requested, create a default one.
-			if cfgFile == "" {
-				return createDefaultConfig()
-			}
-		} else {
-			// Config file was found but another error was produced
-			return fmt.Errorf("error reading config file: %w", err)
-		}
-	}
-	return nil
-}
+// 	// Attempt to read the config file.
+// 	if err := viper.ReadInConfig(); err != nil {
+// 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+// 			// Config file not found. If no specific file was requested, create a default one.
+// 			if cfgFile == "" {
+// 				return createDefaultConfig()
+// 			}
+// 		} else {
+// 			// Config file was found but another error was produced
+// 			return fmt.Errorf("error reading config file: %w", err)
+// 		}
+// 	}
+// 	return nil
+// }
 
 // createDefaultConfig creates a default configuration file in the user's
 // standard config directory (e.g., ~/.config/keymaster/config.yaml).
-func createDefaultConfig() error {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		// Cannot find a standard config dir, so we don't create a file.
-		// The app will run with in-memory defaults.
-		return nil
-	}
+// func createDefaultConfig() error {
+// 	configDir, err := os.UserConfigDir()
+// 	if err != nil {
+// 		// Cannot find a standard config dir, so we don't create a file.
+// 		// The app will run with in-memory defaults.
+// 		return nil
+// 	}
 
-	keymasterConfigDir := filepath.Join(configDir, "keymaster")
-	if err := os.MkdirAll(keymasterConfigDir, 0755); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
+// 	keymasterConfigDir := filepath.Join(configDir, "keymaster")
+// 	if err := os.MkdirAll(keymasterConfigDir, 0755); err != nil {
+// 		return fmt.Errorf("failed to create config directory: %w", err)
+// 	}
 
-	defaultConfigPath := filepath.Join(keymasterConfigDir, "config.yaml")
+// 	defaultConfigPath := filepath.Join(keymasterConfigDir, "config.yaml")
 
-	// Only write the file if it doesn't already exist.
-	if _, err := os.Stat(defaultConfigPath); os.IsNotExist(err) {
-		// The default DSN should be an absolute path to a database file in the same config directory.
-		defaultDBPath := filepath.Join(keymasterConfigDir, "keymaster.db")
-		// On Windows, we need to escape backslashes for the YAML string.
-		escapedDBPath := strings.ReplaceAll(defaultDBPath, `\`, `\\`)
+// 	// Only write the file if it doesn't already exist.
+// 	if _, err := os.Stat(defaultConfigPath); os.IsNotExist(err) {
+// 		// The default DSN should be an absolute path to a database file in the same config directory.
+// 		defaultDBPath := filepath.Join(keymasterConfigDir, "keymaster.db")
+// 		// On Windows, we need to escape backslashes for the YAML string.
+// 		escapedDBPath := strings.ReplaceAll(defaultDBPath, `\`, `\\`)
 
-		defaultContent := `# Keymaster configuration file.
-# This file is automatically generated with default values.
-# You can modify these settings to configure Keymaster.
+// 		defaultContent := `# Keymaster configuration file.
+// # This file is automatically generated with default values.
+// # You can modify these settings to configure Keymaster.
 
-database:
-  type: sqlite
-  dsn: ` + escapedDBPath + `
+// database:
+//   type: sqlite
+//   dsn: ` + escapedDBPath + `
 
-language: en
-`
-		return os.WriteFile(defaultConfigPath, []byte(defaultContent), 0644)
-	}
-	return nil
-}
+// language: en
+// `
+// 		return os.WriteFile(defaultConfigPath, []byte(defaultContent), 0644)
+// 	}
+// 	return nil
+// }
 
 // deployCmd represents the 'deploy' command.
 // It handles rendering the authorized_keys file from the database and deploying it
@@ -370,11 +392,15 @@ Use --mode=serial to only verify the Keymaster header serial number on the remot
 }
 
 func init() {
+	// TODO move to each commands prerun script and use LoadConfig Helper with custom struct to retrieve the requested values
+	// TODO and do not care about db or i18n initialization, as they are already addressed in the PERSISTEND pre run ^^
 	// Attach flags after auditCmd is defined
 	auditCmd.Flags().StringVarP(&auditMode, "mode", "m", "strict", "Audit mode: 'strict' (full file comparison) or 'serial' (header serial only)")
 	restoreCmd.Flags().BoolVar(&fullRestore, "full", false, "Perform a full, destructive restore (wipes all existing data first)")
-	migrateCmd.Flags().String("type", "", "The target database type (sqlite, postgres, mysql)")
-	migrateCmd.Flags().String("dsn", "", "The DSN for the target database")
+
+	// Deprecated, because they are already provided via persistend config
+	// migrateCmd.Flags().String("type", "", "The target database type (sqlite, postgres, mysql)")
+	// migrateCmd.Flags().String("dsn", "", "The DSN for the target database")
 }
 
 // importCmd represents the 'import' command.
@@ -801,6 +827,8 @@ Use --tag to decommission all accounts with specific tags (e.g., --tag env:stagi
 }
 
 func init() {
+	// TODO move to each commands prerun script and use LoadConfig Helper with custom struct to retrieve the requested values
+	// TODO and do not care about db or i18n initialization, as they are already addressed in the PERSISTEND pre run ^^
 	// Add flags for decommission command
 	decommissionCmd.Flags().Bool("skip-remote", false, "Skip remote SSH cleanup (only delete from database)")
 	decommissionCmd.Flags().Bool("keep-file", false, "Remove only Keymaster content, keep other keys in authorized_keys")
@@ -987,6 +1015,7 @@ func writeCompressedBackup(filename string, data *model.BackupData) error {
 	return nil
 }
 
+// TODO logic may be redundant and/or belongs into the db package
 // migrateCmd represents the 'migrate' command.
 var migrateCmd = &cobra.Command{
 	Use:   "migrate --type <db-type> --dsn <target-dsn>",
@@ -1003,10 +1032,12 @@ This command automates the following steps:
 Example:
   keymaster migrate --type postgres --dsn "host=localhost user=keymaster dbname=keymaster"`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// TODO init function does not expect the language to be possibly initial
 		i18n.Init(viper.GetString("language"))
 
-		targetType, _ := cmd.Flags().GetString("type")
-		targetDSN, _ := cmd.Flags().GetString("dsn")
+		// TODO rethink logic, as the database is already initialized via the persistent pre run
+		targetType, _ := cmd.Flags().GetString("database.type")
+		targetDSN, _ := cmd.Flags().GetString("database.dsn")
 
 		if targetType == "" || targetDSN == "" {
 			log.Fatalf("%s", i18n.T("migrate.cli_error_flags"))
