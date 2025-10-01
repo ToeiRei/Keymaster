@@ -45,35 +45,35 @@ Keymaster features a modern, intuitive Terminal User Interface (TUI) that makes 
    🔑 Keymaster
 
 An agentless SSH key manager that just does the job.
-╭──────────────────────────────────╮  ╭────────────────────────────────────────────────────────────────────────╮
-│                                  │  │                                                                        │
-│  Navigation                      │  │  System Status                                                         │
-│                                  │  │                                                                        │
-│  ▸ Manage Accounts               │  │  Managed Accounts: 22 (22 active)                                      │
-│    Manage Public Keys            │  │       Public Keys: 8 (4 global)                                        │
-│    Assign Keys to Accounts       │  │        System Key: Active (Serial #3)                                  │
-│    Rotate System Keys            │  │                                                                        │
-│    Deploy to Fleet               │  │                                                                        │
-│    View Audit Log                │  │  Deployment Status                                                     │
-│    Audit Hosts                   │  │                                                                        │
-│    View Accounts by Tag          │  │  Hosts using current key: 21                                           │
-│    Language                      │  │  Hosts using past key(s): 1                                            │
-│                                  │  │                                                                        │
-│                                  │  │                                                                        │
-│                                  │  │  Security Posture                                                      │
-│                                  │  │                                                                        │
-│                                  │  │  Key-Type Spread: ecdsa-sha2-nistp256: 2, ssh-ed25519: 4, ssh-rsa: 2   │
-│                                  │  │                                                                        │
-│                                  │  │                                                                        │
-│                                  │  │  Recent Activity                                                       │
-│                                  │  │                                                                        │
-│                                  │  │  09-30T17:35 ROTATE_SYSTEM_KEY new_serial: 3                           │
-│                                  │  │  09-30T00:51 TRUST_HOST hostname: 192.168.10.136                       │
-│                                  │  │  09-30T00:51 ADD_ACCOUNT account: root@192.168.10.136                  │
-│                                  │  │  09-30T00:49 TRUST_HOST hostname: 192.168.10.136                       │
-│                                  │  │  09-30T00:49 TRUST_HOST hostname: 192.168.10.136                       │
-│                                  │  │                                                                        │
-╰──────────────────────────────────╯  ╰────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────────╮  ╭────────────────────────────────────────────────────────────────────────╮
+│                              │  │                                                                        │
+│  Navigation                  │  │  System Status                                                         │
+│                              │  │                                                                        │
+│  ▸ Manage Accounts           │  │  Managed Accounts: 22 (22 active)                                      │
+│    Manage Public Keys        │  │       Public Keys: 8 (4 global)                                        │
+│    Assign Keys to Accounts   │  │        System Key: Active (Serial #3)                                  │
+│    Rotate System Keys        │  │                                                                        │
+│    Deploy to Fleet           │  │                                                                        │
+│    View Audit Log            │  │  Deployment Status                                                     │
+│    Audit Hosts               │  │                                                                        │
+│    View Accounts by Tag      │  │  Hosts using current key: 21                                           │
+│    Language                  │  │  Hosts using past key(s): 1                                            │
+│                              │  │                                                                        │
+│                              │  │                                                                        │
+│                              │  │  Security Posture                                                      │
+│                              │  │                                                                        │
+│                              │  │  Key-Type Spread: ecdsa-sha2-nistp256: 2, ssh-ed25519: 4, ssh-rsa: 2   │
+│                              │  │                                                                        │
+│                              │  │                                                                        │
+│                              │  │  Recent Activity                                                       │
+│                              │  │                                                                        │
+│                              │  │  09-30T17:35 ROTATE_SYSTEM_KEY new_serial: 3                           │
+│                              │  │  09-30T00:51 TRUST_HOST hostname: 192.168.10.136                       │
+│                              │  │  09-30T00:51 ADD_ACCOUNT account: root@192.168.10.136                  │
+│                              │  │  09-30T00:49 TRUST_HOST hostname: 192.168.10.136                       │
+│                              │  │  09-30T00:49 TRUST_HOST hostname: 192.168.10.136                       │
+│                              │  │                                                                        │
+╰──────────────────────────────╯  ╰────────────────────────────────────────────────────────────────────────╯
  j/k up/down: navigate   enter: select   q: quit   L: language                         
 ```
 
@@ -218,36 +218,6 @@ command="internal-sftp",no-port-forwarding,no-x11-forwarding,no-agent-forwarding
 **What these options do:**
 
 - `command="internal-sftp"`: This is the most important restriction. It forces the key to only be used for SFTP sessions and prevents shell command execution. Keymaster's deployment and audit logic is designed to work with this restriction.
-
-## Philosophy
-
-This tool was born out of frustration. Existing solutions for SSH key management often felt like using a sledgehammer to crack a nut—requiring complex configuration, server daemons, and constant management. This is especially true for smaller teams or homelabs where simplicity is paramount.
-
-Keymaster is different. It's built on a simple premise:
-
-> A tool should do the job without making you manage the tool itself.
-
-It's designed for sysadmins and developers who want a straightforward, reliable way to control SSH access without the overhead. It's powerful enough for a fleet but simple enough for a home lab.
-
-### A Note on Security & The System Key
-
-Keymaster is designed for simplicity, and part of that design involves storing its own "system" private key in the database. This is what allows Keymaster to be truly agentless—it can connect to your hosts from any machine that has access to the database, without needing a separate `~/.ssh` directory or SSH agent setup.
-
-Here's how it works and what it means for security:
-
-- **What is stored?** The database stores the *private* key for Keymaster's
-    system identity and the *public* keys of all your users. User private keys
-    are **never** seen, stored, or handled by Keymaster.
-- **What is deployed?** When you deploy, Keymaster only pushes *public* keys to
-    the `authorized_keys` file on remote hosts.
-- **What's the risk?** The primary security consideration is the database file
-    itself. If an attacker gains read access to your `keymaster.db` (or the
-    equivalent in Postgres/MySQL), they will have the private key that grants
-    access to all managed accounts.
-
-**Treat your `keymaster.db` file as you would any sensitive secret, like a private key itself.** Ensure it has strict file permissions (e.g., `0600`) and is stored in a secure location. This trade-off—storing one private key for the sake of simplicity—is central to the Keymaster model.
-
-For details on reporting security vulnerabilities, please see our Security Policy.
 
 ## License
 
