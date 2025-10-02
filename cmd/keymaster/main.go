@@ -120,12 +120,24 @@ func applyDefaultFlags(cmd *cobra.Command) {
 
 func getConfigPathFromCli(cmd *cobra.Command) (*string, error) {
 	// Load optional config file argument from cli
-	if path, err := cmd.PersistentFlags().GetString("config"); err == nil {
-		// make sure the user provided file exists, to mitigate unwanted behaivio, like loading unwanted default configs
-		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-			return nil, err
+	// Only proceed if the user has explicitly set the --config flag.
+	if cmd.PersistentFlags().Changed("config") {
+		path, err := cmd.PersistentFlags().GetString("config")
+		if err != nil {
+			// This is unlikely if Changed() is true, but good practice.
+			return nil, fmt.Errorf("could not read --config flag: %w", err)
 		}
-		return &path, nil
+
+		// If the flag is set but the value is empty, do nothing.
+		if path == "" {
+			return nil, nil
+		}
+
+		// Make sure the user-provided file exists to avoid unwanted behavior.
+		if _, err := os.Stat(path); err != nil {
+			return nil, fmt.Errorf("config file specified via --config flag not found or is not accessible: %w", err)
+		}
+		return &path, nil // Return the valid path
 	}
 	return nil, nil
 }

@@ -1,7 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/goccy/go-yaml"
@@ -9,36 +12,71 @@ import (
 	"github.com/spf13/viper"
 )
 
-func configPath(system bool) (string, error) {
+// getConfigPath returns the full path for the configuration file.
+func getConfigPath(system bool) (string, error) {
+	var configDir string
+	var err error
+
 	if system {
-		// TODO make os aware
-		return "/etc/keymaster", nil
+		// System-wide configuration paths
+		switch runtime.GOOS {
+		case "windows":
+			configDir = filepath.Join(os.Getenv("ProgramData"), "Keymaster")
+		default: // Linux, macOS, etc.
+			configDir = "/etc/keymaster"
+		}
 	} else {
-		return os.UserConfigDir()
+		// User-specific configuration paths
+		configDir, err = os.UserConfigDir()
+		if err != nil {
+			return "", fmt.Errorf("could not get user config directory: %w", err)
+		}
+		configDir = filepath.Join(configDir, "keymaster")
 	}
+
+	return filepath.Join(configDir, "keymaster.yaml"), nil
 }
 
 func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_config_file_path *string) (T, error) {
 	var c T
 	v := viper.New()
 
-	// defaults
+	// 1. Set defaults
 	for key, value := range defaults {
 		v.SetDefault(key, value)
 	}
 
-	// files (first file found wins)
+	// 2. Set up file search paths (new format: keymaster.yaml)
 	v.SetConfigName("keymaster")
 	v.SetConfigType("yaml")
-	if additional_config_file_path != nil {
-		v.AddConfigPath(*additional_config_file_path)
-	}
-	if home, err := os.UserHomeDir(); err == nil {
-		v.AddConfigPath(home + "/.config")
-	}
-	v.AddConfigPath("/etc/keymaster")
 
-	// env
+	// 3. Add explicit config file path if provided via --config flag.
+	// This has the highest precedence for file-based configuration.
+	if additional_config_file_path != nil {
+		v.SetConfigFile(*additional_config_file_path)
+	}
+
+	// 3. Add standard config locations
+	if userConfigPath, err := getConfigPath(false); err == nil {
+		v.AddConfigPath(filepath.Dir(userConfigPath))
+	}
+	if systemConfigPath, err := getConfigPath(true); err == nil {
+		v.AddConfigPath(filepath.Dir(systemConfigPath))
+	}
+	v.AddConfigPath(".") // Look for keymaster.yaml in current dir
+
+	// 5. Read in the primary config file.
+	if err := v.ReadInConfig(); err != nil {
+		// It's okay if the file is not found, but other errors are fatal.
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return c, err
+		}
+	}
+
+	// 6. For backward compatibility, check for and merge `.keymaster.yaml` in the current directory.
+	mergeLegacyConfig(v)
+
+	// 7. Read from environment variables
 	v.AutomaticEnv()
 	v.AllowEmptyEnv(true)
 	v.SetEnvPrefix("keymaster")
@@ -46,14 +84,9 @@ func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_c
 
 	// cli
 	// TODO maybe needs to trigger additional parsing beferohand (most likely nots)
-	v.BindPFlags(cmd.Flags())
-
-	// TODO maybe not needed
-	// if err := v.ReadInConfig(); err != nil {
-	// 	if _, ok := err.(v.ConfigFileNotFoundError); !ok {
-	// 		return nil, err
-	// 	}
-	// }
+	if err := v.BindPFlags(cmd.Flags()); err != nil {
+		return c, err
+	}
 
 	// parse config
 	if err := v.Unmarshal(&c); err != nil {
@@ -63,8 +96,24 @@ func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_c
 	return c, nil
 }
 
+// mergeLegacyConfig checks for a `.keymaster.yaml` file in the current directory
+// and merges it into the viper configuration if found. This is for backward compatibility.
+func mergeLegacyConfig(v *viper.Viper) {
+	legacyConfigFile := ".keymaster.yaml"
+	if _, err := os.Stat(legacyConfigFile); err == nil {
+		// File exists, let's try to merge it.
+		v.SetConfigFile(legacyConfigFile)
+		// MergeInConfig will not error on file not found, but we already checked.
+		// It will error on a malformed file, which is the desired behavior.
+		// We can ignore the error for this compatibility layer to avoid breaking startup.
+		_ = v.MergeInConfig()
+		// Reset the config file path to avoid side effects.
+		v.SetConfigFile("")
+	}
+}
+
 func WriteConfigFile[T any](c *T, system bool) error {
-	path, err := configPath(system)
+	path, err := getConfigPath(system)
 	if err != nil {
 		return err
 	}
@@ -74,10 +123,13 @@ func WriteConfigFile[T any](c *T, system bool) error {
 		return err
 	}
 
-	// TODO recursively create directory if not present
+	// Create directory if it doesn't exist
+	configDir := filepath.Dir(path)
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("could not create config directory %s: %w", configDir, err)
+	}
 
-	// TODO review permissions, because database secrets may be saved here in user mode (user restricted read permissions when not in system mode)
-	err = os.WriteFile(path, data, 0644)
+	err = os.WriteFile(path, data, 0600) // Use 0600 for security, as it may contain secrets
 	if err != nil {
 		return err
 	}
