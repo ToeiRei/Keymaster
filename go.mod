@@ -12,7 +12,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang-migrate/migrate/v4 v4.19.0
 	github.com/jackc/pgx/v5 v5.7.6
-	github.com/klauspost/compress v1.15.11
+	github.com/klauspost/compress v1.18.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.0
 	github.com/pkg/sftp v1.13.9
 	github.com/spf13/cobra v1.10.1
