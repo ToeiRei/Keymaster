@@ -804,39 +804,8 @@ Example (Integrate):
 
 Example (Full Restore):
   keymaster restore --full ./keymaster-backup-2025-10-26.json.zst`,
-	Args: cobra.ExactArgs(1),
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		// Load optional config file argument from cli
-		optional_config_path, err := getConfigPathFromCli(cmd)
-		if err != nil {
-			return err
-		}
-
-		// Load config
-		type Config struct {
-			Database struct {
-				Type string `mapstructure:"type"`
-				Dsn  string `mapstructure:"dsn"`
-			} `mapstructure:"database"`
-			Language string `mapstructure:"language"`
-		}
-
-		defauls := map[string]any{
-			"database.type": "sqlite",
-			"database.dsn":  "./keymaster.db",
-			"language":      "en",
-		}
-
-		config, err := config.LoadConfig[Config](cmd, defauls, optional_config_path)
-		if err != nil {
-			return fmt.Errorf("error loading config: %w", err)
-		}
-
-		// Initialize i18n
-		i18n.Init(config.Language)
-
-		return nil
-	},
+	Args:    cobra.ExactArgs(1),
+	PreRunE: setupDefaultServices, // This was correct, just confirming.
 	Run: func(cmd *cobra.Command, args []string) {
 		inputFile := args[0]
 
@@ -904,36 +873,9 @@ Examples:
 
   # Backup to a specific file
   keymaster backup my-backup.json`, // .zst will be appended
-	Args: cobra.MaximumNArgs(1),
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		// Load optional config file argument from cli
-		optional_config_path, err := getConfigPathFromCli(cmd)
-		if err != nil {
-			return err
-		}
-
-		// Load config
-		type Config struct {
-			Language string `mapstructure:"language"`
-		}
-
-		defauls := map[string]any{
-			"language": "en",
-		}
-
-		config, err := config.LoadConfig[Config](cmd, defauls, optional_config_path)
-		if err != nil {
-			return fmt.Errorf("error loading config: %w", err)
-		}
-
-		// Initialize i18n
-		i18n.Init(config.Language)
-
-		return nil
-	},
+	Args:    cobra.MaximumNArgs(1),
+	PreRunE: setupDefaultServices,
 	Run: func(cmd *cobra.Command, args []string) {
-		i18n.Init(viper.GetString("language"))
-
 		var outputFile string
 		if len(args) == 0 {
 			outputFile = fmt.Sprintf("keymaster-backup-%s.json.zst", time.Now().Format("2006-01-02"))
@@ -1001,35 +943,11 @@ This command automates the following steps:
 Example:
   keymaster migrate --type postgres --dsn "host=localhost user=keymaster dbname=keymaster"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Load optional config file argument from cli
-		optional_config_path, err := getConfigPathFromCli(cmd)
-		if err != nil {
-			return err
-		}
+		// Viper has already been configured by PreRunE, so we can directly access the values.
+		targetType := viper.GetString("database.type")
+		targetDsn := viper.GetString("database.dsn")
 
-		// Load config
-		type Config struct {
-			Database struct {
-				Type string `mapstructure:"type"`
-				Dsn  string `mapstructure:"dsn"`
-			} `mapstructure:"database"`
-			Language string `mapstructure:"language"`
-		}
-
-		defauls := map[string]any{
-			// no database defaults! migrations have to be explicit
-			"language": "en",
-		}
-
-		config, err := config.LoadConfig[Config](cmd, defauls, optional_config_path)
-		if err != nil {
-			return fmt.Errorf("error loading config: %w", err)
-		}
-
-		// Initialize i18n
-		i18n.Init(config.Language)
-
-		if config.Database.Type == "" || config.Database.Dsn == "" {
+		if targetType == "" || targetDsn == "" {
 			log.Fatalf("%s", i18n.T("migrate.cli_error_flags"))
 		}
 
@@ -1042,8 +960,8 @@ Example:
 		fmt.Println(i18n.T("migrate.cli_backup_success"))
 
 		// --- 2. Connect to target DB and run migrations ---
-		fmt.Println(i18n.T("migrate.cli_connecting_target", config.Database.Type))
-		targetStore, err := initTargetDB(config.Database.Type, config.Database.Dsn)
+		fmt.Println(i18n.T("migrate.cli_connecting_target", targetType))
+		targetStore, err := initTargetDB(targetType, targetDsn)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("migrate.cli_error_connect", err))
 		}

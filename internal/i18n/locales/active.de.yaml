@@ -514,3 +514,24 @@ migrate.cli_success: "🎉 Migration abgeschlossen! Alle Daten wurden in die neu
 migrate.cli_next_steps: "➡️ Nächster Schritt: Aktualisieren Sie Ihre .keymaster.yaml,
   um auf die neue Datenbank zu verweisen."
 audit.tui.fleet_complete: Audit der Flotte komplett.
+
+# Backup CLI command
+backup.cli_starting: "📦 Erstelle Backup..."
+backup.cli_error_export: "Fehler beim Exportieren der Daten: %v"
+backup.cli_error_write: "Fehler beim Schreiben der Backup-Datei: %v"
+backup.cli_success: "✅ Backup erfolgreich in %s gespeichert."
+
+# Restore CLI command
+restore.cli_starting: "🔄 Wiederherstellung von %s wird gestartet..."
+restore.cli_error_read: "Fehler beim Lesen der Backup-Datei: %v"
+restore.cli_error_import: "Fehler beim Importieren der Daten: %v"
+restore.cli_success: "🎉 Wiederherstellung erfolgreich abgeschlossen."
+
+# Decommission CLI command
+decommission.cli_error_find_account: "Fehler beim Finden des Kontos: %v"
+decommission.cli_no_accounts_tag: "Keine Konten mit dem Tag gefunden: %s"
+decommission.cli_found_accounts_tag: "%d Konten mit dem Tag '%s' gefunden:"
+
+# Bootstrap cleanup
+bootstrap.cli_starting: "Starte Bootstrap-Bereinigung..."
+bootstrap.cli_complete: "Bootstrap-Bereinigung abgeschlossen."

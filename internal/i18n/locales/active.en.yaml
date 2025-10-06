@@ -404,3 +404,15 @@ parallel_task.deploy_fail_message: "💥 Failed to deploy to %s: %v"
 parallel_task.audit_success_message: "✅ OK: %s"
 parallel_task.audit_fail_message: "🚨 Drift detected on %s: %v"
 parallel_task.complete_message: "%s complete."
+
+# Backup CLI command
+backup.cli_starting: "📦 Creating backup..."
+backup.cli_error_export: "Error exporting data: %v"
+backup.cli_error_write: "Error writing backup file: %v"
+backup.cli_success: "✅ Backup successfully saved to %s."
+
+# Restore CLI command
+restore.cli_starting: "🔄 Starting restore from %s..."
+restore.cli_error_read: "Error reading backup file: %v"
+restore.cli_error_import: "Error importing data: %v"
+restore.cli_success: "🎉 Restore completed successfully."

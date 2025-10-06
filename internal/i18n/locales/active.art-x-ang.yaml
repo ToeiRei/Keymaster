@@ -467,3 +467,15 @@ accounts.key_selection.continue: Gefaraþ forþ
 accounts.key_selection.help: '(↑/↓: færeld, rým/ingang: swītlian, tāb: tō cnappum,
   ā: geheald eall, n: geheald nān, forlæt: bæc)'
 audit.tui.fleet_complete: Sciphere geendod.
+
+# Backup CLI command
+backup.cli_starting: "📦 Ġeheald ċeafiġende..."
+backup.cli_error_export: "Gedƿola ūtsendende dæta: %v"
+backup.cli_error_write: "Gedƿola ƿrītende ġehealdtruman: %v"
+backup.cli_success: "✅ Ġeheald ġesundfullīċe ġehealden tō %s."
+
+# Restore CLI command
+restore.cli_starting: "🔄 Onġinnende edstaðolunge fram %s..."
+restore.cli_error_read: "Gedƿola rǣdende ġehealdtruman: %v"
+restore.cli_error_import: "Gedƿola inbringende dæta: %v"
+restore.cli_success: "🎉 Edstaðolung ġesundfullīċe fullfremmed."
