@@ -58,7 +58,7 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 		return errors.New(i18n.T("deploy.error_get_active_key_for_serial"))
 	}
 
-	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
+	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey, "")
 	if err != nil {
 		if isTUI {
 			return fmt.Errorf(i18n.T("deploy.error_connection_failed_tui"), account.String(), err)

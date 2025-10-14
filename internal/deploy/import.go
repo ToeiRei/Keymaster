@@ -51,7 +51,7 @@ func ImportRemoteKeys(account model.Account) (importedKeys []model.PublicKey, sk
 	}
 
 	// 2. Connect using the deployer.
-	deployer, err := NewDeployer(account.Hostname, account.Username, privateKey)
+	deployer, err := NewDeployer(account.Hostname, account.Username, privateKey, "")
 	if err != nil {
 		return nil, 0, warning, fmt.Errorf("connection failed: %w", err)
 	}

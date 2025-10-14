@@ -32,7 +32,7 @@ func AuditAccountStrict(account model.Account) error {
 	}
 
 	// 3. Attempt to connect with that key.
-	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
+	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey, "")
 	if err != nil {
 		return errors.New(i18n.T("audit.error_connection_failed", account.Serial, err))
 	}
@@ -78,7 +78,7 @@ func AuditAccountSerial(account model.Account) error {
 		return errors.New(i18n.T("audit.error_no_serial_key", account.Serial))
 	}
 
-	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey)
+	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey, "")
 	if err != nil {
 		return errors.New(i18n.T("audit.error_connection_failed", account.Serial, err))
 	}

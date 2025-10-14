@@ -127,14 +127,14 @@ type Deployer struct {
 
 // NewDeployer creates a new SSH connection and returns a Deployer.
 // For bootstrap connections, use NewBootstrapDeployer instead.
-func NewDeployer(host, user, privateKey string) (*Deployer, error) {
-	return NewDeployerWithConfig(host, user, privateKey, DefaultConnectionConfig(), false)
+func NewDeployer(host, user, privateKey, passphrase string) (*Deployer, error) {
+	return NewDeployerWithConfig(host, user, privateKey, passphrase, DefaultConnectionConfig(), false)
 }
 
 // NewBootstrapDeployer creates a new SSH connection for bootstrap operations.
 // It accepts any host key and saves it to the database for future connections.
 func NewBootstrapDeployer(host, user, privateKey string) (*Deployer, error) {
-	return NewDeployerWithConfig(host, user, privateKey, DefaultConnectionConfig(), true)
+	return NewDeployerWithConfig(host, user, privateKey, "", DefaultConnectionConfig(), true)
 }
 
 // NewBootstrapDeployerWithExpectedKey creates a new SSH connection for bootstrap operations
@@ -145,12 +145,12 @@ func NewBootstrapDeployerWithExpectedKey(host, user, privateKey, expectedHostKey
 }
 
 // NewDeployerWithConfig creates a new SSH connection with custom timeout configuration.
-func NewDeployerWithConfig(host, user, privateKey string, config *ConnectionConfig, isBootstrap bool) (*Deployer, error) {
-	return newDeployerInternal(host, user, privateKey, config, isBootstrap)
+func NewDeployerWithConfig(host, user, privateKey, passphrase string, config *ConnectionConfig, isBootstrap bool) (*Deployer, error) {
+	return newDeployerInternal(host, user, privateKey, passphrase, config, isBootstrap)
 }
 
 // newDeployerInternal is the internal implementation for creating deployers.
-func newDeployerInternal(host, user, privateKey string, config *ConnectionConfig, isBootstrap bool) (*Deployer, error) {
+func newDeployerInternal(host, user, privateKey, passphrase string, config *ConnectionConfig, isBootstrap bool) (*Deployer, error) {
 	// Define the host key callback based on bootstrap mode.
 	var hostKeyCallback ssh.HostKeyCallback
 
@@ -217,7 +217,21 @@ func newDeployerInternal(host, user, privateKey string, config *ConnectionConfig
 	// for deployment and auditing with a Keymaster system key.
 	if privateKey != "" {
 		signer, err := ssh.ParsePrivateKey([]byte(privateKey))
-		if err == nil {
+		if err != nil {
+			// Check if the error is because the key is encrypted.
+			if _, ok := err.(*ssh.PassphraseMissingError); ok {
+				// If it's encrypted and we have a passphrase, try to parse it again.
+				if passphrase != "" {
+					signer, err = ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), []byte(passphrase))
+				} else {
+					// Key is encrypted, but we have no passphrase.
+					return nil, fmt.Errorf("system key is encrypted, but no passphrase was provided")
+				}
+			}
+		}
+
+		// If we have a valid signer at this point (either unencrypted or successfully decrypted).
+		if err == nil && signer != nil {
 			sshConfig := &ssh.ClientConfig{
 				User:            user,
 				Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},

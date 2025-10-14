@@ -152,7 +152,7 @@ func DecommissionAccount(account model.Account, systemKey string, options Decomm
 // cleanupRemoteAuthorizedKeys connects to the remote host and removes the authorized_keys file
 func cleanupRemoteAuthorizedKeys(account model.Account, systemKey string, keepFile bool, result *DecommissionResult) error {
 	// Create deployer connection
-	deployer, err := NewDeployer(account.Hostname, account.Username, systemKey)
+	deployer, err := NewDeployer(account.Hostname, account.Username, systemKey, "")
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s@%s: %w", account.Username, account.Hostname, err)
 	}
@@ -170,7 +170,7 @@ func cleanupRemoteAuthorizedKeys(account model.Account, systemKey string, keepFi
 // cleanupRemoteAuthorizedKeysSelective connects to the remote host and removes specific keys
 func cleanupRemoteAuthorizedKeysSelective(account model.Account, systemKey string, options DecommissionOptions, result *DecommissionResult) error {
 	// Create deployer connection
-	deployer, err := NewDeployer(account.Hostname, account.Username, systemKey)
+	deployer, err := NewDeployer(account.Hostname, account.Username, systemKey, "")
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s@%s: %w", account.Username, account.Hostname, err)
 	}
