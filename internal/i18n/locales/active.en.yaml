@@ -249,6 +249,11 @@ deploy.filter_hint: "Press / to filter…"
 deploy.status.copy_success: "Copied authorized_keys content to clipboard."
 deploy.status.copy_failed: "Failed to copy to clipboard: %s"
 
+deploy.passphrase_title: "🔐 System Key Passphrase Required"
+deploy.passphrase_prompt: "The system key is encrypted. Please enter the passphrase to unlock it."
+deploy.passphrase_help: "Press Enter to confirm, or ESC to cancel deployment."
+deploy.passphrase_cancelled: "Deployment cancelled."
+deploy.retrying: "Retrying deployment with passphrase..."
 # Audit log translations
 audit_log.title: "Audit Log"
 audit_log.empty: "No audit log entries found."

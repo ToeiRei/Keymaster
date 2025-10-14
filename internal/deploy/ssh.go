@@ -25,6 +25,10 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// ErrPassphraseRequired is a sentinel error returned when an encrypted key is
+// encountered but no passphrase was provided, signaling that the caller should prompt for one.
+var ErrPassphraseRequired = errors.New("passphrase required for encrypted system key")
+
 // CanonicalizeHostPort returns a normalized host:port string.
 // - If no port is provided, :22 is assumed.
 // - IPv6 literals will be bracketed as needed (e.g., [2001:db8::1]:22).
@@ -224,8 +228,8 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 				if len(passphrase) > 0 {
 					signer, err = ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), passphrase)
 				} else {
-					// Key is encrypted, but we have no passphrase.
-					return nil, fmt.Errorf("system key is encrypted, but no passphrase was provided")
+					// Key is encrypted, but we have no passphrase. Signal to the caller.
+					return nil, ErrPassphraseRequired
 				}
 			}
 		}

@@ -5,17 +5,20 @@
 package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/atotto/clipboard"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/state"
 )
 
 // deployState represents the current view within the deployment workflow.
@@ -27,6 +30,7 @@ const (
 	deployStateSelectTag
 	deployStateShowAuthorizedKeys
 	deployStateFleetInProgress
+	deployStateEnterPassphrase
 	deployStateInProgress
 	deployStateComplete
 )
@@ -64,19 +68,35 @@ type deployModel struct {
 	err                error
 	accountFilter      string
 	isFilteringAccount bool
+	passphraseInput    textinput.Model
+	pendingCmd         tea.Cmd // Command to re-run after getting passphrase
+	wasFleetDeploy     bool    // Flag to remember if the last operation was a fleet deployment
+	width, height      int
 }
 
 // newDeployModel creates a new model for the deployment view.
 func newDeployModel() deployModel {
+	pi := newPassphraseInput()
 	return deployModel{
-		state:        deployStateMenu,
-		fleetResults: make(map[int]error),
+		state:           deployStateMenu,
+		fleetResults:    make(map[int]error),
+		passphraseInput: pi,
 	}
 }
 
 // Init initializes the deploy model.
 func (m deployModel) Init() tea.Cmd {
 	return nil
+}
+
+// newPassphraseInput is a helper to create a styled textinput for passwords.
+func newPassphraseInput() textinput.Model {
+	pi := textinput.New()
+	pi.Placeholder = i18n.T("rotate_key.passphrase_placeholder")
+	pi.EchoMode = textinput.EchoPassword
+	pi.CharLimit = 128
+	pi.Width = 50
+	return pi
 }
 
 // Update handles messages and updates the deploy model's state.
@@ -93,6 +113,21 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case deployStateFleetInProgress:
 		if res, ok := msg.(deploymentResultMsg); ok {
 			m.fleetResults[res.account.ID] = res.err
+
+			// If any deployment requires a passphrase, stop and ask for it.
+			if res.err != nil && errors.Is(res.err, deploy.ErrPassphraseRequired) {
+				m.state = deployStateEnterPassphrase
+				m.err = nil // Clear the error as we are handling it
+				m.passphraseInput.Focus()
+				// Store a command to re-run the entire fleet deployment.
+				cmds := make([]tea.Cmd, len(m.accountsInFleet))
+				for i, acc := range m.accountsInFleet {
+					cmds[i] = performDeploymentCmd(acc)
+				}
+				m.pendingCmd = tea.Batch(cmds...)
+				return m, textinput.Blink
+			}
+
 			if len(m.fleetResults) == len(m.accountsInFleet) {
 				m.state = deployStateComplete
 				m.status = i18n.T("deploy.fleet_complete")
@@ -100,12 +135,45 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// No other input handled while fleet deployment is running
 		return m, nil
+	case deployStateEnterPassphrase:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				passphrase := m.passphraseInput.Value()
+				state.PasswordCache.Set([]byte(passphrase))
+				m.fleetResults = make(map[int]error) // Clear previous fleet results before retry
+				m.state = deployStateInProgress      // Go back to in-progress
+				m.status = i18n.T("deploy.retrying")
+				return m, m.pendingCmd // Re-run the original command
+			case "esc":
+				m.state = deployStateMenu
+				m.err = nil
+				m.status = i18n.T("deploy.passphrase_cancelled")
+				return m, nil
+			}
+		}
+		var cmd tea.Cmd
+		m.passphraseInput, cmd = m.passphraseInput.Update(msg)
+		return m, cmd
 	case deployStateInProgress:
 		if res, ok := msg.(deploymentResultMsg); ok {
-			m.state = deployStateComplete
 			if res.err != nil {
+				// First, check for the specific passphrase error.
+				if errors.Is(res.err, deploy.ErrPassphraseRequired) {
+					// The deployer needs a passphrase. Switch to that state.
+					m.state = deployStateEnterPassphrase
+					m.err = nil // Clear the error as we are handling it
+					m.passphraseInput.Focus()
+					// Store the command that failed so we can retry it
+					m.pendingCmd = performDeploymentCmd(res.account)
+					return m, textinput.Blink
+				}
+				// It's a different, final error.
+				m.state = deployStateComplete
 				m.err = res.err
-			} else {
+			} else { // No error, success case.
+				m.state = deployStateComplete
 				activeKey, err := db.GetActiveSystemKey()
 				if err != nil {
 					m.err = fmt.Errorf(i18n.T("deploy.error_get_serial_for_status"), err)
@@ -140,6 +208,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			switch m.menuCursor {
 			case 0: // Deploy to Fleet (fully automatic)
+				m.wasFleetDeploy = true
 				m.state = deployStateFleetInProgress
 				var err error
 				m.accountsInFleet, err = db.GetAllActiveAccounts()
@@ -158,7 +227,21 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds[i] = performDeploymentCmd(acc)
 				}
 				return m, tea.Batch(cmds...)
+			case 1: // Deploy to Single Account
+				m.wasFleetDeploy = false
+				m.action = actionDeploySingle
+				var err error
+				m.accounts, err = db.GetAllActiveAccounts()
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+				m.state = deployStateSelectAccount
+				m.accountCursor = 0
+				m.status = ""
+				return m, nil
 			case 2: // Deploy to Tag
+				m.wasFleetDeploy = true // Deploying to a tag is a fleet operation
 				m.state = deployStateSelectTag
 				allAccounts, err := db.GetAllAccounts()
 				if err != nil {
@@ -184,19 +267,8 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.tagCursor = 0
 				m.status = ""
 				return m, nil
-			case 1: // Deploy to Single Account
-				m.action = actionDeploySingle
-				var err error
-				m.accounts, err = db.GetAllActiveAccounts()
-				if err != nil {
-					m.err = err
-					return m, nil
-				}
-				m.state = deployStateSelectAccount
-				m.accountCursor = 0
-				m.status = ""
-				return m, nil
 			case 3: // Get authorized_keys for Account
+				m.wasFleetDeploy = false
 				m.action = actionGetKeys
 				var err error
 				// Only allow deploying to or viewing keys for active accounts.
@@ -412,8 +484,8 @@ func (m deployModel) updateComplete(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "enter":
-			// If we came from a fleet deploy, go back to the main menu
-			if len(m.fleetResults) > 0 {
+			// If the last operation was a fleet deploy, go back to the main menu
+			if m.wasFleetDeploy {
 				m.fleetResults = make(map[int]error) // Clear results
 				return m, func() tea.Msg { return backToMenuMsg{} }
 			}
@@ -543,6 +615,24 @@ func (m deployModel) View() string {
 			mainPane += "\n" + helpFooterStyle.Render(m.status)
 		}
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+
+	case deployStateEnterPassphrase:
+		var b strings.Builder
+		b.WriteString(titleStyle.Render(i18n.T("deploy.passphrase_title")))
+		b.WriteString("\n\n")
+		b.WriteString(i18n.T("deploy.passphrase_prompt"))
+		b.WriteString("\n\n")
+		b.WriteString(m.passphraseInput.View())
+		b.WriteString("\n\n")
+		b.WriteString(helpStyle.Render(i18n.T("deploy.passphrase_help")))
+
+		return lipgloss.Place(
+			m.width,
+			m.height,
+			lipgloss.Center,
+			lipgloss.Center,
+			dialogBoxStyle.Render(b.String()),
+		)
 
 	case deployStateInProgress:
 		title := titleStyle.Render(i18n.T("deploy.deploying"))

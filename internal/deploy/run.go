@@ -65,6 +65,10 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 	// We use a defer to ensure this happens even if other parts of the function fail.
 	defer func() {
 		if passphrase != nil {
+			// This is a best-effort cleanup. The more important clear is after
+			// the deployer is created, but this defer handles error paths before that.
+			// We can't clear the global cache here as other parallel tasks might need it.
+			// The explicit clear after NewDeployer is the main fix.
 			for i := range passphrase {
 				passphrase[i] = 0
 			}
@@ -78,6 +82,10 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 		return fmt.Errorf(i18n.T("deploy.error_connection_failed"), err) // For CLI
 	}
 	defer deployer.Close()
+	// Once the deployer is successfully created, the passphrase has been used.
+	// We must clear it from the global cache immediately so it's not accidentally
+	// reused by another operation that doesn't need it.
+	state.PasswordCache.Clear()
 
 	if err := deployer.DeployAuthorizedKeys(content); err != nil {
 		return fmt.Errorf(i18n.T("deploy.error_deployment_failed"), err)
