@@ -271,7 +271,7 @@ The previous key is kept for accessing hosts that have not yet been updated.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(i18n.T("rotate_key.cli_rotating"))
 
-		publicKeyString, privateKeyString, err := internalkey.GenerateAndMarshalEd25519Key("keymaster-system-key")
+		publicKeyString, privateKeyString, err := internalkey.GenerateAndMarshalEd25519Key("keymaster-system-key", "")
 		if err != nil {
 			log.Fatalf("%s", i18n.T("rotate_key.cli_error_generate", err))
 		}

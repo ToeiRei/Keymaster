@@ -18,8 +18,9 @@ import (
 
 // GenerateAndMarshalEd25519Key creates a new ed25519 key pair and returns them
 // as formatted strings: the public key in authorized_keys format and the private
-// key in PEM format.
-func GenerateAndMarshalEd25519Key(comment string) (publicKeyString string, privateKeyString string, err error) {
+// key in PEM format. If a non-empty passphrase is provided, the private key will
+// be encrypted with it.
+func GenerateAndMarshalEd25519Key(comment string, passphrase string) (publicKeyString string, privateKeyString string, err error) {
 	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate ed25519 key pair: %w", err)
@@ -31,10 +32,18 @@ func GenerateAndMarshalEd25519Key(comment string) (publicKeyString string, priva
 	}
 	pubKeyBytes := ssh.MarshalAuthorizedKey(sshPubKey)
 	publicKeyString = fmt.Sprintf("%s %s", strings.TrimSpace(string(pubKeyBytes)), comment)
-	pemBlock, err := MarshalEd25519PrivateKey(privKey, "")
+
+	var pemBlock *pem.Block
+	if passphrase == "" {
+		pemBlock, err = ssh.MarshalPrivateKey(privKey, "")
+	} else {
+		pemBlock, err = ssh.MarshalPrivateKeyWithPassphrase(privKey, "", []byte(passphrase))
+	}
+
 	if err != nil {
 		return "", "", fmt.Errorf("failed to marshal private key: %w", err)
 	}
+
 	privateKeyString = string(pem.EncodeToMemory(pemBlock))
 	return publicKeyString, privateKeyString, nil
 }

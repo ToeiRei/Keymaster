@@ -151,7 +151,7 @@ func generateSessionID() (string, error) {
 // The private key is kept in memory only and should be securely wiped after use.
 func generateTemporaryKeyPair() (*TemporaryKeyPair, error) {
 	// Generate Ed25519 key pair using the existing crypto package
-	publicKeyLine, privateKeyPEM, err := internalSSH.GenerateAndMarshalEd25519Key("keymaster-bootstrap-temp")
+	publicKeyLine, privateKeyPEM, err := internalSSH.GenerateAndMarshalEd25519Key("keymaster-bootstrap-temp", "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate key pair: %w", err)
 	}

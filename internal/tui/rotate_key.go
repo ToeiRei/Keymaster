@@ -265,7 +265,7 @@ type keyRotatedMsg struct {
 // generateInitialKey is a tea.Cmd that performs the key generation and DB write.
 // It sends an initialKeyGeneratedMsg when complete.
 func generateInitialKey() tea.Msg {
-	publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key")
+	publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key", "")
 	if err != nil {
 		return initialKeyGeneratedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_generate"), err)}
 	}
@@ -280,7 +280,7 @@ func generateInitialKey() tea.Msg {
 // performRotation is a tea.Cmd that generates a new key and performs the DB rotation.
 // It sends a keyRotatedMsg when complete.
 func performRotation() tea.Msg {
-	publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key")
+	publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key", "")
 	if err != nil {
 		return keyRotatedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_generate"), err)}
 	}
