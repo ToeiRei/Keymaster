@@ -170,6 +170,19 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// --- Handle character input for the focused field ---
+		// This needs to happen before the navigation switch case to allow typing.
+		oldVal := ""
+		if m.focusIndex == 3 { // Tags input
+			oldVal = m.inputs[3].Value()
+		}
+		var inputCmd tea.Cmd
+		m, inputCmd = m.updateInputs(msg)
+		if m.focusIndex == 3 && m.inputs[3].Value() != oldVal {
+			m.updateSuggestions()
+		}
+		// --- End character input handling ---
+
 		switch msg.String() {
 		// Go back to the accounts list.
 		case "esc":
@@ -183,9 +196,9 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// If not on checkbox, pass through to input
 			if m.focusIndex < len(m.inputs) {
-				var cmd tea.Cmd
-				m.inputs[m.focusIndex], cmd = m.inputs[m.focusIndex].Update(msg)
-				return m, cmd
+				var spaceCmd tea.Cmd
+				m.inputs[m.focusIndex], spaceCmd = m.inputs[m.focusIndex].Update(msg)
+				return m, spaceCmd
 			}
 			return m, nil
 
@@ -311,25 +324,10 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.inputs[i].TextStyle = lipgloss.NewStyle()
 			}
 
-			return m, tea.Batch(cmds...)
+			return m, tea.Batch(append(cmds, inputCmd)...)
 		}
 	}
-
-	// Handle character input and blinking
-	oldVal := ""
-	if m.focusIndex == 3 {
-		oldVal = m.inputs[3].Value()
-	}
-
-	var cmd tea.Cmd
-	m, cmd = m.updateInputs(msg)
-
-	// If tag input changed, update suggestions
-	if m.focusIndex == 3 && m.inputs[3].Value() != oldVal {
-		m.updateSuggestions()
-	}
-
-	return m, cmd
+	return m, nil
 }
 
 // updateInputs passes messages to the underlying text input models.
