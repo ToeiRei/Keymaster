@@ -48,6 +48,10 @@ func AuditAccountStrict(account model.Account) error {
 		return errors.New(i18n.T("audit.error_connection_failed", account.Serial, err))
 	}
 	defer deployer.Close()
+	// Once the deployer is successfully created, the passphrase has been used.
+	// We must clear it from the global cache immediately so it's not accidentally
+	// reused by another operation that doesn't need it.
+	state.PasswordCache.Clear()
 
 	// 4. Read the content of the remote authorized_keys file.
 	remoteContentBytes, err := deployer.GetAuthorizedKeys()
@@ -104,6 +108,10 @@ func AuditAccountSerial(account model.Account) error {
 		return errors.New(i18n.T("audit.error_connection_failed", account.Serial, err))
 	}
 	defer deployer.Close()
+	// Once the deployer is successfully created, the passphrase has been used.
+	// We must clear it from the global cache immediately so it's not accidentally
+	// reused by another operation that doesn't need it.
+	state.PasswordCache.Clear()
 
 	remoteContentBytes, err := deployer.GetAuthorizedKeys()
 	if err != nil {
