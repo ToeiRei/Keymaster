@@ -5,16 +5,19 @@
 package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/state"
 )
 
 // auditModeType represents the comparison mode for the audit.
@@ -33,6 +36,7 @@ const (
 	auditStateSelectAccount
 	auditStateSelectTag
 	auditStateFleetInProgress
+	auditStateEnterPassphrase
 	auditStateInProgress
 	auditStateComplete
 )
@@ -59,13 +63,18 @@ type auditModel struct {
 	err                error
 	accountFilter      string
 	isFilteringAccount bool
+	passphraseInput    textinput.Model
+	pendingCmd         tea.Cmd // Command to re-run after getting passphrase
+	wasFleetDeploy     bool
+	width, height      int
 }
 
 func newAuditModel() auditModel {
 	return auditModel{
-		state:        auditStateMenu,
-		mode:         auditModeStrict,
-		fleetResults: make(map[int]error),
+		state:           auditStateMenu,
+		mode:            auditModeStrict,
+		fleetResults:    make(map[int]error),
+		passphraseInput: newPassphraseInput(),
 	}
 }
 
@@ -80,21 +89,25 @@ func (m auditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case auditStateSelectTag:
 		return m.updateSelectTag(msg)
 	case auditStateFleetInProgress:
-		if res, ok := msg.(auditResultMsg); ok {
-			m.fleetResults[res.account.ID] = res.err
-			if len(m.fleetResults) == len(m.accountsInFleet) {
-				m.state = auditStateComplete
-				m.status = i18n.T("audit.tui.fleet_complete")
-			}
-		}
-		return m, nil
+		return m.updateFleetInProgress(msg)
+	case auditStateEnterPassphrase:
+		return m.updateEnterPassphrase(msg)
 	case auditStateInProgress:
 		if res, ok := msg.(auditResultMsg); ok {
-			m.state = auditStateComplete
 			if res.err != nil {
+				if errors.Is(res.err, deploy.ErrPassphraseRequired) {
+					m.state = auditStateEnterPassphrase
+					m.err = nil // We are handling this error
+					m.passphraseInput.Focus()
+					m.pendingCmd = performAuditCmd(res.account, m.mode)
+					return m, textinput.Blink
+				}
+				// It's a different, final error.
+				m.state = auditStateComplete
 				m.err = res.err
 				m.status = i18n.T("audit.tui.failed_short")
 			} else {
+				m.state = auditStateComplete
 				m.err = nil
 				m.status = i18n.T("audit.tui.ok_short")
 			}
@@ -102,6 +115,32 @@ func (m auditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case auditStateComplete:
 		return m.updateComplete(msg)
+	}
+	return m, nil
+}
+
+func (m auditModel) updateFleetInProgress(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if res, ok := msg.(auditResultMsg); ok {
+		m.fleetResults[res.account.ID] = res.err
+
+		// If any audit requires a passphrase, stop and ask for it.
+		if res.err != nil && errors.Is(res.err, deploy.ErrPassphraseRequired) {
+			m.state = auditStateEnterPassphrase
+			m.err = nil // Clear the error as we are handling it
+			m.passphraseInput.Focus()
+			// Store a command to re-run the entire fleet audit.
+			cmds := make([]tea.Cmd, len(m.accountsInFleet))
+			for i, acc := range m.accountsInFleet {
+				cmds[i] = performAuditCmd(acc, m.mode)
+			}
+			m.pendingCmd = tea.Batch(cmds...)
+			return m, textinput.Blink
+		}
+
+		if len(m.fleetResults) == len(m.accountsInFleet) {
+			m.state = auditStateComplete
+			m.status = i18n.T("audit.tui.fleet_complete")
+		}
 	}
 	return m, nil
 }
@@ -129,6 +168,7 @@ func (m auditModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			switch m.menuCursor {
 			case 0: // Audit Fleet
+				m.wasFleetDeploy = true
 				var err error
 				m.accountsInFleet, err = db.GetAllActiveAccounts()
 				if err != nil {
@@ -148,12 +188,14 @@ func (m auditModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, tea.Batch(cmds...)
 			case 1: // Audit Single
+				m.wasFleetDeploy = false
 				m.accounts, _ = db.GetAllActiveAccounts()
 				m.state = auditStateSelectAccount
 				m.accountCursor = 0
 				m.status = ""
 				return m, nil
 			case 2: // Audit Tag
+				m.wasFleetDeploy = true
 				allAccounts, err := db.GetAllAccounts()
 				if err != nil {
 					m.err = err
@@ -268,6 +310,33 @@ func (m auditModel) getFilteredAccounts() []model.Account {
 	return out
 }
 
+func (m auditModel) updateEnterPassphrase(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			passphrase := m.passphraseInput.Value()
+			state.PasswordCache.Set([]byte(passphrase))
+			if m.wasFleetDeploy {
+				m.fleetResults = make(map[int]error) // Clear previous fleet results before retry
+				m.state = auditStateFleetInProgress
+			} else {
+				m.state = auditStateInProgress // For single audit, go back to single in-progress
+			}
+			m.status = i18n.T("deploy.retrying")
+			return m, m.pendingCmd // Re-run the original command
+		case "esc":
+			m.state = auditStateMenu
+			m.err = nil
+			m.status = i18n.T("deploy.passphrase_cancelled")
+			return m, nil
+		}
+	}
+	var cmd tea.Cmd
+	m.passphraseInput, cmd = m.passphraseInput.Update(msg)
+	return m, cmd
+}
+
 func (m auditModel) updateSelectTag(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -327,8 +396,8 @@ func (m auditModel) updateComplete(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "enter":
-			if len(m.fleetResults) > 0 {
-				m.fleetResults = make(map[int]error)
+			if m.wasFleetDeploy {
+				m.fleetResults = make(map[int]error) // Clear results
 				return m, func() tea.Msg { return backToMenuMsg{} }
 			}
 			m.state = auditStateSelectAccount
@@ -451,6 +520,24 @@ func (m auditModel) View() string {
 			mainPane += "\n" + helpFooterStyle.Render(m.status)
 		}
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+
+	case auditStateEnterPassphrase:
+		var b strings.Builder
+		b.WriteString(titleStyle.Render(i18n.T("deploy.passphrase_title")))
+		b.WriteString("\n\n")
+		b.WriteString(i18n.T("deploy.passphrase_prompt"))
+		b.WriteString("\n\n")
+		b.WriteString(m.passphraseInput.View())
+		b.WriteString("\n\n")
+		b.WriteString(helpStyle.Render(i18n.T("deploy.passphrase_help")))
+
+		return lipgloss.Place(
+			m.width,
+			m.height,
+			lipgloss.Center,
+			lipgloss.Center,
+			dialogBoxStyle.Render(b.String()),
+		)
 
 	case auditStateInProgress:
 		title := titleStyle.Render(i18n.T("audit.tui.auditing"))
