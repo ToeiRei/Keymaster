@@ -207,9 +207,14 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
+			submitButtonIndex := len(m.inputs)
+			if m.editingAccount == nil {
+				submitButtonIndex++ // Account for bootstrap checkbox in add mode
+			}
+
 			// Did the user press enter while the submit button was focused?
 			// If so, create the account or start bootstrap.
-			if s == "enter" && m.focusIndex == len(m.inputs)+1 {
+			if s == "enter" && m.focusIndex == submitButtonIndex {
 				if m.editingAccount != nil {
 					// Update existing account
 					label := m.inputs[2].Value()
