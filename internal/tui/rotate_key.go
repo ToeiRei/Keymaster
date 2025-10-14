@@ -53,6 +53,7 @@ type rotateKeyModel struct {
 	isConfirmingGenerate bool // True if the "generate initial key" modal is active.
 	isConfirmingRotate   bool // True if the "rotate existing key" modal is active.
 	confirmCursor        int  // 0 for No, 1 for Yes in the confirmation modal.
+	nextAction           rotateState
 	// For passphrase input
 	passphraseInput textinput.Model
 	width, height   int
@@ -123,13 +124,13 @@ func (m *rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				// "Yes" is selected
 				if m.isConfirmingGenerate {
-					m.state = rotateStateGenerating
 					m.isConfirmingGenerate = false
+					m.nextAction = rotateStateGenerating
 					return m, m.enterPassphraseStep()
 				}
 				if m.isConfirmingRotate {
-					m.state = rotateStateRotating
 					m.isConfirmingRotate = false
+					m.nextAction = rotateStateRotating
 					return m, m.enterPassphraseStep()
 				}
 			}
@@ -145,12 +146,16 @@ func (m *rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "enter":
 				passphrase := m.passphraseInput.Value()
-				if m.state == rotateStateGenerating {
+				if m.nextAction == rotateStateGenerating { // The user wants to generate a key
+					m.state = rotateStateGenerating // Set state to show "Generating..." message
 					return m, generateInitialKey(passphrase)
-				}
-				if m.state == rotateStateRotating {
+				} else { // Assumes the user wants to rotate
+					m.state = rotateStateRotating // Set state to show "Rotating..." message
 					return m, performRotation(passphrase)
 				}
+			case "esc":
+				// Allow escaping from the passphrase input
+				return m, func() tea.Msg { return backToMenuMsg{} }
 			}
 		}
 		m.passphraseInput, cmd = m.passphraseInput.Update(msg)
@@ -159,6 +164,7 @@ func (m *rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Handle other states (generating, rotating, done)
 	switch msg := msg.(type) {
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "esc":
@@ -185,9 +191,7 @@ func (m *rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *rotateKeyModel) enterPassphraseStep() tea.Cmd {
 	m.state = rotateStateEnterPassphrase
 	m.passphraseInput.Focus()
-	// We need to preserve whether we are generating or rotating.
-	// The state will be checked when the user hits enter on the passphrase.
-	return textinput.Blink
+	return textinput.Blink // Start the cursor blinking in the input field
 }
 
 // viewConfirmationRotate renders the modal dialog for confirming a key rotation.
