@@ -127,14 +127,14 @@ type Deployer struct {
 
 // NewDeployer creates a new SSH connection and returns a Deployer.
 // For bootstrap connections, use NewBootstrapDeployer instead.
-func NewDeployer(host, user, privateKey, passphrase string) (*Deployer, error) {
+func NewDeployer(host, user, privateKey string, passphrase []byte) (*Deployer, error) {
 	return NewDeployerWithConfig(host, user, privateKey, passphrase, DefaultConnectionConfig(), false)
 }
 
 // NewBootstrapDeployer creates a new SSH connection for bootstrap operations.
 // It accepts any host key and saves it to the database for future connections.
 func NewBootstrapDeployer(host, user, privateKey string) (*Deployer, error) {
-	return NewDeployerWithConfig(host, user, privateKey, "", DefaultConnectionConfig(), true)
+	return NewDeployerWithConfig(host, user, privateKey, nil, DefaultConnectionConfig(), true)
 }
 
 // NewBootstrapDeployerWithExpectedKey creates a new SSH connection for bootstrap operations
@@ -145,12 +145,12 @@ func NewBootstrapDeployerWithExpectedKey(host, user, privateKey, expectedHostKey
 }
 
 // NewDeployerWithConfig creates a new SSH connection with custom timeout configuration.
-func NewDeployerWithConfig(host, user, privateKey, passphrase string, config *ConnectionConfig, isBootstrap bool) (*Deployer, error) {
+func NewDeployerWithConfig(host, user, privateKey string, passphrase []byte, config *ConnectionConfig, isBootstrap bool) (*Deployer, error) {
 	return newDeployerInternal(host, user, privateKey, passphrase, config, isBootstrap)
 }
 
 // newDeployerInternal is the internal implementation for creating deployers.
-func newDeployerInternal(host, user, privateKey, passphrase string, config *ConnectionConfig, isBootstrap bool) (*Deployer, error) {
+func newDeployerInternal(host, user, privateKey string, passphrase []byte, config *ConnectionConfig, isBootstrap bool) (*Deployer, error) {
 	// Define the host key callback based on bootstrap mode.
 	var hostKeyCallback ssh.HostKeyCallback
 
@@ -221,8 +221,8 @@ func newDeployerInternal(host, user, privateKey, passphrase string, config *Conn
 			// Check if the error is because the key is encrypted.
 			if _, ok := err.(*ssh.PassphraseMissingError); ok {
 				// If it's encrypted and we have a passphrase, try to parse it again.
-				if passphrase != "" {
-					signer, err = ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), []byte(passphrase))
+				if len(passphrase) > 0 {
+					signer, err = ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), passphrase)
 				} else {
 					// Key is encrypted, but we have no passphrase.
 					return nil, fmt.Errorf("system key is encrypted, but no passphrase was provided")

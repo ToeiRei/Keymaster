@@ -13,6 +13,7 @@ import (
 
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/state"
 )
 
 // DecommissionOptions configures how accounts are decommissioned
@@ -151,8 +152,18 @@ func DecommissionAccount(account model.Account, systemKey string, options Decomm
 
 // cleanupRemoteAuthorizedKeys connects to the remote host and removes the authorized_keys file
 func cleanupRemoteAuthorizedKeys(account model.Account, systemKey string, keepFile bool, result *DecommissionResult) error {
+	// Get passphrase from cache and ensure it's wiped after use.
+	passphrase := state.PasswordCache.Get()
+	defer func() {
+		if passphrase != nil {
+			for i := range passphrase {
+				passphrase[i] = 0
+			}
+		}
+	}()
+
 	// Create deployer connection
-	deployer, err := NewDeployer(account.Hostname, account.Username, systemKey, "")
+	deployer, err := NewDeployer(account.Hostname, account.Username, systemKey, passphrase)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s@%s: %w", account.Username, account.Hostname, err)
 	}
@@ -169,8 +180,18 @@ func cleanupRemoteAuthorizedKeys(account model.Account, systemKey string, keepFi
 
 // cleanupRemoteAuthorizedKeysSelective connects to the remote host and removes specific keys
 func cleanupRemoteAuthorizedKeysSelective(account model.Account, systemKey string, options DecommissionOptions, result *DecommissionResult) error {
+	// Get passphrase from cache and ensure it's wiped after use.
+	passphrase := state.PasswordCache.Get()
+	defer func() {
+		if passphrase != nil {
+			for i := range passphrase {
+				passphrase[i] = 0
+			}
+		}
+	}()
+
 	// Create deployer connection
-	deployer, err := NewDeployer(account.Hostname, account.Username, systemKey, "")
+	deployer, err := NewDeployer(account.Hostname, account.Username, systemKey, passphrase)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s@%s: %w", account.Username, account.Hostname, err)
 	}

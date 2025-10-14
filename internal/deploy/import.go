@@ -17,6 +17,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
+	"github.com/toeirei/keymaster/internal/state"
 )
 
 // ImportRemoteKeys connects to a host, reads its authorized_keys, imports new keys
@@ -50,8 +51,18 @@ func ImportRemoteKeys(account model.Account) (importedKeys []model.PublicKey, sk
 		privateKey = connectKey.PrivateKey
 	}
 
+	// Get passphrase from cache and ensure it's wiped after use.
+	passphrase := state.PasswordCache.Get()
+	defer func() {
+		if passphrase != nil {
+			for i := range passphrase {
+				passphrase[i] = 0
+			}
+		}
+	}()
+
 	// 2. Connect using the deployer.
-	deployer, err := NewDeployer(account.Hostname, account.Username, privateKey, "")
+	deployer, err := NewDeployer(account.Hostname, account.Username, privateKey, passphrase)
 	if err != nil {
 		return nil, 0, warning, fmt.Errorf("connection failed: %w", err)
 	}

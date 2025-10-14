@@ -14,6 +14,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/state"
 )
 
 // RunDeploymentForAccount handles the deployment logic for a single account.
@@ -58,7 +59,18 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 		return errors.New(i18n.T("deploy.error_get_active_key_for_serial"))
 	}
 
-	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey, "")
+	// Get passphrase from the in-memory cache.
+	passphrase := state.PasswordCache.Get()
+	// It's critical to wipe the passphrase from memory after we're done with it.
+	// We use a defer to ensure this happens even if other parts of the function fail.
+	defer func() {
+		if passphrase != nil {
+			for i := range passphrase {
+				passphrase[i] = 0
+			}
+		}
+	}()
+	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey, passphrase)
 	if err != nil {
 		if isTUI {
 			return fmt.Errorf(i18n.T("deploy.error_connection_failed_tui"), account.String(), err)

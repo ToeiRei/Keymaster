@@ -12,6 +12,7 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
+	"github.com/toeirei/keymaster/internal/state"
 )
 
 // AuditAccountStrict performs a strict audit by comparing the full normalized
@@ -31,8 +32,18 @@ func AuditAccountStrict(account model.Account) error {
 		return errors.New(i18n.T("audit.error_no_serial_key", account.Serial))
 	}
 
+	// Get passphrase from cache and ensure it's wiped after use.
+	passphrase := state.PasswordCache.Get()
+	defer func() {
+		if passphrase != nil {
+			for i := range passphrase {
+				passphrase[i] = 0
+			}
+		}
+	}()
+
 	// 3. Attempt to connect with that key.
-	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey, "")
+	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey, passphrase)
 	if err != nil {
 		return errors.New(i18n.T("audit.error_connection_failed", account.Serial, err))
 	}
@@ -78,7 +89,17 @@ func AuditAccountSerial(account model.Account) error {
 		return errors.New(i18n.T("audit.error_no_serial_key", account.Serial))
 	}
 
-	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey, "")
+	// Get passphrase from cache and ensure it's wiped after use.
+	passphrase := state.PasswordCache.Get()
+	defer func() {
+		if passphrase != nil {
+			for i := range passphrase {
+				passphrase[i] = 0
+			}
+		}
+	}()
+
+	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey, passphrase)
 	if err != nil {
 		return errors.New(i18n.T("audit.error_connection_failed", account.Serial, err))
 	}
