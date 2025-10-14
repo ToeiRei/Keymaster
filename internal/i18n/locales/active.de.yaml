@@ -235,6 +235,11 @@ rotate_key.help_modal: "(links/rechts zum Navigieren, Enter zum Bestätigen, Esc
   Abbrechen)"
 rotate_key.help_done: "Mit 'q' zum Hauptmenü zurückkehren."
 
+# Passphrase-Eingabe für Systemschlüssel
+rotate_key.passphrase_title: "🔐 Optionales Passwort festlegen"
+rotate_key.passphrase_prompt: "Sie können den neuen Systemschlüssel mit einem Passwort schützen.\nDies wird empfohlen, ist aber optional."
+rotate_key.passphrase_placeholder: "Leer lassen für kein Passwort"
+rotate_key.passphrase_help: "Enter zum Bestätigen, ESC zum Abbrechen der Rotation."
 # Tags view translations
 tags_view.title: "Konten nach Tag"
 tags_view.empty: "Keine Tags oder Konten gefunden. Fügen Sie Tags zu Konten hinzu,
@@ -282,6 +287,13 @@ deploy.filter_active: "Filter: %s (mit 'esc' löschen)"
 deploy.filter_hint: "Mit / filtern…"
 deploy.status.copy_success: "Inhalt von authorized_keys in die Zwischenablage kopiert."
 deploy.status.copy_failed: "Fehler beim Kopieren in die Zwischenablage: %s"
+
+# Passphrase-Eingabe für Deployment
+deploy.passphrase_title: "🔐 Passwort für Systemschlüssel erforderlich"
+deploy.passphrase_prompt: "Der Systemschlüssel ist verschlüsselt. Bitte geben Sie das Passwort ein, um ihn zu entsperren."
+deploy.passphrase_help: "Enter zum Bestätigen, ESC zum Abbrechen des Deployments."
+deploy.passphrase_cancelled: "Deployment abgebrochen."
+deploy.retrying: "Wiederhole Deployment mit Passwort..."
 
 # Audit log table headers
 audit_log.title: "Audit-Log"
@@ -357,6 +369,8 @@ rotate_key.cli_rotated_success: "\n✅ Systemschlüssel erfolgreich rotiert. Der
   aktive Schlüssel hat die Seriennummer #%d."
 rotate_key.cli_deploy_reminder: "Führen Sie 'keymaster deploy' aus, um den neuen Schlüssel
   auf Ihre Flotte anzuwenden."
+rotate_key.cli_password_prompt: "Passwort für neuen Systemschlüssel eingeben (leer für kein Passwort): "
+rotate_key.cli_error_read_password: "Fehler beim Lesen des Passworts: %v"
 
 # Import CLI command
 import.start: "🔑 Schlüssel werden aus %s importiert…"

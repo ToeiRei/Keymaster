@@ -205,6 +205,12 @@ rotate_key.help_modal: "(ƿinstra/sƿīðra tō farenne, enter tō ġetrēoƿiġ
   ācierrenne)"
 rotate_key.help_done: "Cnuc 'q' tō eftfarenne tō þǣm fruman menu."
 
+# Passphrase input for system key
+rotate_key.passphrase_title: "🔐 Settan Ġesċīrlicne Ġewritrǣden"
+rotate_key.passphrase_prompt: "Þū meaht þone nīwan systemcǣġ mid ġewritrǣdene beorgan.\nÞis is ġerǣded, ac nis nēodbeþearf."
+rotate_key.passphrase_placeholder: "Lǣt īdel for nānre ġewritrǣdene"
+rotate_key.passphrase_help: "Cnuc Enter tō ġetrēoƿiġenne, oþþe ESC tō ācierrenne þā ġehƿyrfunge."
+
 # Tags view translations
 tags_view.title: "Rǣdmenn be Mearcum"
 tags_view.empty: "Nān mearca oþþe rǣdmenn ġefunden. Eċ mearcan tō rǣdmannum tō sēonne
@@ -251,6 +257,13 @@ deploy.filter_active: "Sīfe: %s (cnuc 'esc' tō clǣnsiġenne)"
 deploy.filter_hint: "Cnuc / tō sīfenne…"
 deploy.status.copy_success: "Ġeċīeġed authorized_keys innung tō clipbordum."
 deploy.status.copy_failed: "Mislāmp tō ġeċīeġenne tō clipbordum: %s"
+
+# Passphrase input for deployment
+deploy.passphrase_title: "🔐 Systemcǣġes Ġewritrǣden Nēodbeþearf"
+deploy.passphrase_prompt: "Se systemcǣġ is bewrigen. Sete þā ġewritrǣdene tō onlūcanne hit."
+deploy.passphrase_help: "Cnuc Enter tō ġetrēoƿiġenne, oþþe ESC tō ācierrenne þā sendunge."
+deploy.passphrase_cancelled: "Sendung ācierred."
+deploy.retrying: "Edfandiġende sendunge mid ġewritrǣdene..."
 
 # Audit log translations
 audit_log.title: "Ġesīene Geƿritrǣdinge"
@@ -319,6 +332,8 @@ rotate_key.cli_rotated_success: "\nâœ… Ġesundfullīċe ġehƿyrfed systemc�
   dǣdlīċa cǣġ is endebyrdnes #%d."
 rotate_key.cli_deploy_reminder: "Ryne 'keymaster deploy' tō settenne þone nīƿan cǣġ
   tō þīnum flote."
+rotate_key.cli_password_prompt: "Sete ġewritrǣdene for nīwum systemcǣġe (īdel for nānre): "
+rotate_key.cli_error_read_password: "Mislāmp tō rǣdenne ġewritrǣdene: %v"
 
 # Import CLI command
 import.start: "ðŸ Inbrengde cǣgan fram %s…"
