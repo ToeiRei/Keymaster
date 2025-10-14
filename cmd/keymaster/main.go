@@ -175,7 +175,7 @@ Running without a subcommand will launch the interactive TUI.`,
 	applyDefaultFlags(deployCmd)
 	applyDefaultFlags(rotateKeyCmd)
 	applyDefaultFlags(auditCmd)
-	rotateKeyCmd.Flags().StringVarP(&password, "password", "p", "", i18n.T("rotate_key.cli_password_flag_help"))
+	rotateKeyCmd.Flags().StringVarP(&password, "password", "p", "", "Optional password to encrypt the new private key")
 	auditCmd.Flags().StringVarP(&auditMode, "mode", "m", "strict", "Audit mode: 'strict' (full file comparison) or 'serial' (header serial only)")
 
 	applyDefaultFlags(importCmd)
