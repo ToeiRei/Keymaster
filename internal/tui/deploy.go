@@ -172,13 +172,19 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// It's a different, final error.
 				m.state = deployStateComplete
 				m.err = res.err
-			} else { // No error, success case.
+				// For single-host deploys, the status is just the error.
+				// For fleet deploys, the summary screen will show the error.
+				// So, we don't need to set m.status here.
+
+			} else { // No error, success case for a single deployment.
 				m.state = deployStateComplete
-				activeKey, err := db.GetActiveSystemKey()
-				if err != nil {
-					m.err = fmt.Errorf(i18n.T("deploy.error_get_serial_for_status"), err)
-				} else {
-					m.status = i18n.T("deploy.success", m.selectedAccount.String(), activeKey.Serial)
+				if !m.wasFleetDeploy { // Only set this status for single, non-fleet deploys
+					activeKey, err := db.GetActiveSystemKey()
+					if err != nil {
+						m.err = fmt.Errorf(i18n.T("deploy.error_get_serial_for_status"), err)
+					} else {
+						m.status = i18n.T("deploy.success", m.selectedAccount.String(), activeKey.Serial)
+					}
 				}
 			}
 		}
