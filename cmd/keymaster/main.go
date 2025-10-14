@@ -36,6 +36,7 @@ import (
 	"github.com/toeirei/keymaster/internal/sshkey"
 	"github.com/toeirei/keymaster/internal/tui"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/term"
 )
 
 var version = "dev" // this will be set by the linker
@@ -43,6 +44,7 @@ var cfgFile string
 var auditMode string // audit mode flag: "strict" (default) or "serial"
 var fullRestore bool // Flag for the restore command
 
+var password string // Flag for rotate-key password
 // TODO should be moved to project root
 // main is the entry point of the application.
 func main() {
@@ -173,6 +175,7 @@ Running without a subcommand will launch the interactive TUI.`,
 	applyDefaultFlags(deployCmd)
 	applyDefaultFlags(rotateKeyCmd)
 	applyDefaultFlags(auditCmd)
+	rotateKeyCmd.Flags().StringVarP(&password, "password", "p", "", i18n.T("rotate_key.cli_password_flag_help"))
 	auditCmd.Flags().StringVarP(&auditMode, "mode", "m", "strict", "Audit mode: 'strict' (full file comparison) or 'serial' (header serial only)")
 
 	applyDefaultFlags(importCmd)
@@ -271,7 +274,23 @@ The previous key is kept for accessing hosts that have not yet been updated.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(i18n.T("rotate_key.cli_rotating"))
 
-		publicKeyString, privateKeyString, err := internalkey.GenerateAndMarshalEd25519Key("keymaster-system-key", "")
+		// Get passphrase from flag or interactive prompt
+		passphrase := password
+		if passphrase == "" {
+			// Check if stdin is a terminal before prompting
+			if term.IsTerminal(int(os.Stdin.Fd())) {
+				fmt.Print(i18n.T("rotate_key.cli_password_prompt"))
+				bytePassword, err := term.ReadPassword(int(os.Stdin.Fd()))
+				if err != nil {
+					log.Fatalf("%s", i18n.T("rotate_key.cli_error_read_password", err))
+				}
+				passphrase = string(bytePassword)
+				fmt.Println() // Add a newline after password input
+			}
+			// If not a terminal and no flag, passphrase remains empty (unencrypted key)
+		}
+
+		publicKeyString, privateKeyString, err := internalkey.GenerateAndMarshalEd25519Key("keymaster-system-key", passphrase)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("rotate_key.cli_error_generate", err))
 		}

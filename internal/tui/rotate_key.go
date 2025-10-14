@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/crypto/ssh"
@@ -26,6 +27,8 @@ const (
 	rotateStateChecking rotateState = iota
 	// rotateStateReadyToGenerate is an intermediate state before showing the generation confirmation.
 	rotateStateReadyToGenerate
+	// rotateStateEnterPassphrase prompts the user for an optional passphrase.
+	rotateStateEnterPassphrase
 	// rotateStateReadyToRotate is an intermediate state before showing the rotation confirmation.
 	rotateStateReadyToRotate
 	// rotateStateGenerating shows a "generating..." message while the key is being created.
@@ -50,14 +53,27 @@ type rotateKeyModel struct {
 	isConfirmingGenerate bool // True if the "generate initial key" modal is active.
 	isConfirmingRotate   bool // True if the "rotate existing key" modal is active.
 	confirmCursor        int  // 0 for No, 1 for Yes in the confirmation modal.
-	width, height        int
+	// For passphrase input
+	passphraseInput textinput.Model
+	width, height   int
 }
 
 // newRotateKeyModel creates a new model for the key rotation view.
 // It immediately checks the database to see if a system key already exists
 // and sets the appropriate confirmation state (generate vs. rotate).
 func newRotateKeyModel() *rotateKeyModel {
-	m := &rotateKeyModel{state: rotateStateChecking, confirmCursor: 0} // Default to No
+	pi := textinput.New()
+	pi.Placeholder = i18n.T("rotate_key.passphrase_placeholder")
+	pi.EchoMode = textinput.EchoPassword
+	pi.CharLimit = 128
+	pi.Width = 50
+
+	m := &rotateKeyModel{
+		state:           rotateStateChecking,
+		confirmCursor:   0, // Default to No
+		passphraseInput: pi,
+	}
+
 	hasKey, err := db.HasSystemKeys()
 	if err != nil {
 		m.err = err
@@ -109,16 +125,36 @@ func (m *rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.isConfirmingGenerate {
 					m.state = rotateStateGenerating
 					m.isConfirmingGenerate = false
-					return m, generateInitialKey
+					return m, m.enterPassphraseStep()
 				}
 				if m.isConfirmingRotate {
 					m.state = rotateStateRotating
 					m.isConfirmingRotate = false
-					return m, performRotation
+					return m, m.enterPassphraseStep()
 				}
 			}
 		}
 		return m, nil
+	}
+
+	// Handle other states (generating, rotating, done)
+	var cmd tea.Cmd
+	if m.state == rotateStateEnterPassphrase {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				passphrase := m.passphraseInput.Value()
+				if m.state == rotateStateGenerating {
+					return m, generateInitialKey(passphrase)
+				}
+				if m.state == rotateStateRotating {
+					return m, performRotation(passphrase)
+				}
+			}
+		}
+		m.passphraseInput, cmd = m.passphraseInput.Update(msg)
+		return m, cmd
 	}
 
 	// Handle other states (generating, rotating, done)
@@ -142,7 +178,16 @@ func (m *rotateKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg.err
 		m.newKeySerial = msg.serial
 	}
-	return m, nil
+	return m, cmd
+}
+
+// enterPassphraseStep transitions the model to the passphrase input step.
+func (m *rotateKeyModel) enterPassphraseStep() tea.Cmd {
+	m.state = rotateStateEnterPassphrase
+	m.passphraseInput.Focus()
+	// We need to preserve whether we are generating or rotating.
+	// The state will be checked when the user hits enter on the passphrase.
+	return textinput.Blink
 }
 
 // viewConfirmationRotate renders the modal dialog for confirming a key rotation.
@@ -201,6 +246,26 @@ func (m *rotateKeyModel) viewConfirmationGenerate() string {
 	)
 }
 
+// viewEnterPassphrase renders the modal for entering an optional passphrase.
+func (m *rotateKeyModel) viewEnterPassphrase() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render(i18n.T("rotate_key.passphrase_title")))
+	b.WriteString("\n\n")
+	b.WriteString(i18n.T("rotate_key.passphrase_prompt"))
+	b.WriteString("\n\n")
+	b.WriteString(m.passphraseInput.View())
+	b.WriteString("\n\n")
+	b.WriteString(helpStyle.Render(i18n.T("rotate_key.passphrase_help")))
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		dialogBoxStyle.Render(b.String()),
+	)
+}
+
 // View renders the key rotation UI based on the current model state.
 func (m *rotateKeyModel) View() string {
 	if m.isConfirmingGenerate {
@@ -220,6 +285,8 @@ func (m *rotateKeyModel) View() string {
 	switch m.state {
 	case rotateStateChecking:
 		b.WriteString(i18n.T("rotate_key.checking"))
+	case rotateStateEnterPassphrase:
+		return m.viewEnterPassphrase()
 	case rotateStateGenerating:
 		b.WriteString(specialStyle.Render(i18n.T("rotate_key.generating")))
 	case rotateStateGenerated:
@@ -264,30 +331,34 @@ type keyRotatedMsg struct {
 
 // generateInitialKey is a tea.Cmd that performs the key generation and DB write.
 // It sends an initialKeyGeneratedMsg when complete.
-func generateInitialKey() tea.Msg {
-	publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key", "")
-	if err != nil {
-		return initialKeyGeneratedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_generate"), err)}
-	}
-	serial, err := db.CreateSystemKey(publicKeyString, privateKeyString)
-	if err != nil {
-		return initialKeyGeneratedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_save"), err)}
-	}
+func generateInitialKey(passphrase string) tea.Cmd {
+	return func() tea.Msg {
+		publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key", passphrase)
+		if err != nil {
+			return initialKeyGeneratedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_generate"), err)}
+		}
+		serial, err := db.CreateSystemKey(publicKeyString, privateKeyString)
+		if err != nil {
+			return initialKeyGeneratedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_save"), err)}
+		}
 
-	return initialKeyGeneratedMsg{publicKey: publicKeyString, serial: serial}
+		return initialKeyGeneratedMsg{publicKey: publicKeyString, serial: serial}
+	}
 }
 
 // performRotation is a tea.Cmd that generates a new key and performs the DB rotation.
 // It sends a keyRotatedMsg when complete.
-func performRotation() tea.Msg {
-	publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key", "")
-	if err != nil {
-		return keyRotatedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_generate"), err)}
-	}
-	serial, err := db.RotateSystemKey(publicKeyString, privateKeyString)
-	if err != nil {
-		return keyRotatedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_save_rotated"), err)}
-	}
+func performRotation(passphrase string) tea.Cmd {
+	return func() tea.Msg {
+		publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key", passphrase)
+		if err != nil {
+			return keyRotatedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_generate"), err)}
+		}
+		serial, err := db.RotateSystemKey(publicKeyString, privateKeyString)
+		if err != nil {
+			return keyRotatedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_save_rotated"), err)}
+		}
 
-	return keyRotatedMsg{serial: serial}
+		return keyRotatedMsg{serial: serial}
+	}
 }

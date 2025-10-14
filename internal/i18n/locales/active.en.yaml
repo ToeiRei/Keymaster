@@ -198,6 +198,10 @@ rotate_key.no_cancel: "No, Cancel"
 rotate_key.yes_generate: "Yes, Generate"
 rotate_key.help_modal: "(left/right to navigate, enter to confirm, esc to cancel)"
 rotate_key.help_done: "Press 'q' to return to the main menu."
+rotate_key.passphrase_title: "🔐 Set Optional Passphrase"
+rotate_key.passphrase_prompt: "You can protect the new system key with a passphrase.\nThis is recommended, but optional."
+rotate_key.passphrase_placeholder: "Leave blank for no passphrase"
+rotate_key.passphrase_help: "Press Enter to confirm, or ESC to cancel rotation."
 
 # Tags view translations
 tags_view.title: "Accounts by Tag"
@@ -306,6 +310,9 @@ rotate_key.cli_rotating: "⚙️  Rotating system key…"
 rotate_key.cli_error_generate: "Error generating new system key: %w"
 rotate_key.cli_error_save: "Error saving rotated key to database: %w"
 rotate_key.cli_rotated_success: "\n✅ Successfully rotated system key. The new active key is serial #%d."
+rotate_key.cli_password_flag_help: "Optional password to encrypt the new private key"
+rotate_key.cli_password_prompt: "Enter passphrase for new system key (empty for no password): "
+rotate_key.cli_error_read_password: "Failed to read password: %v"
 rotate_key.cli_deploy_reminder: "Run 'keymaster deploy' to apply the new key to your fleet."
 
 # Import CLI command
