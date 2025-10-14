@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2025-10-14
+
+This release focuses on improving the user experience for encrypted system keys and fixing a number of bugs in the TUI workflow.
+
+### Added
+
+- **Interactive Passphrase Prompts:** The TUI will now gracefully prompt for a password when a deployment or audit is attempted with an encrypted system key, rather than failing. This works for single-host, fleet, and tag-based operations.
+- **Tag Autocompletion:** The "Add/Edit Account" form now correctly provides autocomplete suggestions for tags based on existing tags in the database.
+
+### Changed
+
+- **Authentication Flow:** The SSH connection logic now correctly falls back to using the SSH agent if an encrypted system key is present but no passphrase is provided.
+
+### Fixed
+
+- **Account Editing:** Fixed a bug that prevented changes from being saved when editing an account.
+- **UI State:** Resolved several UI bugs where the application would get stuck or return to the wrong screen after completing an operation (e.g., after a fleet deployment).
+- **Status Messages:** Corrected misleading status messages that would appear after a successful fleet deployment.
+
 ## [1.4.0] - 2025-10-01
 
 This is a major feature release that introduces powerful database management capabilities, a more resilient and user-friendly bootstrap process, and significant enhancements to the dashboard and configuration handling.
