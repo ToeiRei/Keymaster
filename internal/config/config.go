@@ -12,8 +12,17 @@ import (
 	"github.com/spf13/viper"
 )
 
-// getConfigPath returns the full path for the configuration file.
-func getConfigPath(system bool) (string, error) {
+// Config holds the application's configuration, loaded from file/env/flags.
+type Config struct {
+	Database struct {
+		Type string `mapstructure:"type"`
+		Dsn  string `mapstructure:"dsn"`
+	} `mapstructure:"database"`
+	Language string `mapstructure:"language"`
+}
+
+// GetConfigPath returns the full path for the configuration file.
+func GetConfigPath(system bool) (string, error) {
 	var configDir string
 	var err error
 
@@ -39,61 +48,63 @@ func getConfigPath(system bool) (string, error) {
 
 func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_config_file_path *string) (T, error) {
 	var c T
-	v := viper.New()
 
 	// 1. Set defaults
 	for key, value := range defaults {
-		v.SetDefault(key, value)
+		viper.SetDefault(key, value)
 	}
 
 	// 2. Set up file search paths (new format: keymaster.yaml)
-	v.SetConfigName("keymaster")
-	v.SetConfigType("yaml")
+	viper.SetConfigName("keymaster")
+	viper.SetConfigType("yaml")
 
 	// 3. Add explicit config file path if provided via --config flag.
 	// This has the highest precedence for file-based configuration.
 	if additional_config_file_path != nil {
-		v.SetConfigFile(*additional_config_file_path)
+		viper.SetConfigFile(*additional_config_file_path)
 	}
 
 	// 3. Add standard config locations
-	if userConfigPath, err := getConfigPath(false); err == nil {
-		v.AddConfigPath(filepath.Dir(userConfigPath))
+	if userConfigPath, err := GetConfigPath(false); err == nil {
+		viper.AddConfigPath(filepath.Dir(userConfigPath))
 	}
-	if systemConfigPath, err := getConfigPath(true); err == nil {
-		v.AddConfigPath(filepath.Dir(systemConfigPath))
+	if systemConfigPath, err := GetConfigPath(true); err == nil {
+		viper.AddConfigPath(filepath.Dir(systemConfigPath))
 	}
-	v.AddConfigPath(".") // Look for keymaster.yaml in current dir
+	viper.AddConfigPath(".") // Look for keymaster.yaml in current dir
 
 	// 5. Read in the primary config file.
-	if err := v.ReadInConfig(); err != nil {
+	// We declare readErr here so it's available in the function's scope for the final return.
+	readErr := viper.ReadInConfig()
+	if readErr != nil {
 		// It's okay if the file is not found, but other errors are fatal.
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return c, err
+		if _, ok := readErr.(viper.ConfigFileNotFoundError); !ok {
+			return c, readErr
 		}
 	}
 
 	// 6. For backward compatibility, check for and merge `.keymaster.yaml` in the current directory.
-	mergeLegacyConfig(v)
+	mergeLegacyConfig(viper.GetViper())
 
 	// 7. Read from environment variables
-	v.AutomaticEnv()
-	v.AllowEmptyEnv(true)
-	v.SetEnvPrefix("keymaster")
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	viper.AllowEmptyEnv(true)
+	viper.SetEnvPrefix("keymaster")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	// cli
 	// TODO maybe needs to trigger additional parsing beferohand (most likely nots)
-	if err := v.BindPFlags(cmd.Flags()); err != nil {
+	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return c, err
 	}
 
 	// parse config
-	if err := v.Unmarshal(&c); err != nil {
+	if err := viper.Unmarshal(&c); err != nil {
 		return c, err
 	}
 
-	return c, nil
+	// Return the readErr (which will be nil or ConfigFileNotFoundError)
+	return c, readErr
 }
 
 // mergeLegacyConfig checks for a `.keymaster.yaml` file in the current directory
@@ -113,7 +124,7 @@ func mergeLegacyConfig(v *viper.Viper) {
 }
 
 func WriteConfigFile[T any](c *T, system bool) error {
-	path, err := getConfigPath(system)
+	path, err := GetConfigPath(system)
 	if err != nil {
 		return err
 	}
@@ -135,4 +146,17 @@ func WriteConfigFile[T any](c *T, system bool) error {
 	}
 
 	return nil
+}
+
+// Save persists the current Viper configuration to the user's config file.
+// It unmarshals the current state into the Config struct to ensure the
+// file structure (e.g., nested database keys) is preserved.
+func Save() error {
+	var currentConfig Config
+	if err := viper.Unmarshal(&currentConfig); err != nil {
+		return fmt.Errorf("failed to unmarshal current config for saving: %w", err)
+	}
+
+	// Write the structured config to the user-specific file.
+	return WriteConfigFile(&currentConfig, false)
 }

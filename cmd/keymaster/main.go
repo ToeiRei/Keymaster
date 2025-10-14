@@ -46,6 +46,71 @@ var fullRestore bool // Flag for the restore command
 
 var password string // Flag for rotate-key password
 // TODO should be moved to project root
+var appConfig config.Config
+
+func setupDefaultServices(cmd *cobra.Command, args []string) error {
+	// Load optional config file argument from cli
+	optional_config_path, err := getConfigPathFromCli(cmd)
+	if err != nil {
+		return err
+	}
+
+	// Load config
+	defauls := map[string]any{
+		"database.type": "sqlite",
+		"database.dsn":  "./keymaster.db",
+		"language":      "en",
+	}
+
+	appConfig, err = config.LoadConfig[config.Config](cmd, defauls, optional_config_path)
+	// A "file not found" error is expected on first run, so we handle it specifically.
+	// Other errors during loading are fatal.
+	if errors.As(err, &viper.ConfigFileNotFoundError{}) {
+		// This is the first run, or the config file was deleted. Create a default one.
+		if writeErr := config.WriteConfigFile(&appConfig, false); writeErr != nil {
+			// Log a warning but don't fail, as the app can run on defaults.
+			log.Printf("Warning: could not write default config file: %v", writeErr)
+		}
+	} else if err != nil {
+		// Any other error during config loading is a problem.
+		return fmt.Errorf("error loading config: %w", err)
+	}
+
+	// Post-process config to ensure critical values are not empty, falling back to defaults.
+	// This handles cases where the user's config file has empty values for these fields.
+	// We also update viper's internal state to ensure subsequent saves are correct.
+	if appConfig.Database.Type == "" {
+		appConfig.Database.Type = defauls["database.type"].(string)
+		viper.Set("database.type", appConfig.Database.Type)
+	}
+	if appConfig.Database.Dsn == "" {
+		appConfig.Database.Dsn = defauls["database.dsn"].(string)
+		viper.Set("database.dsn", appConfig.Database.Dsn)
+	}
+	if appConfig.Language == "" {
+		appConfig.Language = defauls["language"].(string)
+		viper.Set("language", appConfig.Language)
+	}
+
+	// Initialize i18n
+	i18n.Init(appConfig.Language)
+
+	// Initialize the database
+	if err := db.InitDB(appConfig.Database.Type, appConfig.Database.Dsn); err != nil {
+		return errors.New(i18n.T("config.error_init_db", err))
+	}
+
+	// Recover from any previous crashes
+	if err := bootstrap.RecoverFromCrash(); err != nil {
+		log.Printf("Bootstrap recovery error: %v", err)
+	}
+
+	// Start background session reaper
+	bootstrap.StartSessionReaper()
+
+	return nil
+}
+
 // main is the entry point of the application.
 func main() {
 	// Install signal handler for graceful shutdown of bootstrap sessions
@@ -63,56 +128,8 @@ func main() {
 	rootCmd := NewRootCmd()
 
 	if err := rootCmd.Execute(); err != nil {
-		// TODO consider adding bootstrap logic
-		// The error is already printed by Cobra on failure.
 		os.Exit(1)
 	}
-}
-
-func setupDefaultServices(cmd *cobra.Command, args []string) error {
-	// Load optional config file argument from cli
-	optional_config_path, err := getConfigPathFromCli(cmd)
-	if err != nil {
-		return err
-	}
-
-	// Load config
-	type Config struct {
-		Database struct {
-			Type string `mapstructure:"type"`
-			Dsn  string `mapstructure:"dsn"`
-		} `mapstructure:"database"`
-		Language string `mapstructure:"language"`
-	}
-
-	defauls := map[string]any{
-		"database.type": "sqlite",
-		"database.dsn":  "./keymaster.db",
-		"language":      "en",
-	}
-
-	config, err := config.LoadConfig[Config](cmd, defauls, optional_config_path)
-	if err != nil {
-		return fmt.Errorf("error loading config: %w", err)
-	}
-
-	// Initialize i18n
-	i18n.Init(config.Language)
-
-	// Initialize the database
-	if err := db.InitDB(config.Database.Type, config.Database.Dsn); err != nil {
-		return errors.New(i18n.T("config.error_init_db", err))
-	}
-
-	// Recover from any previous crashes
-	if err := bootstrap.RecoverFromCrash(); err != nil {
-		log.Printf("Bootstrap recovery error: %v", err)
-	}
-
-	// Start background session reaper
-	bootstrap.StartSessionReaper()
-
-	return nil
 }
 
 func applyDefaultFlags(cmd *cobra.Command) {
@@ -160,7 +177,7 @@ Running without a subcommand will launch the interactive TUI.`,
 		PreRunE: setupDefaultServices,
 		Run: func(cmd *cobra.Command, args []string) {
 			// The database is already initialized by PersistentPreRunE.
-			i18n.Init(viper.GetString("language")) // Initialize i18n for the TUI
+			// i18n is also initialized, so we can just run the TUI.
 			tui.Run()
 		},
 		Version: version,

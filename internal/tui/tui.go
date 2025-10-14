@@ -13,13 +13,13 @@ import (
 	"sort"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/spf13/viper"
+	"github.com/toeirei/keymaster/internal/config"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
-
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/spf13/viper"
 )
 
 // viewState represents which part of the UI is currently active.
@@ -293,8 +293,9 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				langCode := m.language.orderedKeys[m.language.cursor]
 				i18n.SetLang(langCode)
 				viper.Set("language", langCode)
-				// We can ignore the error here as it's not critical for the session.
-				_ = viper.WriteConfig()
+				if err := config.Save(); err != nil {
+					m.err = fmt.Errorf("failed to save config: %w", err)
+				}
 
 				// Signal that the language has changed so the entire UI can be re-initialized.
 				return m, func() tea.Msg { return languageChangedMsg{} }
