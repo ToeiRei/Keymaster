@@ -119,7 +119,7 @@ func main() {
 	// Set up cleanup store for bootstrap operations
 	defer func() {
 		if err := bootstrap.CleanupAllActiveSessions(); err != nil {
-			log.Printf("Error during final cleanup: %w", err)
+			log.Printf("Error during final cleanup: %v", err)
 		} else {
 			log.Println("Bootstrap cleanup complete.")
 		}
@@ -133,8 +133,16 @@ func main() {
 }
 
 func applyDefaultFlags(cmd *cobra.Command) {
-	cmd.Flags().String("database.type", "sqlite", "Database type (e.g., sqlite, postgres)")
-	cmd.Flags().String("database.dsn", "./keymaster.db", "Database connection string (DSN)")
+	// Avoid redefining flags if they already exist (NewRootCmd may be called
+	// multiple times in tests which creates a new root but uses package-level
+	// subcommands). pflag will panic on duplicate flag definitions, so check
+	// first.
+	if cmd.Flags().Lookup("database.type") == nil {
+		cmd.Flags().String("database.type", "sqlite", "Database type (e.g., sqlite, postgres)")
+	}
+	if cmd.Flags().Lookup("database.dsn") == nil {
+		cmd.Flags().String("database.dsn", "./keymaster.db", "Database connection string (DSN)")
+	}
 }
 
 func getConfigPathFromCli(cmd *cobra.Command) (*string, error) {
@@ -192,22 +200,38 @@ Running without a subcommand will launch the interactive TUI.`,
 	applyDefaultFlags(deployCmd)
 	applyDefaultFlags(rotateKeyCmd)
 	applyDefaultFlags(auditCmd)
-	rotateKeyCmd.Flags().StringVarP(&password, "password", "p", "", "Optional password to encrypt the new private key")
-	auditCmd.Flags().StringVarP(&auditMode, "mode", "m", "strict", "Audit mode: 'strict' (full file comparison) or 'serial' (header serial only)")
+	if rotateKeyCmd.Flags().Lookup("password") == nil {
+		rotateKeyCmd.Flags().StringVarP(&password, "password", "p", "", "Optional password to encrypt the new private key")
+	}
+	if auditCmd.Flags().Lookup("mode") == nil {
+		auditCmd.Flags().StringVarP(&auditMode, "mode", "m", "strict", "Audit mode: 'strict' (full file comparison) or 'serial' (header serial only)")
+	}
 
 	applyDefaultFlags(importCmd)
 	applyDefaultFlags(trustHostCmd)
 	applyDefaultFlags(exportSSHConfigCmd)
 	applyDefaultFlags(restoreCmd)
-	restoreCmd.Flags().BoolVar(&fullRestore, "full", false, "Perform a full, destructive restore (wipes all existing data first)")
+	if restoreCmd.Flags().Lookup("full") == nil {
+		restoreCmd.Flags().BoolVar(&fullRestore, "full", false, "Perform a full, destructive restore (wipes all existing data first)")
+	}
 
 	applyDefaultFlags(migrateCmd)
 	applyDefaultFlags(decommissionCmd)
-	decommissionCmd.Flags().Bool("skip-remote", false, "Skip remote SSH cleanup (only delete from database)")
-	decommissionCmd.Flags().Bool("keep-file", false, "Remove only Keymaster content, keep other keys in authorized_keys")
-	decommissionCmd.Flags().Bool("force", false, "Continue even if remote cleanup fails")
-	decommissionCmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
-	decommissionCmd.Flags().String("tag", "", "Decommission all accounts with this tag (format: key:value)")
+	if decommissionCmd.Flags().Lookup("skip-remote") == nil {
+		decommissionCmd.Flags().Bool("skip-remote", false, "Skip remote SSH cleanup (only delete from database)")
+	}
+	if decommissionCmd.Flags().Lookup("keep-file") == nil {
+		decommissionCmd.Flags().Bool("keep-file", false, "Remove only Keymaster content, keep other keys in authorized_keys")
+	}
+	if decommissionCmd.Flags().Lookup("force") == nil {
+		decommissionCmd.Flags().Bool("force", false, "Continue even if remote cleanup fails")
+	}
+	if decommissionCmd.Flags().Lookup("dry-run") == nil {
+		decommissionCmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
+	}
+	if decommissionCmd.Flags().Lookup("tag") == nil {
+		decommissionCmd.Flags().String("tag", "", "Decommission all accounts with this tag (format: key:value)")
+	}
 
 	// Add subcommands to the newly created root command.
 	cmd.AddCommand(
