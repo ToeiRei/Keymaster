@@ -195,8 +195,13 @@ func (s *PostgresStore) AssignKeyToAccount(keyID, accountID int) error {
 	err := AssignKeyToAccountBun(s.bun, keyID, accountID)
 	if err == nil {
 		var keyComment, accUser, accHost string
-		_ = s.db.QueryRow("SELECT comment FROM public_keys WHERE id = $1", keyID).Scan(&keyComment)
-		_ = s.db.QueryRow("SELECT username, hostname FROM accounts WHERE id = $1", accountID).Scan(&accUser, &accHost)
+		if pk, err2 := GetPublicKeyByIDBun(s.bun, keyID); err2 == nil && pk != nil {
+			keyComment = pk.Comment
+		}
+		if acc, err2 := GetAccountByIDBun(s.bun, accountID); err2 == nil && acc != nil {
+			accUser = acc.Username
+			accHost = acc.Hostname
+		}
 		details := fmt.Sprintf("key: '%s' to account: %s@%s", keyComment, accUser, accHost)
 		_ = s.LogAction("ASSIGN_KEY", details)
 	}
@@ -205,8 +210,13 @@ func (s *PostgresStore) AssignKeyToAccount(keyID, accountID int) error {
 
 func (s *PostgresStore) UnassignKeyFromAccount(keyID, accountID int) error {
 	var keyComment, accUser, accHost string
-	_ = s.db.QueryRow("SELECT comment FROM public_keys WHERE id = $1", keyID).Scan(&keyComment)
-	_ = s.db.QueryRow("SELECT username, hostname FROM accounts WHERE id = $1", accountID).Scan(&accUser, &accHost)
+	if pk, err2 := GetPublicKeyByIDBun(s.bun, keyID); err2 == nil && pk != nil {
+		keyComment = pk.Comment
+	}
+	if acc, err2 := GetAccountByIDBun(s.bun, accountID); err2 == nil && acc != nil {
+		accUser = acc.Username
+		accHost = acc.Hostname
+	}
 	details := fmt.Sprintf("key: '%s' from account: %s@%s", keyComment, accUser, accHost)
 	err := UnassignKeyFromAccountBun(s.bun, keyID, accountID)
 	if err == nil {
