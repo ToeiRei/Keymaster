@@ -144,7 +144,6 @@ func NewStore(dbType string, db *sql.DB) (Store, error) {
 // RunMigrations applies the necessary database migrations for a given database connection.
 func RunMigrations(db *sql.DB, dbType string) error {
 	var driver database.Driver
-	var err error
 	// Define the path to the migrations for the specific database type.
 	migrationsPath := fmt.Sprintf("migrations/%s", dbType)
 
@@ -156,11 +155,23 @@ func RunMigrations(db *sql.DB, dbType string) error {
 
 	switch dbType {
 	case "sqlite":
-		driver, err = sqlite.WithInstance(db, &sqlite.Config{})
+		tmpDriver, derr := sqlite.WithInstance(db, &sqlite.Config{})
+		if derr != nil {
+			return fmt.Errorf("failed to create sqlite migration driver: %w", derr)
+		}
+		driver = tmpDriver
 	case "postgres":
-		driver, err = postgres.WithInstance(db, &postgres.Config{})
+		tmpDriver, derr := postgres.WithInstance(db, &postgres.Config{})
+		if derr != nil {
+			return fmt.Errorf("failed to create postgres migration driver: %w", derr)
+		}
+		driver = tmpDriver
 	case "mysql":
-		driver, err = mysql.WithInstance(db, &mysql.Config{})
+		tmpDriver, derr := mysql.WithInstance(db, &mysql.Config{})
+		if derr != nil {
+			return fmt.Errorf("failed to create mysql migration driver: %w", derr)
+		}
+		driver = tmpDriver
 	default:
 		return fmt.Errorf("unsupported database type for migrations: '%s'", dbType)
 	}
