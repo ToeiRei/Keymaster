@@ -8,8 +8,8 @@ As a small and actively developed project, we do not have the resources to provi
 
 | Version  | Supported          |
 | -------- | ------------------ |
-| >= 1.3.5 | :white_check_mark: |
-| < 1.3.5  | :x:                |
+| >= 1.5.0 | :white_check_mark: |
+| < 1.5.0  | :x:                |
 
 We encourage all users to run the latest version of the software by updating with:
 `go install github.com/toeirei/keymaster/cmd/keymaster@latest`
