@@ -156,3 +156,66 @@ func TestSystemKeyHelpers(t *testing.T) {
 		t.Fatalf("unexpected system key: %+v", sk)
 	}
 }
+
+func TestStoreAuditAndBootstrap(t *testing.T) {
+	s := initTestDB(t)
+
+	// Audit via store
+	if err := s.LogAction("UNIT_TEST_AUDIT", "store-level test"); err != nil {
+		t.Fatalf("LogAction failed: %v", err)
+	}
+
+	entries, err := s.GetAllAuditLogEntries()
+	if err != nil {
+		t.Fatalf("GetAllAuditLogEntries failed: %v", err)
+	}
+	if len(entries) == 0 {
+		t.Fatalf("expected at least one audit entry, got 0")
+	}
+	found := false
+	for _, e := range entries {
+		if e.Action == "UNIT_TEST_AUDIT" && e.Details == "store-level test" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected to find our audit entry in entries: %+v", entries)
+	}
+
+	// Bootstrap session via store
+	id := "store-sess-1"
+	expires := time.Now().Add(30 * time.Minute)
+	if err := s.SaveBootstrapSession(id, "bootuser", "host.local", "label", "tags", "ssh-rsa AAA", expires, "active"); err != nil {
+		t.Fatalf("SaveBootstrapSession failed: %v", err)
+	}
+	bs, err := s.GetBootstrapSession(id)
+	if err != nil {
+		t.Fatalf("GetBootstrapSession failed: %v", err)
+	}
+	if bs == nil || bs.ID != id || bs.Username != "bootuser" {
+		t.Fatalf("unexpected bootstrap session via store: %+v", bs)
+	}
+
+	if err := s.UpdateBootstrapSessionStatus(id, "orphaned"); err != nil {
+		t.Fatalf("UpdateBootstrapSessionStatus failed: %v", err)
+	}
+	bs2, err := s.GetBootstrapSession(id)
+	if err != nil {
+		t.Fatalf("GetBootstrapSession failed: %v", err)
+	}
+	if bs2.Status != "orphaned" {
+		t.Fatalf("expected status orphaned, got %s", bs2.Status)
+	}
+
+	if err := s.DeleteBootstrapSession(id); err != nil {
+		t.Fatalf("DeleteBootstrapSession failed: %v", err)
+	}
+	bs3, err := s.GetBootstrapSession(id)
+	if err != nil {
+		t.Fatalf("GetBootstrapSession failed after delete: %v", err)
+	}
+	if bs3 != nil {
+		t.Fatalf("expected session deleted, still present: %+v", bs3)
+	}
+}
