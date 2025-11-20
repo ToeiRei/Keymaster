@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 The rewrite of the database layer justifies a new release in terms of 1.5.0.
 
+### Changed
+
+- **Database layer:** Implemented bun as database layer.
+- **Golang:** upstream fixes and bumps
+
+### Added
+- **Unit tests:** started to implement unit tests for database operations.
+
 ## [1.4.3] - 2025-10-14
 
 This release focuses on improving the user experience for encrypted system keys and fixing a number of bugs in the TUI workflow.
