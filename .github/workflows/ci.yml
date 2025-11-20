@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*', '*']
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+      - name: Install tools
+        run: go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+      - name: Run tests
+        run: go test ./... -v
+
+  build:
+    name: Build binary with version
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - name: Compute version and git sha
+        id: ver
+        run: |
+          echo "GITHUB_REF=${GITHUB_REF}"
+          GIT_SHA=$(git rev-parse --short=8 HEAD)
+          echo "git_sha=$GIT_SHA" >> $GITHUB_OUTPUT
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+            # Version string: <tag> (sha)
+            VERSION="$TAG ($GIT_SHA)"
+          else
+            VERSION="$GIT_SHA"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Build
+        run: |
+          echo "Building with version ${{ steps.ver.outputs.version }}"
+          go build -ldflags "-X main.version='${{ steps.ver.outputs.version }}'" -o keymaster ./cmd/keymaster
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: keymaster-${{ steps.ver.outputs.version }}
+          path: keymaster

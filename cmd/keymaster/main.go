@@ -233,6 +233,15 @@ Running without a subcommand will launch the interactive TUI.`,
 		decommissionCmd.Flags().String("tag", "", "Decommission all accounts with this tag (format: key:value)")
 	}
 
+	// Add a lightweight `version` subcommand so users and CI can run `keymaster version`.
+	versionCmd := &cobra.Command{
+		Use:   "version",
+		Short: "Print version",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println(version)
+		},
+	}
+
 	// Add subcommands to the newly created root command.
 	cmd.AddCommand(
 		deployCmd,
@@ -245,6 +254,7 @@ Running without a subcommand will launch the interactive TUI.`,
 		restoreCmd,
 		migrateCmd,
 		decommissionCmd,
+		versionCmd,
 	)
 
 	return cmd
@@ -259,6 +269,7 @@ var deployCmd = &cobra.Command{
 	Long: `Renders the authorized_keys file from the database state and deploys it.
 If an account (user@host) is specified, deploys only to that account.
 If no account is specified, deploys to all active accounts in the database.`,
+
 	Args:    cobra.MaximumNArgs(1),
 	PreRunE: setupDefaultServices,
 	Run: func(cmd *cobra.Command, args []string) {
