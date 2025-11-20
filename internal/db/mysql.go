@@ -8,7 +8,6 @@
 package db // import "github.com/toeirei/keymaster/internal/db"
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 
 // MySQLStore is the MySQL implementation of the Store interface.
 type MySQLStore struct {
-	db  *sql.DB
 	bun *bun.DB
 }
 

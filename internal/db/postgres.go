@@ -8,7 +8,6 @@
 package db // import "github.com/toeirei/keymaster/internal/db"
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 
 // PostgresStore is the PostgreSQL implementation of the Store interface.
 type PostgresStore struct {
-	db  *sql.DB
 	bun *bun.DB
 }
 
@@ -287,75 +285,5 @@ func (s *PostgresStore) ImportDataFromBackup(backup *model.BackupData) error {
 // IntegrateDataFromBackup restores data from a backup in a non-destructive way,
 // skipping entries that already exist.
 func (s *PostgresStore) IntegrateDataFromBackup(backup *model.BackupData) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback() // Rollback on any error.
-
-	// Use "ON CONFLICT DO NOTHING" to skip duplicates based on unique constraints.
-
-	// Accounts (UNIQUE on username, hostname)
-	stmt, err := tx.Prepare("INSERT INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (username, hostname) DO NOTHING")
-	if err != nil {
-		return fmt.Errorf("failed to prepare account insert: %w", err)
-	}
-	for _, acc := range backup.Accounts {
-		if _, err := stmt.Exec(acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
-			return fmt.Errorf("failed to integrate account %d: %w", acc.ID, err)
-		}
-	}
-	stmt.Close()
-
-	// Public Keys (UNIQUE on comment)
-	stmt, err = tx.Prepare("INSERT INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (comment) DO NOTHING")
-	if err != nil {
-		return fmt.Errorf("failed to prepare public_key insert: %w", err)
-	}
-	for _, pk := range backup.PublicKeys {
-		if _, err := stmt.Exec(pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal); err != nil {
-			return fmt.Errorf("failed to integrate public key %d: %w", pk.ID, err)
-		}
-	}
-	stmt.Close()
-
-	// AccountKeys (PRIMARY KEY on key_id, account_id)
-	stmt, err = tx.Prepare("INSERT INTO account_keys (key_id, account_id) VALUES ($1, $2) ON CONFLICT (key_id, account_id) DO NOTHING")
-	if err != nil {
-		return fmt.Errorf("failed to prepare account_key insert: %w", err)
-	}
-	for _, ak := range backup.AccountKeys {
-		if _, err := stmt.Exec(ak.KeyID, ak.AccountID); err != nil {
-			return fmt.Errorf("failed to integrate account_key for key %d and account %d: %w", ak.KeyID, ak.AccountID, err)
-		}
-	}
-	stmt.Close()
-
-	// System Keys (UNIQUE on serial)
-	stmt, err = tx.Prepare("INSERT INTO system_keys (id, serial, public_key, private_key, is_active) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (serial) DO NOTHING")
-	if err != nil {
-		return fmt.Errorf("failed to prepare system_key insert: %w", err)
-	}
-	for _, sk := range backup.SystemKeys {
-		if _, err := stmt.Exec(sk.ID, sk.Serial, sk.PublicKey, sk.PrivateKey, sk.IsActive); err != nil {
-			return fmt.Errorf("failed to integrate system key %d: %w", sk.ID, err)
-		}
-	}
-	stmt.Close()
-
-	// Known Hosts (PRIMARY KEY on hostname)
-	stmt, err = tx.Prepare(`INSERT INTO known_hosts (hostname, "key") VALUES ($1, $2) ON CONFLICT (hostname) DO NOTHING`)
-	if err != nil {
-		return fmt.Errorf("failed to prepare known_host insert: %w", err)
-	}
-	for _, kh := range backup.KnownHosts {
-		if _, err := stmt.Exec(kh.Hostname, kh.Key); err != nil {
-			return fmt.Errorf("failed to integrate known host %s: %w", kh.Hostname, err)
-		}
-	}
-	stmt.Close()
-
-	// Audit logs and bootstrap sessions are generally not integrated to avoid confusion.
-
-	return tx.Commit()
+	return IntegrateDataFromBackupBun(s.bun, backup)
 }

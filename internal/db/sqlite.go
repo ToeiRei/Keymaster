@@ -7,7 +7,6 @@
 package db // import "github.com/toeirei/keymaster/internal/db"
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -17,7 +16,6 @@ import (
 
 // SqliteStore is the SQLite implementation of the Store interface.
 type SqliteStore struct {
-	db  *sql.DB
 	bun *bun.DB
 }
 

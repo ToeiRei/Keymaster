@@ -83,7 +83,7 @@ func InitDB(dbType, dsn string) error {
 			}
 			// Create a Bun DB instance for SQLite to be used by the sqlite store.
 			bunDB := bun.NewDB(db, sqlitedialect.New())
-			store = &SqliteStore{db: db, bun: bunDB}
+			store = &SqliteStore{bun: bunDB}
 			currentDBType = dbType
 			currentDSN = dsn
 		}
@@ -92,7 +92,7 @@ func InitDB(dbType, dsn string) error {
 		db, err = sql.Open("pgx", dsn)
 		if err == nil {
 			bunDB := bun.NewDB(db, pgdialect.New())
-			store = &PostgresStore{db: db, bun: bunDB}
+			store = &PostgresStore{bun: bunDB}
 			currentDBType = dbType
 			currentDSN = dsn
 		}
@@ -101,7 +101,7 @@ func InitDB(dbType, dsn string) error {
 		db, err = sql.Open("mysql", dsn)
 		if err == nil {
 			bunDB := bun.NewDB(db, mysqldialect.New())
-			store = &MySQLStore{db: db, bun: bunDB}
+			store = &MySQLStore{bun: bunDB}
 			currentDBType = dbType
 			currentDSN = dsn
 		}
@@ -130,13 +130,13 @@ func NewStore(dbType string, db *sql.DB) (Store, error) {
 	switch dbType {
 	case "sqlite":
 		bunDB := bun.NewDB(db, sqlitedialect.New())
-		return &SqliteStore{db: db, bun: bunDB}, nil
+		return &SqliteStore{bun: bunDB}, nil
 	case "postgres":
 		bunDB := bun.NewDB(db, pgdialect.New())
-		return &PostgresStore{db: db, bun: bunDB}, nil
+		return &PostgresStore{bun: bunDB}, nil
 	case "mysql":
 		bunDB := bun.NewDB(db, mysqldialect.New())
-		return &MySQLStore{db: db, bun: bunDB}, nil
+		return &MySQLStore{bun: bunDB}, nil
 	}
 	return nil, fmt.Errorf("unsupported database type for store creation: '%s'", dbType)
 }
