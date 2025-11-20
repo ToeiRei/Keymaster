@@ -7,15 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.5.0] - 2025-11-20
 
-The rewrite of the database layer justifies a new release in terms of 1.5.0.
+This release marks a major overhaul of the data layer for improved reliability and maintainability, along with significant enhancements to the build and CI process.
+
+### Added
+
+- **Enhanced Build Information:** The build process now embeds the Git commit SHA and build date into the binary. A new `version` subcommand was added to display this information, providing better traceability for builds.
+- **CI/CD Pipeline:** Implemented a GitHub Actions workflow for automated testing and building on each push, improving code quality and release automation.
+- **Database Unit Tests:** Added a comprehensive suite of unit tests for the new `Bun`-based database operations, ensuring the reliability and correctness of the data layer.
 
 ### Changed
 
-- **Database layer:** Implemented bun as database layer.
-- **Golang:** upstream fixes and bumps
+- **Database Layer Overhaul:** The entire database layer was refactored to use the Bun ORM instead of raw `sql.DB` calls. This simplifies queries, improves type safety, and unifies the implementation across SQLite, PostgreSQL, and MySQL.
+- **Dependency Updates:** Upgraded `golang.org/x/crypto` to `v0.45.0` and other minor dependencies.
 
-### Added
-- **Unit tests:** started to implement unit tests for database operations.
+### Fixed
+
+- **CLI Flag Redefinition:** Corrected an issue where CLI flags could be defined multiple times during command setup (especially in tests), preventing panics caused by duplicate flag definitions.
+- **CI Workflow Permissions:** Addressed a security code scanning alert by specifying correct permissions in the GitHub Actions workflow.
+
+---
 
 ## [1.4.3] - 2025-10-14
 
@@ -35,6 +45,8 @@ This release focuses on improving the user experience for encrypted system keys 
 - **Account Editing:** Fixed a bug that prevented changes from being saved when editing an account.
 - **UI State:** Resolved several UI bugs where the application would get stuck or return to the wrong screen after completing an operation (e.g., after a fleet deployment).
 - **Status Messages:** Corrected misleading status messages that would appear after a successful fleet deployment.
+
+---
 
 ## [1.4.0] - 2025-10-01
 
