@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/user"
 	"strings"
+	"time"
 
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/uptrace/bun"
@@ -126,15 +127,15 @@ type KnownHostModel struct {
 // BootstrapSessionModel maps bootstrap_sessions for export/import.
 type BootstrapSessionModel struct {
 	bun.BaseModel `bun:"table:bootstrap_sessions"`
-	ID            string `bun:"id,pk"`
-	Username      string `bun:"username"`
-	Hostname      string `bun:"hostname"`
-	Label         string `bun:"label"`
-	Tags          string `bun:"tags"`
-	TempPublicKey string `bun:"temp_public_key"`
-	CreatedAt     string `bun:"created_at"`
-	ExpiresAt     string `bun:"expires_at"`
-	Status        string `bun:"status"`
+	ID            string         `bun:"id,pk"`
+	Username      string         `bun:"username"`
+	Hostname      string         `bun:"hostname"`
+	Label         sql.NullString `bun:"label"`
+	Tags          sql.NullString `bun:"tags"`
+	TempPublicKey string         `bun:"temp_public_key"`
+	CreatedAt     time.Time      `bun:"created_at"`
+	ExpiresAt     time.Time      `bun:"expires_at"`
+	Status        string         `bun:"status"`
 }
 
 // --- Mapping helpers (centralized conversions) ---
@@ -153,6 +154,25 @@ func accountModelToModel(a AccountModel) model.Account {
 		acc.Tags = a.Tags.String
 	}
 	return acc
+}
+
+func bootstrapSessionModelToModel(bsm BootstrapSessionModel) model.BootstrapSession {
+	bs := model.BootstrapSession{
+		ID:            bsm.ID,
+		Username:      bsm.Username,
+		Hostname:      bsm.Hostname,
+		TempPublicKey: bsm.TempPublicKey,
+		CreatedAt:     bsm.CreatedAt,
+		ExpiresAt:     bsm.ExpiresAt,
+		Status:        bsm.Status,
+	}
+	if bsm.Label.Valid {
+		bs.Label = bsm.Label.String
+	}
+	if bsm.Tags.Valid {
+		bs.Tags = bsm.Tags.String
+	}
+	return bs
 }
 
 func publicKeyModelToModel(p PublicKeyModel) model.PublicKey {
@@ -372,8 +392,13 @@ func ExportDataForBackupBun(bdb *bun.DB) (*model.BackupData, error) {
 		return nil, err
 	}
 	for _, b := range bss {
-		// Note: CreatedAt/ExpiresAt are strings; the model expects time.Time. We leave parsing to caller if needed.
-		bs := model.BootstrapSession{ID: b.ID, Username: b.Username, Hostname: b.Hostname, Label: b.Label, Tags: b.Tags, TempPublicKey: b.TempPublicKey, Status: b.Status}
+		bs := model.BootstrapSession{ID: b.ID, Username: b.Username, Hostname: b.Hostname, TempPublicKey: b.TempPublicKey, CreatedAt: b.CreatedAt, ExpiresAt: b.ExpiresAt, Status: b.Status}
+		if b.Label.Valid {
+			bs.Label = b.Label.String
+		}
+		if b.Tags.Valid {
+			bs.Tags = b.Tags.String
+		}
 		backup.BootstrapSessions = append(backup.BootstrapSessions, bs)
 	}
 
@@ -559,4 +584,194 @@ func DeletePublicKeyBun(bdb *bun.DB, id int) error {
 	ctx := context.Background()
 	_, err := bdb.NewRaw("DELETE FROM public_keys WHERE id = ?", id).Exec(ctx)
 	return err
+}
+
+// GetPublicKeyByIDBun retrieves a public key by its numeric ID.
+func GetPublicKeyByIDBun(bdb *bun.DB, id int) (*model.PublicKey, error) {
+	ctx := context.Background()
+	var pk PublicKeyModel
+	err := bdb.NewSelect().Model(&pk).Where("id = ?", id).Limit(1).Scan(ctx)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	m := publicKeyModelToModel(pk)
+	return &m, nil
+}
+
+// --- Known hosts helpers ---
+func GetKnownHostKeyBun(bdb *bun.DB, hostname string) (string, error) {
+	ctx := context.Background()
+	var kh KnownHostModel
+	err := bdb.NewSelect().Model(&kh).Where("hostname = ?", hostname).Limit(1).Scan(ctx)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+	return kh.Key, nil
+}
+
+func AddKnownHostKeyBun(bdb *bun.DB, hostname, key string) error {
+	ctx := context.Background()
+	_, err := bdb.NewRaw("INSERT OR REPLACE INTO known_hosts (hostname, key) VALUES (?, ?)", hostname, key).Exec(ctx)
+	return err
+}
+
+// --- Bootstrap session helpers ---
+func SaveBootstrapSessionBun(bdb *bun.DB, id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error {
+	ctx := context.Background()
+	_, err := bdb.NewRaw(`INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, id, username, hostname, label, tags, tempPublicKey, expiresAt, status).Exec(ctx)
+	return err
+}
+
+func GetBootstrapSessionBun(bdb *bun.DB, id string) (*model.BootstrapSession, error) {
+	ctx := context.Background()
+	var bsm BootstrapSessionModel
+	err := bdb.NewSelect().Model(&bsm).Where("id = ?", id).Limit(1).Scan(ctx)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	m := bootstrapSessionModelToModel(bsm)
+	return &m, nil
+}
+
+func DeleteBootstrapSessionBun(bdb *bun.DB, id string) error {
+	ctx := context.Background()
+	_, err := bdb.NewRaw("DELETE FROM bootstrap_sessions WHERE id = ?", id).Exec(ctx)
+	return err
+}
+
+func UpdateBootstrapSessionStatusBun(bdb *bun.DB, id string, status string) error {
+	ctx := context.Background()
+	_, err := bdb.NewRaw("UPDATE bootstrap_sessions SET status = ? WHERE id = ?", status, id).Exec(ctx)
+	return err
+}
+
+func GetExpiredBootstrapSessionsBun(bdb *bun.DB) ([]*model.BootstrapSession, error) {
+	ctx := context.Background()
+	var bss []BootstrapSessionModel
+	// SQLite: compare against datetime('now'); Bun will pass through the query.
+	if err := bdb.NewSelect().Model(&bss).Where("expires_at < datetime('now')").Scan(ctx); err != nil {
+		return nil, err
+	}
+	out := make([]*model.BootstrapSession, 0, len(bss))
+	for _, b := range bss {
+		bs := bootstrapSessionModelToModel(b)
+		out = append(out, &bs)
+	}
+	return out, nil
+}
+
+func GetOrphanedBootstrapSessionsBun(bdb *bun.DB) ([]*model.BootstrapSession, error) {
+	ctx := context.Background()
+	var bss []BootstrapSessionModel
+	if err := bdb.NewSelect().Model(&bss).Where("status = 'orphaned'").Scan(ctx); err != nil {
+		return nil, err
+	}
+	out := make([]*model.BootstrapSession, 0, len(bss))
+	for _, b := range bss {
+		bs := bootstrapSessionModelToModel(b)
+		out = append(out, &bs)
+	}
+	return out, nil
+}
+
+// --- Account update helpers ---
+func GetAccountByIDBun(bdb *bun.DB, id int) (*model.Account, error) {
+	ctx := context.Background()
+	var am AccountModel
+	err := bdb.NewSelect().Model(&am).Where("id = ?", id).Limit(1).Scan(ctx)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	m := accountModelToModel(am)
+	return &m, nil
+}
+
+func UpdateAccountSerialBun(bdb *bun.DB, id, serial int) error {
+	ctx := context.Background()
+	_, err := bdb.NewRaw("UPDATE accounts SET serial = ? WHERE id = ?", serial, id).Exec(ctx)
+	return err
+}
+
+func ToggleAccountStatusBun(bdb *bun.DB, id int) (bool, error) {
+	ctx := context.Background()
+	if _, err := bdb.NewRaw("UPDATE accounts SET is_active = NOT is_active WHERE id = ?", id).Exec(ctx); err != nil {
+		return false, err
+	}
+	var am AccountModel
+	if err := bdb.NewSelect().Model(&am).Where("id = ?", id).Limit(1).Scan(ctx); err != nil {
+		return false, err
+	}
+	return am.IsActive, nil
+}
+
+func UpdateAccountLabelBun(bdb *bun.DB, id int, label string) error {
+	ctx := context.Background()
+	_, err := bdb.NewRaw("UPDATE accounts SET label = ? WHERE id = ?", label, id).Exec(ctx)
+	return err
+}
+
+func UpdateAccountHostnameBun(bdb *bun.DB, id int, hostname string) error {
+	ctx := context.Background()
+	_, err := bdb.NewRaw("UPDATE accounts SET hostname = ? WHERE id = ?", hostname, id).Exec(ctx)
+	return err
+}
+
+func UpdateAccountTagsBun(bdb *bun.DB, id int, tags string) error {
+	ctx := context.Background()
+	_, err := bdb.NewRaw("UPDATE accounts SET tags = ? WHERE id = ?", tags, id).Exec(ctx)
+	return err
+}
+
+// --- System key helpers ---
+func GetSystemKeyBySerialBun(bdb *bun.DB, serial int) (*model.SystemKey, error) {
+	ctx := context.Background()
+	var sk SystemKeyModel
+	err := bdb.NewSelect().Model(&sk).Where("serial = ?", serial).Limit(1).Scan(ctx)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	m := systemKeyModelToModel(sk)
+	return &m, nil
+}
+
+func HasSystemKeysBun(bdb *bun.DB) (bool, error) {
+	ctx := context.Background()
+	var count int
+	if err := bdb.NewRaw("SELECT COUNT(id) FROM system_keys").Scan(ctx, &count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func CreateSystemKeyBun(bdb *bun.DB, publicKey, privateKey string) (int, error) {
+	ctx := context.Background()
+	// Get max serial
+	var max sql.NullInt64
+	if err := bdb.NewRaw("SELECT MAX(serial) FROM system_keys").Scan(ctx, &max); err != nil {
+		return 0, err
+	}
+	newSerial := 1
+	if max.Valid {
+		newSerial = int(max.Int64) + 1
+	}
+	// Insert new key (do not deactivate others)
+	if _, err := bdb.NewRaw("INSERT INTO system_keys(serial, public_key, private_key, is_active) VALUES(?, ?, ?, ?)", newSerial, publicKey, privateKey, true).Exec(ctx); err != nil {
+		return 0, err
+	}
+	return newSerial, nil
 }

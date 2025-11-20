@@ -13,7 +13,6 @@ import (
 
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/uptrace/bun"
-	_ "modernc.org/sqlite" // Pure Go SQLite driver
 )
 
 // SqliteStore is the SQLite implementation of the Store interface.
@@ -49,14 +48,12 @@ func (s *SqliteStore) AddAccount(username, hostname, label, tags string) (int, e
 
 // DeleteAccount removes an account from the database by its ID.
 func (s *SqliteStore) DeleteAccount(id int) error {
-	// Get account details before deleting for logging.
-	var username, hostname string
-	err := s.db.QueryRow("SELECT username, hostname FROM accounts WHERE id = ?", id).Scan(&username, &hostname)
+	// Get account details before deleting for logging (best-effort via Bun).
 	details := fmt.Sprintf("id: %d", id)
-	if err == nil {
-		details = fmt.Sprintf("account: %s@%s", username, hostname)
+	if acc, err2 := GetAccountByIDBun(s.bun, id); err2 == nil && acc != nil {
+		details = fmt.Sprintf("account: %s@%s", acc.Username, acc.Hostname)
 	}
-	err = DeleteAccountBun(s.bun, id)
+	err := DeleteAccountBun(s.bun, id)
 	if err == nil {
 		_ = s.LogAction("DELETE_ACCOUNT", details)
 	}
@@ -65,25 +62,22 @@ func (s *SqliteStore) DeleteAccount(id int) error {
 
 // UpdateAccountSerial sets the serial for a given account ID to a specific value.
 func (s *SqliteStore) UpdateAccountSerial(id, serial int) error {
-	_, err := s.db.Exec("UPDATE accounts SET serial = ? WHERE id = ?", serial, id)
-	// This is called during deployment, which is logged at a higher level.
-	// No need for a separate log action here.
-	return err
+	return UpdateAccountSerialBun(s.bun, id, serial)
 }
 
 // ToggleAccountStatus flips the active status of an account.
 func (s *SqliteStore) ToggleAccountStatus(id int) error {
 	// Get account details before toggling for logging.
-	var username, hostname string
-	var isActive bool
-	err := s.db.QueryRow("SELECT username, hostname, is_active FROM accounts WHERE id = ?", id).Scan(&username, &hostname, &isActive)
+	acc, err := GetAccountByIDBun(s.bun, id)
 	if err != nil {
-		return err // If we can't find it, we can't toggle it.
+		return err
 	}
-
-	_, err = s.db.Exec("UPDATE accounts SET is_active = NOT is_active WHERE id = ?", id)
+	if acc == nil {
+		return fmt.Errorf("account not found: %d", id)
+	}
+	newStatus, err := ToggleAccountStatusBun(s.bun, id)
 	if err == nil {
-		details := fmt.Sprintf("account: %s@%s, new_status: %t", username, hostname, !isActive)
+		details := fmt.Sprintf("account: %s@%s, new_status: %t", acc.Username, acc.Hostname, newStatus)
 		_ = s.LogAction("TOGGLE_ACCOUNT_STATUS", details)
 	}
 	return err
@@ -91,7 +85,7 @@ func (s *SqliteStore) ToggleAccountStatus(id int) error {
 
 // UpdateAccountLabel updates the label for a given account.
 func (s *SqliteStore) UpdateAccountLabel(id int, label string) error {
-	_, err := s.db.Exec("UPDATE accounts SET label = ? WHERE id = ?", label, id)
+	err := UpdateAccountLabelBun(s.bun, id, label)
 	if err == nil {
 		_ = s.LogAction("UPDATE_ACCOUNT_LABEL", fmt.Sprintf("account_id: %d, new_label: '%s'", id, label))
 	}
@@ -101,13 +95,12 @@ func (s *SqliteStore) UpdateAccountLabel(id int, label string) error {
 // UpdateAccountHostname updates the hostname for a given account.
 // This is primarily used for testing to point an account to a mock server.
 func (s *SqliteStore) UpdateAccountHostname(id int, hostname string) error {
-	_, err := s.db.Exec("UPDATE accounts SET hostname = ? WHERE id = ?", hostname, id)
-	return err
+	return UpdateAccountHostnameBun(s.bun, id, hostname)
 }
 
 // UpdateAccountTags updates the tags for a given account.
 func (s *SqliteStore) UpdateAccountTags(id int, tags string) error {
-	_, err := s.db.Exec("UPDATE accounts SET tags = ? WHERE id = ?", tags, id)
+	err := UpdateAccountTagsBun(s.bun, id, tags)
 	if err == nil {
 		_ = s.LogAction("UPDATE_ACCOUNT_TAGS", fmt.Sprintf("account_id: %d, new_tags: '%s'", id, tags))
 	}
@@ -166,22 +159,12 @@ func (s *SqliteStore) GetGlobalPublicKeys() ([]model.PublicKey, error) {
 
 // GetKnownHostKey retrieves the trusted public key for a given hostname.
 func (s *SqliteStore) GetKnownHostKey(hostname string) (string, error) {
-	var key string
-	err := s.db.QueryRow("SELECT key FROM known_hosts WHERE hostname = ?", hostname).Scan(&key)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", nil // No key found is not an error, it's a state.
-		}
-		return "", err
-	}
-	return key, nil
+	return GetKnownHostKeyBun(s.bun, hostname)
 }
 
 // AddKnownHostKey adds a new trusted host key to the database.
 func (s *SqliteStore) AddKnownHostKey(hostname, key string) error {
-	// INSERT OR REPLACE will add the key if it doesn't exist, or update it if it does.
-	// This is useful if a host is legitimately re-provisioned.
-	_, err := s.db.Exec("INSERT OR REPLACE INTO known_hosts (hostname, key) VALUES (?, ?)", hostname, key)
+	err := AddKnownHostKeyBun(s.bun, hostname, key)
 	if err == nil {
 		_ = s.LogAction("TRUST_HOST", fmt.Sprintf("hostname: %s", hostname))
 	}
@@ -190,29 +173,11 @@ func (s *SqliteStore) AddKnownHostKey(hostname, key string) error {
 
 // CreateSystemKey adds a new system key to the database. It determines the correct serial automatically.
 func (s *SqliteStore) CreateSystemKey(publicKey, privateKey string) (int, error) {
-	var maxSerial sql.NullInt64
-	err := s.db.QueryRow("SELECT MAX(serial) FROM system_keys").Scan(&maxSerial)
-	if err != nil {
-		return 0, err
+	newSerial, err := CreateSystemKeyBun(s.bun, publicKey, privateKey)
+	if err == nil {
+		_ = s.LogAction("CREATE_SYSTEM_KEY", fmt.Sprintf("serial: %d", newSerial))
 	}
-
-	newSerial := 1
-	if maxSerial.Valid {
-		newSerial = int(maxSerial.Int64) + 1
-	}
-
-	// In a real rotation, we would first set all other keys to inactive.
-	// For initial generation, this is fine.
-	_, err = s.db.Exec(
-		"INSERT INTO system_keys(serial, public_key, private_key, is_active) VALUES(?, ?, ?, ?)",
-		newSerial, publicKey, privateKey, true,
-	)
-	if err != nil {
-		return 0, err
-	}
-	_ = s.LogAction("CREATE_SYSTEM_KEY", fmt.Sprintf("serial: %d", newSerial))
-
-	return newSerial, nil
+	return newSerial, err
 }
 
 // RotateSystemKey deactivates all current system keys and adds a new one as active.
@@ -235,41 +200,23 @@ func (s *SqliteStore) GetActiveSystemKey() (*model.SystemKey, error) {
 
 // GetSystemKeyBySerial retrieves a system key by its serial number.
 func (s *SqliteStore) GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
-	row := s.db.QueryRow("SELECT id, serial, public_key, private_key, is_active FROM system_keys WHERE serial = ?", serial)
-
-	var key model.SystemKey
-	err := row.Scan(&key.ID, &key.Serial, &key.PublicKey, &key.PrivateKey, &key.IsActive)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil // No key found with that serial.
-		}
-		return nil, err
-	}
-	return &key, nil
+	return GetSystemKeyBySerialBun(s.bun, serial)
 }
 
 // HasSystemKeys checks if any system keys exist in the database.
 func (s *SqliteStore) HasSystemKeys() (bool, error) {
-	var count int
-	err := s.db.QueryRow("SELECT COUNT(id) FROM system_keys").Scan(&count)
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
+	return HasSystemKeysBun(s.bun)
 }
 
 // DeletePublicKey removes a public key and all its associations.
 // The ON DELETE CASCADE constraint handles the associations in account_keys.
 func (s *SqliteStore) DeletePublicKey(id int) error {
-	// Get key comment before deleting for logging.
-	var comment string
-	err := s.db.QueryRow("SELECT comment FROM public_keys WHERE id = ?", id).Scan(&comment)
+	// Get key comment before deleting for logging (best-effort via Bun).
 	details := fmt.Sprintf("id: %d", id)
-	if err == nil {
-		details = fmt.Sprintf("comment: %s", comment)
+	if pk, err2 := GetPublicKeyByIDBun(s.bun, id); err2 == nil && pk != nil {
+		details = fmt.Sprintf("comment: %s", pk.Comment)
 	}
-
-	err = DeletePublicKeyBun(s.bun, id)
+	err := DeletePublicKeyBun(s.bun, id)
 	if err == nil {
 		_ = s.LogAction("DELETE_PUBLIC_KEY", details)
 	}
@@ -282,8 +229,13 @@ func (s *SqliteStore) AssignKeyToAccount(keyID, accountID int) error {
 	if err == nil {
 		// Get details for logging, ignoring errors as this is best-effort.
 		var keyComment, accUser, accHost string
-		_ = s.db.QueryRow("SELECT comment FROM public_keys WHERE id = ?", keyID).Scan(&keyComment)
-		_ = s.db.QueryRow("SELECT username, hostname FROM accounts WHERE id = ?", accountID).Scan(&accUser, &accHost)
+		if pk, _ := GetPublicKeyByIDBun(s.bun, keyID); pk != nil {
+			keyComment = pk.Comment
+		}
+		if acc, _ := GetAccountByIDBun(s.bun, accountID); acc != nil {
+			accUser = acc.Username
+			accHost = acc.Hostname
+		}
 		details := fmt.Sprintf("key: '%s' to account: %s@%s", keyComment, accUser, accHost)
 		_ = s.LogAction("ASSIGN_KEY", details)
 	}
@@ -292,10 +244,15 @@ func (s *SqliteStore) AssignKeyToAccount(keyID, accountID int) error {
 
 // UnassignKeyFromAccount removes an association between a key and an account.
 func (s *SqliteStore) UnassignKeyFromAccount(keyID, accountID int) error {
-	// Get details before unassigning for logging.
+	// Get details before unassigning for logging (best-effort via Bun).
 	var keyComment, accUser, accHost string
-	_ = s.db.QueryRow("SELECT comment FROM public_keys WHERE id = ?", keyID).Scan(&keyComment)
-	_ = s.db.QueryRow("SELECT username, hostname FROM accounts WHERE id = ?", accountID).Scan(&accUser, &accHost)
+	if pk, _ := GetPublicKeyByIDBun(s.bun, keyID); pk != nil {
+		keyComment = pk.Comment
+	}
+	if acc, _ := GetAccountByIDBun(s.bun, accountID); acc != nil {
+		accUser = acc.Username
+		accHost = acc.Hostname
+	}
 	details := fmt.Sprintf("key: '%s' from account: %s@%s", keyComment, accUser, accHost)
 	err := UnassignKeyFromAccountBun(s.bun, keyID, accountID)
 	if err == nil {
@@ -326,110 +283,32 @@ func (s *SqliteStore) LogAction(action string, details string) error {
 
 // SaveBootstrapSession saves a bootstrap session to the database.
 func (s *SqliteStore) SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error {
-	_, err := s.db.Exec(`INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, expires_at, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, username, hostname, label, tags, tempPublicKey, expiresAt, status)
-	return err
+	return SaveBootstrapSessionBun(s.bun, id, username, hostname, label, tags, tempPublicKey, expiresAt, status)
 }
 
 // GetBootstrapSession retrieves a bootstrap session by ID.
 func (s *SqliteStore) GetBootstrapSession(id string) (*model.BootstrapSession, error) {
-	var session model.BootstrapSession
-	var label, tags sql.NullString
-
-	err := s.db.QueryRow(`SELECT id, username, hostname, label, tags, temp_public_key, created_at, expires_at, status
-		FROM bootstrap_sessions WHERE id = ?`, id).Scan(
-		&session.ID, &session.Username, &session.Hostname, &label, &tags,
-		&session.TempPublicKey, &session.CreatedAt, &session.ExpiresAt, &session.Status)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if label.Valid {
-		session.Label = label.String
-	}
-	if tags.Valid {
-		session.Tags = tags.String
-	}
-
-	return &session, nil
+	return GetBootstrapSessionBun(s.bun, id)
 }
 
 // DeleteBootstrapSession removes a bootstrap session from the database.
 func (s *SqliteStore) DeleteBootstrapSession(id string) error {
-	_, err := s.db.Exec("DELETE FROM bootstrap_sessions WHERE id = ?", id)
-	return err
+	return DeleteBootstrapSessionBun(s.bun, id)
 }
 
 // UpdateBootstrapSessionStatus updates the status of a bootstrap session.
 func (s *SqliteStore) UpdateBootstrapSessionStatus(id string, status string) error {
-	_, err := s.db.Exec("UPDATE bootstrap_sessions SET status = ? WHERE id = ?", status, id)
-	return err
+	return UpdateBootstrapSessionStatusBun(s.bun, id, status)
 }
 
 // GetExpiredBootstrapSessions returns all expired bootstrap sessions.
 func (s *SqliteStore) GetExpiredBootstrapSessions() ([]*model.BootstrapSession, error) {
-	rows, err := s.db.Query(`SELECT id, username, hostname, label, tags, temp_public_key, created_at, expires_at, status
-		FROM bootstrap_sessions WHERE expires_at < datetime('now')`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var sessions []*model.BootstrapSession
-	for rows.Next() {
-		var session model.BootstrapSession
-		var label, tags sql.NullString
-
-		if err := rows.Scan(&session.ID, &session.Username, &session.Hostname, &label, &tags,
-			&session.TempPublicKey, &session.CreatedAt, &session.ExpiresAt, &session.Status); err != nil {
-			return nil, err
-		}
-
-		if label.Valid {
-			session.Label = label.String
-		}
-		if tags.Valid {
-			session.Tags = tags.String
-		}
-
-		sessions = append(sessions, &session)
-	}
-
-	return sessions, nil
+	return GetExpiredBootstrapSessionsBun(s.bun)
 }
 
 // GetOrphanedBootstrapSessions returns all orphaned bootstrap sessions.
 func (s *SqliteStore) GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error) {
-	rows, err := s.db.Query(`SELECT id, username, hostname, label, tags, temp_public_key, created_at, expires_at, status
-		FROM bootstrap_sessions WHERE status = 'orphaned'`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var sessions []*model.BootstrapSession
-	for rows.Next() {
-		var session model.BootstrapSession
-		var label, tags sql.NullString
-
-		if err := rows.Scan(&session.ID, &session.Username, &session.Hostname, &label, &tags,
-			&session.TempPublicKey, &session.CreatedAt, &session.ExpiresAt, &session.Status); err != nil {
-			return nil, err
-		}
-
-		if label.Valid {
-			session.Label = label.String
-		}
-		if tags.Valid {
-			session.Tags = tags.String
-		}
-
-		sessions = append(sessions, &session)
-	}
-
-	return sessions, nil
+	return GetOrphanedBootstrapSessionsBun(s.bun)
 }
 
 // ExportDataForBackup retrieves all data from the database for a backup.

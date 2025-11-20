@@ -10,8 +10,7 @@ import (
     "log"
 
     "github.com/uptrace/bun"
-    "github.com/uptrace/bun/dialect/sqlitedialect"
-    _ "modernc.org/sqlite"
+    // _ "modernc.org/sqlite"
 )
 
 type AccountModel struct {
@@ -62,7 +61,7 @@ import (
     "github.com/uptrace/bun"
     "github.com/uptrace/bun/dialect/sqlitedialect"
     _ "modernc.org/sqlite"
-)
+    // _ "modernc.org/sqlite"
 
 type AccountModel struct {
     bun.BaseModel ` + "`bun:\"table:accounts\"`" + `
@@ -113,7 +112,7 @@ import (
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 	_ "modernc.org/sqlite"
 )
-
+    // _ "modernc.org/sqlite"
 type AccountModel struct {
 	bun.BaseModel ` + "`bun:\"table:accounts\"`" + `
 	ID       int    ` + "`bun:\"id,pk,autoincrement\"`" + `
