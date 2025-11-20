@@ -37,43 +37,16 @@ func NewSqliteStore(dataSourceName string) (*SqliteStore, error) {
 
 // GetAllAccounts retrieves all accounts from the database.
 func (s *SqliteStore) GetAllAccounts() ([]model.Account, error) {
-	rows, err := s.db.Query("SELECT id, username, hostname, label, tags, serial, is_active FROM accounts ORDER BY label, hostname, username")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var accounts []model.Account
-	for rows.Next() {
-		var acc model.Account
-		var label sql.NullString
-		var tags sql.NullString
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &tags, &acc.Serial, &acc.IsActive); err != nil {
-			return nil, err
-		}
-		if label.Valid {
-			acc.Label = label.String
-		}
-		if tags.Valid {
-			acc.Tags = tags.String
-		}
-		accounts = append(accounts, acc)
-	}
-	return accounts, nil
+	return GetAllAccountsBun(s.bun)
 }
 
 // AddAccount adds a new account to the database.
 func (s *SqliteStore) AddAccount(username, hostname, label, tags string) (int, error) {
-	result, err := s.db.Exec("INSERT INTO accounts(username, hostname, label, tags) VALUES(?, ?, ?, ?)", username, hostname, label, tags)
-	if err != nil {
-		return 0, err
+	id, err := AddAccountBun(s.bun, username, hostname, label, tags)
+	if err == nil {
+		_ = s.LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
 	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get last insert ID: %w", err)
-	}
-	_ = s.LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
-	return int(id), err
+	return id, err
 }
 
 // DeleteAccount removes an account from the database by its ID.
@@ -85,8 +58,7 @@ func (s *SqliteStore) DeleteAccount(id int) error {
 	if err == nil {
 		details = fmt.Sprintf("account: %s@%s", username, hostname)
 	}
-
-	_, err = s.db.Exec("DELETE FROM accounts WHERE id = ?", id)
+	err = DeleteAccountBun(s.bun, id)
 	if err == nil {
 		_ = s.LogAction("DELETE_ACCOUNT", details)
 	}
@@ -146,29 +118,7 @@ func (s *SqliteStore) UpdateAccountTags(id int, tags string) error {
 
 // GetAllActiveAccounts retrieves all active accounts from the database.
 func (s *SqliteStore) GetAllActiveAccounts() ([]model.Account, error) {
-	rows, err := s.db.Query("SELECT id, username, hostname, label, tags, serial, is_active FROM accounts WHERE is_active = 1 ORDER BY label, hostname, username")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var accounts []model.Account
-	for rows.Next() {
-		var acc model.Account
-		var label sql.NullString
-		var tags sql.NullString
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &tags, &acc.Serial, &acc.IsActive); err != nil {
-			return nil, err
-		}
-		if label.Valid {
-			acc.Label = label.String
-		}
-		if tags.Valid {
-			acc.Tags = tags.String
-		}
-		accounts = append(accounts, acc)
-	}
-	return accounts, nil
+	return GetAllActiveAccountsBun(s.bun)
 }
 
 // AddPublicKey adds a new public key to the database.
@@ -378,7 +328,7 @@ func (s *SqliteStore) DeletePublicKey(id int) error {
 
 // AssignKeyToAccount creates an association between a key and an account.
 func (s *SqliteStore) AssignKeyToAccount(keyID, accountID int) error {
-	_, err := s.db.Exec("INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, accountID)
+	err := AssignKeyToAccountBun(s.bun, keyID, accountID)
 	if err == nil {
 		// Get details for logging, ignoring errors as this is best-effort.
 		var keyComment, accUser, accHost string
@@ -397,8 +347,7 @@ func (s *SqliteStore) UnassignKeyFromAccount(keyID, accountID int) error {
 	_ = s.db.QueryRow("SELECT comment FROM public_keys WHERE id = ?", keyID).Scan(&keyComment)
 	_ = s.db.QueryRow("SELECT username, hostname FROM accounts WHERE id = ?", accountID).Scan(&accUser, &accHost)
 	details := fmt.Sprintf("key: '%s' from account: %s@%s", keyComment, accUser, accHost)
-
-	_, err := s.db.Exec("DELETE FROM account_keys WHERE key_id = ? AND account_id = ?", keyID, accountID)
+	err := UnassignKeyFromAccountBun(s.bun, keyID, accountID)
 	if err == nil {
 		_ = s.LogAction("UNASSIGN_KEY", details)
 	}
@@ -407,60 +356,12 @@ func (s *SqliteStore) UnassignKeyFromAccount(keyID, accountID int) error {
 
 // GetKeysForAccount retrieves all public keys assigned to a specific account.
 func (s *SqliteStore) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
-	query := `
-		SELECT pk.id, pk.algorithm, pk.key_data, pk.comment
-		FROM public_keys pk
-		JOIN account_keys ak ON pk.id = ak.key_id
-		WHERE ak.account_id = ?
-		ORDER BY pk.comment`
-	rows, err := s.db.Query(query, accountID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var keys []model.PublicKey
-	for rows.Next() {
-		var key model.PublicKey
-		if err := rows.Scan(&key.ID, &key.Algorithm, &key.KeyData, &key.Comment); err != nil {
-			return nil, err
-		}
-		keys = append(keys, key)
-	}
-	return keys, nil
+	return GetKeysForAccountBun(s.bun, accountID)
 }
 
 // GetAccountsForKey retrieves all accounts that have a specific public key assigned.
 func (s *SqliteStore) GetAccountsForKey(keyID int) ([]model.Account, error) {
-	query := `
-		SELECT a.id, a.username, a.hostname, a.label, a.tags, a.serial, a.is_active
-		FROM accounts a
-		JOIN account_keys ak ON a.id = ak.account_id
-		WHERE ak.key_id = ?
-		ORDER BY a.label, a.hostname, a.username`
-	rows, err := s.db.Query(query, keyID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var accounts []model.Account
-	for rows.Next() {
-		var acc model.Account
-		var label sql.NullString
-		var tags sql.NullString
-		if err := rows.Scan(&acc.ID, &acc.Username, &acc.Hostname, &label, &tags, &acc.Serial, &acc.IsActive); err != nil {
-			return nil, err
-		}
-		if label.Valid {
-			acc.Label = label.String
-		}
-		if tags.Valid {
-			acc.Tags = tags.String
-		}
-		accounts = append(accounts, acc)
-	}
-	return accounts, nil
+	return GetAccountsForKeyBun(s.bun, keyID)
 }
 
 // GetAllAuditLogEntries retrieves all entries from the audit log, most recent first.
