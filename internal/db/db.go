@@ -23,6 +23,8 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/sqlite"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/sqlitedialect"
 )
 
 var (
@@ -67,7 +69,9 @@ func InitDB(dbType, dsn string) error {
 			if _, err = db.Exec("PRAGMA journal_mode=WAL;"); err != nil {
 				return fmt.Errorf("failed to enable WAL mode for sqlite: %w", err)
 			}
-			store = &SqliteStore{db: db}
+			// Create a Bun DB instance for SQLite to be used by the sqlite store.
+			bunDB := bun.NewDB(db, sqlitedialect.New())
+			store = &SqliteStore{db: db, bun: bunDB}
 		}
 	case "postgres":
 		// The pgx driver is imported in postgres.go
@@ -105,7 +109,8 @@ func InitDB(dbType, dsn string) error {
 func NewStore(dbType string, db *sql.DB) (Store, error) {
 	switch dbType {
 	case "sqlite":
-		return &SqliteStore{db: db}, nil
+		bunDB := bun.NewDB(db, sqlitedialect.New())
+		return &SqliteStore{db: db, bun: bunDB}, nil
 	case "postgres":
 		return &PostgresStore{db: db}, nil
 	case "mysql":

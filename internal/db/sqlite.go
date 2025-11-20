@@ -14,12 +14,14 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/uptrace/bun"
 	_ "modernc.org/sqlite" // Pure Go SQLite driver
 )
 
 // SqliteStore is the SQLite implementation of the Store interface.
 type SqliteStore struct {
-	db *sql.DB
+	db  *sql.DB
+	bun *bun.DB
 }
 
 // NewSqliteStore initializes the database connection and creates tables if they don't exist.
@@ -316,57 +318,19 @@ func (s *SqliteStore) CreateSystemKey(publicKey, privateKey string) (int, error)
 // RotateSystemKey deactivates all current system keys and adds a new one as active.
 // This should be performed within a transaction to ensure atomicity.
 func (s *SqliteStore) RotateSystemKey(publicKey, privateKey string) (int, error) {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return 0, err
-	}
-	// Defer a rollback in case anything fails.
-	defer tx.Rollback()
-
-	// Deactivate all existing keys.
-	if _, err := tx.Exec("UPDATE system_keys SET is_active = 0"); err != nil {
-		return 0, fmt.Errorf("failed to deactivate old system keys: %w", err)
-	}
-
-	// Get the next serial number.
-	var maxSerial sql.NullInt64
-	err = tx.QueryRow("SELECT MAX(serial) FROM system_keys").Scan(&maxSerial)
-	if err != nil {
-		return 0, err
-	}
-	newSerial := int(maxSerial.Int64) + 1
-
-	// Insert the new active key.
-	_, err = tx.Exec(
-		"INSERT INTO system_keys(serial, public_key, private_key, is_active) VALUES(?, ?, ?, ?)",
-		newSerial, publicKey, privateKey, true,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to insert new system key: %w", err)
-	}
-
-	// Commit the transaction.
-	err = tx.Commit()
+	// Delegate to the Bun-based implementation for SQLite. This is an
+	// incremental step toward a Bun-backed sqlite store and keeps the
+	// transactional semantics while using Bun's helper for portability.
+	newSerial, err := RotateSystemKeyBun(s.bun, publicKey, privateKey)
 	if err == nil {
 		_ = s.LogAction("ROTATE_SYSTEM_KEY", fmt.Sprintf("new_serial: %d", newSerial))
 	}
-
 	return newSerial, err
 }
 
 // GetActiveSystemKey retrieves the currently active system key for deployments.
 func (s *SqliteStore) GetActiveSystemKey() (*model.SystemKey, error) {
-	row := s.db.QueryRow("SELECT id, serial, public_key, private_key, is_active FROM system_keys WHERE is_active = 1")
-
-	var key model.SystemKey
-	err := row.Scan(&key.ID, &key.Serial, &key.PublicKey, &key.PrivateKey, &key.IsActive)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil // No active key found, not necessarily an error.
-		}
-		return nil, err
-	}
-	return &key, nil
+	return GetActiveSystemKeyBun(s.bun)
 }
 
 // GetSystemKeyBySerial retrieves a system key by its serial number.
