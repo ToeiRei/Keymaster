@@ -39,7 +39,9 @@ import (
 	"golang.org/x/term"
 )
 
-var version = "dev" // this will be set by the linker
+var version = "dev"   // this will be set by the linker
+var gitCommit = "dev" // set at build time with the short commit SHA
+var buildDate = ""    // set at build time (RFC3339)
 var cfgFile string
 var auditMode string // audit mode flag: "strict" (default) or "serial"
 var fullRestore bool // Flag for the restore command
@@ -188,8 +190,17 @@ Running without a subcommand will launch the interactive TUI.`,
 			// i18n is also initialized, so we can just run the TUI.
 			tui.Run()
 		},
-		Version: version,
 	}
+
+	// Ensure the built-in --version flag prints commit and build date as well.
+	compositeVersion := version
+	if gitCommit != "" && gitCommit != "dev" {
+		compositeVersion = compositeVersion + " (" + gitCommit + ")"
+	}
+	if buildDate != "" {
+		compositeVersion = compositeVersion + " built: " + buildDate
+	}
+	cmd.Version = compositeVersion
 
 	// Define flags
 	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
@@ -238,7 +249,11 @@ Running without a subcommand will launch the interactive TUI.`,
 		Use:   "version",
 		Short: "Print version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println(version)
+			fmt.Printf("version: %s\n", version)
+			fmt.Printf("commit: %s\n", gitCommit)
+			if buildDate != "" {
+				fmt.Printf("built: %s\n", buildDate)
+			}
 		},
 	}
 
