@@ -24,6 +24,8 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/mysqldialect"
+	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 )
 
@@ -89,13 +91,19 @@ func InitDB(dbType, dsn string) error {
 		// The pgx driver is imported in postgres.go
 		db, err = sql.Open("pgx", dsn)
 		if err == nil {
-			store = &PostgresStore{db: db}
+			bunDB := bun.NewDB(db, pgdialect.New())
+			store = &PostgresStore{db: db, bun: bunDB}
+			currentDBType = dbType
+			currentDSN = dsn
 		}
 	case "mysql":
 		// The mysql driver is imported in mysql.go
 		db, err = sql.Open("mysql", dsn)
 		if err == nil {
-			store = &MySQLStore{db: db}
+			bunDB := bun.NewDB(db, mysqldialect.New())
+			store = &MySQLStore{db: db, bun: bunDB}
+			currentDBType = dbType
+			currentDSN = dsn
 		}
 	default:
 		return fmt.Errorf("unsupported database type: '%s'", dbType)

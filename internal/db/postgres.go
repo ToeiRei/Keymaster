@@ -16,11 +16,13 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib" // PostgreSQL driver
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/uptrace/bun"
 )
 
 // PostgresStore is the PostgreSQL implementation of the Store interface.
 type PostgresStore struct {
-	db *sql.DB
+	db  *sql.DB
+	bun *bun.DB
 }
 
 // NewPostgresStore initializes the database connection and creates tables if they don't exist.

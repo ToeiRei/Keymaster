@@ -16,11 +16,13 @@ import (
 
 	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/uptrace/bun"
 )
 
 // MySQLStore is the MySQL implementation of the Store interface.
 type MySQLStore struct {
-	db *sql.DB
+	db  *sql.DB
+	bun *bun.DB
 }
 
 // NewMySQLStore initializes the database connection and creates tables if they don't exist.
