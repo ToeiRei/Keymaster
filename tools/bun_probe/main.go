@@ -1,3 +1,6 @@
+//go:build tools_probe
+// +build tools_probe
+
 package main
 
 import (

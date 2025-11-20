@@ -32,6 +32,11 @@ var (
 	// It is initialized by InitDB.
 	store Store
 
+	// track the active DB type and DSN so InitDB can be idempotent when
+	// called repeatedly with the same parameters (useful in normal runtime).
+	currentDBType string
+	currentDSN    string
+
 	// ErrDuplicate is returned when a unique constraint is violated.
 	ErrDuplicate = errors.New("duplicate entry")
 )
@@ -43,10 +48,9 @@ var embeddedMigrations embed.FS
 // It sets the global `store` variable to the appropriate database implementation
 // and runs any pending database migrations.
 func InitDB(dbType, dsn string) error {
-	// If the store is already initialized, avoid re-initializing.
-	// Tests call InitDB during setup and the CLI's PreRunE also calls InitDB;
-	// returning early keeps the same DB instance for the test process.
-	if store != nil {
+	// If the store is already initialized with the same parameters, avoid re-initializing.
+	// Tests use unique in-memory DSNs per test; we must reinitialize when DSN differs.
+	if store != nil && currentDBType == dbType && currentDSN == dsn {
 		return nil
 	}
 	var err error
@@ -78,6 +82,8 @@ func InitDB(dbType, dsn string) error {
 			// Create a Bun DB instance for SQLite to be used by the sqlite store.
 			bunDB := bun.NewDB(db, sqlitedialect.New())
 			store = &SqliteStore{db: db, bun: bunDB}
+			currentDBType = dbType
+			currentDSN = dsn
 		}
 	case "postgres":
 		// The pgx driver is imported in postgres.go
