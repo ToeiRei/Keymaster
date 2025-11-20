@@ -132,9 +132,11 @@ func NewStore(dbType string, db *sql.DB) (Store, error) {
 		bunDB := bun.NewDB(db, sqlitedialect.New())
 		return &SqliteStore{db: db, bun: bunDB}, nil
 	case "postgres":
-		return &PostgresStore{db: db}, nil
+		bunDB := bun.NewDB(db, pgdialect.New())
+		return &PostgresStore{db: db, bun: bunDB}, nil
 	case "mysql":
-		return &MySQLStore{db: db}, nil
+		bunDB := bun.NewDB(db, mysqldialect.New())
+		return &MySQLStore{db: db, bun: bunDB}, nil
 	}
 	return nil, fmt.Errorf("unsupported database type for store creation: '%s'", dbType)
 }
