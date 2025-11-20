@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/uptrace/bun"
@@ -26,7 +25,7 @@ func GetActiveSystemKeyBun(bdb *bun.DB) (*model.SystemKey, error) {
 	ctx := context.Background()
 
 	var sk SystemKeyModel
-	err := bdb.NewSelect().Model(&sk).Where("is_active = ?", true).Limit(1).Scan(ctx)
+	err := bdb.NewSelect().Model(&sk).Where("is_active = ?", 1).Limit(1).Scan(ctx)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -34,13 +33,8 @@ func GetActiveSystemKeyBun(bdb *bun.DB) (*model.SystemKey, error) {
 		return nil, err
 	}
 
-	return &model.SystemKey{
-		ID:         sk.ID,
-		Serial:     sk.Serial,
-		PublicKey:  sk.PublicKey,
-		PrivateKey: sk.PrivateKey,
-		IsActive:   sk.IsActive,
-	}, nil
+	m := systemKeyModelToModel(sk)
+	return &m, nil
 }
 
 // RotateSystemKeyBun deactivates existing keys and inserts a new active key
@@ -110,6 +104,32 @@ type PublicKeyModel struct {
 	Comment       string `bun:"comment"`
 }
 
+// --- Mapping helpers (centralized conversions) ---
+func accountModelToModel(a AccountModel) model.Account {
+	acc := model.Account{
+		ID:       a.ID,
+		Username: a.Username,
+		Hostname: a.Hostname,
+		Serial:   a.Serial,
+		IsActive: a.IsActive,
+	}
+	if a.Label.Valid {
+		acc.Label = a.Label.String
+	}
+	if a.Tags.Valid {
+		acc.Tags = a.Tags.String
+	}
+	return acc
+}
+
+func publicKeyModelToModel(p PublicKeyModel) model.PublicKey {
+	return model.PublicKey{ID: p.ID, Algorithm: p.Algorithm, KeyData: p.KeyData, Comment: p.Comment}
+}
+
+func systemKeyModelToModel(skm SystemKeyModel) model.SystemKey {
+	return model.SystemKey{ID: skm.ID, Serial: skm.Serial, PublicKey: skm.PublicKey, PrivateKey: skm.PrivateKey, IsActive: skm.IsActive}
+}
+
 // GetAllAccountsBun returns all accounts ordered by label, hostname, username.
 func GetAllAccountsBun(bdb *bun.DB) ([]model.Account, error) {
 	ctx := context.Background()
@@ -120,20 +140,7 @@ func GetAllAccountsBun(bdb *bun.DB) ([]model.Account, error) {
 	}
 	out := make([]model.Account, 0, len(am))
 	for _, a := range am {
-		acc := model.Account{
-			ID:       a.ID,
-			Username: a.Username,
-			Hostname: a.Hostname,
-			Serial:   a.Serial,
-			IsActive: a.IsActive,
-		}
-		if a.Label.Valid {
-			acc.Label = a.Label.String
-		}
-		if a.Tags.Valid {
-			acc.Tags = a.Tags.String
-		}
-		out = append(out, acc)
+		out = append(out, accountModelToModel(a))
 	}
 	return out, nil
 }
@@ -142,26 +149,13 @@ func GetAllAccountsBun(bdb *bun.DB) ([]model.Account, error) {
 func GetAllActiveAccountsBun(bdb *bun.DB) ([]model.Account, error) {
 	ctx := context.Background()
 	var am []AccountModel
-	err := bdb.NewSelect().Model(&am).Where("is_active = ?", true).OrderExpr("label, hostname, username").Scan(ctx)
+	err := bdb.NewSelect().Model(&am).Where("is_active = ?", 1).OrderExpr("label, hostname, username").Scan(ctx)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]model.Account, 0, len(am))
 	for _, a := range am {
-		acc := model.Account{
-			ID:       a.ID,
-			Username: a.Username,
-			Hostname: a.Hostname,
-			Serial:   a.Serial,
-			IsActive: a.IsActive,
-		}
-		if a.Label.Valid {
-			acc.Label = a.Label.String
-		}
-		if a.Tags.Valid {
-			acc.Tags = a.Tags.String
-		}
-		out = append(out, acc)
+		out = append(out, accountModelToModel(a))
 	}
 	return out, nil
 }
@@ -169,22 +163,16 @@ func GetAllActiveAccountsBun(bdb *bun.DB) ([]model.Account, error) {
 // AddAccountBun inserts a new account and returns its ID.
 func AddAccountBun(bdb *bun.DB, username, hostname, label, tags string) (int, error) {
 	ctx := context.Background()
-	am := &AccountModel{
-		Username: username,
-		Hostname: hostname,
-		Label:    sql.NullString{String: label, Valid: strings.TrimSpace(label) != ""},
-		Tags:     sql.NullString{String: tags, Valid: strings.TrimSpace(tags) != ""},
-	}
-	res, err := bdb.NewInsert().Model(am).Exec(ctx)
+	// Use raw INSERT to allow DB defaults (serial, is_active) to apply.
+	res, err := bdb.NewRaw("INSERT INTO accounts(username, hostname, label, tags) VALUES(?, ?, ?, ?)", username, hostname, label, tags).Exec(ctx)
 	if err != nil {
 		return 0, err
 	}
-	// If the DB driver populated ID, use it; otherwise try RowsAffected as fallback.
-	if am.ID != 0 {
-		return am.ID, nil
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
 	}
-	_ = res
-	return am.ID, nil
+	return int(id), nil
 }
 
 // DeleteAccountBun removes an account by id.
@@ -224,7 +212,7 @@ func GetKeysForAccountBun(bdb *bun.DB, accountID int) ([]model.PublicKey, error)
 	}
 	out := make([]model.PublicKey, 0, len(pks))
 	for _, p := range pks {
-		out = append(out, model.PublicKey{ID: p.ID, Algorithm: p.Algorithm, KeyData: p.KeyData, Comment: p.Comment})
+		out = append(out, publicKeyModelToModel(p))
 	}
 	return out, nil
 }
@@ -244,20 +232,7 @@ func GetAccountsForKeyBun(bdb *bun.DB, keyID int) ([]model.Account, error) {
 	}
 	out := make([]model.Account, 0, len(am))
 	for _, a := range am {
-		acc := model.Account{
-			ID:       a.ID,
-			Username: a.Username,
-			Hostname: a.Hostname,
-			Serial:   a.Serial,
-			IsActive: a.IsActive,
-		}
-		if a.Label.Valid {
-			acc.Label = a.Label.String
-		}
-		if a.Tags.Valid {
-			acc.Tags = a.Tags.String
-		}
-		out = append(out, acc)
+		out = append(out, accountModelToModel(a))
 	}
 	return out, nil
 }

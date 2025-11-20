@@ -43,6 +43,12 @@ var embeddedMigrations embed.FS
 // It sets the global `store` variable to the appropriate database implementation
 // and runs any pending database migrations.
 func InitDB(dbType, dsn string) error {
+	// If the store is already initialized, avoid re-initializing.
+	// Tests call InitDB during setup and the CLI's PreRunE also calls InitDB;
+	// returning early keeps the same DB instance for the test process.
+	if store != nil {
+		return nil
+	}
 	var err error
 	var db *sql.DB
 	dbType = strings.ToLower(dbType)
