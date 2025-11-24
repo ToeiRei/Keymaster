@@ -65,7 +65,7 @@ jobs:
           BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           go build -ldflags "-X main.version='${{ steps.ver.outputs.version }}' -X main.gitCommit='${{ steps.ver.outputs.git_sha }}' -X main.buildDate='${BUILD_DATE}'" -o keymaster ./cmd/keymaster
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: keymaster-${{ steps.ver.outputs.version }}
           path: keymaster
