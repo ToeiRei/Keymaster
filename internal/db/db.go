@@ -117,8 +117,8 @@ func RunMigrations(db *sql.DB, dbType string) error {
 	}
 	sort.Strings(ups)
 
-	// Ensure schema_migrations table exists.
-	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMP)`); err != nil {
+	// Ensure schema_migrations table exists and is compatible with current schema
+	if err := ensureSchemaMigrationsTable(db, dbType); err != nil {
 		return fmt.Errorf("failed to ensure schema_migrations table: %w", err)
 	}
 
@@ -171,6 +171,81 @@ func RunMigrations(db *sql.DB, dbType string) error {
 		if err := tx.Commit(); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to commit migration %s: %w", version, err)
+		}
+	}
+	return nil
+}
+
+// ensureSchemaMigrationsTable creates schema_migrations if missing and adds
+// the `applied_at` column when the table exists but is missing that column.
+func ensureSchemaMigrationsTable(db *sql.DB, dbType string) error {
+	// create the table with the desired schema if it does not exist
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMP)`); err != nil {
+		return err
+	}
+
+	// Check whether applied_at column exists; if not, add it.
+	hasAppliedAt := false
+	switch dbType {
+	case "sqlite":
+		rows, err := db.Query("PRAGMA table_info(schema_migrations)")
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			// cid, name, type, notnull, dflt_value, pk
+			var cid int
+			var name string
+			var typ string
+			var notnull int
+			var dflt sql.NullString
+			var pk int
+			if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+				return err
+			}
+			if name == "applied_at" {
+				hasAppliedAt = true
+				break
+			}
+		}
+	case "postgres", "mysql":
+		// Use information_schema to detect column presence
+		var query string
+		if dbType == "postgres" {
+			query = `SELECT column_name FROM information_schema.columns WHERE table_name='schema_migrations'`
+		} else {
+			query = `SELECT column_name FROM information_schema.columns WHERE table_name='schema_migrations' AND table_schema=DATABASE()`
+		}
+		rows, err := db.Query(query)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var name string
+			if err := rows.Scan(&name); err != nil {
+				return err
+			}
+			if name == "applied_at" {
+				hasAppliedAt = true
+				break
+			}
+		}
+	default:
+		// Unknown DB type; assume table is fine
+		hasAppliedAt = true
+	}
+
+	if !hasAppliedAt {
+		// Add the column. Different engines understand TIMESTAMP; MySQL accepts it too.
+		alter := "ALTER TABLE schema_migrations ADD COLUMN applied_at TIMESTAMP"
+		if dbType == "sqlite" {
+			// SQLite supports ALTER TABLE ADD COLUMN
+			// Use same statement
+		}
+		if _, err := db.Exec(alter); err != nil {
+			return fmt.Errorf("failed to add applied_at column to schema_migrations: %w", err)
 		}
 	}
 	return nil
