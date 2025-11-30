@@ -1,0 +1,27 @@
+package db
+
+import (
+	"testing"
+)
+
+// TestDBPoolDefaultsSQLite verifies that NewStoreFromDSN sets a sensible
+// default for MaxOpenConns for SQLite. We assert the default value is applied
+// and that the returned Store is the SQLite concrete type.
+func TestDBPoolDefaultsSQLite(t *testing.T) {
+	dsn := "file::memory:?cache=shared"
+	s, err := NewStoreFromDSN("sqlite", dsn)
+	if err != nil {
+		t.Fatalf("NewStoreFromDSN returned error: %v", err)
+	}
+	ss, ok := s.(*SqliteStore)
+	if !ok {
+		t.Fatalf("expected *SqliteStore, got %T", s)
+	}
+	// The default in NewStoreFromDSN is 25. Check that the sql.DB Stats reflects that.
+	stats := ss.bun.DB.Stats()
+	want := 25
+	if stats.MaxOpenConnections != want {
+		t.Fatalf("MaxOpenConnections = %d; want %d", stats.MaxOpenConnections, want)
+	}
+	_ = ss.bun.DB.Close()
+}

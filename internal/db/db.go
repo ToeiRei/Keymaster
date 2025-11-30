@@ -14,8 +14,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -54,6 +56,38 @@ func NewStoreFromDSN(dbType, dsn string) (Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
+
+	// Configure DB connection pool with sensible defaults. Values can be
+	// overridden via environment variables for CI or production tuning.
+	// Defaults chosen to be conservative for small deployments.
+	const (
+		defaultMaxOpenConns    = 25
+		defaultMaxIdleConns    = 25
+		defaultConnMaxLifetime = 5 * time.Minute
+	)
+
+	maxOpen := defaultMaxOpenConns
+	if v := os.Getenv("KEYMASTER_DB_MAX_OPEN_CONNS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			maxOpen = n
+		}
+	}
+	maxIdle := defaultMaxIdleConns
+	if v := os.Getenv("KEYMASTER_DB_MAX_IDLE_CONNS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			maxIdle = n
+		}
+	}
+	connMax := defaultConnMaxLifetime
+	if v := os.Getenv("KEYMASTER_DB_CONN_MAX_LIFETIME_SECONDS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			connMax = time.Duration(n) * time.Second
+		}
+	}
+
+	sqlDB.SetMaxOpenConns(maxOpen)
+	sqlDB.SetMaxIdleConns(maxIdle)
+	sqlDB.SetConnMaxLifetime(connMax)
 
 	if err := RunMigrations(sqlDB, dbType); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
