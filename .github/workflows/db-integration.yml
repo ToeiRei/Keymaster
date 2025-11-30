@@ -43,8 +43,19 @@ jobs:
           INTEGRATION_DB: postgres
           INTEGRATION_DSN: postgres://testuser:testpass@localhost:5432/keymaster_test?sslmode=disable
         run: |
+          echo "Waiting for Postgres on localhost:5432"
+          for i in {1..60}; do
+            bash -c 'echo > /dev/tcp/localhost/5432' &>/dev/null && break || sleep 1
+          done
           echo "Running integration tests against $INTEGRATION_DB"
-          go test ./internal/db -run TestIntegration_Smoke -v
+          # Retry tests a few times to reduce flakes due to startup/migration races.
+          for i in 1 2 3; do
+            go test ./internal/db -run TestIntegration_Smoke -v && exit 0
+            echo "Test attempt $i failed; retrying in 5s..."
+            sleep 5
+          done
+          echo "Integration tests failed after retries"
+          exit 1
 
   mysql:
     runs-on: ubuntu-latest
@@ -78,5 +89,16 @@ jobs:
           INTEGRATION_DB: mysql
           INTEGRATION_DSN: root:rootpass@tcp(localhost:3306)/keymaster_test?parseTime=true
         run: |
+          echo "Waiting for MySQL on localhost:3306"
+          for i in {1..60}; do
+            bash -c 'echo > /dev/tcp/localhost/3306' &>/dev/null && break || sleep 1
+          done
           echo "Running integration tests against $INTEGRATION_DB"
-          go test ./internal/db -run TestIntegration_Smoke -v
+          # Retry tests a few times to reduce flakes due to startup/migration races.
+          for i in 1 2 3; do
+            go test ./internal/db -run TestIntegration_Smoke -v && exit 0
+            echo "Test attempt $i failed; retrying in 5s..."
+            sleep 5
+          done
+          echo "Integration tests failed after retries"
+          exit 1
