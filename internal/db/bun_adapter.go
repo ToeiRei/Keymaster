@@ -219,7 +219,7 @@ func AddAccountBun(bdb *bun.DB, username, hostname, label, tags string) (int, er
 	// Use raw INSERT to allow DB defaults (serial, is_active) to apply.
 	res, err := bdb.NewRaw("INSERT INTO accounts(username, hostname, label, tags) VALUES(?, ?, ?, ?)", username, hostname, label, tags).Exec(ctx)
 	if err != nil {
-		return 0, err
+		return 0, MapDBError(err)
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
@@ -240,7 +240,7 @@ func AssignKeyToAccountBun(bdb *bun.DB, keyID, accountID int) error {
 	ctx := context.Background()
 	// Use raw insert since account_keys likely has no PK model in codebase.
 	_, err := bdb.NewRaw("INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, accountID).Exec(ctx)
-	return err
+	return MapDBError(err)
 }
 
 // UnassignKeyFromAccountBun removes an association from account_keys.
@@ -317,7 +317,7 @@ func LogActionBun(bdb *bun.DB, action string, details string) error {
 		}
 	}
 	_, err = bdb.NewRaw("INSERT INTO audit_log (username, action, details) VALUES (?, ?, ?)", username, action, details).Exec(ctx)
-	return err
+	return MapDBError(err)
 }
 
 // ExportDataForBackupBun exports all tables' data into a model.BackupData using a Bun transaction.
@@ -428,43 +428,43 @@ func ImportDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 	// Insert accounts
 	for _, acc := range backup.Accounts {
 		if _, err := tx.NewRaw("INSERT INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive).Exec(ctx); err != nil {
-			return err
+			return MapDBError(err)
 		}
 	}
 	// Public keys
 	for _, pk := range backup.PublicKeys {
 		if _, err := tx.NewRaw("INSERT INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?, ?)", pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal).Exec(ctx); err != nil {
-			return err
+			return MapDBError(err)
 		}
 	}
 	// AccountKeys
 	for _, ak := range backup.AccountKeys {
 		if _, err := tx.NewRaw("INSERT INTO account_keys (key_id, account_id) VALUES (?, ?)", ak.KeyID, ak.AccountID).Exec(ctx); err != nil {
-			return err
+			return MapDBError(err)
 		}
 	}
 	// SystemKeys
 	for _, sk := range backup.SystemKeys {
 		if _, err := tx.NewRaw("INSERT INTO system_keys (id, serial, public_key, private_key, is_active) VALUES (?, ?, ?, ?, ?)", sk.ID, sk.Serial, sk.PublicKey, sk.PrivateKey, sk.IsActive).Exec(ctx); err != nil {
-			return err
+			return MapDBError(err)
 		}
 	}
 	// KnownHosts
 	for _, kh := range backup.KnownHosts {
 		if _, err := tx.NewRaw("INSERT INTO known_hosts (hostname, key) VALUES (?, ?)", kh.Hostname, kh.Key).Exec(ctx); err != nil {
-			return err
+			return MapDBError(err)
 		}
 	}
 	// AuditLog
 	for _, ale := range backup.AuditLogEntries {
 		if _, err := tx.NewRaw("INSERT INTO audit_log (id, timestamp, username, action, details) VALUES (?, ?, ?, ?, ?)", ale.ID, ale.Timestamp, ale.Username, ale.Action, ale.Details).Exec(ctx); err != nil {
-			return err
+			return MapDBError(err)
 		}
 	}
 	// Bootstrap sessions: skipping CreatedAt/ExpiresAt parsing; insert core fields
 	for _, bs := range backup.BootstrapSessions {
 		if _, err := tx.NewRaw("INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, status) VALUES (?, ?, ?, ?, ?, ?, ?)", bs.ID, bs.Username, bs.Hostname, bs.Label, bs.Tags, bs.TempPublicKey, bs.Status).Exec(ctx); err != nil {
-			return err
+			return MapDBError(err)
 		}
 	}
 
@@ -618,14 +618,14 @@ func GetKnownHostKeyBun(bdb *bun.DB, hostname string) (string, error) {
 func AddKnownHostKeyBun(bdb *bun.DB, hostname, key string) error {
 	ctx := context.Background()
 	_, err := bdb.NewRaw("INSERT OR REPLACE INTO known_hosts (hostname, key) VALUES (?, ?)", hostname, key).Exec(ctx)
-	return err
+	return MapDBError(err)
 }
 
 // --- Bootstrap session helpers ---
 func SaveBootstrapSessionBun(bdb *bun.DB, id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error {
 	ctx := context.Background()
 	_, err := bdb.NewRaw(`INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, id, username, hostname, label, tags, tempPublicKey, expiresAt, status).Exec(ctx)
-	return err
+	return MapDBError(err)
 }
 
 func GetBootstrapSessionBun(bdb *bun.DB, id string) (*model.BootstrapSession, error) {

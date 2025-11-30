@@ -74,22 +74,7 @@ func NewStoreFromDSN(dbType, dsn string) (Store, error) {
 	}
 }
 
-// NewStore creates and returns a new store instance for the given database type and connection.
-// This is used by InitDB and the migrate command.
-func NewStore(dbType string, db *sql.DB) (Store, error) {
-	switch dbType {
-	case "sqlite":
-		bunDB := bun.NewDB(db, sqlitedialect.New())
-		return &SqliteStore{bun: bunDB}, nil
-	case "postgres":
-		bunDB := bun.NewDB(db, pgdialect.New())
-		return &PostgresStore{bun: bunDB}, nil
-	case "mysql":
-		bunDB := bun.NewDB(db, mysqldialect.New())
-		return &MySQLStore{bun: bunDB}, nil
-	}
-	return nil, fmt.Errorf("unsupported database type for store creation: '%s'", dbType)
-}
+// (old NewStore removed) Use NewStoreFromDSN to create stores from a DSN.
 
 // RunMigrations applies the necessary database migrations for a given database connection.
 func RunMigrations(db *sql.DB, dbType string) error {
