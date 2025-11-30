@@ -461,9 +461,9 @@ func ImportDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 			return MapDBError(err)
 		}
 	}
-	// Bootstrap sessions: skipping CreatedAt/ExpiresAt parsing; insert core fields
+	// Bootstrap sessions: include CreatedAt/ExpiresAt when importing
 	for _, bs := range backup.BootstrapSessions {
-		if _, err := tx.NewRaw("INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, status) VALUES (?, ?, ?, ?, ?, ?, ?)", bs.ID, bs.Username, bs.Hostname, bs.Label, bs.Tags, bs.TempPublicKey, bs.Status).Exec(ctx); err != nil {
+		if _, err := tx.NewRaw("INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, created_at, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", bs.ID, bs.Username, bs.Hostname, bs.Label, bs.Tags, bs.TempPublicKey, bs.CreatedAt, bs.ExpiresAt, bs.Status).Exec(ctx); err != nil {
 			return MapDBError(err)
 		}
 	}

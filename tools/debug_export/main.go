@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 
-	"database/sql"
-
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 )
@@ -48,24 +46,5 @@ func main() {
 		fmt.Printf("all account: %+v\n", a)
 	}
 
-	// Direct SQL probe
-	sqlDB, err := sql.Open("sqlite", dsn)
-	if err != nil {
-		panic(err)
-	}
-	rows, err := sqlDB.Query("SELECT id, username, hostname, is_active FROM accounts ORDER BY id")
-	if err != nil {
-		panic(err)
-	}
-	defer rows.Close()
-	fmt.Println("Direct SQL rows:")
-	for rows.Next() {
-		var id int
-		var user, host string
-		var isActive int
-		if err := rows.Scan(&id, &user, &host, &isActive); err != nil {
-			panic(err)
-		}
-		fmt.Printf("id=%d user=%s host=%s is_active=%d\n", id, user, host, isActive)
-	}
+	// Direct SQL probe removed — use package-level helpers above.
 }
