@@ -1,5 +1,12 @@
 # 🔑 Keymaster
 
+[![CI](https://github.com/ToeiRei/Keymaster/actions/workflows/ci.yml/badge.svg)](https://github.com/ToeiRei/Keymaster/actions/workflows/ci.yml)
+[![DB Integration](https://github.com/ToeiRei/Keymaster/actions/workflows/db-integration.yml/badge.svg)](https://github.com/ToeiRei/Keymaster/actions/workflows/db-integration.yml)
+[![Release](https://img.shields.io/github/v/tag/ToeiRei/Keymaster?label=release)](https://github.com/ToeiRei/Keymaster/releases)
+[![Go](https://img.shields.io/badge/go-1.25.1-blue.svg)](https://golang.org)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/toeirei/keymaster)](https://pkg.go.dev/github.com/toeirei/keymaster)
+[![License](https://img.shields.io/github/license/ToeiRei/Keymaster)](LICENSE)
+
 A lightweight, agentless SSH key manager that just does the job.
 
 ## What is Keymaster?
@@ -83,9 +90,9 @@ An agentless SSH key manager that just does the job.
 
 1. **Installation:**
 
-    ```sh
-    go install github.com/toeirei/keymaster/cmd/keymaster@latest
-    ```
+```sh
+go install github.com/toeirei/keymaster/cmd/keymaster@latest
+```
 
 2. **Initialize the Database:**
     Run Keymaster for the first time. It will automatically create `keymaster.db`
@@ -95,9 +102,10 @@ An agentless SSH key manager that just does the job.
     - **macOS:** `~/Library/Application Support/keymaster/`
 
     For backward compatibility, it will also read an existing `.keymaster.yaml` from the current directory.
-    ```sh
-    keymaster
-    ```
+
+```sh
+keymaster
+```
 
 3. **Generate System Key:**
     Inside the TUI, navigate to **"Rotate System Keys"** and follow the prompt.
