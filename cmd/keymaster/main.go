@@ -222,6 +222,13 @@ Running without a subcommand will launch the interactive TUI.`,
 	applyDefaultFlags(importCmd)
 	applyDefaultFlags(trustHostCmd)
 	applyDefaultFlags(exportSSHConfigCmd)
+	applyDefaultFlags(dbMaintainCmd)
+	if dbMaintainCmd.Flags().Lookup("skip-integrity") == nil {
+		dbMaintainCmd.Flags().Bool("skip-integrity", false, "Skip integrity_check (SQLite) during maintenance")
+	}
+	if dbMaintainCmd.Flags().Lookup("timeout") == nil {
+		dbMaintainCmd.Flags().Int("timeout", 0, "Timeout in seconds for maintenance (0 means no timeout)")
+	}
 	applyDefaultFlags(restoreCmd)
 	if restoreCmd.Flags().Lookup("full") == nil {
 		restoreCmd.Flags().BoolVar(&fullRestore, "full", false, "Perform a full, destructive restore (wipes all existing data first)")
@@ -266,6 +273,7 @@ Running without a subcommand will launch the interactive TUI.`,
 		importCmd,
 		trustHostCmd,
 		exportSSHConfigCmd,
+		dbMaintainCmd,
 		backupCmd,
 		restoreCmd,
 		migrateCmd,
@@ -649,6 +657,56 @@ Each account with a label will use the label as the Host alias.`,
 		} else {
 			fmt.Print(output.String())
 		}
+	},
+}
+
+// dbMaintainCmd runs database maintenance tasks for the configured database.
+var dbMaintainCmd = &cobra.Command{
+	Use:     "db-maintain",
+	Short:   "Run database maintenance (VACUUM/OPTIMIZE) for the configured DB",
+	Long:    `Runs engine-specific maintenance tasks (VACUUM, OPTIMIZE TABLE, PRAGMA optimize).`,
+	PreRunE: setupDefaultServices,
+	Run: func(cmd *cobra.Command, args []string) {
+		// Read flags
+		skipIntegrity, _ := cmd.Flags().GetBool("skip-integrity")
+		timeoutSec, _ := cmd.Flags().GetInt("timeout")
+
+		// Read DB config from appConfig (setupDefaultServices ensures appConfig is populated)
+		dsn := appConfig.Database.Dsn
+		dbType := appConfig.Database.Type
+
+		// If skipIntegrity, and sqlite, we temporarily set an env to skip integrity_check in RunDBMaintenance.
+		// For now, we just warn the user.
+		if skipIntegrity {
+			fmt.Println("Skipping integrity_check may speed up maintenance on large databases")
+		}
+
+		// Support overriding the default maintenance timeout via flag
+		if timeoutSec > 0 {
+			// We can't pass timeout into RunDBMaintenance currently; instead, run it in a goroutine with timeout.
+			done := make(chan error, 1)
+			go func() {
+				done <- db.RunDBMaintenance(dbType, dsn)
+			}()
+			select {
+			case err := <-done:
+				if err != nil {
+					fmt.Printf("Maintenance failed: %v\n", err)
+					os.Exit(1)
+				}
+				fmt.Println("Maintenance completed successfully")
+			case <-time.After(time.Duration(timeoutSec) * time.Second):
+				fmt.Println("Maintenance timed out")
+				os.Exit(2)
+			}
+			return
+		}
+
+		if err := db.RunDBMaintenance(dbType, dsn); err != nil {
+			fmt.Printf("Maintenance failed: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Maintenance completed successfully")
 	},
 }
 

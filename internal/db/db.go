@@ -14,12 +14,15 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"context" // Added context import for maintenance timeouts
 
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/uptrace/bun"
@@ -57,6 +60,73 @@ func IsInitialized() bool {
 	return store != nil
 }
 
+// RunDBMaintenance performs engine-specific maintenance tasks for the given
+// database DSN. It is safe to call for SQLite/Postgres/MySQL. For SQLite this
+// will run PRAGMA optimize, VACUUM and WAL checkpoint. For Postgres it runs
+// VACUUM ANALYZE. For MySQL it runs OPTIMIZE TABLE for all tables.
+func RunDBMaintenance(dbType, dsn string) error {
+	driverName := dbType
+	if dbType == "postgres" {
+		driverName = "pgx"
+	}
+	sqlDB, err := sql.Open(driverName, dsn)
+	if err != nil {
+		return fmt.Errorf("failed to open database for maintenance: %w", err)
+	}
+	defer sqlDB.Close()
+
+	// Small timeout for maintenance operations to avoid blocking CI.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	switch dbType {
+	case "sqlite":
+		// Run PRAGMA optimize, VACUUM, and checkpoint WAL (if present).
+		if _, err := sqlDB.ExecContext(ctx, "PRAGMA optimize;"); err != nil {
+			return fmt.Errorf("sqlite optimize failed: %w", err)
+		}
+		if _, err := sqlDB.ExecContext(ctx, "VACUUM;"); err != nil {
+			return fmt.Errorf("sqlite vacuum failed: %w", err)
+		}
+		// WAL checkpoint; ignore errors if not supported.
+		if _, _ = sqlDB.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE);"); true {
+			// ignore result
+		}
+		// Optionally run integrity_check and return error if database is corrupt.
+		var res string
+		if row := sqlDB.QueryRowContext(ctx, "PRAGMA integrity_check;"); row != nil {
+			_ = row.Scan(&res)
+			if res != "ok" {
+				return fmt.Errorf("sqlite integrity_check failed: %s", res)
+			}
+		}
+	case "postgres":
+		// VACUUM ANALYZE
+		if _, err := sqlDB.ExecContext(ctx, "VACUUM ANALYZE;"); err != nil {
+			return fmt.Errorf("postgres vacuum failed: %w", err)
+		}
+	case "mysql":
+		// Get list of tables and run OPTIMIZE TABLE
+		rows, err := sqlDB.QueryContext(ctx, "SHOW TABLES")
+		if err != nil {
+			return fmt.Errorf("mysql show tables failed: %w", err)
+		}
+		defer rows.Close()
+		var table string
+		for rows.Next() {
+			if err := rows.Scan(&table); err != nil {
+				return fmt.Errorf("mysql read table name failed: %w", err)
+			}
+			if _, err := sqlDB.ExecContext(ctx, fmt.Sprintf("OPTIMIZE TABLE %s", table)); err != nil {
+				return fmt.Errorf("mysql optimize table %s failed: %w", table, err)
+			}
+		}
+	default:
+		return fmt.Errorf("unsupported db type for maintenance: %s", dbType)
+	}
+	return nil
+}
+
 // NewStoreFromDSN opens a sql.DB for the given DSN, runs migrations, and
 // returns a Store backed by a long-lived *bun.DB. This hides *sql.DB usage
 // from higher-level callers.
@@ -66,6 +136,7 @@ func NewStoreFromDSN(dbType, dsn string) (Store, error) {
 	if dbType == "postgres" {
 		driverName = "pgx"
 	}
+	start := time.Now()
 	sqlDB, err := sql.Open(driverName, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -102,10 +173,23 @@ func NewStoreFromDSN(dbType, dsn string) (Store, error) {
 	sqlDB.SetMaxOpenConns(maxOpen)
 	sqlDB.SetMaxIdleConns(maxIdle)
 	sqlDB.SetConnMaxLifetime(connMax)
+	// ConnMaxIdleTime: control idle connection lifetime (seconds) via env var if set.
+	connIdle := 60 // seconds
+	if v := os.Getenv("KEYMASTER_DB_CONN_MAX_IDLE_SECONDS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			connIdle = n
+		}
+	}
+	sqlDB.SetConnMaxIdleTime(time.Duration(connIdle) * time.Second)
 
+	openDur := time.Since(start)
+	log.Printf("db: opened %s driver in %s (conn max open=%d, idle=%ds, maxLifetime=%s)", driverName, openDur, maxOpen, connIdle, connMax)
+
+	migStart := time.Now()
 	if err := RunMigrations(sqlDB, dbType); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
+	log.Printf("db: migrations for %s completed in %s", dbType, time.Since(migStart))
 
 	switch dbType {
 	case "sqlite":
@@ -126,6 +210,8 @@ func NewStoreFromDSN(dbType, dsn string) (Store, error) {
 
 // RunMigrations applies the necessary database migrations for a given database connection.
 func RunMigrations(db *sql.DB, dbType string) error {
+	start := time.Now()
+	log.Printf("db: starting migrations for %s", dbType)
 	migrationsPath := fmt.Sprintf("migrations/%s", dbType)
 
 	entries, err := fs.ReadDir(embeddedMigrations, migrationsPath)
@@ -206,6 +292,7 @@ func RunMigrations(db *sql.DB, dbType string) error {
 			return fmt.Errorf("failed to commit migration %s: %w", version, err)
 		}
 	}
+	log.Printf("db: applied migrations for %s in %s", dbType, time.Since(start))
 	return nil
 }
 
