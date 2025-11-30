@@ -455,9 +455,21 @@ func ImportDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 			return MapDBError(err)
 		}
 	}
-	// AuditLog
+	// AuditLog: convert RFC3339 timestamps to time.Time when possible so MySQL accepts them.
 	for _, ale := range backup.AuditLogEntries {
-		if _, err := tx.NewRaw("INSERT INTO audit_log (id, timestamp, username, action, details) VALUES (?, ?, ?, ?, ?)", ale.ID, ale.Timestamp, ale.Username, ale.Action, ale.Details).Exec(ctx); err != nil {
+		var ts interface{} = ale.Timestamp
+		if ale.Timestamp != "" {
+			if parsed, err := time.Parse(time.RFC3339, ale.Timestamp); err == nil {
+				ts = parsed
+			} else {
+				// Fallback: convert 'T' separator to space and strip trailing 'Z' if present.
+				s := ale.Timestamp
+				s = strings.Replace(s, "T", " ", 1)
+				s = strings.TrimSuffix(s, "Z")
+				ts = s
+			}
+		}
+		if _, err := tx.NewRaw("INSERT INTO audit_log (id, timestamp, username, action, details) VALUES (?, ?, ?, ?, ?)", ale.ID, ts, ale.Username, ale.Action, ale.Details).Exec(ctx); err != nil {
 			return MapDBError(err)
 		}
 	}

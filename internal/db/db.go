@@ -56,7 +56,12 @@ func InitDB(dbType, dsn string) error {
 // returns a Store backed by a long-lived *bun.DB. This hides *sql.DB usage
 // from higher-level callers.
 func NewStoreFromDSN(dbType, dsn string) (Store, error) {
-	sqlDB, err := sql.Open(dbType, dsn)
+	driverName := dbType
+	// The pgx stdlib registers driver name "pgx"; map "postgres" to that driver.
+	if dbType == "postgres" {
+		driverName = "pgx"
+	}
+	sqlDB, err := sql.Open(driverName, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
