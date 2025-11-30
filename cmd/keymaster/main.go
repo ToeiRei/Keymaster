@@ -20,6 +20,8 @@ import (
 	"sync"
 	"time"
 
+	"runtime/debug"
+
 	_ "github.com/go-sql-driver/mysql" // Blank import for migrate command
 	_ "github.com/jackc/pgx/v5/stdlib" // Blank import for migrate command
 	"github.com/klauspost/compress/zstd"
@@ -193,13 +195,54 @@ Running without a subcommand will launch the interactive TUI.`,
 		},
 	}
 
-	// Ensure the built-in --version flag prints commit and build date as well.
-	compositeVersion := version
-	if gitCommit != "" && gitCommit != "dev" {
-		compositeVersion = compositeVersion + " (" + gitCommit + ")"
+	// Resolve build-time version information. Prefer module/build info when
+	// available (e.g., `go install github.com/...@latest` will set module
+	// version), otherwise fall back to linker-provided variables.
+	resolvedVersion := version
+	resolvedCommit := gitCommit
+	resolvedDate := buildDate
+
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if info.Main.Version != "" && info.Main.Version != "(devel)" {
+			resolvedVersion = info.Main.Version
+		}
+		// If Main doesn't contain the version (some build paths), try to
+		// find our module in the dependencies and use that version.
+		if (resolvedVersion == "dev" || resolvedVersion == "(devel)") && info.Deps != nil {
+			for _, dep := range info.Deps {
+				if dep.Path == "github.com/toeirei/keymaster" && dep.Version != "" {
+					resolvedVersion = dep.Version
+					break
+				}
+			}
+		}
+
+		for _, s := range info.Settings {
+			switch s.Key {
+			case "vcs.revision":
+				if s.Value != "" {
+					resolvedCommit = s.Value
+				}
+			case "vcs.time":
+				if s.Value != "" {
+					resolvedDate = s.Value
+				}
+			}
+		}
 	}
-	if buildDate != "" {
-		compositeVersion = compositeVersion + " built: " + buildDate
+
+	// As a last resort, if no version was discovered, but a gitCommit was
+	// provided via ldflags, show that to aid support.
+	if resolvedVersion == "dev" && gitCommit != "dev" && gitCommit != "" {
+		resolvedVersion = gitCommit
+	}
+
+	compositeVersion := resolvedVersion
+	if resolvedCommit != "" && resolvedCommit != "dev" {
+		compositeVersion = compositeVersion + " (" + resolvedCommit + ")"
+	}
+	if resolvedDate != "" {
+		compositeVersion = compositeVersion + " built: " + resolvedDate
 	}
 	cmd.Version = compositeVersion
 
@@ -257,10 +300,32 @@ Running without a subcommand will launch the interactive TUI.`,
 		Use:   "version",
 		Short: "Print version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("version: %s\n", version)
-			fmt.Printf("commit: %s\n", gitCommit)
-			if buildDate != "" {
-				fmt.Printf("built: %s\n", buildDate)
+			// Re-resolve build info so the subcommand shows the same values
+			resolvedVersion := version
+			resolvedCommit := gitCommit
+			resolvedDate := buildDate
+			if info, ok := debug.ReadBuildInfo(); ok {
+				if info.Main.Version != "" && info.Main.Version != "(devel)" {
+					resolvedVersion = info.Main.Version
+				}
+				for _, s := range info.Settings {
+					switch s.Key {
+					case "vcs.revision":
+						if s.Value != "" {
+							resolvedCommit = s.Value
+						}
+					case "vcs.time":
+						if s.Value != "" {
+							resolvedDate = s.Value
+						}
+					}
+				}
+			}
+
+			fmt.Printf("version: %s\n", resolvedVersion)
+			fmt.Printf("commit: %s\n", resolvedCommit)
+			if resolvedDate != "" {
+				fmt.Printf("built: %s\n", resolvedDate)
 			}
 		},
 	}
