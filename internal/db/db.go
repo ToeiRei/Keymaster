@@ -27,6 +27,10 @@ import (
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 	_ "modernc.org/sqlite"
+
+	// SQL drivers required for integration tests and runtime.
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 // package-level variables

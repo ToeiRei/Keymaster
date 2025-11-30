@@ -22,7 +22,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U testuser"
+          --health-cmd "pg_isready -h localhost -p 5432"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -41,7 +41,7 @@ jobs:
       - name: Run Postgres integration tests
         env:
           INTEGRATION_DB: postgres
-          INTEGRATION_DSN: postgres://testuser:testpass@postgres:5432/keymaster_test?sslmode=disable
+          INTEGRATION_DSN: postgres://testuser:testpass@localhost:5432/keymaster_test?sslmode=disable
         run: |
           echo "Waiting for Postgres on localhost:5432"
           for i in {1..60}; do
@@ -87,7 +87,7 @@ jobs:
       - name: Run MySQL integration tests
         env:
           INTEGRATION_DB: mysql
-          INTEGRATION_DSN: root:rootpass@tcp(mysql:3306)/keymaster_test?parseTime=true&multiStatements=true
+          INTEGRATION_DSN: root:rootpass@tcp(localhost:3306)/keymaster_test?parseTime=true&multiStatements=true
         run: |
           echo "Waiting for MySQL on localhost:3306"
           for i in {1..60}; do
