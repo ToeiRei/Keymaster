@@ -19,3 +19,4 @@ vendor/
 keymaster.db-wal
 keymaster.db-shm
 keymaster-backup*.json.zst
+internal_db_coverage
