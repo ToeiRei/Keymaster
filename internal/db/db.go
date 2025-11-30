@@ -11,20 +11,20 @@ package db // import "github.com/toeirei/keymaster/internal/db"
 import (
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
+	"io/fs"
+	"path"
+	"sort"
+	"strings"
 	"time"
 
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database"
-	"github.com/golang-migrate/migrate/v4/database/mysql"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
-	"github.com/golang-migrate/migrate/v4/database/sqlite"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/mysqldialect"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
+	_ "modernc.org/sqlite"
 )
 
 // package-level variables
@@ -93,46 +93,85 @@ func NewStore(dbType string, db *sql.DB) (Store, error) {
 
 // RunMigrations applies the necessary database migrations for a given database connection.
 func RunMigrations(db *sql.DB, dbType string) error {
-	var driver database.Driver
-	// Define the path to the migrations for the specific database type.
 	migrationsPath := fmt.Sprintf("migrations/%s", dbType)
 
-	// Run migrations
-	sourceInstance, err := iofs.New(embeddedMigrations, migrationsPath)
+	entries, err := fs.ReadDir(embeddedMigrations, migrationsPath)
 	if err != nil {
-		return fmt.Errorf("failed to create migration source: %w", err)
+		if errors.Is(err, fs.ErrNotExist) {
+			// No migrations embedded for this DB type.
+			return nil
+		}
+		return fmt.Errorf("failed to read embedded migrations (%s): %w", migrationsPath, err)
 	}
 
-	switch dbType {
-	case "sqlite":
-		tmpDriver, derr := sqlite.WithInstance(db, &sqlite.Config{})
-		if derr != nil {
-			return fmt.Errorf("failed to create sqlite migration driver: %w", derr)
+	// Collect .up.sql files and sort them
+	var ups []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
 		}
-		driver = tmpDriver
-	case "postgres":
-		tmpDriver, derr := postgres.WithInstance(db, &postgres.Config{})
-		if derr != nil {
-			return fmt.Errorf("failed to create postgres migration driver: %w", derr)
+		name := e.Name()
+		if strings.HasSuffix(name, ".up.sql") {
+			ups = append(ups, name)
 		}
-		driver = tmpDriver
-	case "mysql":
-		tmpDriver, derr := mysql.WithInstance(db, &mysql.Config{})
-		if derr != nil {
-			return fmt.Errorf("failed to create mysql migration driver: %w", derr)
-		}
-		driver = tmpDriver
-	default:
-		return fmt.Errorf("unsupported database type for migrations: '%s'", dbType)
+	}
+	sort.Strings(ups)
+
+	// Ensure schema_migrations table exists.
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMP)`); err != nil {
+		return fmt.Errorf("failed to ensure schema_migrations table: %w", err)
 	}
 
-	m, err := migrate.NewWithInstance("iofs", sourceInstance, dbType, driver)
-	if err != nil {
-		return fmt.Errorf("failed to create migration instance: %w", err)
-	}
+	for _, fname := range ups {
+		version := strings.TrimSuffix(fname, ".up.sql")
 
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("failed to apply migrations: %w", err)
+		// Check if already applied.
+		var exists int
+		query := "SELECT 1 FROM schema_migrations WHERE version = ?"
+		if dbType == "postgres" {
+			query = "SELECT 1 FROM schema_migrations WHERE version = $1"
+		}
+		err := db.QueryRow(query, version).Scan(&exists)
+		if err == nil {
+			// applied, skip
+			continue
+		}
+		if err == sql.ErrNoRows {
+			// not applied, continue to apply
+		} else {
+			return fmt.Errorf("failed to check migration version %s: %w", version, err)
+		}
+
+		// Read migration file contents
+		path := path.Join(migrationsPath, fname)
+		data, err := embeddedMigrations.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read migration %s: %w", path, err)
+		}
+
+		// Apply within a transaction
+		tx, err := db.Begin()
+		if err != nil {
+			return fmt.Errorf("failed to begin transaction for migration %s: %w", version, err)
+		}
+		if _, err := tx.Exec(string(data)); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to execute migration %s: %w", version, err)
+		}
+
+		// Insert migration record; use DB-specific placeholder
+		insertQuery := "INSERT INTO schema_migrations(version, applied_at) VALUES(?, ?)"
+		if dbType == "postgres" {
+			insertQuery = "INSERT INTO schema_migrations(version, applied_at) VALUES($1, $2)"
+		}
+		if _, err := tx.Exec(insertQuery, version, time.Now()); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to record migration %s: %w", version, err)
+		}
+		if err := tx.Commit(); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to commit migration %s: %w", version, err)
+		}
 	}
 	return nil
 }
