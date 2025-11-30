@@ -96,9 +96,11 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 	// Initialize i18n
 	i18n.Init(appConfig.Language)
 
-	// Initialize the database
-	if err := db.InitDB(appConfig.Database.Type, appConfig.Database.Dsn); err != nil {
-		return errors.New(i18n.T("config.error_init_db", err))
+	// Initialize the database if not already initialized by tests or earlier setup.
+	if !db.IsInitialized() {
+		if err := db.InitDB(appConfig.Database.Type, appConfig.Database.Dsn); err != nil {
+			return errors.New(i18n.T("config.error_init_db", err))
+		}
 	}
 
 	// Recover from any previous crashes

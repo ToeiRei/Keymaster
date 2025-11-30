@@ -216,16 +216,19 @@ func GetAllActiveAccountsBun(bdb *bun.DB) ([]model.Account, error) {
 // AddAccountBun inserts a new account and returns its ID.
 func AddAccountBun(bdb *bun.DB, username, hostname, label, tags string) (int, error) {
 	ctx := context.Background()
-	// Use raw INSERT to allow DB defaults (serial, is_active) to apply.
-	res, err := bdb.NewRaw("INSERT INTO accounts(username, hostname, label, tags) VALUES(?, ?, ?, ?)", username, hostname, label, tags).Exec(ctx)
-	if err != nil {
+	// Use Bun's NewInsert with Returning to support Postgres and MySQL
+	am := &AccountModel{
+		Username: username,
+		Hostname: hostname,
+		Label:    sql.NullString{String: label, Valid: label != ""},
+		Tags:     sql.NullString{String: tags, Valid: tags != ""},
+	}
+	// Try to insert and return the assigned ID in a DB-agnostic way.
+	// Insert only the fields we want the DB to default (like is_active, serial).
+	if _, err := bdb.NewInsert().Model(am).Column("username", "hostname", "label", "tags").Returning("id").Exec(ctx); err != nil {
 		return 0, MapDBError(err)
 	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return int(id), nil
+	return am.ID, nil
 }
 
 // DeleteAccountBun removes an account by id.

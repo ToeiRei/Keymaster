@@ -52,6 +52,11 @@ func InitDB(dbType, dsn string) error {
 	return nil
 }
 
+// IsInitialized reports whether the package-level store has been set.
+func IsInitialized() bool {
+	return store != nil
+}
+
 // NewStoreFromDSN opens a sql.DB for the given DSN, runs migrations, and
 // returns a Store backed by a long-lived *bun.DB. This hides *sql.DB usage
 // from higher-level callers.
