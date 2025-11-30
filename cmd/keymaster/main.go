@@ -11,7 +11,6 @@ package main
 
 import (
 	"bufio"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1072,43 +1071,14 @@ Example:
 // It is a simplified, one-off version of db.InitDB that does not affect the
 // global `store` variable.
 func initTargetDB(db_type, db_dsn string) (db.Store, error) {
-	// This logic is intentionally duplicated from db.InitDB to create an
-	// isolated instance for the migration target without modifying the global state.
-	var targetDB *sql.DB
-	var err error
-
-	switch db_type {
-	case "sqlite":
-		if !strings.Contains(db_dsn, "_busy_timeout") {
-			db_dsn += "?_busy_timeout=5000"
-		}
-		targetDB, err = sql.Open("sqlite", db_dsn)
-		if err == nil {
-			if _, err = targetDB.Exec("PRAGMA foreign_keys = ON;"); err != nil {
-				return nil, err
-			}
-			if _, err = targetDB.Exec("PRAGMA journal_mode=WAL;"); err != nil {
-				return nil, err
-			}
-		}
-	case "postgres":
-		targetDB, err = sql.Open("pgx", db_dsn)
-	case "mysql":
-		targetDB, err = sql.Open("mysql", db_dsn)
-	default:
-		return nil, fmt.Errorf("unsupported database type: '%s'", db_type)
+	// Use the DB package helper to create a store from the DSN. This hides
+	// direct *sql.DB handling and ensures migrations are applied.
+	if db_type == "sqlite" && !strings.Contains(db_dsn, "_busy_timeout") {
+		db_dsn += "?_busy_timeout=5000"
 	}
-
+	s, err := db.NewStoreFromDSN(db_type, db_dsn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open target database: %w", err)
+		return nil, fmt.Errorf("failed to initialize target store: %w", err)
 	}
-
-	// Run migrations on the target DB.
-	// We can reuse the migration logic from the db package.
-	if err := db.RunMigrations(targetDB, db_type); err != nil {
-		return nil, fmt.Errorf("failed to apply migrations to target database: %w", err)
-	}
-
-	// Return a new store instance for the target.
-	return db.NewStore(db_type, targetDB)
+	return s, nil
 }

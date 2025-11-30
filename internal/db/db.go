@@ -38,24 +38,40 @@ var (
 // It sets the global `store` variable to the appropriate database implementation
 // and runs any pending database migrations.
 func InitDB(dbType, dsn string) error {
-	// Open a raw SQL connection and run migrations, then create a Bun-backed store.
-	sqlDB, err := sql.Open(dbType, dsn)
+	s, err := NewStoreFromDSN(dbType, dsn)
 	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
-	}
-
-	// Run migrations using the existing RunMigrations helper which uses golang-migrate.
-	if err := RunMigrations(sqlDB, dbType); err != nil {
-		return fmt.Errorf("failed to run migrations: %w", err)
-	}
-
-	// Create the store (this will construct a bun.DB internally via NewStore).
-	s, err := NewStore(dbType, sqlDB)
-	if err != nil {
-		return fmt.Errorf("failed to create store: %w", err)
+		return fmt.Errorf("failed to initialize store: %w", err)
 	}
 	store = s
 	return nil
+}
+
+// NewStoreFromDSN opens a sql.DB for the given DSN, runs migrations, and
+// returns a Store backed by a long-lived *bun.DB. This hides *sql.DB usage
+// from higher-level callers.
+func NewStoreFromDSN(dbType, dsn string) (Store, error) {
+	sqlDB, err := sql.Open(dbType, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+
+	if err := RunMigrations(sqlDB, dbType); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	switch dbType {
+	case "sqlite":
+		bunDB := bun.NewDB(sqlDB, sqlitedialect.New())
+		return &SqliteStore{bun: bunDB}, nil
+	case "postgres":
+		bunDB := bun.NewDB(sqlDB, pgdialect.New())
+		return &PostgresStore{bun: bunDB}, nil
+	case "mysql":
+		bunDB := bun.NewDB(sqlDB, mysqldialect.New())
+		return &MySQLStore{bun: bunDB}, nil
+	default:
+		return nil, fmt.Errorf("unsupported database type for store creation: '%s'", dbType)
+	}
 }
 
 // NewStore creates and returns a new store instance for the given database type and connection.
