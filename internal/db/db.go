@@ -199,8 +199,16 @@ func RunMigrations(db *sql.DB, dbType string) error {
 // the `applied_at` column when the table exists but is missing that column.
 func ensureSchemaMigrationsTable(db *sql.DB, dbType string) error {
 	// create the table with the desired schema if it does not exist
-	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMP)`); err != nil {
-		return err
+	// MySQL does not permit TEXT/BLOB columns to be indexed without a length,
+	// so use a VARCHAR with a safe length there. Other engines can use TEXT.
+	if dbType == "mysql" {
+		if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(191) PRIMARY KEY, applied_at TIMESTAMP)`); err != nil {
+			return err
+		}
+	} else {
+		if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMP)`); err != nil {
+			return err
+		}
 	}
 
 	// Check whether applied_at column exists; if not, add it.
