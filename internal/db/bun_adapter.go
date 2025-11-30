@@ -532,7 +532,7 @@ func GetPublicKeyByCommentBun(bdb *bun.DB, comment string) (*model.PublicKey, er
 func AddPublicKeyBun(bdb *bun.DB, algorithm, keyData, comment string, isGlobal bool) error {
 	ctx := context.Background()
 	_, err := bdb.NewRaw("INSERT INTO public_keys(algorithm, key_data, comment, is_global) VALUES(?, ?, ?, ?)", algorithm, keyData, comment, isGlobal).Exec(ctx)
-	return err
+	return MapDBError(err)
 }
 
 // AddPublicKeyAndGetModelBun inserts a public key if not exists and returns the model.
@@ -549,7 +549,7 @@ func AddPublicKeyAndGetModelBun(bdb *bun.DB, algorithm, keyData, comment string,
 	ctx := context.Background()
 	res, err := bdb.NewRaw("INSERT INTO public_keys (algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?)", algorithm, keyData, comment, isGlobal).Exec(ctx)
 	if err != nil {
-		return nil, err
+		return nil, MapDBError(err)
 	}
 	id, err := res.LastInsertId()
 	if err != nil {

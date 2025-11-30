@@ -11,9 +11,7 @@ package db // import "github.com/toeirei/keymaster/internal/db"
 import (
 	"database/sql"
 	"embed"
-	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -29,98 +27,34 @@ import (
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 )
 
+// package-level variables
 var (
-	// store is the active database connection, wrapped in our interface.
-	// It is initialized by InitDB.
 	store Store
-
-	// track the active DB type and DSN so InitDB can be idempotent when
-	// called repeatedly with the same parameters (useful in normal runtime).
-	currentDBType string
-	currentDSN    string
-
-	// ErrDuplicate is returned when a unique constraint is violated.
-	ErrDuplicate = errors.New("duplicate entry")
+	//go:embed migrations
+	embeddedMigrations embed.FS
 )
-
-//go:embed migrations/*
-var embeddedMigrations embed.FS
 
 // InitDB initializes the database connection based on the provided type and DSN.
 // It sets the global `store` variable to the appropriate database implementation
 // and runs any pending database migrations.
 func InitDB(dbType, dsn string) error {
-	// If the store is already initialized with the same parameters, avoid re-initializing.
-	// Tests use unique in-memory DSNs per test; we must reinitialize when DSN differs.
-	if store != nil && currentDBType == dbType && currentDSN == dsn {
-		return nil
-	}
-	var err error
-	var db *sql.DB
-	dbType = strings.ToLower(dbType)
-
-	switch dbType {
-	case "sqlite":
-		// To prevent "database is locked" errors under concurrent writes, we ensure
-		// a busy_timeout is set. This makes SQLite wait for a lock to be released
-		// instead of failing immediately. 5000ms is a reasonable default.
-		if !strings.Contains(dsn, "_busy_timeout") {
-			if strings.Contains(dsn, "?") && !strings.HasSuffix(dsn, "?") {
-				dsn += "&_busy_timeout=5000"
-			} else {
-				dsn += "?_busy_timeout=5000"
-			}
-		}
-		db, err = sql.Open("sqlite", dsn)
-		if err == nil {
-			// Enable foreign key support, which is off by default in SQLite.
-			if _, err = db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
-				return fmt.Errorf("failed to enable foreign keys for sqlite: %w", err)
-			}
-			// Enable Write-Ahead Logging for better concurrency.
-			if _, err = db.Exec("PRAGMA journal_mode=WAL;"); err != nil {
-				return fmt.Errorf("failed to enable WAL mode for sqlite: %w", err)
-			}
-			// Create a Bun DB instance for SQLite to be used by the sqlite store.
-			bunDB := bun.NewDB(db, sqlitedialect.New())
-			store = &SqliteStore{bun: bunDB}
-			currentDBType = dbType
-			currentDSN = dsn
-		}
-	case "postgres":
-		// The pgx driver is imported in postgres.go
-		db, err = sql.Open("pgx", dsn)
-		if err == nil {
-			bunDB := bun.NewDB(db, pgdialect.New())
-			store = &PostgresStore{bun: bunDB}
-			currentDBType = dbType
-			currentDSN = dsn
-		}
-	case "mysql":
-		// The mysql driver is imported in mysql.go
-		db, err = sql.Open("mysql", dsn)
-		if err == nil {
-			bunDB := bun.NewDB(db, mysqldialect.New())
-			store = &MySQLStore{bun: bunDB}
-			currentDBType = dbType
-			currentDSN = dsn
-		}
-	default:
-		return fmt.Errorf("unsupported database type: '%s'", dbType)
-	}
-
+	// Open a raw SQL connection and run migrations, then create a Bun-backed store.
+	sqlDB, err := sql.Open(dbType, dsn)
 	if err != nil {
-		return fmt.Errorf("failed to open %s database: %w", dbType, err)
+		return fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if err := db.Ping(); err != nil {
-		return fmt.Errorf("failed to connect to %s database: %w", dbType, err)
+	// Run migrations using the existing RunMigrations helper which uses golang-migrate.
+	if err := RunMigrations(sqlDB, dbType); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	if err := RunMigrations(db, dbType); err != nil {
-		return err
+	// Create the store (this will construct a bun.DB internally via NewStore).
+	s, err := NewStore(dbType, sqlDB)
+	if err != nil {
+		return fmt.Errorf("failed to create store: %w", err)
 	}
-
+	store = s
 	return nil
 }
 
