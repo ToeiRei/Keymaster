@@ -1,4 +1,6 @@
 name: DB Integration Tests
+permissions:
+  contents: read
 
 on:
   push:
