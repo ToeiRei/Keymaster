@@ -14,7 +14,7 @@ require (
 	github.com/klauspost/compress v1.18.2
 	github.com/nicksnyder/go-i18n/v2 v2.6.0
 	github.com/pkg/sftp v1.13.10
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/uptrace/bun v1.2.16
 	github.com/uptrace/bun/dialect/mysqldialect v1.2.16
