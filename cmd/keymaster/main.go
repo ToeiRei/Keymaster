@@ -195,54 +195,13 @@ Running without a subcommand will launch the interactive TUI.`,
 		},
 	}
 
-	// Resolve build-time version information. Prefer module/build info when
-	// available (e.g., `go install github.com/...@latest` will set module
-	// version), otherwise fall back to linker-provided variables.
-	resolvedVersion := version
-	resolvedCommit := gitCommit
-	resolvedDate := buildDate
-
-	if info, ok := debug.ReadBuildInfo(); ok {
-		if info.Main.Version != "" && info.Main.Version != "(devel)" {
-			resolvedVersion = info.Main.Version
-		}
-		// If Main doesn't contain the version (some build paths), try to
-		// find our module in the dependencies and use that version.
-		if (resolvedVersion == "dev" || resolvedVersion == "(devel)") && info.Deps != nil {
-			for _, dep := range info.Deps {
-				if dep.Path == "github.com/toeirei/keymaster" && dep.Version != "" {
-					resolvedVersion = dep.Version
-					break
-				}
-			}
-		}
-
-		for _, s := range info.Settings {
-			switch s.Key {
-			case "vcs.revision":
-				if s.Value != "" {
-					resolvedCommit = s.Value
-				}
-			case "vcs.time":
-				if s.Value != "" {
-					resolvedDate = s.Value
-				}
-			}
-		}
+	v, c, d := resolveBuildVersion(nil)
+	compositeVersion := v
+	if c != "" && c != "dev" {
+		compositeVersion = compositeVersion + " (" + c + ")"
 	}
-
-	// As a last resort, if no version was discovered, but a gitCommit was
-	// provided via ldflags, show that to aid support.
-	if resolvedVersion == "dev" && gitCommit != "dev" && gitCommit != "" {
-		resolvedVersion = gitCommit
-	}
-
-	compositeVersion := resolvedVersion
-	if resolvedCommit != "" && resolvedCommit != "dev" {
-		compositeVersion = compositeVersion + " (" + resolvedCommit + ")"
-	}
-	if resolvedDate != "" {
-		compositeVersion = compositeVersion + " built: " + resolvedDate
+	if d != "" {
+		compositeVersion = compositeVersion + " built: " + d
 	}
 	cmd.Version = compositeVersion
 
@@ -347,6 +306,62 @@ Running without a subcommand will launch the interactive TUI.`,
 	)
 
 	return cmd
+}
+
+// resolveBuildVersion computes the best-available version, commit and build
+// date for the running binary. If `info` is nil, it reads build info from
+// the runtime. This helper is separated to make unit testing straightforward.
+func resolveBuildVersion(info *debug.BuildInfo) (versionOut, commitOut, dateOut string) {
+	resolvedVersion := version
+	resolvedCommit := gitCommit
+	resolvedDate := buildDate
+
+	var ok bool
+	if info == nil {
+		if infoLocal, found := debug.ReadBuildInfo(); found {
+			info = infoLocal
+			ok = true
+		}
+	} else {
+		ok = true
+	}
+
+	if ok && info != nil {
+		if info.Main.Version != "" && info.Main.Version != "(devel)" {
+			resolvedVersion = info.Main.Version
+		}
+		// If Main doesn't contain the version (some build paths), try to
+		// find our module in the dependencies and use that version.
+		if (resolvedVersion == "dev" || resolvedVersion == "(devel)") && info.Deps != nil {
+			for _, dep := range info.Deps {
+				if dep.Path == "github.com/toeirei/keymaster" && dep.Version != "" {
+					resolvedVersion = dep.Version
+					break
+				}
+			}
+		}
+
+		for _, s := range info.Settings {
+			switch s.Key {
+			case "vcs.revision":
+				if s.Value != "" {
+					resolvedCommit = s.Value
+				}
+			case "vcs.time":
+				if s.Value != "" {
+					resolvedDate = s.Value
+				}
+			}
+		}
+	}
+
+	// As a last resort, if no version was discovered, but a gitCommit was
+	// provided via ldflags, show that to aid support.
+	if resolvedVersion == "dev" && gitCommit != "dev" && gitCommit != "" {
+		resolvedVersion = gitCommit
+	}
+
+	return resolvedVersion, resolvedCommit, resolvedDate
 }
 
 // deployCmd represents the 'deploy' command.
