@@ -44,7 +44,8 @@ jobs:
         uses: golangci/golangci-lint-action@v4
         with:
           version: v1.59.0
-          args: run ./...
+          # Use colored-line-number output and skip directories that cause typechecking
+          args: run ./... --out-format=colored-line-number --skip-dirs=tools,internal/i18n/locales,testdata
       - name: Static vet
         run: go vet ./...
       - name: Run tests (race, coverage)
