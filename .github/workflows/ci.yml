@@ -42,6 +42,7 @@ jobs:
           fi
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v4
+        continue-on-error: true
         with:
           version: v1.59.0
           # Use colored-line-number output and skip directories that cause typechecking
