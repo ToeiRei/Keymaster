@@ -58,6 +58,17 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Diagnostic: print current working directory and KEYMASTER-related env vars
+	if wd, wderr := os.Getwd(); wderr == nil {
+		log.Printf("startup cwd: %s", wd)
+	}
+	// Print any environment variables that might affect config discovery/parsing
+	for _, e := range os.Environ() {
+		if strings.HasPrefix(e, "KEYMASTER_") || strings.HasPrefix(e, "KEYMASTER") || strings.HasPrefix(e, "CONFIG") {
+			log.Printf("env: %s", e)
+		}
+	}
+
 	// Load config
 	defauls := map[string]any{
 		"database.type": "sqlite",
@@ -67,7 +78,8 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 
 	appConfig, err = config.LoadConfig[config.Config](cmd, defauls, optional_config_path)
 	// A "file not found" error is expected on first run, so we handle it specifically.
-	// Other errors during loading are fatal.
+	// Other errors during loading are usually fatal, but allow debugging when the
+	// error is due to control characters in YAML (so `keymaster debug` can run).
 	if errors.As(err, &viper.ConfigFileNotFoundError{}) {
 		// This is the first run, or the config file was deleted. Create a default one.
 		if writeErr := config.WriteConfigFile(&appConfig, false); writeErr != nil {
@@ -75,8 +87,23 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 			log.Printf("Warning: could not write default config file: %v", writeErr)
 		}
 	} else if err != nil {
-		// Any other error during config loading is a problem.
-		return fmt.Errorf("error loading config: %w", err)
+		// If it's a YAML parse error caused by control characters, log and continue
+		// so diagnostic subcommands can run. Otherwise, fail.
+		if strings.Contains(err.Error(), "control characters are not allowed") {
+			log.Printf("Warning: config parse error (will continue with defaults): %v", err)
+		} else {
+			return fmt.Errorf("error loading config: %w", err)
+		}
+	}
+
+	// If no config file was used (viper didn't load one), always write a default
+	// config for the user so subsequent runs have a persisted file to inspect.
+	if viper.ConfigFileUsed() == "" {
+		if writeErr := config.WriteConfigFile(&appConfig, false); writeErr != nil {
+			log.Printf("Warning: could not write default config file: %v", writeErr)
+		} else {
+			log.Printf("Wrote default config to user config path")
+		}
 	}
 
 	// Post-process config to ensure critical values are not empty, falling back to defaults.
@@ -187,7 +214,7 @@ system key per account and uses it as a foothold to rewrite and
 version-control access. A database becomes the source of truth.
 
 Running without a subcommand will launch the interactive TUI.`,
-		PreRunE: setupDefaultServices,
+		PersistentPreRunE: setupDefaultServices,
 		Run: func(cmd *cobra.Command, args []string) {
 			// The database is already initialized by PersistentPreRunE.
 			// i18n is also initialized, so we can just run the TUI.
@@ -204,6 +231,9 @@ Running without a subcommand will launch the interactive TUI.`,
 		compositeVersion = compositeVersion + " built: " + d
 	}
 	cmd.Version = compositeVersion
+
+	// Register debug command
+	cmd.AddCommand(debugCmd)
 
 	// Define flags
 	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
