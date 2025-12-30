@@ -50,13 +50,16 @@ func TestPasswordMailbox_ConcurrentAccess(t *testing.T) {
 	var wg sync.WaitGroup
 	readers := 50
 	wg.Add(readers)
+	// Collect errors from goroutines and fail from the main test goroutine.
+	errs := make(chan string, readers)
 	for i := 0; i < readers; i++ {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 100; j++ {
 				v := PasswordCache.Get()
 				if v == nil {
-					t.Fatalf("expected non-nil during concurrent reads")
+					errs <- "expected non-nil during concurrent reads"
+					return
 				}
 			}
 		}()
@@ -70,4 +73,10 @@ func TestPasswordMailbox_ConcurrentAccess(t *testing.T) {
 	}()
 
 	wg.Wait()
+	close(errs)
+	for e := range errs {
+		if e != "" {
+			t.Fatalf("concurrent reader error: %s", e)
+		}
+	}
 }
