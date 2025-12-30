@@ -30,9 +30,26 @@ jobs:
             ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
       - name: Install tools
-        run: go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-      - name: Run tests
-        run: go test ./... -v
+        run: |
+          go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+      - name: Check formatting
+        run: |
+          echo 'Checking gofmt...'
+          UNFORMATTED=$(gofmt -s -l .)
+          if [ -n "${UNFORMATTED}" ]; then
+            echo "gofmt found unformatted files:" && echo "$UNFORMATTED"
+            exit 1
+          fi
+      - name: Static vet
+        run: go vet ./...
+      - name: Run tests (race, coverage)
+        run: |
+          go test ./... -v -race -coverprofile=coverage.out
+      - name: Upload coverage
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage
+          path: coverage.out
 
   build:
     name: Build binary with version
