@@ -40,6 +40,11 @@ jobs:
             echo "gofmt found unformatted files:" && echo "$UNFORMATTED"
             exit 1
           fi
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: v1.59.0
+          args: run ./...
       - name: Static vet
         run: go vet ./...
       - name: Run tests (race, coverage)
