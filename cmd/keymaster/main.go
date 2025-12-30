@@ -87,10 +87,16 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 			log.Printf("Warning: could not write default config file: %v", writeErr)
 		}
 	} else if err != nil {
-		// If it's a YAML parse error caused by control characters, log and continue
-		// so diagnostic subcommands can run. Otherwise, fail.
+		// If it's a YAML parse error caused by control characters, log a
+		// user-friendly message pointing users at the `debug` command, but
+		// continue running on defaults so the app is still usable.
 		if strings.Contains(err.Error(), "control characters are not allowed") {
-			log.Printf("Warning: config parse error (will continue with defaults): %v", err)
+			used := viper.ConfigFileUsed()
+			if used == "" {
+				log.Printf("The config appears to be invalid (parse error). Run 'keymaster debug' to inspect configuration files: %v", err)
+			} else {
+				log.Printf("The config you are using (%s) appears to be invalid: %v. Run 'keymaster debug' to inspect and fix it.", used, err)
+			}
 		} else {
 			return fmt.Errorf("error loading config: %w", err)
 		}

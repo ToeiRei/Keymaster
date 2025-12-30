@@ -3,6 +3,7 @@ package config_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -94,5 +95,27 @@ func TestLoadConfig_ReadsExplicitFile(t *testing.T) {
     }
     if got.Language != "de" {
         t.Fatalf("expected de, got %q", got.Language)
+    }
+}
+
+func TestLoadConfig_BrokenConfig_ReturnsParseError(t *testing.T) {
+    tmp := t.TempDir()
+    // Write a file containing a control character (0x01) which YAML forbids
+    yaml := "language: en\n" + string([]byte{0x01}) + "\n"
+    file := filepath.Join(tmp, "broken.yaml")
+    if err := os.WriteFile(file, []byte(yaml), 0o600); err != nil {
+        t.Fatalf("write broken file: %v", err)
+    }
+
+    resetViper()
+    defer resetViper()
+
+    defaults := map[string]any{"database.type": "sqlite", "database.dsn": "./keymaster.db", "language": "en"}
+    _, err := cfg.LoadConfig[cfg.Config](&cobra.Command{}, defaults, &file)
+    if err == nil {
+        t.Fatalf("expected parse error for broken yaml, got nil")
+    }
+    if !strings.Contains(err.Error(), "control characters are not allowed") {
+        t.Fatalf("expected control characters error, got: %v", err)
     }
 }
