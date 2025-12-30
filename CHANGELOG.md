@@ -27,6 +27,32 @@ This release marks a major overhaul of the data layer for improved reliability a
 
 ---
 
+## [1.5.1] - 2025-12-30
+
+This is a patch release containing bug fixes, UX improvements, and small dependency updates.
+
+### Added
+
+- `debug` subcommand to dump runtime config, flags, and environment for easier troubleshooting.
+
+### Changed
+
+- Improved configuration loading: zero-length config files are now treated as missing to avoid YAML parse errors. The CLI now writes a default user config on first run.
+- Restricted config discovery to explicit candidate files to avoid inadvertently parsing non-YAML files.
+- CI workflow: added gofmt check, `go vet`, and race-tested `go test` with coverage reporting.
+
+### Fixed
+
+- Clearer, actionable error messages when a broken config is detected (points users to `keymaster debug`).
+- Added unit tests for the SSH key parser (`internal/sshkey`) and fixed related test formatting issues flagged by `gofmt`.
+- `.gitignore` cleanup to avoid unintentionally ignoring `cmd/keymaster`; added `.vscode/settings.json` to hide the built `keymaster` binary in the IDE.
+
+### Dependencies
+
+- Minor dependency updates to resolve transitive issues and keep toolchain components up-to-date.
+
+---
+
 ## [1.4.3] - 2025-10-14
 
 This release focuses on improving the user experience for encrypted system keys and fixing a number of bugs in the TUI workflow.
