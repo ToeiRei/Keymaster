@@ -1,4 +1,12 @@
 {
+  "files.exclude": {
+    "keymaster": true
+  },
+  "search.exclude": {
+    "keymaster": true
+  }
+}
+{
     "go.formatTool": "gofmt",
     "[go]": {
         "editor.formatOnSave": true,
