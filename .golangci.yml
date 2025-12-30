@@ -9,8 +9,6 @@ linters:
     - gofmt
     - gosimple
     - ineffassign
-    - deadcode
-    - typecheck
 
 issues:
   exclude-use-default: false
