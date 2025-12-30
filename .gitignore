@@ -2,6 +2,7 @@
 keymaster.db
 
 # Compiled binary for different OSs
+# Ignore only the top-level built binary; do not ignore the cmd/keymaster package
 ./keymaster
 ./keymaster.exe
 
@@ -20,4 +21,3 @@ keymaster.db-wal
 keymaster.db-shm
 keymaster-backup*.json.zst
 internal_db_coverage
-keymaster
