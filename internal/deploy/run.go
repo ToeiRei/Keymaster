@@ -64,14 +64,12 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 	// It's critical to wipe the passphrase from memory after we're done with it.
 	// We use a defer to ensure this happens even if other parts of the function fail.
 	defer func() {
-		if passphrase != nil {
-			// This is a best-effort cleanup. The more important clear is after
-			// the deployer is created, but this defer handles error paths before that.
-			// We can't clear the global cache here as other parallel tasks might need it.
-			// The explicit clear after NewDeployer is the main fix.
-			for i := range passphrase {
-				passphrase[i] = 0
-			}
+		// This is a best-effort cleanup. The more important clear is after
+		// the deployer is created, but this defer handles error paths before that.
+		// We can't clear the global cache here as other parallel tasks might need it.
+		// The explicit clear after NewDeployer is the main fix.
+		for i := range passphrase {
+			passphrase[i] = 0
 		}
 	}()
 	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey, passphrase)

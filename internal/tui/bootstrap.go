@@ -509,7 +509,7 @@ func (m *bootstrapModel) viewGenerateKey() string {
 	// Show the command to paste
 	command := m.session.GetBootstrapCommand()
 
-	commandBox := dialogBoxStyle.Copy().
+	commandBox := dialogBoxStyle.
 		BorderForeground(colorHighlight).
 		Width(80).
 		Render(command)
@@ -525,13 +525,13 @@ func (m *bootstrapModel) viewGenerateKey() string {
 	}
 
 	// Main pane using shared dialog style
-	mainContent := dialogBoxStyle.Copy().
+	mainContent := dialogBoxStyle.
 		BorderForeground(colorSubtle).
 		Width(90).
 		Render(lipgloss.JoinVertical(lipgloss.Left, content...))
 
 	// Help footer using shared help style with background
-	helpFooterStyle := helpStyle.Copy().
+	helpFooterStyle := helpStyle.
 		Background(lipgloss.Color("236")).
 		Padding(0, 1).
 		Italic(true)
@@ -565,13 +565,13 @@ func (m *bootstrapModel) viewWaitConfirm() string {
 	content = append(content, buttons)
 
 	// Main pane using shared dialog style
-	mainContent := dialogBoxStyle.Copy().
+	mainContent := dialogBoxStyle.
 		BorderForeground(colorSubtle).
 		Width(70).
 		Render(lipgloss.JoinVertical(lipgloss.Left, content...))
 
 	// Help footer using shared help style with background
-	helpFooterStyle := helpStyle.Copy().
+	helpFooterStyle := helpStyle.
 		Background(lipgloss.Color("236")).
 		Padding(0, 1).
 		Italic(true)
@@ -599,13 +599,13 @@ func (m *bootstrapModel) viewTestConnection() string {
 	}
 
 	// Main pane using shared dialog style
-	mainContent := dialogBoxStyle.Copy().
+	mainContent := dialogBoxStyle.
 		BorderForeground(colorSubtle).
 		Width(70).
 		Render(lipgloss.JoinVertical(lipgloss.Left, content...))
 
 	// Help footer using shared help style with background
-	helpFooterStyle := helpStyle.Copy().
+	helpFooterStyle := helpStyle.
 		Background(lipgloss.Color("236")).
 		Padding(0, 1).
 		Italic(true)
@@ -677,13 +677,13 @@ func (m *bootstrapModel) viewSelectKeys() string {
 	}
 
 	// Main pane using shared dialog style
-	mainContent := dialogBoxStyle.Copy().
+	mainContent := dialogBoxStyle.
 		BorderForeground(colorSubtle).
 		Width(80).
 		Render(lipgloss.JoinVertical(lipgloss.Left, content...))
 
 	// Help footer using shared help style with background
-	helpFooterStyle := helpStyle.Copy().
+	helpFooterStyle := helpStyle.
 		Background(lipgloss.Color("236")).
 		Padding(0, 1).
 		Italic(true)
@@ -752,13 +752,13 @@ func (m *bootstrapModel) viewConfirmDeploy() string {
 	content = append(content, buttons)
 
 	// Main pane using shared dialog style
-	mainContent := dialogBoxStyle.Copy().
+	mainContent := dialogBoxStyle.
 		BorderForeground(colorSubtle).
 		Width(80).
 		Render(lipgloss.JoinVertical(lipgloss.Left, content...))
 
 	// Help footer using shared help style with background
-	helpFooterStyle := helpStyle.Copy().
+	helpFooterStyle := helpStyle.
 		Background(lipgloss.Color("236")).
 		Padding(0, 1).
 		Italic(true)
@@ -782,13 +782,13 @@ func (m *bootstrapModel) viewDeploying() string {
 	content = append(content, "⏳ Deploying...")
 
 	// Main pane using shared dialog style
-	mainContent := dialogBoxStyle.Copy().
+	mainContent := dialogBoxStyle.
 		BorderForeground(colorSubtle).
 		Width(60).
 		Render(lipgloss.JoinVertical(lipgloss.Left, content...))
 
 	// Help footer using shared help style with background
-	helpFooterStyle := helpStyle.Copy().
+	helpFooterStyle := helpStyle.
 		Background(lipgloss.Color("236")).
 		Padding(0, 1).
 		Italic(true)
@@ -814,13 +814,13 @@ func (m *bootstrapModel) viewComplete() string {
 	}
 
 	// Main pane using shared dialog style
-	mainContent := dialogBoxStyle.Copy().
+	mainContent := dialogBoxStyle.
 		BorderForeground(colorSubtle).
 		Width(70).
 		Render(lipgloss.JoinVertical(lipgloss.Left, content...))
 
 	// Help footer using shared help style with background
-	helpFooterStyle := helpStyle.Copy().
+	helpFooterStyle := helpStyle.
 		Background(lipgloss.Color("236")).
 		Padding(0, 1).
 		Italic(true)
@@ -871,13 +871,13 @@ func (m *bootstrapModel) viewError() string {
 	content = append(content, buttonRow)
 
 	// Main pane using shared dialog style
-	mainContent := dialogBoxStyle.Copy().
+	mainContent := dialogBoxStyle.
 		BorderForeground(colorError).
 		Width(80).
 		Render(lipgloss.JoinVertical(lipgloss.Left, content...))
 
 	// Help footer using shared help style with background
-	helpFooterStyle := helpStyle.Copy().
+	helpFooterStyle := helpStyle.
 		Background(lipgloss.Color("236")).
 		Padding(0, 1).
 		Italic(true)
@@ -941,13 +941,13 @@ func (m *bootstrapModel) viewVerifyHostKey() string {
 		content = append(content, "🔄 "+i18n.T("bootstrap.verify_hostkey_retrieving"))
 
 		// Main pane using shared dialog style
-		mainContent := dialogBoxStyle.Copy().
+		mainContent := dialogBoxStyle.
 			BorderForeground(colorSubtle).
-			Width(80).
+			Width(70).
 			Render(lipgloss.JoinVertical(lipgloss.Left, content...))
 
 		// Help footer
-		helpFooterStyle := helpStyle.Copy().
+		helpFooterStyle := helpStyle.
 			Background(lipgloss.Color("236")).
 			Padding(0, 1).
 			Italic(true)
@@ -961,13 +961,13 @@ func (m *bootstrapModel) viewVerifyHostKey() string {
 		content = append(content, "")
 
 		// Main pane
-		mainContent := dialogBoxStyle.Copy().
+		mainContent := dialogBoxStyle.
 			BorderForeground(colorError).
 			Width(80).
 			Render(lipgloss.JoinVertical(lipgloss.Left, content...))
 
 		// Help footer
-		helpFooterStyle := helpStyle.Copy().
+		helpFooterStyle := helpStyle.
 			Background(lipgloss.Color("236")).
 			Padding(0, 1).
 			Italic(true)
@@ -1076,13 +1076,13 @@ func (m *bootstrapModel) viewVerifyHostKey() string {
 	content = append(content, buttons)
 
 	// Main pane using shared dialog style
-	mainContent := dialogBoxStyle.Copy().
+	mainContent := dialogBoxStyle.
 		BorderForeground(colorSubtle).
-		Width(80).
+		Width(70).
 		Render(lipgloss.JoinVertical(lipgloss.Left, content...))
 
 	// Help footer
-	helpFooterStyle := helpStyle.Copy().
+	helpFooterStyle := helpStyle.
 		Background(lipgloss.Color("236")).
 		Padding(0, 1).
 		Italic(true)
@@ -1314,9 +1314,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 		systemKey, err := db.GetActiveSystemKey()
 		if err == nil && systemKey != nil {
 			if err := db.UpdateAccountSerial(accountID, systemKey.Serial); err != nil {
-				// Log error but don't fail the deployment
-				// The account is created and keys are deployed, serial can be updated later
-				// Note: This error is non-critical as the serial can be updated later
+				fmt.Printf("Warning: failed to update account serial for account %d: %v\n", accountID, err)
 			}
 		}
 

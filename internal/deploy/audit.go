@@ -36,10 +36,8 @@ func AuditAccountStrict(account model.Account) error {
 	// Get passphrase from cache and ensure it's wiped after use.
 	passphrase := state.PasswordCache.Get()
 	defer func() {
-		if passphrase != nil {
-			for i := range passphrase {
-				passphrase[i] = 0
-			}
+		for i := range passphrase {
+			passphrase[i] = 0
 		}
 	}()
 
@@ -100,10 +98,8 @@ func AuditAccountSerial(account model.Account) error {
 	// Get passphrase from cache and ensure it's wiped after use.
 	passphrase := state.PasswordCache.Get()
 	defer func() {
-		if passphrase != nil {
-			for i := range passphrase {
-				passphrase[i] = 0
-			}
+		for i := range passphrase {
+			passphrase[i] = 0
 		}
 	}()
 

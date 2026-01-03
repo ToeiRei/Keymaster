@@ -155,10 +155,8 @@ func cleanupRemoteAuthorizedKeys(account model.Account, systemKey string, keepFi
 	// Get passphrase from cache and ensure it's wiped after use.
 	passphrase := state.PasswordCache.Get()
 	defer func() {
-		if passphrase != nil {
-			for i := range passphrase {
-				passphrase[i] = 0
-			}
+		for i := range passphrase {
+			passphrase[i] = 0
 		}
 	}()
 
@@ -183,10 +181,8 @@ func cleanupRemoteAuthorizedKeysSelective(account model.Account, systemKey strin
 	// Get passphrase from cache and ensure it's wiped after use.
 	passphrase := state.PasswordCache.Get()
 	defer func() {
-		if passphrase != nil {
-			for i := range passphrase {
-				passphrase[i] = 0
-			}
+		for i := range passphrase {
+			passphrase[i] = 0
 		}
 	}()
 

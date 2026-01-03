@@ -38,6 +38,8 @@ import (
 	"github.com/toeirei/keymaster/internal/tui"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var version = "dev"   // this will be set by the linker
@@ -709,7 +711,9 @@ func runParallelTasks(accounts []model.Account, task parallelTask) {
 	for res := range results {
 		fmt.Println(res)
 	}
-	fmt.Println("\n" + i18n.T("parallel_task.complete_message", strings.Title(task.name)))
+	// Use unicode-aware titlecasing
+	titleCaser := cases.Title(language.Und)
+	fmt.Println("\n" + i18n.T("parallel_task.complete_message", titleCaser.String(task.name)))
 }
 
 // audit implementations moved to internal/deploy/audit.go

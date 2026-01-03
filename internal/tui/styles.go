@@ -76,7 +76,7 @@ var (
 			Padding(0, 3).
 			MarginTop(1)
 
-	activeButtonStyle = buttonStyle.Copy().
+	activeButtonStyle = buttonStyle.
 				Background(colorHighlight).
 				Foreground(colorWhite).
 				Underline(true)

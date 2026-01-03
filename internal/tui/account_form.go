@@ -113,8 +113,7 @@ func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 	// --- Populate tags for autocompletion ---
 	allAccounts, err := db.GetAllAccounts()
 	if err != nil {
-		// Not a fatal error for the form, just no autocomplete.
-		// We could log this or handle it more gracefully.
+		fmt.Printf("Warning: failed to load accounts for tag autocomplete: %v\n", err)
 	}
 	tagSet := make(map[string]struct{})
 	for _, acc := range allAccounts {
