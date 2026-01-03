@@ -119,3 +119,114 @@ func TestLoadConfig_BrokenConfig_ReturnsParseError(t *testing.T) {
 		t.Fatalf("expected control characters error, got: %v", err)
 	}
 }
+
+func TestGetConfigPath(t *testing.T) {
+	// Save original env vars to restore them later
+	origXDG := os.Getenv("XDG_CONFIG_HOME")
+	origProgData := os.Getenv("ProgramData")
+	origHome := os.Getenv("HOME")
+	origUserProfile := os.Getenv("USERPROFILE")
+
+	defer func() {
+		os.Setenv("XDG_CONFIG_HOME", origXDG)
+		os.Setenv("ProgramData", origProgData)
+		os.Setenv("HOME", origHome)
+		os.Setenv("USERPROFILE", origUserProfile)
+	}()
+
+	// Create a temporary directory to act as a fake home
+	mockUserHome := t.TempDir()
+
+	cases := []struct {
+		name       string
+		system     bool
+		setup      func() (string, error) // Returns expected path
+		goos       string
+	}{
+		{
+			name:   "user-linux-xdg",
+			system: false,
+			goos:   "linux",
+			setup: func() (string, error) {
+				os.Setenv("XDG_CONFIG_HOME", "/tmp/xdg")
+				return "/tmp/xdg/keymaster/keymaster.yaml", nil
+			},
+		},
+		{
+			name:   "user-linux-no-xdg",
+			system: false,
+			goos:   "linux",
+			setup: func() (string, error) {
+				os.Setenv("XDG_CONFIG_HOME", "")
+				os.Setenv("HOME", mockUserHome)
+				// Manually construct the expected path based on a mocked home
+				return filepath.Join(mockUserHome, ".config", "keymaster", "keymaster.yaml"), nil
+			},
+		},
+		{
+			name:   "system-linux",
+			system: true,
+			goos:   "linux",
+			setup: func() (string, error) {
+				return "/etc/keymaster/keymaster.yaml", nil
+			},
+		},
+		{
+			name:   "user-windows-xdg",
+			system: false,
+			goos:   "windows",
+			setup: func() (string, error) {
+				os.Setenv("XDG_CONFIG_HOME", "C:\\tmp\\xdg")
+				return "C:\\tmp\\xdg\\keymaster\\keymaster.yaml", nil
+			},
+		},
+		{
+			name:   "user-windows-no-xdg",
+			system: false,
+			goos:   "windows",
+			setup: func() (string, error) {
+				os.Setenv("XDG_CONFIG_HOME", "")
+				os.Setenv("USERPROFILE", mockUserHome)
+				// Manually construct based on mocked home
+				return filepath.Join(mockUserHome, "AppData", "Roaming", "keymaster", "keymaster.yaml"), nil
+			},
+		},
+		{
+			name:   "system-windows",
+			system: true,
+			goos:   "windows",
+			setup: func() (string, error) {
+				os.Setenv("ProgramData", "C:\\ProgramData")
+				return "C:\\ProgramData\\Keymaster\\keymaster.yaml", nil
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		// Only run tests that match the current OS
+		if tt.goos != cfg.GOOS_RUNTIME {
+			continue
+		}
+
+		t.Run(tt.name, func(t *testing.T) {
+			// Reset env before each run
+			os.Setenv("XDG_CONFIG_HOME", "")
+			os.Setenv("ProgramData", "")
+			os.Setenv("HOME", "")
+			os.Setenv("USERPROFILE", "")
+			
+			expected, err := tt.setup()
+			if err != nil {
+				t.Fatalf("setup failed: %v", err)
+			}
+
+			path, err := cfg.GetConfigPath(tt.system)
+			if err != nil {
+				t.Fatalf("GetConfigPath() error = %v", err)
+			}
+			if path != expected {
+				t.Errorf("GetConfigPath() = %v, want %v", path, expected)
+			}
+		})
+	}
+}

@@ -13,6 +13,9 @@ import (
 	"github.com/spf13/viper"
 )
 
+// GOOS_RUNTIME is the runtime OS, exposed for testing.
+const GOOS_RUNTIME = runtime.GOOS
+
 // Config holds the application's configuration, loaded from file/env/flags.
 type Config struct {
 	Database struct {
