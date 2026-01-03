@@ -8,11 +8,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"testing"
 	"time"
-
-	"github.com/pkg/sftp"
 )
 
 func TestDefaultConnectionConfig(t *testing.T) {
@@ -281,13 +280,21 @@ func (m *mockSftpClient) record(action string) {
 // method signatures used by the production Deployer. These are intentionally
 // not functional; higher-level tests use the mockable file-handle methods
 // defined later in this file.
-func (m *mockSftpClient) Create(path string) (*sftp.File, error) {
+func (m *mockSftpClient) Create(path string) (io.ReadWriteCloser, error) {
 	m.record("create: " + path)
-	return nil, errors.New("mock Create not implemented for *sftp.File return")
+	file := &mockSftpFile{
+		Buffer: &bytes.Buffer{},
+		path:   path,
+	}
+	m.files[path] = file
+	return file, nil
 }
 
-func (m *mockSftpClient) Open(path string) (*sftp.File, error) {
+func (m *mockSftpClient) Open(path string) (io.ReadWriteCloser, error) {
 	m.record("open: " + path)
+	if file, ok := m.files[path]; ok {
+		return &mockSftpFile{Buffer: bytes.NewBuffer(file.Bytes()), path: path}, nil
+	}
 	return nil, os.ErrNotExist
 }
 

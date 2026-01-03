@@ -126,14 +126,55 @@ func DefaultConnectionConfig() *ConnectionConfig {
 // sftpClient defines an interface for SFTP operations, allowing for mocking in tests.
 // It is satisfied by the *sftp.Client type.
 type sftpClient interface {
-	Create(path string) (*sftp.File, error)
+	// Create and Open return an io.ReadWriteCloser to allow easier mocking
+	// in tests while still allowing production code to use *sftp.File which
+	// implements io.ReadWriteCloser.
+	Create(path string) (io.ReadWriteCloser, error)
 	Stat(p string) (os.FileInfo, error)
 	Mkdir(path string) error
 	Chmod(path string, mode os.FileMode) error
 	Remove(path string) error
 	Rename(oldpath, newpath string) error
-	Open(path string) (*sftp.File, error)
+	Open(path string) (io.ReadWriteCloser, error)
 	Close() error
+}
+
+// sftpClientAdapter adapts a *sftp.Client to the sftpClient interface by
+// delegating calls and returning *sftp.File values as io.ReadWriteCloser.
+type sftpClientAdapter struct {
+	client *sftp.Client
+}
+
+func (a *sftpClientAdapter) Create(path string) (io.ReadWriteCloser, error) {
+	return a.client.Create(path)
+}
+
+func (a *sftpClientAdapter) Stat(p string) (os.FileInfo, error) {
+	return a.client.Stat(p)
+}
+
+func (a *sftpClientAdapter) Mkdir(path string) error {
+	return a.client.Mkdir(path)
+}
+
+func (a *sftpClientAdapter) Chmod(path string, mode os.FileMode) error {
+	return a.client.Chmod(path, mode)
+}
+
+func (a *sftpClientAdapter) Remove(path string) error {
+	return a.client.Remove(path)
+}
+
+func (a *sftpClientAdapter) Rename(oldpath, newpath string) error {
+	return a.client.Rename(oldpath, newpath)
+}
+
+func (a *sftpClientAdapter) Open(path string) (io.ReadWriteCloser, error) {
+	return a.client.Open(path)
+}
+
+func (a *sftpClientAdapter) Close() error {
+	return a.client.Close()
 }
 
 // Deployer handles the connection and deployment to a remote host.
@@ -259,12 +300,12 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 			client, err = ssh.Dial("tcp", addr, sshConfig)
 			if err == nil {
 				// Success! We connected with the system key.
-				sftpClient, sftpErr := sftp.NewClient(client)
+				realSftpClient, sftpErr := sftp.NewClient(client)
 				if sftpErr != nil {
 					client.Close()
 					return nil, fmt.Errorf("failed to create sftp client: %w", sftpErr)
 				}
-				return &Deployer{client: client, sftp: sftpClient, config: config}, nil
+				return &Deployer{client: client, sftp: &sftpClientAdapter{client: realSftpClient}, config: config}, nil
 			} else {
 				// Classify the error for better debugging
 				err = ClassifyConnectionError(host, err)
@@ -295,7 +336,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 
 	// Success with agent.
 
-	sftpClient, err := sftp.NewClient(client)
+	realSftpClient, err := sftp.NewClient(client)
 	if err != nil {
 		client.Close()
 		return nil, fmt.Errorf("failed to create sftp client: %w", err)
@@ -303,7 +344,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 
 	return &Deployer{
 		client: client,
-		sftp:   sftpClient,
+		sftp:   &sftpClientAdapter{client: realSftpClient},
 		config: config,
 	}, nil
 }
@@ -356,7 +397,7 @@ func newDeployerWithExpectedHostKey(host, user, privateKey string, config *Conne
 	}
 
 	// Create SFTP client
-	sftpClient, err := sftp.NewClient(client)
+	realSftpClient, err := sftp.NewClient(client)
 	if err != nil {
 		client.Close()
 		return nil, fmt.Errorf("failed to create sftp client: %w", err)
@@ -364,7 +405,7 @@ func newDeployerWithExpectedHostKey(host, user, privateKey string, config *Conne
 
 	return &Deployer{
 		client: client,
-		sftp:   sftpClient,
+		sftp:   &sftpClientAdapter{client: realSftpClient},
 		config: config,
 	}, nil
 }
