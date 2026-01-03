@@ -52,11 +52,21 @@ jobs:
       - name: Run tests (race, coverage)
         run: |
           go test ./... -v -race -coverprofile=coverage.out
+      - name: Generate coverage badge
+        uses: tj-actions/coverage-badge-go@v1
+        with:
+          coverage_file: coverage.out
+          output: coverage.svg
       - name: Upload coverage
         uses: actions/upload-artifact@v6
         with:
           name: coverage
           path: coverage.out
+      - name: Upload coverage badge
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-badge
+          path: coverage.svg
 
   build:
     name: Build binary with version
