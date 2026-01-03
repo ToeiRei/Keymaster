@@ -44,6 +44,44 @@ func TestGenerateAndMarshalEd25519Key(t *testing.T) {
 	}
 }
 
+func TestGenerateAndMarshalEd25519Key_WithPassphrase(t *testing.T) {
+	passphrase := "test-passphrase"
+	pub, priv, err := GenerateAndMarshalEd25519Key("test-comment-encrypted", passphrase)
+	if err != nil {
+		t.Fatalf("GenerateAndMarshalEd25519Key with passphrase failed: %v", err)
+	}
+	if pub == "" {
+		t.Fatal("expected non-empty public key string")
+	}
+	if priv == "" {
+		t.Fatal("expected non-empty private key string")
+	}
+
+	// 1. Check that parsing without a passphrase fails
+	_, err = xssh.ParseRawPrivateKey([]byte(priv))
+	if err == nil {
+		t.Fatal("expected error when parsing encrypted key without passphrase, but got nil")
+	}
+	if _, ok := err.(*xssh.PassphraseMissingError); !ok {
+		t.Fatalf("expected PassphraseMissingError, got %T", err)
+	}
+
+	// 2. Check that parsing with the wrong passphrase fails
+	_, err = xssh.ParseRawPrivateKeyWithPassphrase([]byte(priv), []byte("wrong-passphrase"))
+	if err == nil {
+		t.Fatal("expected error when parsing with wrong passphrase, but got nil")
+	}
+
+	// 3. Check that parsing with the correct passphrase succeeds
+	pk, err := xssh.ParseRawPrivateKeyWithPassphrase([]byte(priv), []byte(passphrase))
+	if err != nil {
+		t.Fatalf("failed to parse private key with correct passphrase: %v", err)
+	}
+	if pk == nil {
+		t.Fatal("parsed private key is nil")
+	}
+}
+
 func TestMarshalEd25519PrivateKey(t *testing.T) {
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
