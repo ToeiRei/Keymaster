@@ -44,7 +44,6 @@ type deployAction int
 const (
 	actionGetKeys deployAction = iota
 	actionDeploySingle
-	actionWriteKeysToFile
 )
 
 // deploymentResultMsg is a message to signal deployment is complete for one account.
@@ -225,7 +224,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.menuCursor--
 			}
 		case "down", "j":
-			if m.menuCursor < 4 { // There are 5 menu items (0-4)
+			if m.menuCursor < 3 { // There are 4 menu items (0-3)
 				m.menuCursor++
 			}
 		case "enter":
@@ -295,19 +294,6 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.action = actionGetKeys
 				var err error
 				// Only allow deploying to or viewing keys for active accounts.
-				m.accounts, err = db.GetAllActiveAccounts()
-				if err != nil {
-					m.err = err
-					return m, nil
-				}
-				m.state = deployStateSelectAccount
-				m.accountCursor = 0
-				m.status = ""
-				return m, nil
-			case 4: // Write authorized_keys to file
-				m.wasFleetDeploy = false
-				m.action = actionWriteKeysToFile
-				var err error
 				m.accounts, err = db.GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
@@ -396,16 +382,6 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				m.authorizedKeys = content
-			case actionWriteKeysToFile:
-				content, err := deploy.GenerateKeysContent(m.selectedAccount.ID)
-				if err != nil {
-					m.err = err
-					return m, nil
-				}
-				m.authorizedKeys = content
-				m.state = deployStateEnterFilename
-				m.filenameInput.Focus()
-				return m, textinput.Blink
 			case actionDeploySingle:
 				m.state = deployStateInProgress
 				m.status = i18n.T("deploy.deploying_to", m.selectedAccount.String())
@@ -519,6 +495,11 @@ func (m deployModel) updateShowAuthorizedKeys(msg tea.Msg) (tea.Model, tea.Cmd) 
 				m.status = i18n.T("deploy.status.copy_success")
 			}
 			return m, nil
+		case "s":
+			m.state = deployStateEnterFilename
+			m.filenameInput.Focus()
+			m.status = ""
+			return m, textinput.Blink
 		}
 	}
 	return m, nil
@@ -598,7 +579,7 @@ func (m deployModel) View() string {
 	case deployStateMenu:
 		title := titleStyle.Render(i18n.T("deploy.title"))
 		var listItems []string
-		menuItems := []string{"deploy.menu.deploy_fleet", "deploy.menu.deploy_single", "deploy.menu.deploy_tag", "deploy.menu.get_keys", "deploy.menu.write_keys"}
+		menuItems := []string{"deploy.menu.deploy_fleet", "deploy.menu.deploy_single", "deploy.menu.deploy_tag", "deploy.menu.get_keys"}
 		for i, itemKey := range menuItems {
 			label := i18n.T(itemKey)
 			if m.menuCursor == i {
