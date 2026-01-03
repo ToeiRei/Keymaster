@@ -7,6 +7,7 @@ package tui // import "github.com/toeirei/keymaster/internal/tui"
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
@@ -33,6 +34,7 @@ const (
 	deployStateEnterPassphrase
 	deployStateInProgress
 	deployStateComplete
+	deployStateEnterFilename
 )
 
 // deployAction differentiates between different actions that can be taken
@@ -42,6 +44,7 @@ type deployAction int
 const (
 	actionGetKeys deployAction = iota
 	actionDeploySingle
+	actionWriteKeysToFile
 )
 
 // deploymentResultMsg is a message to signal deployment is complete for one account.
@@ -69,6 +72,7 @@ type deployModel struct {
 	accountFilter      string
 	isFilteringAccount bool
 	passphraseInput    textinput.Model
+	filenameInput      textinput.Model
 	pendingCmd         tea.Cmd // Command to re-run after getting passphrase
 	wasFleetDeploy     bool    // Flag to remember if the last operation was a fleet deployment
 	width, height      int
@@ -77,10 +81,12 @@ type deployModel struct {
 // newDeployModel creates a new model for the deployment view.
 func newDeployModel() deployModel {
 	pi := newPassphraseInput()
+	fi := newFilenameInput()
 	return deployModel{
 		state:           deployStateMenu,
 		fleetResults:    make(map[int]error),
 		passphraseInput: pi,
+		filenameInput:   fi,
 	}
 }
 
@@ -99,6 +105,15 @@ func newPassphraseInput() textinput.Model {
 	return pi
 }
 
+// newFilenameInput is a helper to create a styled textinput for filenames.
+func newFilenameInput() textinput.Model {
+	fi := textinput.New()
+	fi.Placeholder = i18n.T("deploy.filename_placeholder")
+	fi.CharLimit = 256
+	fi.Width = 50
+	return fi
+}
+
 // Update handles messages and updates the deploy model's state.
 func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.state {
@@ -110,6 +125,8 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateSelectTag(msg)
 	case deployStateShowAuthorizedKeys:
 		return m.updateShowAuthorizedKeys(msg)
+	case deployStateEnterFilename:
+		return m.updateEnterFilename(msg)
 	case deployStateFleetInProgress:
 		if res, ok := msg.(deploymentResultMsg); ok {
 			m.fleetResults[res.account.ID] = res.err
@@ -208,7 +225,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.menuCursor--
 			}
 		case "down", "j":
-			if m.menuCursor < 3 { // There are 4 menu items (0-3)
+			if m.menuCursor < 4 { // There are 5 menu items (0-4)
 				m.menuCursor++
 			}
 		case "enter":
@@ -278,6 +295,19 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.action = actionGetKeys
 				var err error
 				// Only allow deploying to or viewing keys for active accounts.
+				m.accounts, err = db.GetAllActiveAccounts()
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+				m.state = deployStateSelectAccount
+				m.accountCursor = 0
+				m.status = ""
+				return m, nil
+			case 4: // Write authorized_keys to file
+				m.wasFleetDeploy = false
+				m.action = actionWriteKeysToFile
+				var err error
 				m.accounts, err = db.GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
@@ -366,6 +396,16 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				m.authorizedKeys = content
+			case actionWriteKeysToFile:
+				content, err := deploy.GenerateKeysContent(m.selectedAccount.ID)
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+				m.authorizedKeys = content
+				m.state = deployStateEnterFilename
+				m.filenameInput.Focus()
+				return m, textinput.Blink
 			case actionDeploySingle:
 				m.state = deployStateInProgress
 				m.status = i18n.T("deploy.deploying_to", m.selectedAccount.String())
@@ -484,6 +524,40 @@ func (m deployModel) updateShowAuthorizedKeys(msg tea.Msg) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
+// updateEnterFilename handles input when user is entering a filename.
+func (m deployModel) updateEnterFilename(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			filename := m.filenameInput.Value()
+			if filename == "" {
+				return m, nil
+			}
+
+			err := os.WriteFile(filename, []byte(m.authorizedKeys), 0644)
+			if err != nil {
+				m.state = deployStateComplete
+				m.status = fmt.Sprintf(i18n.T("deploy.status.write_failed"), err.Error())
+			} else {
+				m.state = deployStateComplete
+				m.status = fmt.Sprintf(i18n.T("deploy.status.write_success"), filename)
+			}
+			m.filenameInput.Reset()
+			return m, nil
+		case "esc":
+			m.state = deployStateSelectAccount
+			m.err = nil
+			m.status = ""
+			m.filenameInput.Reset()
+			return m, nil
+		}
+	}
+	var cmd tea.Cmd
+	m.filenameInput, cmd = m.filenameInput.Update(msg)
+	return m, cmd
+}
+
 // updateComplete handles input after a deployment operation has finished.
 func (m deployModel) updateComplete(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -524,7 +598,7 @@ func (m deployModel) View() string {
 	case deployStateMenu:
 		title := titleStyle.Render(i18n.T("deploy.title"))
 		var listItems []string
-		menuItems := []string{"deploy.menu.deploy_fleet", "deploy.menu.deploy_single", "deploy.menu.deploy_tag", "deploy.menu.get_keys"}
+		menuItems := []string{"deploy.menu.deploy_fleet", "deploy.menu.deploy_single", "deploy.menu.deploy_tag", "deploy.menu.get_keys", "deploy.menu.write_keys"}
 		for i, itemKey := range menuItems {
 			label := i18n.T(itemKey)
 			if m.menuCursor == i {
@@ -599,6 +673,24 @@ func (m deployModel) View() string {
 		mainPane := lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, content...), m.authorizedKeys)
 		help := helpFooterStyle.Render(i18n.T("deploy.help_keys"))
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+
+	case deployStateEnterFilename:
+		var b strings.Builder
+		b.WriteString(titleStyle.Render(i18n.T("deploy.enter_filename_title")))
+		b.WriteString("\n\n")
+		b.WriteString(i18n.T("deploy.enter_filename_prompt"))
+		b.WriteString("\n\n")
+		b.WriteString(m.filenameInput.View())
+		b.WriteString("\n\n")
+		b.WriteString(helpStyle.Render(i18n.T("deploy.help_enter_filename")))
+
+		return lipgloss.Place(
+			m.width,
+			m.height,
+			lipgloss.Center,
+			lipgloss.Center,
+			dialogBoxStyle.Render(b.String()),
+		)
 
 	case deployStateFleetInProgress:
 		title := titleStyle.Render(i18n.T("deploy.deploying_fleet"))
