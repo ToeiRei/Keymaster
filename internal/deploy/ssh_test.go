@@ -365,27 +365,16 @@ func TestDeployAuthorizedKeys_DirExists(t *testing.T) {
 	// To fix this properly, the sftpClient interface in ssh.go needs to be updated
 	// to return a file interface, not a concrete *sftp.File.
 
-	// For now, let's write the test logic assuming we can get a mock client in.
-	// The next step would be to propose the change to sftpClient in ssh.go.
-
-	t.Skip("Skipping test because it requires further refactoring of sftpClient interface in ssh.go")
-
+	// Execute deployment using the mock sftp client.
 	err := d.DeployAuthorizedKeys(content)
 	if err != nil {
 		t.Fatalf("DeployAuthorizedKeys failed: %v", err)
 	}
 
 	// Assertions
-	// 1. .ssh directory was chmod'ed
-	foundChmod := false
-	for _, action := range mockClient.actions {
-		if action == "chmod: .ssh to 700" { // Should be more robust
-			foundChmod = true
-			break
-		}
-	}
-	if !foundChmod {
-		t.Error("expected chmod on .ssh directory, but was not called")
+	// 1. .ssh directory permissions were set to 0700
+	if pm, ok := mockClient.perms[".ssh"]; !ok || pm != 0700 {
+		t.Errorf("expected .ssh perms 0700, got %v", pm)
 	}
 
 	// 2. Final authorized_keys file exists and has correct content
@@ -398,7 +387,7 @@ func TestDeployAuthorizedKeys_DirExists(t *testing.T) {
 	}
 
 	// 3. Permissions on final file are correct
-	if mockClient.perms[".ssh/authorized_keys"] != 0600 {
-		t.Errorf("expected authorized_keys file to have mode 0600, got %v", mockClient.perms[".ssh/authorized_keys"])
+	if pm := mockClient.perms[".ssh/authorized_keys"]; pm != 0600 {
+		t.Errorf("expected authorized_keys file to have mode 0600, got %v", pm)
 	}
 }
