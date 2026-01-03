@@ -293,7 +293,7 @@ func (m *mockSftpClient) Create(path string) (io.ReadWriteCloser, error) {
 func (m *mockSftpClient) Open(path string) (io.ReadWriteCloser, error) {
 	m.record("open: " + path)
 	if file, ok := m.files[path]; ok {
-		return &mockSftpFile{Buffer: bytes.NewBuffer(file.Bytes()), path: path}, nil
+		return &mockSftpFile{Buffer: bytes.NewBuffer(file.Buffer.Bytes()), path: path}, nil
 	}
 	return nil, os.ErrNotExist
 }
@@ -393,8 +393,8 @@ func TestDeployAuthorizedKeys_DirExists(t *testing.T) {
 	if !ok {
 		t.Fatal("authorized_keys file was not created")
 	}
-	if finalFile.String() != content {
-		t.Errorf("unexpected content in authorized_keys: got %q want %q", finalFile.String(), content)
+	if finalFile.Buffer.String() != content {
+		t.Errorf("unexpected content in authorized_keys: got %q want %q", finalFile.Buffer.String(), content)
 	}
 
 	// 3. Permissions on final file are correct

@@ -8,9 +8,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	yaml "gopkg.in/yaml.v3"
 )
 
 // GOOS_RUNTIME is the runtime OS, exposed for testing.
