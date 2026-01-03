@@ -509,16 +509,10 @@ func (m *bootstrapModel) viewGenerateKey() string {
 	// Show the command to paste
 	command := m.session.GetBootstrapCommand()
 
-	// For display, show a truncated version if it's too long
-	displayCommand := command
-	if len(command) > 80 {
-		displayCommand = command[:77] + "..."
-	}
-
 	commandBox := dialogBoxStyle.Copy().
 		BorderForeground(colorHighlight).
 		Width(80).
-		Render(displayCommand)
+		Render(command)
 
 	content = append(content, commandBox)
 	content = append(content, "")
