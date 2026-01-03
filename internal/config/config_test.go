@@ -138,10 +138,10 @@ func TestGetConfigPath(t *testing.T) {
 	mockUserHome := t.TempDir()
 
 	cases := []struct {
-		name       string
-		system     bool
-		setup      func() (string, error) // Returns expected path
-		goos       string
+		name   string
+		system bool
+		setup  func() (string, error) // Returns expected path
+		goos   string
 	}{
 		{
 			name:   "user-linux-xdg",
@@ -216,7 +216,7 @@ func TestGetConfigPath(t *testing.T) {
 			os.Setenv("ProgramData", "")
 			os.Setenv("HOME", "")
 			os.Setenv("USERPROFILE", "")
-			
+
 			expected, err := tt.setup()
 			if err != nil {
 				t.Fatalf("setup failed: %v", err)
