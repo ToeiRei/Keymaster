@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"path"
 	"regexp"
 	"strings"
@@ -126,9 +127,9 @@ func DefaultConnectionConfig() *ConnectionConfig {
 // It is satisfied by the *sftp.Client type.
 type sftpClient interface {
 	Create(path string) (*sftp.File, error)
-	Stat(p string) (io.fs.FileInfo, error)
+	Stat(p string) (os.FileInfo, error)
 	Mkdir(path string) error
-	Chmod(path string, mode io.fs.FileMode) error
+	Chmod(path string, mode os.FileMode) error
 	Remove(path string) error
 	Rename(oldpath, newpath string) error
 	Open(path string) (*sftp.File, error)
