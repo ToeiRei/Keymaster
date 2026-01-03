@@ -370,39 +370,7 @@ func extractNonKeymasterContent(content string) string {
 	return strings.Join(result, "\n")
 }
 
-// removeKeymasterManagedSection removes the Keymaster-managed section from authorized_keys content
-func removeKeymasterManagedSection(content string) string {
-	lines := strings.Split(content, "\n")
-	var result []string
-	inKeymasterSection := false
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-
-		// Check for Keymaster header (start of managed section)
-		if strings.HasPrefix(line, "# Keymaster Managed Keys") {
-			inKeymasterSection = true
-			continue
-		}
-
-		// Check for end of Keymaster section (empty line or non-comment line)
-		if inKeymasterSection {
-			if line == "" || (!strings.HasPrefix(line, "#") && line != "") {
-				inKeymasterSection = false
-			} else {
-				// Skip lines within Keymaster section
-				continue
-			}
-		}
-
-		// Include non-Keymaster lines
-		if !inKeymasterSection && line != "" {
-			result = append(result, line)
-		}
-	}
-
-	return strings.Join(result, "\n")
-}
+// (removed unused helper: removeKeymasterManagedSection)
 
 // BulkDecommissionAccounts decommissions multiple accounts with progress reporting
 func BulkDecommissionAccounts(accounts []model.Account, systemKey string, options DecommissionOptions) []DecommissionResult {

@@ -221,8 +221,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 			// Save the host key for future connections
 			presentedKey := string(ssh.MarshalAuthorizedKey(key))
 			if err := db.AddKnownHostKey(canonical, presentedKey); err != nil {
-				// Log error but don't fail the connection
-				// The host key can be added manually later
+				fmt.Printf("Warning: failed to save known host key for %s: %v\n", canonical, err)
 			}
 
 			return nil // Accept the key for bootstrap
@@ -278,7 +277,8 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 		signer, err := ssh.ParsePrivateKey([]byte(privateKey))
 		if err != nil {
 			// Check if the error is because the key is encrypted.
-			if _, ok := err.(*ssh.PassphraseMissingError); ok {
+			var pme *ssh.PassphraseMissingError
+			if errors.As(err, &pme) {
 				// If it's encrypted and we have a passphrase, try to parse it again.
 				if len(passphrase) > 0 {
 					signer, err = ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), passphrase)
@@ -307,8 +307,8 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 				}
 				return &Deployer{client: client, sftp: &sftpClientAdapter{client: realSftpClient}, config: config}, nil
 			} else {
-				// Classify the error for better debugging
-				err = ClassifyConnectionError(host, err)
+				// Classify the error for better debugging (log it); we'll fall back to ssh-agent.
+				fmt.Printf("Info: system key connection attempt failed for %s: %v\n", host, err)
 			}
 			// If we provided a key and it failed, we will fall through to try the agent.
 		}
@@ -366,7 +366,7 @@ func newDeployerWithExpectedHostKey(host, user, privateKey string, config *Conne
 
 		// Save the verified host key to database
 		if err := db.AddKnownHostKey(hostOnly, presentedKey); err != nil {
-			// Log error but don't fail the connection
+			fmt.Printf("Warning: failed to save verified host key for %s: %v\n", hostOnly, err)
 		}
 
 		return nil

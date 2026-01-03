@@ -80,7 +80,7 @@ func ParseSerial(line string) (int, error) {
 func CheckHostKeyAlgorithm(key ssh.PublicKey) string {
 	keyType := key.Type()
 	switch keyType {
-	case ssh.KeyAlgoDSA:
+	case "ssh-dss":
 		return "SECURITY WARNING: Host key uses deprecated and insecure ssh-dss (DSA) algorithm."
 	case ssh.KeyAlgoRSA:
 		return "SECURITY WARNING: Host key uses ssh-rsa, which is disabled by default in modern OpenSSH. Consider upgrading the host's keys."

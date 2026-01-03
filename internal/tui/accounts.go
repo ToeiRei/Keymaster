@@ -607,7 +607,7 @@ func (m *accountsModel) listContentView() string {
 		if m.cursor == i {
 			line = "▸ " + acc.String() // This line was missing
 			if !acc.IsActive {
-				styledLine = selectedItemStyle.Copy().Strikethrough(true).Render(line)
+				styledLine = selectedItemStyle.Strikethrough(true).Render(line)
 			} else {
 				styledLine = selectedItemStyle.Render(line)
 			}

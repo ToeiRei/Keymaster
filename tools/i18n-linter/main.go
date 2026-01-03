@@ -199,6 +199,10 @@ func findUntranslatedStrings(root string, usedKeys, allKeys map[string]struct{})
 	blacklist := map[string]struct{}{"Print": {}, "Println": {}, "Printf": {}, "Fatal": {}, "Fatalf": {}, "WriteString": {}}
 	keyRe := regexp.MustCompile(`^[a-z_]+\.[a-z\._]+$`)
 
+	// Precompile regexes used in the loop to avoid repeated compilation.
+	reAllCaps := regexp.MustCompile(`^[A-Z_]+$`)
+	reFormatString := regexp.MustCompile(`^[\s%.,:;()#\d\w-]*%[\s\w-]*$`)
+
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -267,12 +271,12 @@ func findUntranslatedStrings(root string, usedKeys, allKeys map[string]struct{})
 					}
 
 					// 7. Ignore if it's an all-caps action constant (e.g., ADD_ACCOUNT).
-					if match, _ := regexp.MatchString(`^[A-Z_]+$`, literal); match {
+					if reAllCaps.MatchString(literal) {
 						continue
 					}
 
 					// 8. Ignore if it's likely just a format string with no real text.
-					if match, _ := regexp.MatchString(`^[\s%.,:;()#\d\w-]*%[\s\w-]*$`, literal); match && !strings.Contains(literal, " ") {
+					if reFormatString.MatchString(literal) && !strings.Contains(literal, " ") {
 						continue
 					}
 

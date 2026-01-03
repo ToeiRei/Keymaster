@@ -43,9 +43,7 @@ func TestRunMigrationsSqlite(t *testing.T) {
 		"000002_create_bootstrap_sessions": true,
 	}
 	for _, v := range versions {
-		if _, ok := want[v]; ok {
-			delete(want, v)
-		}
+		delete(want, v)
 	}
 	if len(want) != 0 {
 		t.Fatalf("missing expected migrations: %v", want)
