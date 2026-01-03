@@ -302,7 +302,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 				// Success! We connected with the system key.
 				realSftpClient, sftpErr := sftp.NewClient(client)
 				if sftpErr != nil {
-					client.Close()
+					_ = client.Close()
 					return nil, fmt.Errorf("failed to create sftp client: %w", sftpErr)
 				}
 				return &Deployer{client: client, sftp: &sftpClientAdapter{client: realSftpClient}, config: config}, nil
@@ -338,7 +338,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 
 	realSftpClient, err := sftp.NewClient(client)
 	if err != nil {
-		client.Close()
+		_ = client.Close()
 		return nil, fmt.Errorf("failed to create sftp client: %w", err)
 	}
 

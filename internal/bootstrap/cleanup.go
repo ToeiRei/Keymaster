@@ -278,7 +278,7 @@ func removeTempKeyFromRemoteHost(session *BootstrapSession) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s: %w", session.PendingAccount.Hostname, err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create SFTP session
 	sftpClient, err := sftp.NewClient(conn)

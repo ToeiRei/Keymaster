@@ -145,7 +145,7 @@ func DecommissionAccount(account model.Account, systemKey string, options Decomm
 	if result.BackupPath != "" {
 		details += fmt.Sprintf(" - Backup created: %s", result.BackupPath)
 	}
-	db.LogAction("DECOMMISSION_SUCCESS", details)
+	_ = db.LogAction("DECOMMISSION_SUCCESS", details)
 
 	return result
 }

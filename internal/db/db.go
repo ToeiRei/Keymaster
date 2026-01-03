@@ -274,7 +274,7 @@ func RunMigrations(db *sql.DB, dbType string) error {
 			return fmt.Errorf("failed to begin transaction for migration %s: %w", version, err)
 		}
 		if _, err := tx.Exec(string(data)); err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return fmt.Errorf("failed to execute migration %s: %w", version, err)
 		}
 
@@ -284,11 +284,11 @@ func RunMigrations(db *sql.DB, dbType string) error {
 			insertQuery = "INSERT INTO schema_migrations(version, applied_at) VALUES($1, $2)"
 		}
 		if _, err := tx.Exec(insertQuery, version, time.Now()); err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return fmt.Errorf("failed to record migration %s: %w", version, err)
 		}
 		if err := tx.Commit(); err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return fmt.Errorf("failed to commit migration %s: %w", version, err)
 		}
 	}

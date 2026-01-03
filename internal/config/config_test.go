@@ -129,9 +129,9 @@ func TestGetConfigPath(t *testing.T) {
 
 	defer func() {
 		_ = os.Setenv("XDG_CONFIG_HOME", origXDG)
-		os.Setenv("ProgramData", origProgData)
-		os.Setenv("HOME", origHome)
-		os.Setenv("USERPROFILE", origUserProfile)
+		_ = os.Setenv("ProgramData", origProgData)
+		_ = os.Setenv("HOME", origHome)
+		_ = os.Setenv("USERPROFILE", origUserProfile)
 	}()
 
 	// Create a temporary directory to act as a fake home
