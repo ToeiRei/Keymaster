@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/ToeiRei/Keymaster/actions/workflows/ci.yml/badge.svg)](https://github.com/ToeiRei/Keymaster/actions/workflows/ci.yml)
 [![DB Integration](https://github.com/ToeiRei/Keymaster/actions/workflows/db-integration.yml/badge.svg)](https://github.com/ToeiRei/Keymaster/actions/workflows/db-integration.yml)
+[![Coverage](coverage.svg)](coverage.svg)
 [![Release](https://img.shields.io/github/v/tag/ToeiRei/Keymaster?label=release)](https://github.com/ToeiRei/Keymaster/releases)
 [![Go](https://img.shields.io/badge/go-1.25.1-blue.svg)](https://golang.org)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/toeirei/keymaster)](https://pkg.go.dev/github.com/toeirei/keymaster)
