@@ -399,7 +399,7 @@ func newDeployerWithExpectedHostKey(host, user, privateKey string, config *Conne
 	// Create SFTP client
 	realSftpClient, err := sftp.NewClient(client)
 	if err != nil {
-		client.Close()
+		_ = client.Close()
 		return nil, fmt.Errorf("failed to create sftp client: %w", err)
 	}
 
@@ -434,12 +434,12 @@ func (d *Deployer) DeployAuthorizedKeys(content string) error {
 		return fmt.Errorf("failed to create temporary file on remote: %w", err)
 	}
 	if _, err := f.Write([]byte(content)); err != nil {
-		f.Close()
+		_ = f.Close()
 		// Best effort to clean up the failed upload
 		_ = d.sftp.Remove(tmpPath)
 		return fmt.Errorf("failed to write to temporary file on remote: %w", err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	// 3. Set permissions on the temporary file before moving.
 	if err := d.sftp.Chmod(tmpPath, 0600); err != nil {
@@ -476,10 +476,10 @@ func (d *Deployer) DeployAuthorizedKeys(content string) error {
 // Close closes the underlying SSH and SFTP clients.
 func (d *Deployer) Close() {
 	if d.sftp != nil {
-		d.sftp.Close()
+		_ = d.sftp.Close()
 	}
 	if d.client != nil {
-		d.client.Close()
+		_ = d.client.Close()
 	}
 }
 
@@ -490,7 +490,7 @@ func (d *Deployer) GetAuthorizedKeys() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open remote file %s: %w", finalPath, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	content, err := io.ReadAll(f)
 	if err != nil {

@@ -18,15 +18,16 @@ import (
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+				err := m.session.Delete()
+				if err != nil {
+					// Handle the error if needed
+				}
 	"github.com/toeirei/keymaster/internal/bootstrap"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"golang.org/x/crypto/ssh"
-)
-
 // bootstrapStep represents the current step in the bootstrap workflow.
 type bootstrapStep int
 
@@ -234,7 +235,7 @@ func (m *bootstrapModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
 				m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
 			bootstrap.UnregisterSession(m.session.ID)
-			m.session.Delete()
+			_ = m.session.Delete()
 		}
 		return m, func() tea.Msg { return backToListMsg{} }
 
@@ -311,7 +312,7 @@ func (m *bootstrapModel) handleErrorKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
 					m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
 				bootstrap.UnregisterSession(m.session.ID)
-				m.session.Delete()
+				_ = m.session.Delete()
 			}
 			return m, func() tea.Msg { return backToListMsg{} }
 		}
@@ -323,7 +324,7 @@ func (m *bootstrapModel) handleErrorKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
 				m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
 			bootstrap.UnregisterSession(m.session.ID)
-			m.session.Delete()
+			_ = m.session.Delete()
 		}
 		return m, func() tea.Msg { return backToListMsg{} }
 	}
