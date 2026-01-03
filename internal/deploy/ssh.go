@@ -122,10 +122,23 @@ func DefaultConnectionConfig() *ConnectionConfig {
 	}
 }
 
+// sftpClient defines an interface for SFTP operations, allowing for mocking in tests.
+// It is satisfied by the *sftp.Client type.
+type sftpClient interface {
+	Create(path string) (*sftp.File, error)
+	Stat(p string) (io.fs.FileInfo, error)
+	Mkdir(path string) error
+	Chmod(path string, mode io.fs.FileMode) error
+	Remove(path string) error
+	Rename(oldpath, newpath string) error
+	Open(path string) (*sftp.File, error)
+	Close() error
+}
+
 // Deployer handles the connection and deployment to a remote host.
 type Deployer struct {
 	client *ssh.Client
-	sftp   *sftp.Client
+	sftp   sftpClient
 	config *ConnectionConfig
 }
 
