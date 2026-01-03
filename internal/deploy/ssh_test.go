@@ -204,3 +204,25 @@ func TestHostPortHelpers(t *testing.T) {
 		}
 	}
 }
+
+func TestStripIPv6Brackets(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"[2001:db8::1]", "2001:db8::1"},
+		{"[::1]", "::1"},
+		{"2001:db8::1", "2001:db8::1"},
+		{"example.com", "example.com"},
+		{"[incomplete", "[incomplete"},
+		{"incomplete]", "incomplete]"},
+		{"", ""},
+	}
+
+	for _, c := range cases {
+		got := StripIPv6Brackets(c.in)
+		if got != c.want {
+			t.Errorf("StripIPv6Brackets(%q) == %q, want %q", c.in, got, c.want)
+		}
+	}
+}
