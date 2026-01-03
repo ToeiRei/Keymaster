@@ -61,8 +61,9 @@ jobs:
           fi
       - name: Generate coverage badge
         uses: tj-actions/coverage-badge-go@v1
+        continue-on-error: true
         with:
-          coverage_file: coverage.out
+          filename: coverage.out
           output: coverage.svg
       - name: Upload coverage
         uses: actions/upload-artifact@v6
