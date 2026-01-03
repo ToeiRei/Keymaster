@@ -1,7 +1,7 @@
 name: CI
 
 permissions:
-    contents: read
+  contents: write
     
 on:
   push:
@@ -75,6 +75,23 @@ jobs:
         with:
           name: coverage-badge
           path: coverage.svg
+
+      - name: Commit coverage badge
+        if: github.actor != 'github-actions[bot]' && github.ref == 'refs/heads/main'
+        run: |
+          if [ -f coverage.svg ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add coverage.svg
+            if git diff --cached --quiet; then
+              echo "No changes to coverage.svg"
+            else
+              git commit -m "ci: update coverage badge"
+              git push origin HEAD:refs/heads/main
+            fi
+          else
+            echo "coverage.svg not found, skipping"
+          fi
 
   build:
     name: Build binary with version
