@@ -89,9 +89,7 @@ func RunDBMaintenance(dbType, dsn string) error {
 			return fmt.Errorf("sqlite vacuum failed: %w", err)
 		}
 		// WAL checkpoint; ignore errors if not supported.
-		if _, _ = sqlDB.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE);"); true {
-			// ignore result
-		}
+		_, _ = sqlDB.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE);")
 		// Optionally run integrity_check and return error if database is corrupt.
 		var res string
 		if row := sqlDB.QueryRowContext(ctx, "PRAGMA integrity_check;"); row != nil {
@@ -368,10 +366,7 @@ func ensureSchemaMigrationsTable(db *sql.DB, dbType string) error {
 	if !hasAppliedAt {
 		// Add the column. Different engines understand TIMESTAMP; MySQL accepts it too.
 		alter := "ALTER TABLE schema_migrations ADD COLUMN applied_at TIMESTAMP"
-		if dbType == "sqlite" {
-			// SQLite supports ALTER TABLE ADD COLUMN
-			// Use same statement
-		}
+		// For SQLite the same statement works; no special handling needed
 		if _, err := db.Exec(alter); err != nil {
 			return fmt.Errorf("failed to add applied_at column to schema_migrations: %w", err)
 		}

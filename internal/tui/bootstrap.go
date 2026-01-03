@@ -18,16 +18,15 @@ import (
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
-				err := m.session.Delete()
-				if err != nil {
-					// Handle the error if needed
-				}
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/bootstrap"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"golang.org/x/crypto/ssh"
+)
+
 // bootstrapStep represents the current step in the bootstrap workflow.
 type bootstrapStep int
 
@@ -466,10 +465,10 @@ func (m *bootstrapModel) View() string {
 		return m.viewError()
 	}
 
-	if m.session == nil {
-		return titleStyle.Render("🔄 " + i18n.T("bootstrap.creating_session"))
+	if m.session != nil {
+		bootstrap.UnregisterSession(m.session.ID)
+		_ = m.session.Delete()
 	}
-
 	switch m.step {
 	case stepGenerateKey:
 		return m.viewGenerateKey()
@@ -1132,14 +1131,14 @@ func (m *bootstrapModel) testConnection() tea.Cmd {
 		if err != nil {
 			return connectionTestMsg{success: false, err: fmt.Errorf("failed to connect to %s: %w", m.session.PendingAccount.Hostname, err)}
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		// Test a simple command to ensure the connection works
 		session, err := conn.NewSession()
 		if err != nil {
 			return connectionTestMsg{success: false, err: fmt.Errorf("failed to create SSH session: %w", err)}
 		}
-		defer session.Close()
+		defer func() { _ = session.Close() }()
 
 		// Run a simple command to verify access
 		if err := session.Run("echo 'test'"); err != nil {
@@ -1202,7 +1201,7 @@ func (m *bootstrapModel) generateNewSession() tea.Cmd {
 		// Cleanup old session
 		if m.session != nil {
 			bootstrap.UnregisterSession(m.session.ID)
-			m.session.Delete()
+			_ = m.session.Delete()
 		}
 
 		// Create new session using pending account data
@@ -1217,7 +1216,10 @@ func (m *bootstrapModel) generateNewSession() tea.Cmd {
 		}
 
 		bootstrap.RegisterSession(session)
-		session.Save()
+		if err := session.Save(); err != nil {
+			session.Cleanup()
+			return err
+		}
 
 		return sessionCreatedMsg{session: session}
 	}
@@ -1265,7 +1267,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 				_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to assign key: %v",
 					accountData.Username, accountData.Hostname, err))
 				// Cleanup: delete the account if key assignment fails
-				db.DeleteAccount(accountID)
+				_ = db.DeleteAccount(accountID)
 				return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to assign key %d to account: %w", keyID, err)}
 			}
 		}
@@ -1277,7 +1279,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to generate keys content: %v",
 				accountData.Username, accountData.Hostname, err))
 			// Cleanup: delete the account if content generation fails
-			db.DeleteAccount(accountID)
+			_ = db.DeleteAccount(accountID)
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to generate keys content: %w", err)}
 		}
 
@@ -1294,7 +1296,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to connect: %v",
 				accountData.Username, accountData.Hostname, err))
 			// Cleanup: delete the account if deployer creation fails
-			db.DeleteAccount(accountID)
+			_ = db.DeleteAccount(accountID)
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to create bootstrap deployer: %w", err)}
 		}
 		defer deployer.Close()
@@ -1304,7 +1306,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: deployment failed: %v",
 				accountData.Username, accountData.Hostname, err))
 			// Cleanup: delete the account if SSH deployment fails
-			db.DeleteAccount(accountID)
+			_ = db.DeleteAccount(accountID)
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to deploy keys to remote host: %w", err)}
 		}
 
@@ -1325,7 +1327,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 
 		// 7. Cleanup bootstrap session
 		bootstrap.UnregisterSession(m.session.ID)
-		m.session.Delete()
+		_ = m.session.Delete()
 
 		return deploymentCompleteMsg{account: accountData, err: nil}
 	}
@@ -1350,13 +1352,7 @@ func (m *bootstrapModel) retrieveHostKey() tea.Cmd {
 	}
 }
 
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
+// helper min removed; inline comparisons preferred
 
 // advanceStep advances to the next step in the workflow.
 func (m *bootstrapModel) advanceStep() (tea.Model, tea.Cmd) {

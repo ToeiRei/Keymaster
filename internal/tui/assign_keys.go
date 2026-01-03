@@ -19,10 +19,7 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
-// filterStyle is used for the filter input bar.
-var (
-	filterStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Italic(true)
-)
+// filterStyle was removed as it was unused; styles are created inline where needed.
 
 // assignState represents the current focus of the assignment view.
 type assignState int

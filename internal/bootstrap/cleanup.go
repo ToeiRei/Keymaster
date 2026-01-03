@@ -162,51 +162,29 @@ func markActiveSessionsAsOrphaned() error {
 	return nil
 }
 
-// cleanupSession attempts to remove a temporary key from a remote host and cleanup the session.
+// cleanupSession attempts to remove a temporary key from a remote host and mark
+// the session as failed in the database. This is a best-effort cleanup used
+// during signal handling and shutdown.
 func cleanupSession(session *BootstrapSession) error {
-	// Log the signal interruption
 	_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: interrupted by signal",
 		session.PendingAccount.Username, session.PendingAccount.Hostname))
 
-	// Attempt to remove temporary key from remote host
+	// Best-effort remote cleanup; ignore error
 	_ = removeTempKeyFromRemoteHost(session)
 
-	// Cleanup sensitive memory
+	// Securely wipe sensitive memory
 	session.Cleanup()
 
-	// Update session status in database
 	if err := session.UpdateStatus(StatusFailed); err != nil {
 		return fmt.Errorf("failed to update session status: %w", err)
 	}
-
 	return nil
 }
 
-// cleanupOrphanedSession handles cleanup of a session that was abandoned due to a crash.
-func cleanupOrphanedSession(session *BootstrapSession) error {
-	// Attempt to remove temporary key from remote host
-	_ = removeTempKeyFromRemoteHost(session)
-
-	// Remove session from database
-	if err := db.DeleteBootstrapSession(session.ID); err != nil {
-		return fmt.Errorf("failed to delete orphaned session: %w", err)
-	}
-
-	return nil
-}
-
-// cleanupExpiredSession handles cleanup of a session that has exceeded its timeout.
-func cleanupExpiredSession(session *BootstrapSession) error {
-	// Attempt to remove temporary key from remote host
-	_ = removeTempKeyFromRemoteHost(session)
-
-	// Remove session from database
-	if err := db.DeleteBootstrapSession(session.ID); err != nil {
-		return fmt.Errorf("failed to delete expired session: %w", err)
-	}
-
-	return nil
-}
+// cleanupSession attempts to remove a temporary key from a remote host and cleanup the session.
+// Remote cleanup for orphaned/expired sessions is handled by the model-based helpers
+// `cleanupOrphanedSessionModel` and `cleanupExpiredSessionModel` which operate on
+// `model.BootstrapSession` values retrieved from the database.
 
 // removeTempKeyFromRemoteHost attempts to connect to a remote host and remove
 // the temporary bootstrap key from the authorized_keys file.

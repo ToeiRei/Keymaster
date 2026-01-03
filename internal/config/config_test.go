@@ -198,7 +198,7 @@ func TestGetConfigPath(t *testing.T) {
 			system: true,
 			goos:   "windows",
 			setup: func() (string, error) {
-				os.Setenv("ProgramData", "C:\\ProgramData")
+				_ = os.Setenv("ProgramData", "C:\\ProgramData")
 				return "C:\\ProgramData\\Keymaster\\keymaster.yaml", nil
 			},
 		},
@@ -212,10 +212,10 @@ func TestGetConfigPath(t *testing.T) {
 
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset env before each run
-			os.Setenv("XDG_CONFIG_HOME", "")
-			os.Setenv("ProgramData", "")
-			os.Setenv("HOME", "")
-			os.Setenv("USERPROFILE", "")
+			_ = os.Setenv("XDG_CONFIG_HOME", "")
+			_ = os.Setenv("ProgramData", "")
+			_ = os.Setenv("HOME", "")
+			_ = os.Setenv("USERPROFILE", "")
 
 			expected, err := tt.setup()
 			if err != nil {
