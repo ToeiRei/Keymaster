@@ -186,9 +186,11 @@ func TestGetConfigPath(t *testing.T) {
 			goos:   "windows",
 			setup: func() (string, error) {
 				os.Setenv("XDG_CONFIG_HOME", "")
-				os.Setenv("USERPROFILE", mockUserHome)
-				// Manually construct based on mocked home
-				return filepath.Join(mockUserHome, "AppData", "Roaming", "keymaster", "keymaster.yaml"), nil
+				// On Windows, os.UserConfigDir() often relies on APPDATA.
+				// Set it to a temp dir to ensure the test is isolated.
+				mockAppData := t.TempDir()
+				os.Setenv("APPDATA", mockAppData)
+				return filepath.Join(mockAppData, "keymaster", "keymaster.yaml"), nil
 			},
 		},
 		{
