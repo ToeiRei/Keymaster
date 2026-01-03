@@ -39,7 +39,7 @@ func TestLoadConfig_EmptyCandidate_TreatedAsNotFound(t *testing.T) {
 
 	var _ cfg.Config
 	defaults := map[string]any{"database.type": "sqlite", "database.dsn": "./keymaster.db", "language": "en"}
-	_, err = cfg.LoadConfig[cfg.Config](&cobra.Command{}, defaults, nil)
+	_, err = cfg.LoadConfig[cfg.Config](&cobra.Command{}, defaults, &emptyPath)
 	if err == nil {
 		t.Fatalf("expected ConfigFileNotFoundError for empty candidate, got nil")
 	}

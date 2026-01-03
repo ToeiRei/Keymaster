@@ -37,9 +37,14 @@ func GetConfigPath(system bool) (string, error) {
 		}
 	} else {
 		// User-specific configuration paths
-		configDir, err = os.UserConfigDir()
-		if err != nil {
-			return "", fmt.Errorf("could not get user config directory: %w", err)
+		// Allow XDG_CONFIG_HOME override for testing and cross-platform consistency
+		if env := os.Getenv("XDG_CONFIG_HOME"); env != "" {
+			configDir = env
+		} else {
+			configDir, err = os.UserConfigDir()
+			if err != nil {
+				return "", fmt.Errorf("could not get user config directory: %w", err)
+			}
 		}
 		configDir = filepath.Join(configDir, "keymaster")
 	}

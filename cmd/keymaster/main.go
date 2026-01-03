@@ -186,8 +186,8 @@ func applyDefaultFlags(cmd *cobra.Command) {
 func getConfigPathFromCli(cmd *cobra.Command) (*string, error) {
 	// Load optional config file argument from cli
 	// Only proceed if the user has explicitly set the --config flag.
-	if cmd.PersistentFlags().Changed("config") {
-		path, err := cmd.PersistentFlags().GetString("config")
+	if cmd.Flags().Changed("config") {
+		path, err := cmd.Flags().GetString("config")
 		if err != nil {
 			// This is unlikely if Changed() is true, but good practice.
 			return nil, fmt.Errorf("could not read --config flag: %w", err)
