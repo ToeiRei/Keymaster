@@ -120,7 +120,7 @@ func DecommissionAccount(account model.Account, systemKey string, options Decomm
 				result.SkipReason = fmt.Sprintf("remote cleanup failed and --force not specified: %v", err)
 
 				// Log the failure
-				db.LogAction("DECOMMISSION_FAILED",
+				_ = db.LogAction("DECOMMISSION_FAILED",
 					fmt.Sprintf("Failed to decommission %s: %v", account.String(), err))
 				return result
 			}
@@ -131,7 +131,7 @@ func DecommissionAccount(account model.Account, systemKey string, options Decomm
 	// Step 2: Database cleanup
 	if err := db.DeleteAccount(account.ID); err != nil {
 		result.DatabaseDeleteError = err
-		db.LogAction("DECOMMISSION_FAILED",
+		_ = db.LogAction("DECOMMISSION_FAILED",
 			fmt.Sprintf("Failed to delete account %s from database: %v", account.String(), err))
 		return result
 	}

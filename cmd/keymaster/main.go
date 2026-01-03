@@ -555,7 +555,7 @@ var importCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("%s", i18n.T("import.error_opening_file", err))
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		scanner := bufio.NewScanner(file)
 		importedCount := 0
@@ -1013,9 +1013,8 @@ Use --tag to decommission all accounts with specific tags (e.g., --tag env:stagi
 // findAccountByIdentifier finds an account by ID, user@host, or label
 func findAccountByIdentifier(identifier string, accounts []model.Account) (*model.Account, error) {
 	// Try to parse as account ID first
-	if accountID, err := fmt.Sscanf(identifier, "%d", new(int)); accountID == 1 && err == nil {
-		var id int
-		fmt.Sscanf(identifier, "%d", &id)
+	var id int
+	if n, err := fmt.Sscanf(identifier, "%d", &id); n == 1 && err == nil {
 		for _, acc := range accounts {
 			if acc.ID == id {
 				return &acc, nil
@@ -1099,7 +1098,7 @@ func readCompressedBackup(filename string) (*model.BackupData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	zstdReader, err := zstd.NewReader(file)
 	if err != nil {
@@ -1169,13 +1168,13 @@ func writeCompressedBackup(filename string, data *model.BackupData) error {
 	if err != nil {
 		return fmt.Errorf("could not create file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	zstdWriter, err := zstd.NewWriter(file)
 	if err != nil {
 		return fmt.Errorf("could not create zstd writer: %w", err)
 	}
-	defer zstdWriter.Close()
+	defer func() { _ = zstdWriter.Close() }()
 
 	encoder := json.NewEncoder(zstdWriter)
 	encoder.SetIndent("", "  ") // Pretty-print the JSON inside the compressed file

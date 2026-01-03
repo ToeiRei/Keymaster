@@ -14,7 +14,7 @@ func TestMergeLegacyConfigViaLoadConfig(t *testing.T) {
 	tmp := t.TempDir()
 	// Change working dir to tmp so legacy file is in CWD
 	origWd, _ := os.Getwd()
-	defer os.Chdir(origWd)
+	defer func() { _ = os.Chdir(origWd) }()
 	if err := os.Chdir(tmp); err != nil {
 		t.Fatalf("chdir: %v", err)
 	}
@@ -46,8 +46,8 @@ func TestMergeLegacyConfigViaLoadConfig(t *testing.T) {
 func TestSavePersistsViperState(t *testing.T) {
 	tmp := t.TempDir()
 	// Ensure user config dir points at tmp
-	os.Setenv("XDG_CONFIG_HOME", tmp)
-	defer os.Unsetenv("XDG_CONFIG_HOME")
+	_ = os.Setenv("XDG_CONFIG_HOME", tmp)
+	defer func() { _ = os.Unsetenv("XDG_CONFIG_HOME") }()
 
 	resetViper()
 	defer resetViper()

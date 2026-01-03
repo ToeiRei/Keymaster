@@ -73,7 +73,7 @@ func RunDBMaintenance(dbType, dsn string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open database for maintenance: %w", err)
 	}
-	defer sqlDB.Close()
+	defer func() { _ = sqlDB.Close() }()
 
 	// Small timeout for maintenance operations to avoid blocking CI.
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -111,7 +111,7 @@ func RunDBMaintenance(dbType, dsn string) error {
 		if err != nil {
 			return fmt.Errorf("mysql show tables failed: %w", err)
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		var table string
 		for rows.Next() {
 			if err := rows.Scan(&table); err != nil {
@@ -320,7 +320,7 @@ func ensureSchemaMigrationsTable(db *sql.DB, dbType string) error {
 		if err != nil {
 			return err
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		for rows.Next() {
 			// cid, name, type, notnull, dflt_value, pk
 			var cid int
@@ -349,7 +349,7 @@ func ensureSchemaMigrationsTable(db *sql.DB, dbType string) error {
 		if err != nil {
 			return err
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		for rows.Next() {
 			var name string
 			if err := rows.Scan(&name); err != nil {

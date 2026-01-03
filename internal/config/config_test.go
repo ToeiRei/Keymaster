@@ -19,8 +19,8 @@ func resetViper() {
 func TestLoadConfig_EmptyCandidate_TreatedAsNotFound(t *testing.T) {
 	tmp := t.TempDir()
 	// Force user config dir to tmp by setting XDG_CONFIG_HOME
-	os.Setenv("XDG_CONFIG_HOME", tmp)
-	defer os.Unsetenv("XDG_CONFIG_HOME")
+	_ = os.Setenv("XDG_CONFIG_HOME", tmp)
+	defer func() { _ = os.Unsetenv("XDG_CONFIG_HOME") }()
 
 	// Create the directory but write a zero-length file
 	cfgDir := filepath.Join(tmp, "keymaster")
@@ -32,7 +32,7 @@ func TestLoadConfig_EmptyCandidate_TreatedAsNotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create empty file: %v", err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	resetViper()
 	defer resetViper()
@@ -50,8 +50,8 @@ func TestLoadConfig_EmptyCandidate_TreatedAsNotFound(t *testing.T) {
 
 func TestWriteConfigFile_CreatesFile(t *testing.T) {
 	tmp := t.TempDir()
-	os.Setenv("XDG_CONFIG_HOME", tmp)
-	defer os.Unsetenv("XDG_CONFIG_HOME")
+	_ = os.Setenv("XDG_CONFIG_HOME", tmp)
+	defer func() { _ = os.Unsetenv("XDG_CONFIG_HOME") }()
 
 	resetViper()
 	defer resetViper()
@@ -128,7 +128,7 @@ func TestGetConfigPath(t *testing.T) {
 	origUserProfile := os.Getenv("USERPROFILE")
 
 	defer func() {
-		os.Setenv("XDG_CONFIG_HOME", origXDG)
+		_ = os.Setenv("XDG_CONFIG_HOME", origXDG)
 		os.Setenv("ProgramData", origProgData)
 		os.Setenv("HOME", origHome)
 		os.Setenv("USERPROFILE", origUserProfile)

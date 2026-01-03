@@ -49,7 +49,7 @@ func RotateSystemKeyBun(bdb *bun.DB, publicKey, privateKey string) (int, error) 
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Deactivate existing keys. Use a raw UPDATE because Bun requires a WHERE
 	// clause for Update/Delete queries to prevent accidental full-table updates.
@@ -330,7 +330,7 @@ func ExportDataForBackupBun(bdb *bun.DB) (*model.BackupData, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	backup := &model.BackupData{SchemaVersion: 1}
 
@@ -418,7 +418,7 @@ func ImportDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Wipe tables
 	tables := []string{"account_keys", "bootstrap_sessions", "audit_log", "known_hosts", "system_keys", "public_keys", "accounts"}
@@ -493,7 +493,7 @@ func IntegrateDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for _, acc := range backup.Accounts {
 		if _, err := tx.NewRaw("INSERT OR IGNORE INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive).Exec(ctx); err != nil {

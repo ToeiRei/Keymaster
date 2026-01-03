@@ -24,13 +24,13 @@ func TestInitDB_Migrations_Applied(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open sql.DB for inspection: %v", err)
 	}
-	defer sqlDB.Close()
+	defer func() { _ = sqlDB.Close() }()
 
 	rows, err := sqlDB.Query("PRAGMA table_info(schema_migrations)")
 	if err != nil {
 		t.Fatalf("failed to query schema_migrations table info: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	foundAppliedAt := false
 	for rows.Next() {

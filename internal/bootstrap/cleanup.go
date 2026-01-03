@@ -71,7 +71,7 @@ func InstallSignalHandler() {
 	go func() {
 		<-sigChan
 
-		CleanupAllActiveSessions()
+		_ = CleanupAllActiveSessions()
 
 		os.Exit(0)
 	}()
@@ -149,7 +149,7 @@ func StartSessionReaper() {
 	ticker := time.NewTicker(5 * time.Minute)
 	go func() {
 		for range ticker.C {
-			CleanupExpiredSessions()
+			_ = CleanupExpiredSessions()
 		}
 	}()
 }
@@ -169,7 +169,7 @@ func cleanupSession(session *BootstrapSession) error {
 		session.PendingAccount.Username, session.PendingAccount.Hostname))
 
 	// Attempt to remove temporary key from remote host
-	removeTempKeyFromRemoteHost(session)
+	_ = removeTempKeyFromRemoteHost(session)
 
 	// Cleanup sensitive memory
 	session.Cleanup()
@@ -185,7 +185,7 @@ func cleanupSession(session *BootstrapSession) error {
 // cleanupOrphanedSession handles cleanup of a session that was abandoned due to a crash.
 func cleanupOrphanedSession(session *BootstrapSession) error {
 	// Attempt to remove temporary key from remote host
-	removeTempKeyFromRemoteHost(session)
+	_ = removeTempKeyFromRemoteHost(session)
 
 	// Remove session from database
 	if err := db.DeleteBootstrapSession(session.ID); err != nil {
@@ -198,7 +198,7 @@ func cleanupOrphanedSession(session *BootstrapSession) error {
 // cleanupExpiredSession handles cleanup of a session that has exceeded its timeout.
 func cleanupExpiredSession(session *BootstrapSession) error {
 	// Attempt to remove temporary key from remote host
-	removeTempKeyFromRemoteHost(session)
+	_ = removeTempKeyFromRemoteHost(session)
 
 	// Remove session from database
 	if err := db.DeleteBootstrapSession(session.ID); err != nil {
@@ -285,7 +285,7 @@ func removeTempKeyFromRemoteHost(session *BootstrapSession) error {
 	if err != nil {
 		return fmt.Errorf("failed to create SFTP client: %w", err)
 	}
-	defer sftpClient.Close()
+	defer func() { _ = sftpClient.Close() }()
 
 	// Read current authorized_keys file
 	authKeysPath := ".ssh/authorized_keys"
@@ -293,7 +293,7 @@ func removeTempKeyFromRemoteHost(session *BootstrapSession) error {
 	if err != nil {
 		return fmt.Errorf("failed to open authorized_keys: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	content := make([]byte, 0, 4096)
 	buffer := make([]byte, 1024)
@@ -317,7 +317,7 @@ func removeTempKeyFromRemoteHost(session *BootstrapSession) error {
 	if err != nil {
 		return fmt.Errorf("failed to create authorized_keys: %w", err)
 	}
-	defer outFile.Close()
+	defer func() { _ = outFile.Close() }()
 
 	if _, err := outFile.Write([]byte(newContent)); err != nil {
 		return fmt.Errorf("failed to write cleaned authorized_keys: %w", err)

@@ -2,6 +2,7 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
+//nolint:errcheck
 package main
 
 import (

@@ -13,7 +13,7 @@ func TestRunMigrationsSqlite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open sqlite: %v", err)
 	}
-	defer dbConn.Close()
+	defer func() { _ = dbConn.Close() }()
 
 	if err := RunMigrations(dbConn, "sqlite"); err != nil {
 		t.Fatalf("RunMigrations failed: %v", err)
@@ -23,7 +23,7 @@ func TestRunMigrationsSqlite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("query schema_migrations failed: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var versions []string
 	for rows.Next() {
