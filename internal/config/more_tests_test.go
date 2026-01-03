@@ -19,6 +19,11 @@ func TestMergeLegacyConfigViaLoadConfig(t *testing.T) {
 		t.Fatalf("chdir: %v", err)
 	}
 
+	// Ensure user config dir points at tmp so tests are isolated from
+	// any real user config that may exist on the runner.
+	_ = os.Setenv("XDG_CONFIG_HOME", tmp)
+	defer func() { _ = os.Unsetenv("XDG_CONFIG_HOME") }()
+
 	// Create legacy config file
 	yaml := "language: fr\n"
 	if err := os.WriteFile(filepath.Join(tmp, ".keymaster.yaml"), []byte(yaml), 0o600); err != nil {
