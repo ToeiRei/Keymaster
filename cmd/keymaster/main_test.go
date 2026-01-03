@@ -361,6 +361,15 @@ language: de
 			t.Errorf("Expected output to contain '\"language\": \"de\"', but it didn't.\nOutput:\n%s", output)
 		}
 	})
+
+	t.Run("should display keymaster environment variables in debug output", func(t *testing.T) {
+		// Set a specific env var to trigger the loop body in debug.go
+		t.Setenv("KEYMASTER_TEST_VAR", "visible")
+		output := executeCommand(t, nil, "debug")
+		if !strings.Contains(output, "KEYMASTER_TEST_VAR=visible") {
+			t.Errorf("Expected debug output to contain env var, got:\n%s", output)
+		}
+	})
 }
 
 func TestRotateKeyCmd(t *testing.T) {
