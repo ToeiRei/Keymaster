@@ -49,9 +49,16 @@ jobs:
           args: run ./... --out-format=colored-line-number --skip-dirs=tools,internal/i18n/locales,testdata
       - name: Static vet
         run: go vet ./...
-      - name: Run tests (race, coverage)
+      - name: Run tests (race on Linux, coverage)
         run: |
-          go test ./... -v -race -coverprofile=coverage.out
+          echo "Running tests with race detector on Linux, fallback to non-race on other OS"
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y build-essential
+            export CGO_ENABLED=1
+            go test ./... -v -race -coverprofile=coverage.out
+          else
+            go test ./... -v -coverprofile=coverage.out
+          fi
       - name: Generate coverage badge
         uses: tj-actions/coverage-badge-go@v1
         with:
