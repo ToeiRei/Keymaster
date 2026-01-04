@@ -1,7 +1,5 @@
 package tui
 
-package tui
-
 import (
 	"testing"
 
@@ -9,7 +7,7 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 )
 
-func TestAccountForm_UpdateSuggestionsAndApply(t *testing.T) {
+func TestAccountForm_UpdateSuggestionsAndApply_Fixed(t *testing.T) {
 	i18n.Init("en")
 
 	var m accountFormModel
