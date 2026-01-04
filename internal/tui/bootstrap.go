@@ -1237,8 +1237,16 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			IsActive: true,
 		}
 
-		accountID, err := db.AddAccount(accountData.Username, accountData.Hostname,
-			accountData.Label, accountData.Tags)
+		var accountID int
+		var err error
+		mgr := db.DefaultAccountManager()
+		if mgr != nil {
+			accountID, err = mgr.AddAccount(accountData.Username, accountData.Hostname,
+				accountData.Label, accountData.Tags)
+		} else {
+			accountID, err = db.AddAccount(accountData.Username, accountData.Hostname,
+				accountData.Label, accountData.Tags)
+		}
 		if err != nil {
 			// Log the failure
 			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to create account: %v",
@@ -1267,7 +1275,12 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 				_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to assign key: %v",
 					accountData.Username, accountData.Hostname, err))
 				// Cleanup: delete the account if key assignment fails
-				_ = db.DeleteAccount(accountID)
+				mgr := db.DefaultAccountManager()
+				if mgr != nil {
+					_ = mgr.DeleteAccount(accountID)
+				} else {
+					_ = db.DeleteAccount(accountID)
+				}
 				return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to assign key %d to account: %w", keyID, err)}
 			}
 		}
@@ -1279,7 +1292,12 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to generate keys content: %v",
 				accountData.Username, accountData.Hostname, err))
 			// Cleanup: delete the account if content generation fails
-			_ = db.DeleteAccount(accountID)
+			mgr := db.DefaultAccountManager()
+			if mgr != nil {
+				_ = mgr.DeleteAccount(accountID)
+			} else {
+				_ = db.DeleteAccount(accountID)
+			}
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to generate keys content: %w", err)}
 		}
 
@@ -1296,7 +1314,12 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to connect: %v",
 				accountData.Username, accountData.Hostname, err))
 			// Cleanup: delete the account if deployer creation fails
-			_ = db.DeleteAccount(accountID)
+			mgr := db.DefaultAccountManager()
+			if mgr != nil {
+				_ = mgr.DeleteAccount(accountID)
+			} else {
+				_ = db.DeleteAccount(accountID)
+			}
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to create bootstrap deployer: %w", err)}
 		}
 		defer deployer.Close()
@@ -1306,7 +1329,12 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: deployment failed: %v",
 				accountData.Username, accountData.Hostname, err))
 			// Cleanup: delete the account if SSH deployment fails
-			_ = db.DeleteAccount(accountID)
+			mgr := db.DefaultAccountManager()
+			if mgr != nil {
+				_ = mgr.DeleteAccount(accountID)
+			} else {
+				_ = db.DeleteAccount(accountID)
+			}
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to deploy keys to remote host: %w", err)}
 		}
 

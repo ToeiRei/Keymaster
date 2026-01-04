@@ -369,14 +369,26 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Show key selection dialog - don't close delete dialog yet
 						return m, m.loadKeysForSelection()
 					} else {
-						// Simple delete without decommission
-						if err := db.DeleteAccount(m.accountToDelete.ID); err != nil {
-							m.err = err
+						// Simple delete without decommission. Prefer AccountManager when available.
+						mgr := db.DefaultAccountManager()
+						if mgr == nil {
+							if err := db.DeleteAccount(m.accountToDelete.ID); err != nil {
+								m.err = err
+							} else {
+								m.status = i18n.T("accounts.status.delete_success", m.accountToDelete.String())
+								m.accounts, m.err = db.GetAllAccounts()
+								m.rebuildDisplayedAccounts()
+								m.viewport.SetContent(m.listContentView())
+							}
 						} else {
-							m.status = i18n.T("accounts.status.delete_success", m.accountToDelete.String())
-							m.accounts, m.err = db.GetAllAccounts()
-							m.rebuildDisplayedAccounts()
-							m.viewport.SetContent(m.listContentView())
+							if err := mgr.DeleteAccount(m.accountToDelete.ID); err != nil {
+								m.err = err
+							} else {
+								m.status = i18n.T("accounts.status.delete_success", m.accountToDelete.String())
+								m.accounts, m.err = db.GetAllAccounts()
+								m.rebuildDisplayedAccounts()
+								m.viewport.SetContent(m.listContentView())
+							}
 						}
 						m.isConfirmingDelete = false
 						return m, nil
