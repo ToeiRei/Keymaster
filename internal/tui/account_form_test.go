@@ -1,7 +1,5 @@
 package tui
 
-package tui
-
 import (
 	"testing"
 
