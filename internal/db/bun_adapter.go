@@ -821,7 +821,7 @@ func CreateSystemKeyBun(bdb *bun.DB, publicKey, privateKey string) (int, error) 
 	ctx := context.Background()
 	// Get max serial
 	var max sql.NullInt64
-	if err := bdb.NewRaw("SELECT MAX(serial) FROM system_keys").Scan(ctx, &max); err != nil {
+	if err := QueryRawInto(ctx, bdb, &max, "SELECT MAX(serial) FROM system_keys"); err != nil {
 		return 0, err
 	}
 	newSerial := 1
@@ -829,7 +829,7 @@ func CreateSystemKeyBun(bdb *bun.DB, publicKey, privateKey string) (int, error) 
 		newSerial = int(max.Int64) + 1
 	}
 	// Insert new key (do not deactivate others)
-	if _, err := bdb.NewRaw("INSERT INTO system_keys(serial, public_key, private_key, is_active) VALUES(?, ?, ?, ?)", newSerial, publicKey, privateKey, true).Exec(ctx); err != nil {
+	if _, err := ExecRaw(ctx, bdb, "INSERT INTO system_keys(serial, public_key, private_key, is_active) VALUES(?, ?, ?, ?)", newSerial, publicKey, privateKey, true); err != nil {
 		return 0, err
 	}
 	return newSerial, nil

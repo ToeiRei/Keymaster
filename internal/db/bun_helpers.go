@@ -23,3 +23,21 @@ func ExecRaw(ctx context.Context, exec execRawProvider, query string, args ...in
 func QueryRawInto(ctx context.Context, exec execRawProvider, dest interface{}, query string, args ...interface{}) error {
 	return exec.NewRaw(query, args...).Scan(ctx, dest)
 }
+
+// BeginTx starts a Bun transaction using provided DB and options.
+func BeginTx(ctx context.Context, db *bun.DB, opts *sql.TxOptions) (bun.Tx, error) {
+	return db.BeginTx(ctx, opts)
+}
+
+// WithTx runs fn inside a transaction, committing on success and rolling back on error.
+func WithTx(ctx context.Context, db *bun.DB, fn func(ctx context.Context, tx bun.Tx) error) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := fn(ctx, tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
