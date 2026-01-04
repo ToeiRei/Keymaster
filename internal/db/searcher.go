@@ -36,8 +36,26 @@ func (s *BunAccountSearcher) SearchAccounts(q string) ([]model.Account, error) {
 // `store` if available. It returns nil when the package store is not
 // initialized; callers should handle nil by falling back to local filtering.
 func DefaultAccountSearcher() AccountSearcher {
+	// If a test or other code has injected a default searcher, prefer that.
+	if defaultSearcher != nil {
+		return defaultSearcher
+	}
 	if store == nil {
 		return nil
 	}
 	return NewAccountSearcherFromStore(store)
+}
+
+// package-level override used primarily by tests to inject a fake searcher.
+var defaultSearcher AccountSearcher
+
+// SetDefaultAccountSearcher sets a package-level AccountSearcher that will be
+// returned by DefaultAccountSearcher(). Useful for tests to inject a fake.
+func SetDefaultAccountSearcher(s AccountSearcher) {
+	defaultSearcher = s
+}
+
+// ClearDefaultAccountSearcher clears any previously set package-level searcher.
+func ClearDefaultAccountSearcher() {
+	defaultSearcher = nil
 }

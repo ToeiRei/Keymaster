@@ -4,10 +4,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
 func TestRebuildDisplayedAccounts_FilteringAndListContent(t *testing.T) {
+	// Inject fake searcher so server-side search behavior is deterministic.
+	defer db.ClearDefaultAccountSearcher()
+	db.SetDefaultAccountSearcher(&db.FakeAccountSearcher{})
+
 	m := accountsModel{}
 	m.accounts = []model.Account{
 		{ID: 1, Username: "alice", Hostname: "host1", Label: "web", Tags: "ops", IsActive: true},

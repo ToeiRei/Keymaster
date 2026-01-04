@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 )
@@ -42,6 +43,10 @@ func TestFilteredKeys(t *testing.T) {
 }
 
 func TestRebuildDisplayedAccounts(t *testing.T) {
+	// Ensure deterministic server-side search during this test.
+	defer db.ClearDefaultAccountSearcher()
+	db.SetDefaultAccountSearcher(&db.FakeAccountSearcher{})
+
 	m := &accountsModel{
 		accounts: []model.Account{
 			{ID: 1, Username: "alice", Hostname: "h1", Label: "web", Tags: "role:web"},

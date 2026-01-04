@@ -4,12 +4,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
 func TestRebuildDisplayedAccounts_Filtering(t *testing.T) {
 	i18n.Init("en")
+	// Inject fake account searcher to ensure deterministic server-side behavior
+	defer db.ClearDefaultAccountSearcher()
+	db.SetDefaultAccountSearcher(&db.FakeAccountSearcher{})
 	m := &accountsModel{}
 	m.accounts = []model.Account{
 		{ID: 1, Username: "alice", Hostname: "host1", Label: "ops", Tags: "dev"},
