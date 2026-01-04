@@ -298,7 +298,7 @@ func GetAccountsForKeyBun(bdb *bun.DB, keyID int) ([]model.Account, error) {
 // This emulates more advanced Postgres full-text search in a DB-agnostic way.
 func SearchAccountsBun(bdb *bun.DB, q string) ([]model.Account, error) {
 	ctx := context.Background()
-	tokens := tokenizeSearchQuery(q)
+	tokens := TokenizeSearchQuery(q)
 	var am []AccountModel
 	qb := bdb.NewSelect().Model(&am)
 	if len(tokens) > 0 {
@@ -320,22 +320,10 @@ func SearchAccountsBun(bdb *bun.DB, q string) ([]model.Account, error) {
 	return out, nil
 }
 
-// tokenizeSearchQuery splits a query into lower-cased tokens, trimming whitespace.
-func tokenizeSearchQuery(q string) []string {
-	q = strings.TrimSpace(q)
-	if q == "" {
-		return nil
-	}
-	parts := strings.Fields(q)
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		p = strings.ToLower(strings.TrimSpace(p))
-		if p != "" {
-			out = append(out, p)
-		}
-	}
-	return out
-}
+// TokenizeSearchQuery is a pure helper that splits a query into lower-cased tokens.
+// It was extracted to improve testability of search-related logic.
+// Use TokenizeSearchQuery instead of the internal helper.
+// (Implementation lives in internal/db/search.go)
 
 // GetAllAuditLogEntriesBun retrieves audit log entries ordered by timestamp desc.
 func GetAllAuditLogEntriesBun(bdb *bun.DB) ([]model.AuditLogEntry, error) {
