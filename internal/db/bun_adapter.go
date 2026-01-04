@@ -106,6 +106,7 @@ type PublicKeyModel struct {
 	KeyData       string       `bun:"key_data"`
 	Comment       string       `bun:"comment"`
 	ExpiresAt     sql.NullTime `bun:"expires_at"`
+	IsGlobal      bool         `bun:"is_global"`
 }
 
 // AuditLogModel maps the audit_log table.
@@ -181,6 +182,7 @@ func publicKeyModelToModel(p PublicKeyModel) model.PublicKey {
 	if p.ExpiresAt.Valid {
 		pk.ExpiresAt = p.ExpiresAt.Time
 	}
+	pk.IsGlobal = p.IsGlobal
 	return pk
 }
 
