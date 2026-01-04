@@ -4,19 +4,19 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Write-Output "Running go test to produce coverage profile (this may take a while)..."
-& go test -coverpkg=./... ./... -coverprofile=coverage.out
+& go test -coverpkg=./... ./... -coverprofile=coverage
 
-if ((Test-Path -Path './coverage' -PathType Leaf) -and -not (Test-Path -Path './coverage.out')) {
-    Write-Output "Normalizing 'coverage' -> 'coverage.out'"
-    Move-Item -Path './coverage' -Destination './coverage.out' -Force
+if ((Test-Path -Path './coverage' -PathType Leaf) -and -not (Test-Path -Path './coverage')) {
+    Write-Output "Normalizing 'coverage' -> 'coverage'"
+    Move-Item -Path './coverage' -Destination './coverage' -Force
 }
 
-if (-not (Test-Path -Path './coverage.out')) {
-    Write-Error "coverage.out not found; aborting"
+if (-not (Test-Path -Path './coverage')) {
+    Write-Error "coverage file not found; aborting"
     exit 1
 }
 
-$func = & go tool cover -func coverage.out
+$func = & go tool cover -func coverage
 $line = $func | Select-String 'total:' | Select-Object -First 1
 if (-not $line) {
     Write-Error "failed to parse coverage output"
