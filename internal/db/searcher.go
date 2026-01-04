@@ -225,6 +225,9 @@ type KeyManager interface {
 	AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) (*model.PublicKey, error)
 	DeletePublicKey(id int) error
 	TogglePublicKeyGlobal(id int) error
+	// SetPublicKeyExpiry sets or clears the expires_at for a public key. A zero
+	// time value will clear the expiration (set NULL).
+	SetPublicKeyExpiry(id int, expiresAt time.Time) error
 	GetAllPublicKeys() ([]model.PublicKey, error)
 	GetPublicKeyByComment(comment string) (*model.PublicKey, error)
 	GetGlobalPublicKeys() ([]model.PublicKey, error)
@@ -281,6 +284,14 @@ func (b *bunKeyManager) TogglePublicKeyGlobal(id int) error {
 	err := TogglePublicKeyGlobalBun(b.bStore.BunDB(), id)
 	if err == nil {
 		_ = b.bStore.LogAction("TOGGLE_KEY_GLOBAL", fmt.Sprintf("key_id: %d", id))
+	}
+	return err
+}
+
+func (b *bunKeyManager) SetPublicKeyExpiry(id int, expiresAt time.Time) error {
+	err := SetPublicKeyExpiryBun(b.bStore.BunDB(), id, expiresAt)
+	if err == nil {
+		_ = b.bStore.LogAction("SET_KEY_EXPIRES", fmt.Sprintf("key_id: %d expires_at: %v", id, expiresAt))
 	}
 	return err
 }

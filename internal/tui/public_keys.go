@@ -10,8 +10,10 @@ package tui // import "github.com/toeirei/keymaster/internal/tui"
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/atotto/clipboard"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -54,7 +56,11 @@ type publicKeysModel struct {
 	isConfirmingDelete bool
 	keyToDelete        model.PublicKey
 	confirmCursor      int // 0 for No, 1 for Yes
-	width, height      int
+	// For setting expiration on an existing key
+	isSettingExpiry bool
+	keyToExpire     model.PublicKey
+	expireInput     textinput.Model
+	width, height   int
 }
 
 // newPublicKeysModel creates a new model for the public key view, pre-loading keys from the database.
@@ -69,6 +75,13 @@ func newPublicKeysModelWithSearcher(s db.KeySearcher) publicKeysModel {
 		viewport: viewport.New(0, 0),
 		searcher: s,
 	}
+	// expiration input for the inline expiry modal
+	ei := textinput.New()
+	ei.Placeholder = "YYYY-MM-DD or RFC3339"
+	ei.CharLimit = 64
+	ei.Width = 30
+	ei.Prompt = "Expires: "
+	m.expireInput = ei
 	var err error
 	km := db.DefaultKeyManager()
 	if km == nil {
@@ -193,6 +206,48 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// List view logic
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle expiration modal first
+		if m.isSettingExpiry {
+			switch msg.String() {
+			case "esc", "q":
+				m.isSettingExpiry = false
+				m.status = i18n.T("public_keys.status.expire_cancelled")
+				return m, nil
+			case "enter":
+				// submit expiration
+				val := strings.TrimSpace(m.expireInput.Value())
+				var expiresAt time.Time
+				if val != "" {
+					if t, err := time.Parse(time.RFC3339, val); err == nil {
+						expiresAt = t
+					} else if t2, err2 := time.Parse("2006-01-02", val); err2 == nil {
+						expiresAt = time.Date(t2.Year(), t2.Month(), t2.Day(), 0, 0, 0, 0, time.UTC)
+					} else {
+						m.status = i18n.T("public_keys.status.expire_invalid_format")
+						return m, nil
+					}
+				}
+				km := db.DefaultKeyManager()
+				if km == nil {
+					m.err = fmt.Errorf("no key manager available")
+					return m, nil
+				}
+				if err := km.SetPublicKeyExpiry(m.keyToExpire.ID, expiresAt); err != nil {
+					m.err = err
+				} else {
+					m.status = i18n.T("public_keys.status.expire_success", m.keyToExpire.Comment)
+					m.keys, m.err = km.GetAllPublicKeys()
+					m.rebuildDisplayedKeys()
+					m.viewport.SetContent(m.listContentView())
+				}
+				m.isSettingExpiry = false
+				return m, nil
+			default:
+				var tcmd tea.Cmd
+				m.expireInput, tcmd = m.expireInput.Update(msg)
+				return m, tcmd
+			}
+		}
 		// Handle delete confirmation
 		if m.isConfirmingDelete {
 			switch msg.String() {
@@ -308,6 +363,19 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
+		case "x": // Set expiration for selected key
+			if len(m.displayedKeys) > 0 {
+				m.keyToExpire = m.displayedKeys[m.cursor]
+				// prepopulate input with existing expiration if set
+				if !m.keyToExpire.ExpiresAt.IsZero() {
+					m.expireInput.SetValue(m.keyToExpire.ExpiresAt.UTC().Format(time.RFC3339))
+				} else {
+					m.expireInput.SetValue("")
+				}
+				m.expireInput.Focus()
+				m.isSettingExpiry = true
+			}
+			return m, nil
 		case "u": // Usage report
 			if len(m.displayedKeys) > 0 {
 				m.usageReportKey = m.displayedKeys[m.cursor]
@@ -372,6 +440,10 @@ func (m *publicKeysModel) View() string {
 		return fmt.Sprintf("Error: %v\n", m.err)
 	}
 
+	if m.isSettingExpiry {
+		return m.viewExpiryModal()
+	}
+
 	if m.isConfirmingDelete {
 		return m.viewConfirmation()
 	}
@@ -417,6 +489,24 @@ func (m *publicKeysModel) viewConfirmation() string {
 	)
 }
 
+// viewExpiryModal renders the modal dialog for setting an expiration on a key.
+func (m *publicKeysModel) viewExpiryModal() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render(i18n.T("public_keys.expire.title")))
+
+	prompt := i18n.T("public_keys.expire.prompt", m.keyToExpire.Comment)
+	b.WriteString(prompt + "\n\n")
+
+	// expiration input
+	b.WriteString(m.expireInput.View() + "\n\n")
+	b.WriteString(helpStyle.Render(i18n.T("public_keys.expire.help")))
+
+	return lipgloss.Place(m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		dialogBoxStyle.Render(b.String()),
+	)
+}
+
 // listContentView builds the string content for the list viewport.
 func (m *publicKeysModel) listContentView() string {
 	var b strings.Builder
@@ -425,9 +515,18 @@ func (m *publicKeysModel) listContentView() string {
 		if key.IsGlobal {
 			globalMarker = "🌐 "
 		}
-		line := fmt.Sprintf("  %s%s (%s)", globalMarker, key.Comment, key.Algorithm)
+		var expiryMarker string
+		if !key.ExpiresAt.IsZero() {
+			now := time.Now().UTC()
+			if key.ExpiresAt.After(now) {
+				expiryMarker = "⏳ "
+			} else {
+				expiryMarker = "❌ "
+			}
+		}
+		line := fmt.Sprintf("  %s%s%s (%s)", globalMarker, expiryMarker, key.Comment, key.Algorithm)
 		if m.cursor == i {
-			line = fmt.Sprintf("▸ %s%s (%s)", globalMarker, key.Comment, key.Algorithm)
+			line = fmt.Sprintf("▸ %s%s%s (%s)", globalMarker, expiryMarker, key.Comment, key.Algorithm)
 			b.WriteString(selectedItemStyle.Render(line) + "\n")
 		} else {
 			b.WriteString(itemStyle.Render(line) + "\n")
@@ -480,6 +579,12 @@ func (m *publicKeysModel) viewKeyList() string {
 		detailsItems = append(detailsItems, "", helpStyle.Render(i18n.T("public_keys.detail_comment", key.Comment)))
 		detailsItems = append(detailsItems, helpStyle.Render(i18n.T("public_keys.detail_algorithm", key.Algorithm)))
 		detailsItems = append(detailsItems, helpStyle.Render(i18n.T("public_keys.detail_global", boolToYesNo(key.IsGlobal))))
+
+		if key.ExpiresAt.IsZero() {
+			detailsItems = append(detailsItems, helpStyle.Render(i18n.T("public_keys.detail_expires", i18n.T("public_keys.never"))))
+		} else {
+			detailsItems = append(detailsItems, helpStyle.Render(i18n.T("public_keys.detail_expires_at", key.ExpiresAt.UTC().Format(time.RFC3339))))
+		}
 
 		// Calculate and display the fingerprint on the fly.
 		parsedKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key.String()))

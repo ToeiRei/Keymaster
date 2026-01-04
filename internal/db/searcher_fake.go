@@ -218,3 +218,11 @@ func (f *FakeKeyManager) GetAccountsForKey(keyID int) ([]model.Account, error) {
 	}
 	return []model.Account{}, nil
 }
+
+func (f *FakeKeyManager) SetPublicKeyExpiry(id int, expiresAt time.Time) error {
+	if f.Err != nil {
+		return f.Err
+	}
+	f.Calls = append(f.Calls, [3]string{"SetPublicKeyExpiry", strconv.Itoa(id), expiresAt.UTC().Format(time.RFC3339)})
+	return nil
+}

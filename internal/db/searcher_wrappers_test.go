@@ -65,6 +65,7 @@ func (f *fakeKeyManager) GetKeysForAccount(accountID int) ([]model.PublicKey, er
 func (f *fakeKeyManager) GetAccountsForKey(keyID int) ([]model.Account, error) {
 	return []model.Account{{ID: 4}}, nil
 }
+func (f *fakeKeyManager) SetPublicKeyExpiry(id int, expiresAt time.Time) error { return nil }
 
 func TestSearcherAndManagerWrappers_Injection(t *testing.T) {
 	// AccountSearcher

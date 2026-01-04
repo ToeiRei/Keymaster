@@ -617,6 +617,20 @@ func TogglePublicKeyGlobalBun(bdb *bun.DB, id int) error {
 	return err
 }
 
+// SetPublicKeyExpiryBun sets or clears the expires_at column for a public key.
+// Passing a zero time value will set the column to NULL.
+func SetPublicKeyExpiryBun(bdb *bun.DB, id int, expiresAt time.Time) error {
+	ctx := context.Background()
+	var exp interface{}
+	if !expiresAt.IsZero() {
+		exp = expiresAt
+	} else {
+		exp = nil
+	}
+	_, err := ExecRaw(ctx, bdb, "UPDATE public_keys SET expires_at = ? WHERE id = ?", exp, id)
+	return err
+}
+
 // GetGlobalPublicKeysBun returns public keys where is_global = 1.
 func GetGlobalPublicKeysBun(bdb *bun.DB) ([]model.PublicKey, error) {
 	ctx := context.Background()
