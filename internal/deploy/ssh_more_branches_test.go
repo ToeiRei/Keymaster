@@ -43,7 +43,24 @@ func TestNewDeployer_PrivateKeySuccess(t *testing.T) {
 
 // When sftp client creation fails after SSH connect, expect descriptive error.
 func TestNewDeployer_SftpCreationFails(t *testing.T) {
-	t.Skip("skipping fragile sftp-creation failure test that can panic with fake ssh.Client")
+	origDial := sshDial
+	origNewSftp := newSftpClient
+	defer func() { sshDial = origDial; newSftpClient = origNewSftp }()
+
+	_, priv, err := genssh.GenerateAndMarshalEd25519Key("test", "")
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+
+	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
+		return &ssh.Client{}, nil
+	}
+	newSftpClient = func(c *ssh.Client) (sftpRaw, error) { return nil, fmt.Errorf("sftp init failed") }
+
+	_, err = NewDeployerWithConfig("example.com", "user", priv, nil, DefaultConnectionConfig(), false)
+	if err == nil || !strings.Contains(err.Error(), "failed to create sftp client") {
+		t.Fatalf("expected sftp creation error, got: %v", err)
+	}
 }
 
 // Host key mismatch returned by HostKeyCallback should be classified as a host key error.
