@@ -17,7 +17,11 @@ func TestDecommissionAccount_LogsAuditActions(t *testing.T) {
 	}
 
 	// Create a simple account to operate on.
-	id, err := db.AddAccount("decom", "example.com", "label", "")
+	mgr := db.DefaultAccountManager()
+	if mgr == nil {
+		t.Fatalf("no account manager available")
+	}
+	id, err := mgr.AddAccount("decom", "example.com", "label", "")
 	if err != nil {
 		t.Fatalf("AddAccount failed: %v", err)
 	}

@@ -36,7 +36,11 @@ func TestRemoveSelectiveKeymasterContent_RemoveSystemKeyOnly(t *testing.T) {
 		t.Fatalf("db.InitDB failed: %v", err)
 	}
 
-	acctID, err := db.AddAccount("u2", "h2", "lbl", "")
+	mgr := db.DefaultAccountManager()
+	if mgr == nil {
+		t.Fatalf("no account manager available")
+	}
+	acctID, err := mgr.AddAccount("u2", "h2", "lbl", "")
 	if err != nil {
 		t.Fatalf("AddAccount failed: %v", err)
 	}

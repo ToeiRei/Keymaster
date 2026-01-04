@@ -15,7 +15,11 @@ func TestRemoveSelectiveKeymasterContent_RemovesExcludedKey(t *testing.T) {
 	}
 
 	// Create account and keys
-	acctID, err := db.AddAccount("u1", "h1", "lbl", "")
+	mgr := db.DefaultAccountManager()
+	if mgr == nil {
+		t.Fatalf("no account manager available")
+	}
+	acctID, err := mgr.AddAccount("u1", "h1", "lbl", "")
 	if err != nil {
 		t.Fatalf("AddAccount failed: %v", err)
 	}

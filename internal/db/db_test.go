@@ -88,11 +88,15 @@ func TestPublicKey_AddDuplicateBehavior(t *testing.T) {
 func TestAccount_AddDuplicateBehavior(t *testing.T) {
 	_ = newTestDB(t)
 
-	_, err := AddAccount("alice", "host1.example", "", "")
+	mgr := DefaultAccountManager()
+	if mgr == nil {
+		t.Fatalf("no account manager available")
+	}
+	_, err := mgr.AddAccount("alice", "host1.example", "", "")
 	if err != nil {
 		t.Fatalf("unexpected error adding account: %v", err)
 	}
-	_, err = AddAccount("alice", "host1.example", "", "")
+	_, err = mgr.AddAccount("alice", "host1.example", "", "")
 	if !errors.Is(err, ErrDuplicate) {
 		t.Fatalf("expected ErrDuplicate on duplicate AddAccount, got: %v", err)
 	}

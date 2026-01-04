@@ -14,7 +14,11 @@ func TestDeleteConfirm_NoDecommission_DeletesAccount(t *testing.T) {
 	_ = initTestDB()
 
 	// Add an account to DB
-	id, err := db.AddAccount("deluser", "delhost", "lbl", "")
+	mgr := db.DefaultAccountManager()
+	if mgr == nil {
+		t.Fatalf("no account manager available")
+	}
+	id, err := mgr.AddAccount("deluser", "delhost", "lbl", "")
 	if err != nil {
 		t.Fatalf("failed to add account: %v", err)
 	}

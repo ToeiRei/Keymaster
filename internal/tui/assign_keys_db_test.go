@@ -16,7 +16,11 @@ func TestAssignKeys_AssignAndUnassign(t *testing.T) {
 	_ = initTestDB()
 
 	// Create account and keys
-	acctID, err := db.AddAccount("akuser", "akhost", "lbl", "")
+	mgr := db.DefaultAccountManager()
+	if mgr == nil {
+		t.Fatalf("no account manager available")
+	}
+	acctID, err := mgr.AddAccount("akuser", "akhost", "lbl", "")
 	if err != nil {
 		t.Fatalf("AddAccount failed: %v", err)
 	}
