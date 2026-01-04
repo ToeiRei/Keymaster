@@ -7,8 +7,8 @@
 package deploy // import "github.com/toeirei/keymaster/internal/deploy"
 
 import (
-	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/toeirei/keymaster/internal/db"
@@ -214,8 +214,8 @@ func removeAuthorizedKeysFile(deployer *Deployer, result *DecommissionResult) er
 
 	// Check if file exists
 	if _, err := deployer.sftp.Stat(authorizedKeysPath); err != nil {
-		// File doesn't exist, nothing to remove
-		if errors.Is(err, errors.New("file does not exist")) {
+		// File doesn't exist, nothing to remove. Accept common forms of "not found"
+		if os.IsNotExist(err) || strings.Contains(err.Error(), "file does not exist") || strings.Contains(err.Error(), "no such file") {
 			return nil
 		}
 		return fmt.Errorf("failed to check authorized_keys file: %w", err)
