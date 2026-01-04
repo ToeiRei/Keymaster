@@ -38,3 +38,18 @@
 //   - For fast unit tests that don't need a DB, inject `FakeKeyManager` or
 //     `FakeAccountManager` via `SetDefaultKeyManager` / `SetDefaultAccountManager`.
 package db
+
+// DI contract (concise)
+// - Callers should depend on the smallest practical interface (for example
+//   use `AccountManager` instead of `Store` when only adding/deleting
+//   accounts). Use `Default*` helpers to obtain a package-default backed by
+//   the global `store` when available, or inject a fake via `SetDefault*`
+//   in tests.
+// - `SetDefault*` / `ClearDefault*` are primarily for tests. They allow a
+//   test to install a deterministic fake (see `searcher_fake.go`) without
+//   initializing a real DB.
+// - `KeyManager` centralizes public-key CRUD and assignment behavior. It
+//   should be the primary surface used by UI/CLI code for key operations.
+// - Low-level Bun helpers remain in `bun_adapter.go`. They are implementation
+//   details and intended to be called by adapters (e.g., `bunKeyManager`),
+//   not by high-level code.
