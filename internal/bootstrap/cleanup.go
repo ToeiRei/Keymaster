@@ -40,9 +40,32 @@ var (
 	// so tests can stop it when needed.
 	currentReaperTicker *time.Ticker
 	// Package-level hooks to allow tests to override SSH and SFTP creation.
-	sshDialFunc   = ssh.Dial
-	sftpNewClient = sftp.NewClient
+	sshDialFunc = ssh.Dial
+	// sftpNewClient constructs an sftp client adapter; tests may override this to provide fakes.
+	sftpNewClient = func(conn *ssh.Client, opts ...sftp.ClientOption) (sftpClientIface, error) {
+		c, err := sftp.NewClient(conn, opts...)
+		if err != nil {
+			return nil, err
+		}
+		return &sftpAdapter{c}, nil
+	}
 )
+
+// sftpClientIface abstracts a minimal subset of *sftp.Client used by cleanup.
+type sftpClientIface interface {
+	Open(string) (io.ReadCloser, error)
+	Create(string) (io.WriteCloser, error)
+	Close() error
+}
+
+// sftpAdapter wraps a *sftp.Client to satisfy sftpClientIface.
+type sftpAdapter struct {
+	c *sftp.Client
+}
+
+func (s *sftpAdapter) Open(p string) (io.ReadCloser, error)    { return s.c.Open(p) }
+func (s *sftpAdapter) Create(p string) (io.WriteCloser, error) { return s.c.Create(p) }
+func (s *sftpAdapter) Close() error                            { return s.c.Close() }
 
 // RegisterSession adds a bootstrap session to the active sessions registry.
 // This ensures the session can be cleaned up even if the program crashes.
@@ -268,7 +291,7 @@ func removeTempKeyFromRemoteHost(session *BootstrapSession) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s: %w", session.PendingAccount.Hostname, err)
 	}
-	defer func() { _ = conn.Close() }()
+	defer func() { _ = closeSSHClient(conn) }()
 
 	// Create SFTP session
 	sftpClient, err := sftpNewClient(conn)
@@ -314,6 +337,15 @@ func removeTempKeyFromRemoteHost(session *BootstrapSession) error {
 	}
 
 	return nil
+}
+
+// closeSSHClient defensively closes an *ssh.Client and recovers from panics.
+func closeSSHClient(c *ssh.Client) error {
+	if c == nil {
+		return nil
+	}
+	defer func() { _ = recover() }()
+	return c.Close()
 }
 
 // removeLine removes a specific line from a multi-line string.

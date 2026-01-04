@@ -6,6 +6,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/pkg/sftp"
 	"github.com/toeirei/keymaster/internal/model"
 	"golang.org/x/crypto/ssh"
 )
@@ -49,18 +50,10 @@ func (f *fakeSFTP) Create(path string) (io.WriteCloser, error) {
 
 func (f *fakeSFTP) Close() error { return nil }
 
-// sftp.NewClient is replaced by our package variable in tests; this adapter satisfies expected signature
-func fakeSftpNewClientFromFake(conn interface{}, f *fakeSFTP) (sftpClientInterface, error) {
-	// not using conn; return our fake as the concrete type that has required methods
-	return f, nil
-}
+// sftp.NewClient is replaced by our package variable in tests; tests will call sftpNewClient directly.
 
 // Define an interface matching the sftp methods we use to allow type compatibility in tests
-type sftpClientInterface interface {
-	Open(string) (io.ReadCloser, error)
-	Create(string) (io.WriteCloser, error)
-	Close() error
-}
+// test uses the package-level sftpClientIface defined in cleanup.go
 
 // Test successful removal of temporary key from authorized_keys
 func TestRemoveTempKeyFromRemoteHost_Success(t *testing.T) {
@@ -100,5 +93,44 @@ func TestRemoveTempKeyFromRemoteHost_SftpError(t *testing.T) {
 	err = removeTempKeyFromRemoteHost(sess)
 	if err == nil {
 		t.Fatalf("expected error when ssh.Dial fails")
+	}
+}
+
+// Full success path: override sshDialFunc and sftpNewClient to use a fake SFTP
+func TestRemoveTempKeyFromRemoteHost_FullSuccess(t *testing.T) {
+	origSshDial := sshDialFunc
+	origSftpNew := sftpNewClient
+	defer func() {
+		sshDialFunc = origSshDial
+		sftpNewClient = origSftpNew
+	}()
+
+	tk, err := generateTemporaryKeyPair()
+	if err != nil {
+		t.Fatalf("generateTemporaryKeyPair: %v", err)
+	}
+
+	sess := &BootstrapSession{PendingAccount: model.Account{Username: "u", Hostname: "h"}, TempKeyPair: tk}
+
+	// fake SFTP implementation using the package sftpClientIface
+	fake := &fakeSFTP{files: make(map[string][]byte)}
+	fake.files[".ssh/authorized_keys"] = []byte(tk.GetPublicKey() + "\nother-key\n")
+
+	sshDialFunc = func(network, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+		return &ssh.Client{}, nil
+	}
+
+	sftpNewClient = func(conn *ssh.Client, opts ...sftp.ClientOption) (sftpClientIface, error) {
+		return fake, nil
+	}
+
+	if err := removeTempKeyFromRemoteHost(sess); err != nil {
+		t.Fatalf("removeTempKeyFromRemoteHost failed: %v", err)
+	}
+
+	// verify the written file no longer contains the temp public key
+	got := fake.files[".ssh/authorized_keys"]
+	if bytes.Contains(got, []byte(tk.GetPublicKey())) {
+		t.Fatalf("expected temp key removed from written authorized_keys")
 	}
 }
