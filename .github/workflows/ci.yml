@@ -16,6 +16,9 @@ jobs:
   test:
     name: Run tests
     runs-on: ubuntu-latest
+    env:
+      KEYMASTER_DB_MAX_OPEN_CONNS: '1'
+      KEYMASTER_DB_MAX_IDLE_CONNS: '1'
     steps:
       - uses: actions/checkout@v6
       - name: Set up Go
