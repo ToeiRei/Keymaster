@@ -5,20 +5,6 @@ import (
 	"time"
 )
 
-// helper to init a fresh in-memory sqlite DB for each test
-func initTestDB(t *testing.T) *SqliteStore {
-	t.Helper()
-	dsn := "file:" + t.Name() + "?mode=memory&cache=shared"
-	if err := InitDB("sqlite", dsn); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
-	}
-	s, ok := store.(*SqliteStore)
-	if !ok {
-		t.Fatalf("store is not *SqliteStore")
-	}
-	return s
-}
-
 func TestAccountHelpers(t *testing.T) {
 	WithTestStore(t, func(s *SqliteStore) {
 		bdb := s.bun
