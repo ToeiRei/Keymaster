@@ -1,0 +1,53 @@
+name: Coverage
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Run coverage and generate badge
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.25'
+
+      - name: Run tests and collect coverage
+        run: |
+          set -eux
+          go test ./... -coverprofile=coverage.out || true
+          go tool cover -func=coverage.out > coverage.txt || true
+
+      - name: Generate SVG badge
+        run: |
+          set -eux
+          percent=$(awk '/total:/ {print $3}' coverage.txt | sed 's/%//') || true
+          if [ -z "$percent" ]; then percent=0; fi
+          width=$(awk -v p="$percent" 'BEGIN{printf("%d", 200*p/100)}')
+          cat > coverage.svg <<'EOF'
+          <svg xmlns="http://www.w3.org/2000/svg" width="200" height="20">
+            <rect width="200" height="20" fill="#555"/>
+            <rect width="WIDTH" height="20" x="0" y="0" fill="#4c1"/>
+            <text x="100" y="14" font-family="Verdana" font-size="11" fill="#fff" text-anchor="middle">coverage PERCENT%</text>
+          </svg>
+          EOF
+          sed -i "s/WIDTH/${width}/g" coverage.svg
+          sed -i "s/PERCENT/${percent}/g" coverage.svg
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: |
+            coverage.svg
+            coverage.txt
+            coverage.out

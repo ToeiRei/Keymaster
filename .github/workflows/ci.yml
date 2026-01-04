@@ -49,63 +49,15 @@ jobs:
           args: run ./... --out-format=colored-line-number --skip-dirs=tools,internal/i18n/locales,testdata
       - name: Static vet
         run: go vet ./...
-      - name: Run tests (race on Linux, coverage)
+      - name: Run tests (race on Linux)
         run: |
           echo "Running tests with race detector on Linux, fallback to non-race on other OS"
           if [ "${{ runner.os }}" = "Linux" ]; then
             sudo apt-get update && sudo apt-get install -y build-essential
             export CGO_ENABLED=1
-            go test ./... -v -race -coverprofile=coverage.out
+            go test ./... -v -race
           else
-            go test ./... -v -coverprofile=coverage.out
-          fi
-      - name: Generate coverage badge (self-contained)
-        run: |
-          set -euo pipefail
-          if [ -f coverage.out ]; then
-            pct=$(go tool cover -func=coverage.out | awk '/total:/ {print $3}')
-          else
-            pct="0.0%"
-          fi
-          pct_num=$(echo "$pct" | tr -d '%')
-          color=$(awk -v p="$pct_num" 'BEGIN{p+=0; if(p>=90) print "#4c1"; else if(p>=75) print "#dfb317"; else print "#e05d44"}')
-          cat > coverage.svg <<SVG
-          <svg xmlns="http://www.w3.org/2000/svg" width="120" height="20">
-            <rect width="70" height="20" fill="#555"/>
-            <rect x="70" width="50" height="20" fill="${color}"/>
-            <rect rx="3" width="120" height="20" fill="transparent"/>
-            <g fill="#fff" font-family="Verdana" font-size="11">
-              <text x="10" y="14">coverage</text>
-              <text x="78" y="14">${pct}</text>
-            </g>
-          </svg>
-          SVG
-      - name: Upload coverage
-        uses: actions/upload-artifact@v6
-        with:
-          name: coverage
-          path: coverage.out
-      - name: Upload coverage badge
-        uses: actions/upload-artifact@v6
-        with:
-          name: coverage-badge
-          path: coverage.svg
-
-      - name: Commit coverage badge
-        if: github.actor != 'github-actions[bot]' && github.ref == 'refs/heads/main'
-        run: |
-          if [ -f coverage.svg ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add coverage.svg
-            if git diff --cached --quiet; then
-              echo "No changes to coverage.svg"
-            else
-              git commit -m "ci: update coverage badge"
-              git push origin HEAD:refs/heads/main
-            fi
-          else
-            echo "coverage.svg not found, skipping"
+            go test ./... -v
           fi
 
   build:
