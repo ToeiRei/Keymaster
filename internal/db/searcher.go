@@ -214,6 +214,81 @@ func ClearDefaultAccountManager() {
 	defaultAccountManager = nil
 }
 
+// KeyManager defines a minimal interface for managing public keys (add/delete,
+// toggle global, assignments, and simple retrievals). This mirrors the Store
+// methods but keeps higher-level code decoupled from the concrete Store.
+type KeyManager interface {
+	AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error
+	AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error)
+	DeletePublicKey(id int) error
+	TogglePublicKeyGlobal(id int) error
+	GetAllPublicKeys() ([]model.PublicKey, error)
+	GetPublicKeyByComment(comment string) (*model.PublicKey, error)
+	GetGlobalPublicKeys() ([]model.PublicKey, error)
+	AssignKeyToAccount(keyID, accountID int) error
+	UnassignKeyFromAccount(keyID, accountID int) error
+	GetKeysForAccount(accountID int) ([]model.PublicKey, error)
+	GetAccountsForKey(keyID int) ([]model.Account, error)
+}
+
+// DefaultKeyManager returns a KeyManager backed by the package-level `store`.
+// Tests can inject a fake via SetDefaultKeyManager.
+func DefaultKeyManager() KeyManager {
+	if defaultKeyManager != nil {
+		return defaultKeyManager
+	}
+	if store == nil {
+		return nil
+	}
+	return &bunKeyManager{bStore: store}
+}
+
+// bunKeyManager adapts the Store to KeyManager.
+type bunKeyManager struct{ bStore Store }
+
+func (b *bunKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error {
+	return b.bStore.AddPublicKey(algorithm, keyData, comment, isGlobal)
+}
+
+func (b *bunKeyManager) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) {
+	return b.bStore.AddPublicKeyAndGetModel(algorithm, keyData, comment, isGlobal)
+}
+
+func (b *bunKeyManager) DeletePublicKey(id int) error { return b.bStore.DeletePublicKey(id) }
+func (b *bunKeyManager) TogglePublicKeyGlobal(id int) error {
+	return b.bStore.TogglePublicKeyGlobal(id)
+}
+func (b *bunKeyManager) GetAllPublicKeys() ([]model.PublicKey, error) {
+	return b.bStore.GetAllPublicKeys()
+}
+func (b *bunKeyManager) GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
+	return b.bStore.GetPublicKeyByComment(comment)
+}
+func (b *bunKeyManager) GetGlobalPublicKeys() ([]model.PublicKey, error) {
+	return b.bStore.GetGlobalPublicKeys()
+}
+func (b *bunKeyManager) AssignKeyToAccount(keyID, accountID int) error {
+	return b.bStore.AssignKeyToAccount(keyID, accountID)
+}
+func (b *bunKeyManager) UnassignKeyFromAccount(keyID, accountID int) error {
+	return b.bStore.UnassignKeyFromAccount(keyID, accountID)
+}
+func (b *bunKeyManager) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
+	return b.bStore.GetKeysForAccount(accountID)
+}
+func (b *bunKeyManager) GetAccountsForKey(keyID int) ([]model.Account, error) {
+	return b.bStore.GetAccountsForKey(keyID)
+}
+
+// package-level override used by tests
+var defaultKeyManager KeyManager
+
+// SetDefaultKeyManager sets a package-level KeyManager for DefaultKeyManager().
+func SetDefaultKeyManager(m KeyManager) { defaultKeyManager = m }
+
+// ClearDefaultKeyManager clears any previously set package-level key manager.
+func ClearDefaultKeyManager() { defaultKeyManager = nil }
+
 // AuditWriter defines a minimal interface for recording audit log events.
 type AuditWriter interface {
 	LogAction(action string, details string) error

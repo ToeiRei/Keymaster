@@ -107,3 +107,110 @@ func (f *FakeAccountManager) DeleteAccount(id int) error {
 	f.Calls = append(f.Calls, [3]string{"DeleteAccount", strconv.Itoa(id), ""})
 	return nil
 }
+
+// FakeKeyManager is a minimal fake used by tests to manage public keys.
+type FakeKeyManager struct {
+	Calls     [][3]string // method, arg1, arg2 (arg2 used for IDs as string)
+	NextKeyID int
+	Results   []model.PublicKey
+	Err       error
+}
+
+func (f *FakeKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error {
+	if f.Err != nil {
+		return f.Err
+	}
+	f.Calls = append(f.Calls, [3]string{"AddPublicKey", algorithm, comment})
+	return nil
+}
+
+func (f *FakeKeyManager) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	id := f.NextKeyID
+	if id == 0 {
+		id = 1
+	}
+	pk := &model.PublicKey{ID: id, Algorithm: algorithm, KeyData: keyData, Comment: comment, IsGlobal: isGlobal}
+	f.Calls = append(f.Calls, [3]string{"AddPublicKeyAndGetModel", algorithm, comment})
+	return pk, nil
+}
+
+func (f *FakeKeyManager) DeletePublicKey(id int) error {
+	if f.Err != nil {
+		return f.Err
+	}
+	f.Calls = append(f.Calls, [3]string{"DeletePublicKey", strconv.Itoa(id), ""})
+	return nil
+}
+
+func (f *FakeKeyManager) TogglePublicKeyGlobal(id int) error {
+	if f.Err != nil {
+		return f.Err
+	}
+	f.Calls = append(f.Calls, [3]string{"TogglePublicKeyGlobal", strconv.Itoa(id), ""})
+	return nil
+}
+
+func (f *FakeKeyManager) GetAllPublicKeys() ([]model.PublicKey, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	return f.Results, nil
+}
+
+func (f *FakeKeyManager) GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	for _, p := range f.Results {
+		if p.Comment == comment {
+			return &p, nil
+		}
+	}
+	return nil, nil
+}
+
+func (f *FakeKeyManager) GetGlobalPublicKeys() ([]model.PublicKey, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	var out []model.PublicKey
+	for _, p := range f.Results {
+		if p.IsGlobal {
+			out = append(out, p)
+		}
+	}
+	return out, nil
+}
+
+func (f *FakeKeyManager) AssignKeyToAccount(keyID, accountID int) error {
+	if f.Err != nil {
+		return f.Err
+	}
+	f.Calls = append(f.Calls, [3]string{"AssignKeyToAccount", strconv.Itoa(keyID), strconv.Itoa(accountID)})
+	return nil
+}
+
+func (f *FakeKeyManager) UnassignKeyFromAccount(keyID, accountID int) error {
+	if f.Err != nil {
+		return f.Err
+	}
+	f.Calls = append(f.Calls, [3]string{"UnassignKeyFromAccount", strconv.Itoa(keyID), strconv.Itoa(accountID)})
+	return nil
+}
+
+func (f *FakeKeyManager) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	return f.Results, nil
+}
+
+func (f *FakeKeyManager) GetAccountsForKey(keyID int) ([]model.Account, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	return []model.Account{}, nil
+}

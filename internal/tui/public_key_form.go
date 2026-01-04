@@ -93,7 +93,12 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			if err := db.AddPublicKey(alg, keyData, comment, m.isGlobal); err != nil {
+			mgr := db.DefaultKeyManager()
+			if mgr == nil {
+				m.err = fmt.Errorf("no key manager available")
+				return m, nil
+			}
+			if err := mgr.AddPublicKey(alg, keyData, comment, m.isGlobal); err != nil {
 				m.err = err
 				return m, nil
 			}

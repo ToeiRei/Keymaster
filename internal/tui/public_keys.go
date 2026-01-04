@@ -70,7 +70,11 @@ func newPublicKeysModelWithSearcher(s db.KeySearcher) publicKeysModel {
 		searcher: s,
 	}
 	var err error
-	m.keys, err = db.GetAllPublicKeys()
+	if km := db.DefaultKeyManager(); km != nil {
+		m.keys, err = km.GetAllPublicKeys()
+	} else {
+		m.keys, err = db.GetAllPublicKeys()
+	}
 	if err != nil {
 		m.err = err
 	}
@@ -200,11 +204,14 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "enter":
 				if m.confirmCursor == 1 { // Yes is selected
-					if err := db.DeletePublicKey(m.keyToDelete.ID); err != nil {
+					km := db.DefaultKeyManager()
+					if km == nil {
+						m.err = fmt.Errorf("no key manager available")
+					} else if err := km.DeletePublicKey(m.keyToDelete.ID); err != nil {
 						m.err = err
 					} else {
 						m.status = i18n.T("public_keys.status.delete_success", m.keyToDelete.Comment)
-						m.keys, m.err = db.GetAllPublicKeys()
+						m.keys, m.err = km.GetAllPublicKeys()
 						m.rebuildDisplayedKeys()
 						m.viewport.SetContent(m.listContentView())
 					}
@@ -281,12 +288,15 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "g": // Toggle global status
 			if len(m.displayedKeys) > 0 {
 				keyToToggle := m.displayedKeys[m.cursor]
-				if err := db.TogglePublicKeyGlobal(keyToToggle.ID); err != nil {
+				km := db.DefaultKeyManager()
+				if km == nil {
+					m.err = fmt.Errorf("no key manager available")
+				} else if err := km.TogglePublicKeyGlobal(keyToToggle.ID); err != nil {
 					m.err = err
 				} else {
 					m.status = i18n.T("public_keys.status.toggle_success", keyToToggle.Comment)
 					// Refresh the list to show the new status
-					m.keys, m.err = db.GetAllPublicKeys()
+					m.keys, m.err = km.GetAllPublicKeys()
 					m.rebuildDisplayedKeys()
 					m.viewport.SetContent(m.listContentView())
 				}
@@ -295,7 +305,12 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "u": // Usage report
 			if len(m.displayedKeys) > 0 {
 				m.usageReportKey = m.displayedKeys[m.cursor]
-				accounts, err := db.GetAccountsForKey(m.usageReportKey.ID)
+				km := db.DefaultKeyManager()
+				if km == nil {
+					m.err = fmt.Errorf("no key manager available")
+					return m, nil
+				}
+				accounts, err := km.GetAccountsForKey(m.usageReportKey.ID)
 				if err != nil {
 					m.err = err
 					return m, nil
