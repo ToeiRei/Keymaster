@@ -1,0 +1,53 @@
+package bootstrap
+
+import (
+	"testing"
+	"time"
+
+	"github.com/toeirei/keymaster/internal/db"
+)
+
+// TestCleanupOrphanedSession_LogsAudit verifies that cleaning up an orphaned
+// bootstrap session emits a BOOTSTRAP_FAILED audit entry.
+func TestCleanupOrphanedSession_LogsAudit(t *testing.T) {
+	if err := db.InitDB("sqlite", ":memory:"); err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+
+	// Save a bootstrap session record to exercise deletion path
+	id := "test-session-1"
+	expires := time.Now().Add(1 * time.Hour)
+	if err := db.SaveBootstrapSession(id, "bob", "host.example", "", "", "pubkey", expires, "active"); err != nil {
+		t.Fatalf("SaveBootstrapSession failed: %v", err)
+	}
+
+	fake := &db.FakeAuditWriter{}
+	db.SetDefaultAuditWriter(fake)
+	defer db.ClearDefaultAuditWriter()
+
+	// Retrieve the session model and call the cleanup helper.
+	s, err := db.GetBootstrapSession(id)
+	if err != nil {
+		t.Fatalf("GetBootstrapSession failed: %v", err)
+	}
+	if s == nil {
+		t.Fatalf("expected saved session, got nil")
+	}
+
+	if err := cleanupOrphanedSessionModel(s); err != nil {
+		t.Fatalf("cleanupOrphanedSessionModel failed: %v", err)
+	}
+
+	if len(fake.Calls) == 0 {
+		t.Fatalf("expected audit calls, got none")
+	}
+	if fake.Calls[0][0] != "BOOTSTRAP_FAILED" {
+		t.Fatalf("unexpected audit action: %s", fake.Calls[0][0])
+	}
+
+	// Ensure session was removed
+	s2, _ := db.GetBootstrapSession(id)
+	if s2 != nil {
+		t.Fatalf("expected session deleted, still present")
+	}
+}
