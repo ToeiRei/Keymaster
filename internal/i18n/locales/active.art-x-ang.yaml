@@ -100,7 +100,7 @@ public_keys.empty_filtered: "Nān cǣġ þīnum sīfe ġefēreþ."
 public_keys.filtering: "Sīfe: %s▮"
 public_keys.filter_active: "Sīfe: %s (cnuc 'esc' tō clǣnsiġenne)"
 public_keys.filter_hint: "Cnuc / tō sīfenne…"
-public_keys.footer: "(a)eċan (c)ġeċīeġan (d)ādilgian (g)eorþlīċ ƿendan (x)setten ðæs sprǣnges (u)brūcung (q)forlǣtan"
+public_keys.footer: "(a)eċan (c)ġeċīeġan (d)ādilgian (g)eorþlīċ ƿendan (e)āwendan (x)setten ðæs sprǣnges (u)brūcung (q)forlǣtan"
 public_keys.list_title: "Opene Cǣgan"
 public_keys.detail_comment: "Smeaung: %s"
 public_keys.detail_algorithm: "Cræft: %s"
@@ -134,6 +134,9 @@ public_keys.expire.help: "Innan dag tō setten þe cǣġ scyle sprengan (lēaf t
 public_keys.status.expire_cancelled: "Sprǣng ācierred."
 public_keys.status.expire_invalid_format: "Unrihte dagræd; brūc YYYY-MM-DD oððe RFC3339."
 public_keys.status.expire_success: "Sprǣng ġeāwend for cǣġ: %s"
+
+public_keys.status.deactivate_success: "Cǣġ ācierred: %s"
+public_keys.status.reactivate_success: "Cǣġ ġefriðod: %s"
 
 public_keys.detail_expires: "Sprǣng: %s"
 public_keys.detail_expires_at: "Sprǣng æt: %s"

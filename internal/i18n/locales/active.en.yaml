@@ -115,7 +115,7 @@ public_keys.empty_filtered: "No keys match your filter."
 public_keys.filtering: "Filter: %s█"
 public_keys.filter_active: "Filter: %s (press 'esc' to clear)"
 public_keys.filter_hint: "Press / to filter…"
-public_keys.footer: "(a)dd (c)opy (d)elete (g)lobal toggle (x)expire (u)sage (q)uit"
+public_keys.footer: "(a)dd (c)opy (d)elete (g)lobal toggle (e)deact (x)expire (u)sage (q)uit"
 public_keys.list_title: "Public Keys"
 public_keys.detail_comment: "Comment: %s"
 public_keys.detail_algorithm: "Algorithm: %s"
@@ -146,6 +146,9 @@ public_keys.expire.help: "Enter a date to expire the key (leave blank to clear).
 public_keys.status.expire_cancelled: "Expiration cancelled."
 public_keys.status.expire_invalid_format: "Invalid expiration format; use YYYY-MM-DD or RFC3339."
 public_keys.status.expire_success: "Expiration updated for key: %s"
+
+public_keys.status.deactivate_success: "Deactivated key: %s"
+public_keys.status.reactivate_success: "Reactivated key: %s"
 
 public_keys.detail_expires: "Expires: %s"
 public_keys.detail_expires_at: "Expires at: %s"

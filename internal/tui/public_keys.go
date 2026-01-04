@@ -363,6 +363,38 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
+		case "e": // Deactivate/reactivate via epoch-0 toggle
+			if len(m.displayedKeys) > 0 {
+				keyToToggle := m.displayedKeys[m.cursor]
+				km := db.DefaultKeyManager()
+				if km == nil {
+					m.err = fmt.Errorf("no key manager available")
+				} else {
+					now := time.Now().UTC()
+					inactive := !keyToToggle.ExpiresAt.IsZero() && keyToToggle.ExpiresAt.Before(now)
+					var newExp time.Time
+					if inactive {
+						// reactivate by clearing expiration
+						newExp = time.Time{}
+					} else {
+						// deactivate by setting to unix epoch 0
+						newExp = time.Unix(0, 0).UTC()
+					}
+					if err := km.SetPublicKeyExpiry(keyToToggle.ID, newExp); err != nil {
+						m.err = err
+					} else {
+						if inactive {
+							m.status = i18n.T("public_keys.status.reactivate_success", keyToToggle.Comment)
+						} else {
+							m.status = i18n.T("public_keys.status.deactivate_success", keyToToggle.Comment)
+						}
+						m.keys, m.err = km.GetAllPublicKeys()
+						m.rebuildDisplayedKeys()
+						m.viewport.SetContent(m.listContentView())
+					}
+				}
+			}
+			return m, nil
 		case "x": // Set expiration for selected key
 			if len(m.displayedKeys) > 0 {
 				m.keyToExpire = m.displayedKeys[m.cursor]

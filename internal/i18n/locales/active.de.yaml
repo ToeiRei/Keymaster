@@ -127,7 +127,7 @@ public_keys.empty_filtered: "Keine Schlüssel passen zum Filter."
 public_keys.filtering: "Filter: %s█"
 public_keys.filter_active: "Filter: %s (mit 'esc' löschen)"
 public_keys.filter_hint: "Mit / filtern…"
-public_keys.footer: "a: hinzufügen c: kopieren d: löschen g: global umschalten x: ablauf setzen u: verwendung anzeigen q: beenden"
+public_keys.footer: "a: hinzufügen c: kopieren d: löschen g: global umschalten e: deaktivieren x: ablauf setzen u: verwendung anzeigen q: beenden"
 public_keys.list_title: "Öffentliche Schlüssel"
 public_keys.detail_comment: "Kommentar: %s"
 public_keys.detail_algorithm: "Algorithmus: %s"
@@ -161,6 +161,9 @@ public_keys.expire.help: "Datum eingeben um Schlüssel ablaufen zu lassen (leer 
 public_keys.status.expire_cancelled: "Ablauf abgebrochen."
 public_keys.status.expire_invalid_format: "Ungültiges Datumsformat; nutze YYYY-MM-DD oder RFC3339."
 public_keys.status.expire_success: "Ablaufdatum für Schlüssel aktualisiert: %s"
+
+public_keys.status.deactivate_success: "Schlüssel deaktiviert: %s"
+public_keys.status.reactivate_success: "Schlüssel reaktiviert: %s"
 
 public_keys.detail_expires: "Läuft ab: %s"
 public_keys.detail_expires_at: "Läuft ab am: %s"
