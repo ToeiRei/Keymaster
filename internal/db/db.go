@@ -41,6 +41,8 @@ var (
 	store Store
 	//go:embed migrations
 	embeddedMigrations embed.FS
+	// sqlOpenFunc allows tests to override database opening behavior.
+	sqlOpenFunc = sql.Open
 )
 
 // InitDB initializes the database connection based on the provided type and DSN.
@@ -69,7 +71,7 @@ func RunDBMaintenance(dbType, dsn string) error {
 	if dbType == "postgres" {
 		driverName = "pgx"
 	}
-	sqlDB, err := sql.Open(driverName, dsn)
+	sqlDB, err := sqlOpenFunc(driverName, dsn)
 	if err != nil {
 		return fmt.Errorf("failed to open database for maintenance: %w", err)
 	}
@@ -135,7 +137,7 @@ func NewStoreFromDSN(dbType, dsn string) (Store, error) {
 		driverName = "pgx"
 	}
 	start := time.Now()
-	sqlDB, err := sql.Open(driverName, dsn)
+	sqlDB, err := sqlOpenFunc(driverName, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
