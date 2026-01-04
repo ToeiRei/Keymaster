@@ -165,3 +165,56 @@ func SetDefaultKeySearcher(s KeySearcher) {
 func ClearDefaultKeySearcher() {
 	defaultKeySearcher = nil
 }
+
+// AuditWriter defines a minimal interface for recording audit log events.
+type AuditWriter interface {
+	LogAction(action string, details string) error
+}
+
+// BunAuditWriter is a Bun-based implementation of AuditWriter.
+type BunAuditWriter struct {
+	bdb *bun.DB
+}
+
+// NewBunAuditWriter creates a new BunAuditWriter.
+func NewBunAuditWriter(bdb *bun.DB) AuditWriter {
+	return &BunAuditWriter{bdb: bdb}
+}
+
+// NewAuditWriterFromStore creates an AuditWriter from any Store by using
+// the underlying Bun DB.
+func NewAuditWriterFromStore(s Store) AuditWriter {
+	return NewBunAuditWriter(s.BunDB())
+}
+
+// LogAction delegates to the centralized Bun helper.
+func (s *BunAuditWriter) LogAction(action string, details string) error {
+	return LogActionBun(s.bdb, action, details)
+}
+
+// DefaultAuditWriter returns an AuditWriter backed by the package-level
+// `store` if available. It returns nil when the package store is not
+// initialized; callers should handle nil by falling back to direct helpers.
+func DefaultAuditWriter() AuditWriter {
+	if defaultAuditWriter != nil {
+		return defaultAuditWriter
+	}
+	if store == nil {
+		return nil
+	}
+	return NewAuditWriterFromStore(store)
+}
+
+// package-level override used primarily by tests to inject a fake audit writer.
+var defaultAuditWriter AuditWriter
+
+// SetDefaultAuditWriter sets a package-level AuditWriter that will be
+// returned by DefaultAuditWriter(). Useful for tests to inject a fake.
+func SetDefaultAuditWriter(w AuditWriter) {
+	defaultAuditWriter = w
+}
+
+// ClearDefaultAuditWriter clears any previously set package-level audit writer.
+func ClearDefaultAuditWriter() {
+	defaultAuditWriter = nil
+}

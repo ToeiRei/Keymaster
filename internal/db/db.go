@@ -547,6 +547,10 @@ func GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
 
 // LogAction records an audit trail event.
 func LogAction(action string, details string) error {
+	// Prefer an injected AuditWriter when available (useful for tests).
+	if w := DefaultAuditWriter(); w != nil {
+		return w.LogAction(action, details)
+	}
 	return store.LogAction(action, details)
 }
 

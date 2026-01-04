@@ -57,3 +57,20 @@ func (f *FakeAuditSearcher) GetAllAuditLogEntries() ([]model.AuditLogEntry, erro
 	}
 	return f.Results, nil
 }
+
+// FakeAuditWriter is a minimal fake used by tests for audit writes.
+type FakeAuditWriter struct {
+	// Calls records action/details tuples for assertions.
+	Calls [][2]string
+	// Err to return from LogAction if non-nil.
+	Err error
+}
+
+// LogAction implements AuditWriter for the fake.
+func (f *FakeAuditWriter) LogAction(action string, details string) error {
+	if f.Err != nil {
+		return f.Err
+	}
+	f.Calls = append(f.Calls, [2]string{action, details})
+	return nil
+}
