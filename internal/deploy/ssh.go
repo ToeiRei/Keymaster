@@ -222,9 +222,16 @@ func (r *sftpRealAdapter) Close() error {
 	return r.client.Close()
 }
 
+// sshClientIface is a minimal interface used by this package to represent an
+// SSH client. Using an interface allows tests to provide fake implementations
+// without constructing a concrete *ssh.Client.
+type sshClientIface interface {
+	Close() error
+}
+
 // Deployer handles the connection and deployment to a remote host.
 type Deployer struct {
-	client *ssh.Client
+	client sshClientIface
 	sftp   sftpClient
 	config *ConnectionConfig
 }
@@ -238,24 +245,38 @@ var NewDeployerFunc = func(host, user, privateKey string, passphrase []byte) (*D
 // sshDial is a package-level wrapper around ssh.Dial to allow tests to
 // replace the dialing behavior. Tests can override this to return a fake
 // *ssh.Client or a controlled error without making real network calls.
-var sshDial = ssh.Dial
+// sshDial is a package-level wrapper around ssh.Dial to allow tests to
+// replace the dialing behavior. It returns an `sshClientIface` so tests can
+// provide fake clients.
+var sshDial = func(network, addr string, cfg *ssh.ClientConfig) (sshClientIface, error) {
+	return ssh.Dial(network, addr, cfg)
+}
 
 // newSftpClient is a package-level wrapper used to create an sftpRaw from an
 // existing *ssh.Client. By default it wraps the real *sftp.Client with
 // sftpRealAdapter. Tests may override this to return a mock sftpRaw.
-var newSftpClient = func(c *ssh.Client) (sftpRaw, error) {
-	real, err := sftp.NewClient(c)
-	if err != nil {
-		return nil, err
+var newSftpClient = func(c sshClientIface) (sftpRaw, error) {
+	// The real sftp.NewClient requires a concrete *ssh.Client. In production
+	// we expect the provided client to be a *ssh.Client; tests may override
+	// this variable to accept alternative types.
+	if c == nil {
+		return nil, fmt.Errorf("nil ssh client")
 	}
-	return &sftpRealAdapter{client: real}, nil
+	if realClient, ok := c.(*ssh.Client); ok {
+		real, err := sftp.NewClient(realClient)
+		if err != nil {
+			return nil, err
+		}
+		return &sftpRealAdapter{client: real}, nil
+	}
+	return nil, fmt.Errorf("unsupported ssh client type for sftp client creation")
 }
 
 // closeSSHClient is a safe wrapper around (*ssh.Client).Close that protects
 // against nil pointers and panics that can occur when tests provide a
 // zero-valued *ssh.Client. Tests may override this to provide a noop or
 // controlled behavior.
-var closeSSHClient = func(c *ssh.Client) error {
+var closeSSHClient = func(c sshClientIface) error {
 	if c == nil {
 		return nil
 	}
@@ -356,7 +377,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 
 	// Add port 22 if not specified.
 	addr := CanonicalizeHostPort(host)
-	var client *ssh.Client
+	var client sshClientIface
 
 	// If a private key is provided, use it exclusively. This is the standard path
 	// for deployment and auditing with a Keymaster system key.

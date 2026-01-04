@@ -38,7 +38,7 @@ func TestNewDeployer_PrivateKeyFailsAgentSucceeds(t *testing.T) {
 
 	// 3) Make sshDial fail on first call (system key), succeed on second (agent)
 	call := 0
-	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
+	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (sshClientIface, error) {
 		call++
 		if call == 1 {
 			return nil, fmt.Errorf("simulated system key dial failure")
@@ -47,7 +47,7 @@ func TestNewDeployer_PrivateKeyFailsAgentSucceeds(t *testing.T) {
 	}
 
 	// 4) Override newSftpClient to return a mock implementation (accept nil client)
-	newSftpClient = func(c *ssh.Client) (sftpRaw, error) { return &mockSftp{}, nil }
+	newSftpClient = func(c sshClientIface) (sftpRaw, error) { return &mockSftp{}, nil }
 
 	// 5) Make agent available via sshAgentGetter
 	sshAgentGetter = func() agent.Agent { return keyring }
@@ -78,7 +78,7 @@ func TestGetRemoteHostKey_Default(t *testing.T) {
 		t.Fatalf("parse pubkey: %v", err)
 	}
 
-	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
+	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (sshClientIface, error) {
 		if cfg != nil && cfg.HostKeyCallback != nil {
 			_ = cfg.HostKeyCallback("example.com:22", &net.TCPAddr{}, pk)
 		}

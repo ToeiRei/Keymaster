@@ -26,7 +26,7 @@ func TestGetRemoteHostKey_WithInjectedDial(t *testing.T) {
 	orig := sshDial
 	defer func() { sshDial = orig }()
 
-	sshDial = func(network, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	sshDial = func(network, addr string, config *ssh.ClientConfig) (sshClientIface, error) {
 		// Simulate calling the HostKeyCallback as the real handshake would.
 		if config != nil && config.HostKeyCallback != nil {
 			_ = config.HostKeyCallback("example.com:22", &net.TCPAddr{}, pk)

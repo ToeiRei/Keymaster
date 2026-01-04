@@ -48,7 +48,7 @@ func TestNewDeployerWithExpectedHostKey_Success(t *testing.T) {
 	on := newSftpClient
 	defer func() { sshDial = od; newSftpClient = on }()
 
-	sshDial = func(network, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	sshDial = func(network, addr string, config *ssh.ClientConfig) (sshClientIface, error) {
 		if config != nil && config.HostKeyCallback != nil {
 			// Simulate successful host key verification
 			_ = config.HostKeyCallback("example.com:22", &net.TCPAddr{}, pk)
@@ -56,7 +56,7 @@ func TestNewDeployerWithExpectedHostKey_Success(t *testing.T) {
 		return &ssh.Client{}, nil
 	}
 
-	newSftpClient = func(c *ssh.Client) (sftpRaw, error) {
+	newSftpClient = func(c sshClientIface) (sftpRaw, error) {
 		return &mockSftp{}, nil
 	}
 
@@ -91,7 +91,7 @@ func TestNewDeployerWithExpectedHostKey_Mismatch(t *testing.T) {
 	od := sshDial
 	defer func() { sshDial = od }()
 
-	sshDial = func(network, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	sshDial = func(network, addr string, config *ssh.ClientConfig) (sshClientIface, error) {
 		if config != nil && config.HostKeyCallback != nil {
 			if err := config.HostKeyCallback("example.com:22", &net.TCPAddr{}, pk); err != nil {
 				return nil, err

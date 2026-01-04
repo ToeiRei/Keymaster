@@ -20,7 +20,7 @@ func TestNewDeployer_AgentConnectionTimeoutClassified(t *testing.T) {
 	sshAgentGetter = func() agent.Agent { return agent.NewKeyring() }
 
 	// Simulate a dial error that indicates a timeout
-	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
+	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (sshClientIface, error) {
 		return nil, fmt.Errorf("i/o timeout")
 	}
 
@@ -42,7 +42,7 @@ func TestNewDeployer_AgentAuthClassified(t *testing.T) {
 
 	sshAgentGetter = func() agent.Agent { return agent.NewKeyring() }
 
-	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
+	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (sshClientIface, error) {
 		return nil, fmt.Errorf("permission denied")
 	}
 

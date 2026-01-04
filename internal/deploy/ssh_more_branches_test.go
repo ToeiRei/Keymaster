@@ -25,10 +25,10 @@ func TestNewDeployer_PrivateKeySuccess(t *testing.T) {
 		t.Fatalf("generate key: %v", err)
 	}
 
-	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
+	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (sshClientIface, error) {
 		return &ssh.Client{}, nil
 	}
-	newSftpClient = func(c *ssh.Client) (sftpRaw, error) { return &mockSftp{}, nil }
+	newSftpClient = func(c sshClientIface) (sftpRaw, error) { return &mockSftp{}, nil }
 
 	d, err := NewDeployerWithConfig("example.com", "user", priv, nil, DefaultConnectionConfig(), false)
 	if err != nil {
@@ -52,10 +52,10 @@ func TestNewDeployer_SftpCreationFails(t *testing.T) {
 		t.Fatalf("generate key: %v", err)
 	}
 
-	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
+	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (sshClientIface, error) {
 		return &ssh.Client{}, nil
 	}
-	newSftpClient = func(c *ssh.Client) (sftpRaw, error) { return nil, fmt.Errorf("sftp init failed") }
+	newSftpClient = func(c sshClientIface) (sftpRaw, error) { return nil, fmt.Errorf("sftp init failed") }
 
 	_, err = NewDeployerWithConfig("example.com", "user", priv, nil, DefaultConnectionConfig(), false)
 	if err == nil || !strings.Contains(err.Error(), "failed to create sftp client") {
@@ -71,7 +71,7 @@ func TestNewDeployer_HostKeyMismatchClassified(t *testing.T) {
 	// Provide a non-nil agent to reach the agent connection attempt (or private key path)
 	sshAgentGetter = func() agent.Agent { return agent.NewKeyring() }
 
-	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
+	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (sshClientIface, error) {
 		if cfg != nil && cfg.HostKeyCallback != nil {
 			// Load a valid test host key and present it to the callback so that
 			// the marshal operation inside the callback does not panic.
