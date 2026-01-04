@@ -8,6 +8,10 @@ import (
 // default for MaxOpenConns for SQLite. We assert the default value is applied
 // and that the returned Store is the SQLite concrete type.
 func TestDBPoolDefaultsSQLite(t *testing.T) {
+	// Ensure CI env overrides do not change the expectation for this unit test.
+	t.Setenv("KEYMASTER_DB_MAX_OPEN_CONNS", "")
+	t.Setenv("KEYMASTER_DB_MAX_IDLE_CONNS", "")
+
 	dsn := "file::memory:?cache=shared"
 	s, err := NewStoreFromDSN("sqlite", dsn)
 	if err != nil {
