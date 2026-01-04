@@ -1240,11 +1240,10 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 		var accountID int
 		var err error
 		mgr := db.DefaultAccountManager()
-		if mgr != nil {
-			accountID, err = mgr.AddAccount(accountData.Username, accountData.Hostname,
-				accountData.Label, accountData.Tags)
+		if mgr == nil {
+			err = fmt.Errorf("no account manager configured")
 		} else {
-			accountID, err = db.AddAccount(accountData.Username, accountData.Hostname,
+			accountID, err = mgr.AddAccount(accountData.Username, accountData.Hostname,
 				accountData.Label, accountData.Tags)
 		}
 		if err != nil {
@@ -1278,8 +1277,6 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 				mgr := db.DefaultAccountManager()
 				if mgr != nil {
 					_ = mgr.DeleteAccount(accountID)
-				} else {
-					_ = db.DeleteAccount(accountID)
 				}
 				return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to assign key %d to account: %w", keyID, err)}
 			}
@@ -1295,8 +1292,6 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			mgr := db.DefaultAccountManager()
 			if mgr != nil {
 				_ = mgr.DeleteAccount(accountID)
-			} else {
-				_ = db.DeleteAccount(accountID)
 			}
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to generate keys content: %w", err)}
 		}
@@ -1317,8 +1312,6 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			mgr := db.DefaultAccountManager()
 			if mgr != nil {
 				_ = mgr.DeleteAccount(accountID)
-			} else {
-				_ = db.DeleteAccount(accountID)
 			}
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to create bootstrap deployer: %w", err)}
 		}
@@ -1332,8 +1325,6 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			mgr := db.DefaultAccountManager()
 			if mgr != nil {
 				_ = mgr.DeleteAccount(accountID)
-			} else {
-				_ = db.DeleteAccount(accountID)
 			}
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to deploy keys to remote host: %w", err)}
 		}

@@ -405,21 +405,9 @@ func GetAllAccounts() ([]model.Account, error) {
 }
 
 // AddAccount adds a new account to the database.
-func AddAccount(username, hostname, label, tags string) (int, error) {
-	// If a test or other code has injected an AccountManager, prefer that.
-	if m := DefaultAccountManager(); m != nil {
-		return m.AddAccount(username, hostname, label, tags)
-	}
-	return store.AddAccount(username, hostname, label, tags)
-}
-
-// DeleteAccount removes an account from the database by its ID.
-func DeleteAccount(id int) error {
-	if m := DefaultAccountManager(); m != nil {
-		return m.DeleteAccount(id)
-	}
-	return store.DeleteAccount(id)
-}
+// NOTE: Account management now goes through the AccountManager interface.
+// The old package-level helpers `AddAccount` and `DeleteAccount` were removed
+// to force consumers to use `DefaultAccountManager()` or inject a manager.
 
 // UpdateAccountSerial sets the system key serial for a given account ID.
 // This is typically called after a successful deployment.

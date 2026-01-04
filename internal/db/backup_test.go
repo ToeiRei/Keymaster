@@ -11,11 +11,15 @@ func TestBackupImport_RoundTrip(t *testing.T) {
 	_ = newTestDB(t)
 
 	// Create sample data
-	a1, err := AddAccount("bob", "web1.example", "web", "")
+	mgr := DefaultAccountManager()
+	if mgr == nil {
+		t.Fatalf("no account manager available")
+	}
+	a1, err := mgr.AddAccount("bob", "web1.example", "web", "")
 	if err != nil {
 		t.Fatalf("AddAccount failed: %v", err)
 	}
-	_, err = AddAccount("carol", "db1.example", "db", "")
+	_, err = mgr.AddAccount("carol", "db1.example", "db", "")
 	if err != nil {
 		t.Fatalf("AddAccount failed: %v", err)
 	}

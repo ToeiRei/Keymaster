@@ -439,7 +439,11 @@ func TestRotateKeyCmd(t *testing.T) {
 	t.Run("should not change existing account serials", func(t *testing.T) {
 		// This test assumes the previous tests have run, and we have an active key with serial > 1.
 		// Let's add an account that is "synced" with an older key.
-		accountID, err := db.AddAccount("test", "host.com", "test-label", "")
+		mgr := db.DefaultAccountManager()
+		if mgr == nil {
+			t.Fatalf("no account manager available")
+		}
+		accountID, err := mgr.AddAccount("test", "host.com", "test-label", "")
 		if err != nil {
 			t.Fatalf("Failed to add test account: %v", err)
 		}
@@ -474,9 +478,13 @@ func TestExportSSHConfigCmd(t *testing.T) {
 		setupTestDB(t) // Fresh DB
 
 		// Add test accounts
-		_, _ = db.AddAccount("user1", "host1.com", "prod-web-1", "")
-		_, _ = db.AddAccount("user2", "host2.com", "", "") // No label
-		inactiveID, _ := db.AddAccount("user3", "host3.com", "inactive-host", "")
+		mgr := db.DefaultAccountManager()
+		if mgr == nil {
+			t.Fatalf("no account manager available")
+		}
+		_, _ = mgr.AddAccount("user1", "host1.com", "prod-web-1", "")
+		_, _ = mgr.AddAccount("user2", "host2.com", "", "") // No label
+		inactiveID, _ := mgr.AddAccount("user3", "host3.com", "inactive-host", "")
 		_ = db.ToggleAccountStatus(inactiveID) // Make this one inactive
 
 		output := executeCommand(t, nil, "export-ssh-client-config")
@@ -503,7 +511,11 @@ func TestExportSSHConfigCmd(t *testing.T) {
 	t.Run("should write config to specified file", func(t *testing.T) {
 		setupTestDB(t) // Fresh DB
 
-		_, _ = db.AddAccount("user1", "host1.com", "prod-web-1", "")
+		mgr := db.DefaultAccountManager()
+		if mgr == nil {
+			t.Fatalf("no account manager available")
+		}
+		_, _ = mgr.AddAccount("user1", "host1.com", "prod-web-1", "")
 
 		tmpfile, err := os.CreateTemp("", "ssh_config_*.txt")
 		if err != nil {

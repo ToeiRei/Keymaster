@@ -10,7 +10,11 @@ func TestIntegrateDataFromBackup_NonDestructive(t *testing.T) {
 	_ = newTestDB(t)
 
 	// initial data
-	_, err := AddAccount("alice", "host1.example", "", "")
+	mgr := DefaultAccountManager()
+	if mgr == nil {
+		t.Fatalf("no account manager available")
+	}
+	_, err := mgr.AddAccount("alice", "host1.example", "", "")
 	if err != nil {
 		t.Fatalf("AddAccount alice failed: %v", err)
 	}

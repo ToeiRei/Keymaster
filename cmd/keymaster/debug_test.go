@@ -13,7 +13,11 @@ func TestDebugAddAccount(t *testing.T) {
 	if err := db.InitDB("sqlite", dbdsn); err != nil {
 		t.Fatalf("InitDB failed: %v", err)
 	}
-	id, err := db.AddAccount("user1", "host1.com", "prod-web-1", "")
+	mgr := db.DefaultAccountManager()
+	if mgr == nil {
+		t.Fatalf("no account manager available")
+	}
+	id, err := mgr.AddAccount("user1", "host1.com", "prod-web-1", "")
 	if err != nil {
 		t.Fatalf("AddAccount returned error: %v", err)
 	}

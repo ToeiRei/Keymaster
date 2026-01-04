@@ -372,23 +372,14 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Simple delete without decommission. Prefer AccountManager when available.
 						mgr := db.DefaultAccountManager()
 						if mgr == nil {
-							if err := db.DeleteAccount(m.accountToDelete.ID); err != nil {
-								m.err = err
-							} else {
-								m.status = i18n.T("accounts.status.delete_success", m.accountToDelete.String())
-								m.accounts, m.err = db.GetAllAccounts()
-								m.rebuildDisplayedAccounts()
-								m.viewport.SetContent(m.listContentView())
-							}
+							m.err = fmt.Errorf("no account manager configured")
+						} else if err := mgr.DeleteAccount(m.accountToDelete.ID); err != nil {
+							m.err = err
 						} else {
-							if err := mgr.DeleteAccount(m.accountToDelete.ID); err != nil {
-								m.err = err
-							} else {
-								m.status = i18n.T("accounts.status.delete_success", m.accountToDelete.String())
-								m.accounts, m.err = db.GetAllAccounts()
-								m.rebuildDisplayedAccounts()
-								m.viewport.SetContent(m.listContentView())
-							}
+							m.status = i18n.T("accounts.status.delete_success", m.accountToDelete.String())
+							m.accounts, m.err = db.GetAllAccounts()
+							m.rebuildDisplayedAccounts()
+							m.viewport.SetContent(m.listContentView())
 						}
 						m.isConfirmingDelete = false
 						return m, nil

@@ -129,7 +129,14 @@ func DecommissionAccount(account model.Account, systemKey string, options Decomm
 	}
 
 	// Step 2: Database cleanup
-	if err := db.DeleteAccount(account.ID); err != nil {
+	mgr := db.DefaultAccountManager()
+	if mgr == nil {
+		result.DatabaseDeleteError = fmt.Errorf("no account manager configured")
+		_ = logAction("DECOMMISSION_FAILED",
+			fmt.Sprintf("Failed to delete account %s from database: %v", account.String(), result.DatabaseDeleteError))
+		return result
+	}
+	if err := mgr.DeleteAccount(account.ID); err != nil {
 		result.DatabaseDeleteError = err
 		_ = logAction("DECOMMISSION_FAILED",
 			fmt.Sprintf("Failed to delete account %s from database: %v", account.String(), err))
