@@ -14,19 +14,37 @@ func main() {
 		panic(err)
 	}
 
-	_, err := db.AddAccount("user1", "host1.com", "prod-web-1", "")
-	if err != nil {
-		panic(err)
+	mgr := db.DefaultAccountManager()
+	if mgr == nil {
+		// Fall back to legacy helpers if no manager is configured.
+		_, err := db.AddAccount("user1", "host1.com", "prod-web-1", "")
+		if err != nil {
+			panic(err)
+		}
+		_, err = db.AddAccount("user2", "host2.com", "", "")
+		if err != nil {
+			panic(err)
+		}
+		id, err := db.AddAccount("user3", "host3.com", "inactive-host", "")
+		if err != nil {
+			panic(err)
+		}
+		_ = db.ToggleAccountStatus(id)
+	} else {
+		_, err := mgr.AddAccount("user1", "host1.com", "prod-web-1", "")
+		if err != nil {
+			panic(err)
+		}
+		_, err = mgr.AddAccount("user2", "host2.com", "", "")
+		if err != nil {
+			panic(err)
+		}
+		id, err := mgr.AddAccount("user3", "host3.com", "inactive-host", "")
+		if err != nil {
+			panic(err)
+		}
+		_ = db.ToggleAccountStatus(id)
 	}
-	_, err = db.AddAccount("user2", "host2.com", "", "")
-	if err != nil {
-		panic(err)
-	}
-	id, err := db.AddAccount("user3", "host3.com", "inactive-host", "")
-	if err != nil {
-		panic(err)
-	}
-	_ = db.ToggleAccountStatus(id)
 
 	accs, err := db.GetAllActiveAccounts()
 	if err != nil {
