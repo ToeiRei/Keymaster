@@ -2,8 +2,10 @@ package db
 
 import (
 	"testing"
+	"time"
 
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/uptrace/bun"
 )
 
 type fakeAccountSearcher struct{}
@@ -134,4 +136,70 @@ func TestSearcherAndManagerWrappers_Injection(t *testing.T) {
 		t.Fatalf("AddPublicKeyAndGetModel returned error: %v", err)
 	}
 	ClearDefaultKeyManager()
+}
+
+// fakeStore implements Store with minimal methods so we can set the package
+// level `store` and exercise Default* wrapper paths that create Bun-backed
+// searchers/managers. Methods return zero values and do not require a real DB.
+type fakeStore struct{}
+
+func (f *fakeStore) GetAllAccounts() ([]model.Account, error)                       { return nil, nil }
+func (f *fakeStore) AddAccount(username, hostname, label, tags string) (int, error) { return 0, nil }
+func (f *fakeStore) DeleteAccount(id int) error                                     { return nil }
+func (f *fakeStore) UpdateAccountSerial(id, serial int) error                       { return nil }
+func (f *fakeStore) ToggleAccountStatus(id int) error                               { return nil }
+func (f *fakeStore) UpdateAccountLabel(id int, label string) error                  { return nil }
+func (f *fakeStore) UpdateAccountHostname(id int, hostname string) error            { return nil }
+func (f *fakeStore) UpdateAccountTags(id int, tags string) error                    { return nil }
+func (f *fakeStore) GetAllActiveAccounts() ([]model.Account, error)                 { return nil, nil }
+func (f *fakeStore) GetKnownHostKey(hostname string) (string, error)                { return "", nil }
+func (f *fakeStore) AddKnownHostKey(hostname, key string) error                     { return nil }
+func (f *fakeStore) CreateSystemKey(publicKey, privateKey string) (int, error)      { return 0, nil }
+func (f *fakeStore) RotateSystemKey(publicKey, privateKey string) (int, error)      { return 0, nil }
+func (f *fakeStore) GetActiveSystemKey() (*model.SystemKey, error)                  { return nil, nil }
+func (f *fakeStore) GetSystemKeyBySerial(serial int) (*model.SystemKey, error)      { return nil, nil }
+func (f *fakeStore) HasSystemKeys() (bool, error)                                   { return false, nil }
+func (f *fakeStore) SearchAccounts(query string) ([]model.Account, error)           { return nil, nil }
+func (f *fakeStore) GetAllAuditLogEntries() ([]model.AuditLogEntry, error)          { return nil, nil }
+func (f *fakeStore) LogAction(action string, details string) error                  { return nil }
+func (f *fakeStore) SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error {
+	return nil
+}
+func (f *fakeStore) GetBootstrapSession(id string) (*model.BootstrapSession, error)  { return nil, nil }
+func (f *fakeStore) DeleteBootstrapSession(id string) error                          { return nil }
+func (f *fakeStore) UpdateBootstrapSessionStatus(id string, status string) error     { return nil }
+func (f *fakeStore) GetExpiredBootstrapSessions() ([]*model.BootstrapSession, error) { return nil, nil }
+func (f *fakeStore) GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error) {
+	return nil, nil
+}
+func (f *fakeStore) ExportDataForBackup() (*model.BackupData, error) { return nil, nil }
+func (f *fakeStore) ImportDataFromBackup(*model.BackupData) error    { return nil }
+func (f *fakeStore) IntegrateDataFromBackup(*model.BackupData) error { return nil }
+func (f *fakeStore) BunDB() *bun.DB                                  { return nil }
+
+func TestDefaultWrappers_WithStore(t *testing.T) {
+	// Preserve original store and restore at the end.
+	orig := store
+	defer func() { store = orig }()
+
+	store = &fakeStore{}
+
+	if DefaultAccountSearcher() == nil {
+		t.Fatal("expected DefaultAccountSearcher to return non-nil when store set")
+	}
+	if DefaultAuditSearcher() == nil {
+		t.Fatal("expected DefaultAuditSearcher to return non-nil when store set")
+	}
+	if DefaultKeySearcher() == nil {
+		t.Fatal("expected DefaultKeySearcher to return non-nil when store set")
+	}
+	if DefaultAccountManager() == nil {
+		t.Fatal("expected DefaultAccountManager to return non-nil when store set")
+	}
+	if DefaultKeyManager() == nil {
+		t.Fatal("expected DefaultKeyManager to return non-nil when store set")
+	}
+	if DefaultAuditWriter() == nil {
+		t.Fatal("expected DefaultAuditWriter to return non-nil when store set")
+	}
 }
