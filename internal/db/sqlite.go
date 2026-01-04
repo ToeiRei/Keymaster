@@ -277,6 +277,11 @@ func (s *SqliteStore) GetAccountsForKey(keyID int) ([]model.Account, error) {
 	return GetAccountsForKeyBun(s.bun, keyID)
 }
 
+// SearchAccounts performs a fuzzy search for accounts using the centralized Bun helper.
+func (s *SqliteStore) SearchAccounts(query string) ([]model.Account, error) {
+	return SearchAccountsBun(s.bun, query)
+}
+
 // GetAllAuditLogEntries retrieves all entries from the audit log, most recent first.
 func (s *SqliteStore) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
 	return GetAllAuditLogEntriesBun(s.bun)

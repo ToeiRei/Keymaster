@@ -293,6 +293,50 @@ func GetAccountsForKeyBun(bdb *bun.DB, keyID int) ([]model.Account, error) {
 	return out, nil
 }
 
+// SearchAccountsBun performs a portable fuzzy search over accounts using
+// simple tokenized LIKE matching across username, hostname, and label.
+// This emulates more advanced Postgres full-text search in a DB-agnostic way.
+func SearchAccountsBun(bdb *bun.DB, q string) ([]model.Account, error) {
+	ctx := context.Background()
+	tokens := tokenizeSearchQuery(q)
+	var am []AccountModel
+	qb := bdb.NewSelect().Model(&am)
+	if len(tokens) > 0 {
+		// Build WHERE clause with AND of ORs: for each token, require it matches one of the columns
+		// e.g., WHERE (username LIKE '%t1%' OR hostname LIKE '%t1%' OR label LIKE '%t1%')
+		for _, tok := range tokens {
+			like := "%" + tok + "%"
+			// Use LOWER(...) for case-insensitive matching across engines
+			qb = qb.Where("(LOWER(username) LIKE ? OR LOWER(hostname) LIKE ? OR LOWER(label) LIKE ?)", like, like, like)
+		}
+	}
+	if err := qb.OrderExpr("label, hostname, username").Scan(ctx); err != nil {
+		return nil, err
+	}
+	out := make([]model.Account, 0, len(am))
+	for _, a := range am {
+		out = append(out, accountModelToModel(a))
+	}
+	return out, nil
+}
+
+// tokenizeSearchQuery splits a query into lower-cased tokens, trimming whitespace.
+func tokenizeSearchQuery(q string) []string {
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return nil
+	}
+	parts := strings.Fields(q)
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.ToLower(strings.TrimSpace(p))
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 // GetAllAuditLogEntriesBun retrieves audit log entries ordered by timestamp desc.
 func GetAllAuditLogEntriesBun(bdb *bun.DB) ([]model.AuditLogEntry, error) {
 	ctx := context.Background()

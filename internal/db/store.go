@@ -50,6 +50,9 @@ type Store interface {
 	UnassignKeyFromAccount(keyID, accountID int) error
 	GetKeysForAccount(accountID int) ([]model.PublicKey, error)
 	GetAccountsForKey(keyID int) ([]model.Account, error)
+	// SearchAccounts performs a fuzzy search for accounts matching the query.
+	// Implementations should provide sensible, portable search semantics.
+	SearchAccounts(query string) ([]model.Account, error)
 
 	// Audit Log methods
 	GetAllAuditLogEntries() ([]model.AuditLogEntry, error)
