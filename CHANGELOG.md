@@ -6,6 +6,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased] - future release
+
+This is a placeholder for a forthcoming release. The changes collected here
+are substantial (expanded test coverage and a focused "bun-ification" of the
+data layer) and are being held for a future point release.
+
+### Added
+
+- Extensive new unit and integration tests across `internal/db`, `internal/tui`,
+  `internal/deploy`, `internal/sshkey`, and `cmd/keymaster`, significantly
+  increasing test coverage and catching regressions earlier in CI.
+- `KeyManager` interface and `FakeKeyManager` test fakes to centralize public-key
+  CRUD and key↔account assignment logic and make tests deterministic.
+- Centralized Bun helpers and adapters (the "bun-ification") to standardize
+  database interactions across SQLite, PostgreSQL, and MySQL.
+- Export authorized_keys: ability to save `authorized_keys` to disk so hosts can
+  be serviced offline (air-gapped) or via sneakernet/carrier pigeon.
+
+### Changed
+
+- Migrated public-key CRUD and assignment logic off the legacy `Store` surface
+  and into the `KeyManager` adapter; callers updated to use the manager.
+- Tests made more robust in CI by isolating environment-sensitive defaults
+  (for example, clearing DB pool env vars in in-memory SQLite tests).
+- CI now runs `gofmt` and `go vet` as part of the standard checks; test
+  harnesses were improved to avoid flaky flag/initialization issues.
+
+### Fixed
+
+- Resolved multiple flakes in DB-related tests caused by connection pool and
+  environment assumptions when running under CI.
+- Small build/test fixes introduced during the refactor (updated call sites,
+  adapter wiring, and documentation).
+- Fixed the bootstrap command textbox height in the TUI so the edit field
+  displays correctly when entering bootstrap commands.
+
+---
+
 ## [1.5.1] - 2025-12-30
 
 This is a patch release containing bug fixes, UX improvements, and small dependency updates.
