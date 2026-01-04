@@ -584,7 +584,13 @@ var importCmd = &cobra.Command{
 				continue
 			}
 
-			if err := db.AddPublicKey(alg, keyData, comment, false); err != nil {
+			km := db.DefaultKeyManager()
+			if km == nil {
+				fmt.Printf("%s\n", i18n.T("import.error_adding_key", comment, "no key manager available"))
+				skippedCount++
+				continue
+			}
+			if err := km.AddPublicKey(alg, keyData, comment, false); err != nil {
 				// Check if the error is a unique constraint violation. This makes the CLI
 				// import behave consistently with the TUI remote import.
 				// The exact error string can vary between DB drivers.

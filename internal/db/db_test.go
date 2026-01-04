@@ -59,7 +59,11 @@ func TestPublicKey_AddDuplicateBehavior(t *testing.T) {
 	keyData := "AAAAB3NzaC1lZDI1NTE5AAAAItestkeydata"
 
 	// Add via AddPublicKeyAndGetModel
-	pk, err := AddPublicKeyAndGetModel("ed25519", keyData, "dup-comment", false)
+	km := DefaultKeyManager()
+	if km == nil {
+		t.Fatalf("no key manager available")
+	}
+	pk, err := km.AddPublicKeyAndGetModel("ed25519", keyData, "dup-comment", false)
 	if err != nil {
 		t.Fatalf("unexpected error adding public key: %v", err)
 	}
@@ -77,10 +81,10 @@ func TestPublicKey_AddDuplicateBehavior(t *testing.T) {
 	}
 
 	// AddPublicKey should return ErrDuplicate on the second insert
-	if err := AddPublicKey("ed25519", keyData, "another-comment", false); err != nil {
+	if err := km.AddPublicKey("ed25519", keyData, "another-comment", false); err != nil {
 		t.Fatalf("unexpected error on first AddPublicKey: %v", err)
 	}
-	if err := AddPublicKey("ed25519", keyData, "another-comment", false); !errors.Is(err, ErrDuplicate) {
+	if err := km.AddPublicKey("ed25519", keyData, "another-comment", false); !errors.Is(err, ErrDuplicate) {
 		t.Fatalf("expected ErrDuplicate on duplicate AddPublicKey, got: %v", err)
 	}
 }

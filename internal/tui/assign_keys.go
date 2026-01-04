@@ -294,7 +294,11 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if _, assigned := m.assignedKeys[selectedKey.ID]; assigned {
 				// Unassign
 				m.status = i18n.T("assign_keys.status.unassign_attempt", selectedKey.Comment)
-				if err := db.UnassignKeyFromAccount(selectedKey.ID, m.selectedAccount.ID); err != nil {
+				km := db.DefaultKeyManager()
+				if km == nil {
+					m.err = fmt.Errorf("no key manager available")
+					m.status = i18n.T("assign_keys.status.unassign_error", m.err)
+				} else if err := km.UnassignKeyFromAccount(selectedKey.ID, m.selectedAccount.ID); err != nil {
 					m.err = err
 					m.status = i18n.T("assign_keys.status.unassign_error", err)
 				} else {
@@ -317,7 +321,11 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.status = i18n.T("assign_keys.status.assign_error_deleted", m.err)
 					return m, nil
 				}
-				if err := db.AssignKeyToAccount(selectedKey.ID, m.selectedAccount.ID); err != nil {
+				km := db.DefaultKeyManager()
+				if km == nil {
+					m.err = fmt.Errorf("no key manager available")
+					m.status = i18n.T("assign_keys.status.assign_error", m.err)
+				} else if err := km.AssignKeyToAccount(selectedKey.ID, m.selectedAccount.ID); err != nil {
 					m.err = err
 					m.status = i18n.T("assign_keys.status.assign_error", err)
 				} else {

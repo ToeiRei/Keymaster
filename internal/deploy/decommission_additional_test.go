@@ -28,20 +28,24 @@ func TestRemoveSelectiveKeymasterContent_RemovesExcludedKey(t *testing.T) {
 		t.Fatalf("CreateSystemKey failed: %v", err)
 	}
 
-	k1, err := db.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3...1", "k-one", false)
+	km := db.DefaultKeyManager()
+	if km == nil {
+		t.Fatalf("no key manager available")
+	}
+	k1, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3...1", "k-one", false)
 	if err != nil || k1 == nil {
 		t.Fatalf("AddPublicKeyAndGetModel k1 failed: %v %v", err, k1)
 	}
-	k2, err := db.AddPublicKeyAndGetModel("ssh-rsa", "AAAAB3...2", "k-two", false)
+	k2, err := km.AddPublicKeyAndGetModel("ssh-rsa", "AAAAB3...2", "k-two", false)
 	if err != nil || k2 == nil {
 		t.Fatalf("AddPublicKeyAndGetModel k2 failed: %v %v", err, k2)
 	}
 
 	// Assign both keys to account
-	if err := db.AssignKeyToAccount(k1.ID, acctID); err != nil {
+	if err := km.AssignKeyToAccount(k1.ID, acctID); err != nil {
 		t.Fatalf("AssignKeyToAccount k1 failed: %v", err)
 	}
-	if err := db.AssignKeyToAccount(k2.ID, acctID); err != nil {
+	if err := km.AssignKeyToAccount(k2.ID, acctID); err != nil {
 		t.Fatalf("AssignKeyToAccount k2 failed: %v", err)
 	}
 

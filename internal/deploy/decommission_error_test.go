@@ -51,11 +51,15 @@ func TestRemoveSelectiveKeymasterContent_RemoveSystemKeyOnly(t *testing.T) {
 	}
 
 	// Add a user key so it remains after system key removal
-	k1, err := db.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3...X", "k-remains", false)
+	km := db.DefaultKeyManager()
+	if km == nil {
+		t.Fatalf("no key manager available")
+	}
+	k1, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3...X", "k-remains", false)
 	if err != nil || k1 == nil {
 		t.Fatalf("AddPublicKeyAndGetModel failed: %v", err)
 	}
-	if err := db.AssignKeyToAccount(k1.ID, acctID); err != nil {
+	if err := km.AssignKeyToAccount(k1.ID, acctID); err != nil {
 		t.Fatalf("AssignKeyToAccount failed: %v", err)
 	}
 

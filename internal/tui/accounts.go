@@ -219,8 +219,14 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "y":
 				// Assign the keys
-				for _, key := range m.pendingImportKeys {
-					_ = db.AssignKeyToAccount(m.pendingImportAccountID, key.ID)
+				km := db.DefaultKeyManager()
+				if km == nil {
+					// No key manager available; skip assignment but record status
+					m.status = i18n.T("accounts.status.import_skipped_assign", len(m.pendingImportKeys))
+				} else {
+					for _, key := range m.pendingImportKeys {
+						_ = km.AssignKeyToAccount(key.ID, m.pendingImportAccountID)
+					}
 				}
 				m.status = i18n.T("accounts.status.import_assigned", len(m.pendingImportKeys))
 				m.state = accountsListView

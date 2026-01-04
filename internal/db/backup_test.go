@@ -25,7 +25,11 @@ func TestBackupImport_RoundTrip(t *testing.T) {
 	}
 
 	// Add public keys
-	pk, err := AddPublicKeyAndGetModel("ed25519", "AAAAB3NzaC1lZDI1NTE5AAAAIbackupkey", "bk-1", false)
+	km := DefaultKeyManager()
+	if km == nil {
+		t.Fatalf("no key manager available")
+	}
+	pk, err := km.AddPublicKeyAndGetModel("ed25519", "AAAAB3NzaC1lZDI1NTE5AAAAIbackupkey", "bk-1", false)
 	if err != nil {
 		t.Fatalf("AddPublicKeyAndGetModel failed: %v", err)
 	}
@@ -34,7 +38,7 @@ func TestBackupImport_RoundTrip(t *testing.T) {
 	}
 
 	// Assign key to account
-	if err := AssignKeyToAccount(pk.ID, a1); err != nil {
+	if err := km.AssignKeyToAccount(pk.ID, a1); err != nil {
 		t.Fatalf("AssignKeyToAccount failed: %v", err)
 	}
 

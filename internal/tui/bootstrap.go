@@ -1268,8 +1268,18 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 		}
 
 		// Assign keys to account in database
+		km := db.DefaultKeyManager()
+		if km == nil {
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: no key manager available",
+				accountData.Username, accountData.Hostname))
+			mgr := db.DefaultAccountManager()
+			if mgr != nil {
+				_ = mgr.DeleteAccount(accountID)
+			}
+			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("no key manager available")}
+		}
 		for _, keyID := range selectedKeyIDs {
-			if err := db.AssignKeyToAccount(keyID, accountID); err != nil {
+			if err := km.AssignKeyToAccount(keyID, accountID); err != nil {
 				// Log the failure
 				_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to assign key: %v",
 					accountData.Username, accountData.Hostname, err))

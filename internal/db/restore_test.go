@@ -18,7 +18,11 @@ func TestIntegrateDataFromBackup_NonDestructive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddAccount alice failed: %v", err)
 	}
-	if err := AddPublicKey("ed25519", "AAAAB3NzaC1lZDI1NTE5AAAAIkey1", "c1", false); err != nil {
+	km := DefaultKeyManager()
+	if km == nil {
+		t.Fatalf("no key manager available")
+	}
+	if err := km.AddPublicKey("ed25519", "AAAAB3NzaC1lZDI1NTE5AAAAIkey1", "c1", false); err != nil {
 		t.Fatalf("AddPublicKey c1 failed: %v", err)
 	}
 

@@ -88,7 +88,12 @@ func ImportRemoteKeys(account model.Account) (importedKeys []model.PublicKey, sk
 
 		// Try to add the key. AddPublicKeyAndGetModel returns (nil, nil) for duplicates.
 		// Imported keys are not global by default.
-		newKey, dbErr := db.AddPublicKeyAndGetModel(alg, keyData, comment, false)
+		km := db.DefaultKeyManager()
+		if km == nil {
+			skippedCount++
+			continue
+		}
+		newKey, dbErr := km.AddPublicKeyAndGetModel(alg, keyData, comment, false)
 		if dbErr != nil {
 			// A real DB error occurred, log it or handle it. For now, we just skip.
 			skippedCount++
