@@ -49,6 +49,7 @@ type publicKeysModel struct {
 	usageReportAccts []model.Account
 	filter           string
 	isFiltering      bool
+	searcher         db.KeySearcher
 	// For delete confirmation
 	isConfirmingDelete bool
 	keyToDelete        model.PublicKey
@@ -58,8 +59,15 @@ type publicKeysModel struct {
 
 // newPublicKeysModel creates a new model for the public key view, pre-loading keys from the database.
 func newPublicKeysModel() publicKeysModel {
+	return newPublicKeysModelWithSearcher(db.DefaultKeySearcher())
+}
+
+// newPublicKeysModelWithSearcher creates an accountsModel that will use the
+// provided KeySearcher for server-side searches. Pass nil to force local filtering.
+func newPublicKeysModelWithSearcher(s db.KeySearcher) publicKeysModel {
 	m := publicKeysModel{
 		viewport: viewport.New(0, 0),
+		searcher: s,
 	}
 	var err error
 	m.keys, err = db.GetAllPublicKeys()
@@ -82,12 +90,29 @@ func (m *publicKeysModel) rebuildDisplayedKeys() {
 	if m.filter == "" {
 		m.displayedKeys = m.keys
 	} else {
-		m.displayedKeys = []model.PublicKey{}
-		lowerFilter := strings.ToLower(m.filter)
-		for _, key := range m.keys {
-			if strings.Contains(strings.ToLower(key.Comment), lowerFilter) ||
-				strings.Contains(strings.ToLower(key.Algorithm), lowerFilter) {
-				m.displayedKeys = append(m.displayedKeys, key)
+		// Prefer server-side searcher when provided. If it returns non-empty
+		// results, use them; otherwise fall back to local filtering.
+		if m.searcher != nil {
+			serverRes, err := m.searcher.SearchPublicKeys(m.filter)
+			if err == nil && len(serverRes) > 0 {
+				m.displayedKeys = serverRes
+			} else {
+				// Fallback to local filtering on error or empty results
+				m.displayedKeys = []model.PublicKey{}
+				lowerFilter := strings.ToLower(m.filter)
+				for _, key := range m.keys {
+					if strings.Contains(strings.ToLower(key.Comment), lowerFilter) || strings.Contains(strings.ToLower(key.Algorithm), lowerFilter) || strings.Contains(strings.ToLower(key.KeyData), lowerFilter) {
+						m.displayedKeys = append(m.displayedKeys, key)
+					}
+				}
+			}
+		} else {
+			m.displayedKeys = []model.PublicKey{}
+			lowerFilter := strings.ToLower(m.filter)
+			for _, key := range m.keys {
+				if strings.Contains(strings.ToLower(key.Comment), lowerFilter) || strings.Contains(strings.ToLower(key.Algorithm), lowerFilter) {
+					m.displayedKeys = append(m.displayedKeys, key)
+				}
 			}
 		}
 	}

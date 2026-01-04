@@ -634,6 +634,36 @@ func GetPublicKeyByIDBun(bdb *bun.DB, id int) (*model.PublicKey, error) {
 	return &m, nil
 }
 
+// SearchPublicKeysBun performs a tokenized, case-insensitive search against
+// public keys. Tokens are ANDed together; within each token we match
+// against comment, algorithm, or key_data using SQL LIKE.
+func SearchPublicKeysBun(bdb *bun.DB, q string) ([]model.PublicKey, error) {
+	ctx := context.Background()
+	toks := TokenizeSearchQuery(q)
+	var pks []PublicKeyModel
+	sel := bdb.NewSelect().Model(&pks).OrderExpr("comment")
+	// If no tokens, return all
+	if len(toks) == 0 {
+		if err := sel.Scan(ctx); err != nil {
+			return nil, err
+		}
+	} else {
+		for _, t := range toks {
+			like := "%" + t + "%"
+			// Each token must match at least one of the columns; chain WHEREs to AND tokens.
+			sel = sel.Where("(lower(comment) LIKE ? OR lower(algorithm) LIKE ? OR lower(key_data) LIKE ?)", like, like, like)
+		}
+		if err := sel.Scan(ctx); err != nil {
+			return nil, err
+		}
+	}
+	out := make([]model.PublicKey, 0, len(pks))
+	for _, p := range pks {
+		out = append(out, publicKeyModelToModel(p))
+	}
+	return out, nil
+}
+
 // --- Known hosts helpers ---
 func GetKnownHostKeyBun(bdb *bun.DB, hostname string) (string, error) {
 	ctx := context.Background()
