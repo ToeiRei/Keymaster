@@ -24,8 +24,17 @@ jobs:
       - name: Run tests and collect coverage
         run: |
           set -eux
-          go test ./... -coverprofile=coverage.out || true
-          go tool cover -func=coverage.out > coverage.txt || true
+          # Produce a unified coverage profile across packages
+          go test -coverpkg=./... ./... -coverprofile=coverage.out || true
+          # Some shells / platforms may produce a file named 'coverage' without extension.
+          if [ -f coverage ] && [ ! -f coverage.out ]; then
+            mv coverage coverage.out || true
+          fi
+          if [ -f coverage.out ]; then
+            go tool cover -func=coverage.out > coverage.txt || true
+          else
+            echo "no coverage file produced" > coverage.txt
+          fi
 
       - name: Generate SVG badge
         run: |
