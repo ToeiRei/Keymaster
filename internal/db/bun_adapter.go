@@ -370,191 +370,177 @@ func LogActionBun(bdb *bun.DB, action string, details string) error {
 // ExportDataForBackupBun exports all tables' data into a model.BackupData using a Bun transaction.
 func ExportDataForBackupBun(bdb *bun.DB) (*model.BackupData, error) {
 	ctx := context.Background()
-	tx, err := bdb.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = tx.Rollback() }()
+	var backup *model.BackupData
+	err := WithTx(ctx, bdb, func(ctx context.Context, tx bun.Tx) error {
+		backup = &model.BackupData{SchemaVersion: 1}
 
-	backup := &model.BackupData{SchemaVersion: 1}
-
-	// Accounts
-	var accounts []AccountModel
-	if err := tx.NewSelect().Model(&accounts).Scan(ctx); err != nil {
-		return nil, err
-	}
-	for _, a := range accounts {
-		backup.Accounts = append(backup.Accounts, accountModelToModel(a))
-	}
-
-	// Public keys
-	var pks []PublicKeyModel
-	if err := tx.NewSelect().Model(&pks).Scan(ctx); err != nil {
-		return nil, err
-	}
-	for _, p := range pks {
-		backup.PublicKeys = append(backup.PublicKeys, publicKeyModelToModel(p))
-	}
-
-	// Account keys
-	type akRow struct{ KeyID, AccountID int }
-	var aks []akRow
-	if err := QueryRawInto(ctx, tx, &aks, "SELECT key_id, account_id FROM account_keys"); err != nil {
-		return nil, err
-	}
-	for _, r := range aks {
-		backup.AccountKeys = append(backup.AccountKeys, model.AccountKey{KeyID: r.KeyID, AccountID: r.AccountID})
-	}
-
-	// System keys
-	var sks []SystemKeyModel
-	if err := tx.NewSelect().Model(&sks).Scan(ctx); err != nil {
-		return nil, err
-	}
-	for _, s := range sks {
-		backup.SystemKeys = append(backup.SystemKeys, systemKeyModelToModel(s))
-	}
-
-	// Known hosts
-	var khs []KnownHostModel
-	if err := tx.NewSelect().Model(&khs).Scan(ctx); err != nil {
-		return nil, err
-	}
-	for _, k := range khs {
-		backup.KnownHosts = append(backup.KnownHosts, model.KnownHost{Hostname: k.Hostname, Key: k.Key})
-	}
-
-	// Audit log
-	var als []AuditLogModel
-	if err := tx.NewSelect().Model(&als).Scan(ctx); err != nil {
-		return nil, err
-	}
-	for _, a := range als {
-		backup.AuditLogEntries = append(backup.AuditLogEntries, model.AuditLogEntry{ID: a.ID, Timestamp: a.Timestamp, Username: a.Username, Action: a.Action, Details: a.Details})
-	}
-
-	// Bootstrap sessions
-	var bss []BootstrapSessionModel
-	if err := tx.NewSelect().Model(&bss).Scan(ctx); err != nil {
-		return nil, err
-	}
-	for _, b := range bss {
-		bs := model.BootstrapSession{ID: b.ID, Username: b.Username, Hostname: b.Hostname, TempPublicKey: b.TempPublicKey, CreatedAt: b.CreatedAt, ExpiresAt: b.ExpiresAt, Status: b.Status}
-		if b.Label.Valid {
-			bs.Label = b.Label.String
+		// Accounts
+		var accounts []AccountModel
+		if err := tx.NewSelect().Model(&accounts).Scan(ctx); err != nil {
+			return err
 		}
-		if b.Tags.Valid {
-			bs.Tags = b.Tags.String
+		for _, a := range accounts {
+			backup.Accounts = append(backup.Accounts, accountModelToModel(a))
 		}
-		backup.BootstrapSessions = append(backup.BootstrapSessions, bs)
-	}
 
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-	return backup, nil
+		// Public keys
+		var pks []PublicKeyModel
+		if err := tx.NewSelect().Model(&pks).Scan(ctx); err != nil {
+			return err
+		}
+		for _, p := range pks {
+			backup.PublicKeys = append(backup.PublicKeys, publicKeyModelToModel(p))
+		}
+
+		// Account keys
+		type akRow struct{ KeyID, AccountID int }
+		var aks []akRow
+		if err := QueryRawInto(ctx, tx, &aks, "SELECT key_id, account_id FROM account_keys"); err != nil {
+			return err
+		}
+		for _, r := range aks {
+			backup.AccountKeys = append(backup.AccountKeys, model.AccountKey{KeyID: r.KeyID, AccountID: r.AccountID})
+		}
+
+		// System keys
+		var sks []SystemKeyModel
+		if err := tx.NewSelect().Model(&sks).Scan(ctx); err != nil {
+			return err
+		}
+		for _, s := range sks {
+			backup.SystemKeys = append(backup.SystemKeys, systemKeyModelToModel(s))
+		}
+
+		// Known hosts
+		var khs []KnownHostModel
+		if err := tx.NewSelect().Model(&khs).Scan(ctx); err != nil {
+			return err
+		}
+		for _, k := range khs {
+			backup.KnownHosts = append(backup.KnownHosts, model.KnownHost{Hostname: k.Hostname, Key: k.Key})
+		}
+
+		// Audit log
+		var als []AuditLogModel
+		if err := tx.NewSelect().Model(&als).Scan(ctx); err != nil {
+			return err
+		}
+		for _, a := range als {
+			backup.AuditLogEntries = append(backup.AuditLogEntries, model.AuditLogEntry{ID: a.ID, Timestamp: a.Timestamp, Username: a.Username, Action: a.Action, Details: a.Details})
+		}
+
+		// Bootstrap sessions
+		var bss []BootstrapSessionModel
+		if err := tx.NewSelect().Model(&bss).Scan(ctx); err != nil {
+			return err
+		}
+		for _, b := range bss {
+			bs := model.BootstrapSession{ID: b.ID, Username: b.Username, Hostname: b.Hostname, TempPublicKey: b.TempPublicKey, CreatedAt: b.CreatedAt, ExpiresAt: b.ExpiresAt, Status: b.Status}
+			if b.Label.Valid {
+				bs.Label = b.Label.String
+			}
+			if b.Tags.Valid {
+				bs.Tags = b.Tags.String
+			}
+			backup.BootstrapSessions = append(backup.BootstrapSessions, bs)
+		}
+
+		return nil
+	})
+	return backup, err
 }
 
 // ImportDataFromBackupBun performs a full wipe-and-replace using a Bun transaction.
 func ImportDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 	ctx := context.Background()
-	tx, err := bdb.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	// Wipe tables
-	tables := []string{"account_keys", "bootstrap_sessions", "audit_log", "known_hosts", "system_keys", "public_keys", "accounts"}
-	for _, t := range tables {
-		if _, err := ExecRaw(ctx, tx, fmt.Sprintf("DELETE FROM %s", t)); err != nil {
-			return err
-		}
-	}
-
-	// Insert accounts
-	for _, acc := range backup.Accounts {
-		if _, err := ExecRaw(ctx, tx, "INSERT INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
-			return MapDBError(err)
-		}
-	}
-	// Public keys
-	for _, pk := range backup.PublicKeys {
-		if _, err := ExecRaw(ctx, tx, "INSERT INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?, ?)", pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal); err != nil {
-			return MapDBError(err)
-		}
-	}
-	// AccountKeys
-	for _, ak := range backup.AccountKeys {
-		if _, err := ExecRaw(ctx, tx, "INSERT INTO account_keys (key_id, account_id) VALUES (?, ?)", ak.KeyID, ak.AccountID); err != nil {
-			return MapDBError(err)
-		}
-	}
-	// SystemKeys
-	for _, sk := range backup.SystemKeys {
-		if _, err := ExecRaw(ctx, tx, "INSERT INTO system_keys (id, serial, public_key, private_key, is_active) VALUES (?, ?, ?, ?, ?)", sk.ID, sk.Serial, sk.PublicKey, sk.PrivateKey, sk.IsActive); err != nil {
-			return MapDBError(err)
-		}
-	}
-	// KnownHosts
-	for _, kh := range backup.KnownHosts {
-		if _, err := ExecRaw(ctx, tx, "INSERT INTO known_hosts (hostname, key) VALUES (?, ?)", kh.Hostname, kh.Key); err != nil {
-			return MapDBError(err)
-		}
-	}
-	// AuditLog: convert RFC3339 timestamps to time.Time when possible so MySQL accepts them.
-	for _, ale := range backup.AuditLogEntries {
-		var ts interface{} = ale.Timestamp
-		if ale.Timestamp != "" {
-			if parsed, err := time.Parse(time.RFC3339, ale.Timestamp); err == nil {
-				ts = parsed
-			} else {
-				// Fallback: convert 'T' separator to space and strip trailing 'Z' if present.
-				s := ale.Timestamp
-				s = strings.Replace(s, "T", " ", 1)
-				s = strings.TrimSuffix(s, "Z")
-				ts = s
+	return WithTx(ctx, bdb, func(ctx context.Context, tx bun.Tx) error {
+		// Wipe tables
+		tables := []string{"account_keys", "bootstrap_sessions", "audit_log", "known_hosts", "system_keys", "public_keys", "accounts"}
+		for _, t := range tables {
+			if _, err := ExecRaw(ctx, tx, fmt.Sprintf("DELETE FROM %s", t)); err != nil {
+				return err
 			}
 		}
-		if _, err := ExecRaw(ctx, tx, "INSERT INTO audit_log (id, timestamp, username, action, details) VALUES (?, ?, ?, ?, ?)", ale.ID, ts, ale.Username, ale.Action, ale.Details); err != nil {
-			return MapDBError(err)
-		}
-	}
-	// Bootstrap sessions: include CreatedAt/ExpiresAt when importing
-	for _, bs := range backup.BootstrapSessions {
-		if _, err := ExecRaw(ctx, tx, "INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, created_at, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", bs.ID, bs.Username, bs.Hostname, bs.Label, bs.Tags, bs.TempPublicKey, bs.CreatedAt, bs.ExpiresAt, bs.Status); err != nil {
-			return MapDBError(err)
-		}
-	}
 
-	return tx.Commit()
+		// Insert accounts
+		for _, acc := range backup.Accounts {
+			if _, err := ExecRaw(ctx, tx, "INSERT INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
+				return MapDBError(err)
+			}
+		}
+		// Public keys
+		for _, pk := range backup.PublicKeys {
+			if _, err := ExecRaw(ctx, tx, "INSERT INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?, ?)", pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal); err != nil {
+				return MapDBError(err)
+			}
+		}
+		// AccountKeys
+		for _, ak := range backup.AccountKeys {
+			if _, err := ExecRaw(ctx, tx, "INSERT INTO account_keys (key_id, account_id) VALUES (?, ?)", ak.KeyID, ak.AccountID); err != nil {
+				return MapDBError(err)
+			}
+		}
+		// SystemKeys
+		for _, sk := range backup.SystemKeys {
+			if _, err := ExecRaw(ctx, tx, "INSERT INTO system_keys (id, serial, public_key, private_key, is_active) VALUES (?, ?, ?, ?, ?)", sk.ID, sk.Serial, sk.PublicKey, sk.PrivateKey, sk.IsActive); err != nil {
+				return MapDBError(err)
+			}
+		}
+		// KnownHosts
+		for _, kh := range backup.KnownHosts {
+			if _, err := ExecRaw(ctx, tx, "INSERT INTO known_hosts (hostname, key) VALUES (?, ?)", kh.Hostname, kh.Key); err != nil {
+				return MapDBError(err)
+			}
+		}
+		// AuditLog: convert RFC3339 timestamps to time.Time when possible so MySQL accepts them.
+		for _, ale := range backup.AuditLogEntries {
+			var ts interface{} = ale.Timestamp
+			if ale.Timestamp != "" {
+				if parsed, err := time.Parse(time.RFC3339, ale.Timestamp); err == nil {
+					ts = parsed
+				} else {
+					// Fallback: convert 'T' separator to space and strip trailing 'Z' if present.
+					s := ale.Timestamp
+					s = strings.Replace(s, "T", " ", 1)
+					s = strings.TrimSuffix(s, "Z")
+					ts = s
+				}
+			}
+			if _, err := ExecRaw(ctx, tx, "INSERT INTO audit_log (id, timestamp, username, action, details) VALUES (?, ?, ?, ?, ?)", ale.ID, ts, ale.Username, ale.Action, ale.Details); err != nil {
+				return MapDBError(err)
+			}
+		}
+		// Bootstrap sessions: include CreatedAt/ExpiresAt when importing
+		for _, bs := range backup.BootstrapSessions {
+			if _, err := ExecRaw(ctx, tx, "INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, created_at, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", bs.ID, bs.Username, bs.Hostname, bs.Label, bs.Tags, bs.TempPublicKey, bs.CreatedAt, bs.ExpiresAt, bs.Status); err != nil {
+				return MapDBError(err)
+			}
+		}
+		return nil
+	})
 }
 
 // IntegrateDataFromBackupBun performs a non-destructive restore using INSERT OR IGNORE semantics.
 func IntegrateDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 	ctx := context.Background()
-	tx, err := bdb.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	for _, acc := range backup.Accounts {
-		if _, err := ExecRaw(ctx, tx, "INSERT OR IGNORE INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
-			return err
+	return WithTx(ctx, bdb, func(ctx context.Context, tx bun.Tx) error {
+		for _, acc := range backup.Accounts {
+			if _, err := ExecRaw(ctx, tx, "INSERT OR IGNORE INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
+				return err
+			}
 		}
-	}
-	for _, pk := range backup.PublicKeys {
-		if _, err := ExecRaw(ctx, tx, "INSERT OR IGNORE INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?, ?)", pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal); err != nil {
-			return err
+		for _, pk := range backup.PublicKeys {
+			if _, err := ExecRaw(ctx, tx, "INSERT OR IGNORE INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?, ?)", pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal); err != nil {
+				return err
+			}
 		}
-	}
-	for _, ak := range backup.AccountKeys {
-		if _, err := ExecRaw(ctx, tx, "INSERT OR IGNORE INTO account_keys (key_id, account_id) VALUES (?, ?)", ak.KeyID, ak.AccountID); err != nil {
-			return err
+		for _, ak := range backup.AccountKeys {
+			if _, err := ExecRaw(ctx, tx, "INSERT OR IGNORE INTO account_keys (key_id, account_id) VALUES (?, ?)", ak.KeyID, ak.AccountID); err != nil {
+				return err
+			}
 		}
-	}
-	return tx.Commit()
+		return nil
+	})
 }
 
 // --- Public key helpers ---
