@@ -60,6 +60,59 @@ func ClearDefaultAccountSearcher() {
 	defaultSearcher = nil
 }
 
+// AuditSearcher defines a minimal interface for retrieving audit log entries.
+type AuditSearcher interface {
+	GetAllAuditLogEntries() ([]model.AuditLogEntry, error)
+}
+
+// BunAuditSearcher is a Bun-based implementation of AuditSearcher.
+type BunAuditSearcher struct {
+	bdb *bun.DB
+}
+
+// NewBunAuditSearcher creates a new BunAuditSearcher.
+func NewBunAuditSearcher(bdb *bun.DB) AuditSearcher {
+	return &BunAuditSearcher{bdb: bdb}
+}
+
+// NewAuditSearcherFromStore creates an AuditSearcher from any Store by using
+// the underlying Bun DB.
+func NewAuditSearcherFromStore(s Store) AuditSearcher {
+	return NewBunAuditSearcher(s.BunDB())
+}
+
+// GetAllAuditLogEntries delegates to the centralized Bun helper.
+func (s *BunAuditSearcher) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
+	return GetAllAuditLogEntriesBun(s.bdb)
+}
+
+// DefaultAuditSearcher returns an AuditSearcher backed by the package-level
+// `store` if available. It returns nil when the package store is not
+// initialized; callers should handle nil by falling back to direct helpers.
+func DefaultAuditSearcher() AuditSearcher {
+	if defaultAuditSearcher != nil {
+		return defaultAuditSearcher
+	}
+	if store == nil {
+		return nil
+	}
+	return NewAuditSearcherFromStore(store)
+}
+
+// package-level override used primarily by tests to inject a fake audit searcher.
+var defaultAuditSearcher AuditSearcher
+
+// SetDefaultAuditSearcher sets a package-level AuditSearcher that will be
+// returned by DefaultAuditSearcher(). Useful for tests to inject a fake.
+func SetDefaultAuditSearcher(s AuditSearcher) {
+	defaultAuditSearcher = s
+}
+
+// ClearDefaultAuditSearcher clears any previously set package-level audit searcher.
+func ClearDefaultAuditSearcher() {
+	defaultAuditSearcher = nil
+}
+
 // KeySearcher defines a minimal interface for searching public keys.
 type KeySearcher interface {
 	SearchPublicKeys(query string) ([]model.PublicKey, error)

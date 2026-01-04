@@ -84,6 +84,7 @@ type mainModel struct {
 	// Injected searchers to propagate to sub-models for server-side search.
 	accountSearcher db.AccountSearcher
 	keySearcher     db.KeySearcher
+	auditSearcher   db.AuditSearcher
 }
 
 // menuModel holds the state for the main menu.
@@ -103,7 +104,7 @@ type languageModel struct {
 // initialModelWithSearchers creates the starting state of the TUI while
 // allowing injection of searchers used by sub-models. Pass nil to use
 // package defaults.
-func initialModelWithSearchers(a db.AccountSearcher, k db.KeySearcher) mainModel {
+func initialModelWithSearchers(a db.AccountSearcher, k db.KeySearcher, au db.AuditSearcher) mainModel {
 	return mainModel{
 		state: menuView,
 		menu: menuModel{
@@ -121,11 +122,12 @@ func initialModelWithSearchers(a db.AccountSearcher, k db.KeySearcher) mainModel
 		},
 		accountSearcher: a,
 		keySearcher:     k,
+		auditSearcher:   au,
 	}
 }
 
 func initialModel() mainModel {
-	return initialModelWithSearchers(db.DefaultAccountSearcher(), db.DefaultKeySearcher())
+	return initialModelWithSearchers(db.DefaultAccountSearcher(), db.DefaultKeySearcher(), db.DefaultAuditSearcher())
 }
 
 // Init is the first function that will be called by the Bubble Tea runtime.
@@ -165,7 +167,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case languageChangedMsg:
 		// The language has changed. Re-initialize the entire model to apply new translations everywhere.
 		// Preserve injected searchers so ongoing tests or injected fakes remain in effect.
-		newModel := initialModelWithSearchers(m.accountSearcher, m.keySearcher)
+		newModel := initialModelWithSearchers(m.accountSearcher, m.keySearcher, m.auditSearcher)
 		// Preserve the current window dimensions so the layout remains correct.
 		newModel.width = m.width
 		newModel.height = m.height
@@ -370,7 +372,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				case 5: // View Audit Log
 					m.state = auditLogView
-					m.auditLog = newAuditLogModel()
+					m.auditLog = newAuditLogModelWithSearcher(m.auditSearcher)
 					// Manually update the new sub-model with the current window size
 					// to ensure the viewport is initialized correctly.
 					var newAuditLogModel tea.Model

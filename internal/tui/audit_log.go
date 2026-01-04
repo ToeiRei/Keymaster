@@ -68,12 +68,20 @@ type auditLogModel struct {
 	filterCol   int // 0=all, 1=timestamp, 2=user, 3=action, 4=details
 	isFiltering bool
 	err         error
+	searcher    db.AuditSearcher
 }
 
-// newAuditLogModel creates a new model for the audit log view, loading entries from the database.
-func newAuditLogModel() *auditLogModel {
-	m := &auditLogModel{}
-	entries, err := db.GetAllAuditLogEntries()
+// newAuditLogModelWithSearcher creates a new model for the audit log view, loading entries from the provided searcher.
+func newAuditLogModelWithSearcher(searcher db.AuditSearcher) *auditLogModel {
+	m := &auditLogModel{searcher: searcher}
+	var entries []model.AuditLogEntry
+	var err error
+	if searcher != nil {
+		entries, err = searcher.GetAllAuditLogEntries()
+	} else {
+		// Fallback to the direct DB helper when no searcher is provided.
+		entries, err = db.GetAllAuditLogEntries()
+	}
 	if err != nil {
 		m.err = err
 		return m

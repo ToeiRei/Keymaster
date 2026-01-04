@@ -40,3 +40,20 @@ func (f *FakeKeySearcher) SearchPublicKeys(query string) ([]model.PublicKey, err
 	}
 	return f.Results, nil
 }
+
+// FakeAuditSearcher is a minimal fake used by tests for audit lookups.
+type FakeAuditSearcher struct {
+	Results []model.AuditLogEntry
+	Err     error
+}
+
+// GetAllAuditLogEntries implements AuditSearcher for the fake.
+func (f *FakeAuditSearcher) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	if f.Results == nil {
+		return []model.AuditLogEntry{}, nil
+	}
+	return f.Results, nil
+}
