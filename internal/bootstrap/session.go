@@ -73,7 +73,7 @@ func NewBootstrapSession(username, hostname, label, tags string) (*BootstrapSess
 		return nil, fmt.Errorf("failed to generate temporary key pair: %w", err)
 	}
 
-	now := time.Now()
+	now := defaultClock.Now()
 	session := &BootstrapSession{
 		ID: sessionID,
 		PendingAccount: model.Account{
@@ -104,7 +104,7 @@ func (s *BootstrapSession) GetBootstrapCommand() string {
 
 // IsExpired returns true if the session has exceeded its timeout duration.
 func (s *BootstrapSession) IsExpired() bool {
-	return time.Now().After(s.ExpiresAt)
+	return defaultClock.Now().After(s.ExpiresAt)
 }
 
 // Cleanup securely wipes sensitive data from memory.
@@ -159,7 +159,7 @@ func generateTemporaryKeyPair() (*TemporaryKeyPair, error) {
 	return &TemporaryKeyPair{
 		privateKey: []byte(privateKeyPEM),
 		publicKey:  publicKeyLine,
-		createdAt:  time.Now(),
+		createdAt:  defaultClock.Now(),
 	}, nil
 }
 
