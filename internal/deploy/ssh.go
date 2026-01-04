@@ -227,6 +227,22 @@ var NewDeployerFunc = func(host, user, privateKey string, passphrase []byte) (*D
 	return NewDeployerWithConfig(host, user, privateKey, passphrase, DefaultConnectionConfig(), false)
 }
 
+// sshDial is a package-level wrapper around ssh.Dial to allow tests to
+// replace the dialing behavior. Tests can override this to return a fake
+// *ssh.Client or a controlled error without making real network calls.
+var sshDial = ssh.Dial
+
+// newSftpClient is a package-level wrapper used to create an sftpRaw from an
+// existing *ssh.Client. By default it wraps the real *sftp.Client with
+// sftpRealAdapter. Tests may override this to return a mock sftpRaw.
+var newSftpClient = func(c *ssh.Client) (sftpRaw, error) {
+	real, err := sftp.NewClient(c)
+	if err != nil {
+		return nil, err
+	}
+	return &sftpRealAdapter{client: real}, nil
+}
+
 // NewDeployer creates a new SSH connection and returns a Deployer.
 // For bootstrap connections, use NewBootstrapDeployer instead.
 func NewDeployer(host, user, privateKey string, passphrase []byte) (*Deployer, error) {
@@ -340,15 +356,15 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 				HostKeyCallback: hostKeyCallback,
 				Timeout:         config.ConnectionTimeout,
 			}
-			client, err = ssh.Dial("tcp", addr, sshConfig)
+			client, err = sshDial("tcp", addr, sshConfig)
 			if err == nil {
 				// Success! We connected with the system key.
-				realSftpClient, sftpErr := sftp.NewClient(client)
+				sftpClient, sftpErr := newSftpClient(client)
 				if sftpErr != nil {
 					_ = client.Close()
 					return nil, fmt.Errorf("failed to create sftp client: %w", sftpErr)
 				}
-				return &Deployer{client: client, sftp: &sftpClientAdapter{client: &sftpRealAdapter{client: realSftpClient}}, config: config}, nil
+				return &Deployer{client: client, sftp: &sftpClientAdapter{client: sftpClient}, config: config}, nil
 			} else {
 				// Classify the error for better debugging (log it); we'll fall back to ssh-agent.
 				fmt.Printf("Info: system key connection attempt failed for %s: %v\n", host, err)
@@ -371,7 +387,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 		Timeout:         config.ConnectionTimeout,
 	}
 
-	client, err := ssh.Dial("tcp", addr, sshConfig)
+	client, err := sshDial("tcp", addr, sshConfig)
 	if err != nil {
 		err = ClassifyConnectionError(host, err)
 		return nil, fmt.Errorf("connection with ssh agent failed: %w", err)
@@ -379,7 +395,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 
 	// Success with agent.
 
-	realSftpClient, err := sftp.NewClient(client)
+	sftpClient, err := newSftpClient(client)
 	if err != nil {
 		_ = client.Close()
 		return nil, fmt.Errorf("failed to create sftp client: %w", err)
@@ -387,7 +403,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 
 	return &Deployer{
 		client: client,
-		sftp:   &sftpClientAdapter{client: &sftpRealAdapter{client: realSftpClient}},
+		sftp:   &sftpClientAdapter{client: sftpClient},
 		config: config,
 	}, nil
 }
@@ -433,14 +449,14 @@ func newDeployerWithExpectedHostKey(host, user, privateKey string, config *Conne
 	}
 
 	// Connect
-	client, err := ssh.Dial("tcp", addr, sshConfig)
+	client, err := sshDial("tcp", addr, sshConfig)
 	if err != nil {
 		err = ClassifyConnectionError(host, err)
 		return nil, err
 	}
 
 	// Create SFTP client
-	realSftpClient, err := sftp.NewClient(client)
+	sftpClient, err := newSftpClient(client)
 	if err != nil {
 		_ = client.Close()
 		return nil, fmt.Errorf("failed to create sftp client: %w", err)
@@ -448,7 +464,7 @@ func newDeployerWithExpectedHostKey(host, user, privateKey string, config *Conne
 
 	return &Deployer{
 		client: client,
-		sftp:   &sftpClientAdapter{client: &sftpRealAdapter{client: realSftpClient}},
+		sftp:   &sftpClientAdapter{client: sftpClient},
 		config: config,
 	}, nil
 }
@@ -641,7 +657,7 @@ func GetRemoteHostKeyWithTimeout(host string, timeout time.Duration) (ssh.Public
 	addr := CanonicalizeHostPort(host)
 
 	// We expect ssh.Dial to fail with our specific error.
-	_, err := ssh.Dial("tcp", addr, config)
+	_, err := sshDial("tcp", addr, config)
 	if err != nil {
 		// Check if it's our specific sentinel error.
 		if errors.Is(err, ErrHostKeySuccessfullyRetrieved) {
