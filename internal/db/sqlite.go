@@ -19,6 +19,11 @@ type SqliteStore struct {
 	bun *bun.DB
 }
 
+// BunDB returns the underlying *bun.DB for the sqlite store.
+func (s *SqliteStore) BunDB() *bun.DB {
+	return s.bun
+}
+
 // NewSqliteStore initializes the database connection and creates tables if they don't exist.
 func NewSqliteStore(dataSourceName string) (*SqliteStore, error) {
 	// Construct a new SqliteStore using the central NewStoreFromDSN helper.

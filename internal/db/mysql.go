@@ -21,6 +21,11 @@ type MySQLStore struct {
 	bun *bun.DB
 }
 
+// BunDB returns the underlying *bun.DB for the MySQL store.
+func (s *MySQLStore) BunDB() *bun.DB {
+	return s.bun
+}
+
 // NewMySQLStore initializes the database connection and creates tables if they don't exist.
 func NewMySQLStore(dataSourceName string) (*MySQLStore, error) {
 	// The MySQL driver requires a DSN format like: "user:password@tcp(host:port)/dbname"

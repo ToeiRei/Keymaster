@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/uptrace/bun"
 )
 
 // Store defines the interface for all database operations in Keymaster.
@@ -66,4 +67,7 @@ type Store interface {
 	ExportDataForBackup() (*model.BackupData, error)
 	ImportDataFromBackup(*model.BackupData) error
 	IntegrateDataFromBackup(*model.BackupData) error
+
+	// BunDB exposes the underlying *bun.DB for advanced operations or diagnostics.
+	BunDB() *bun.DB
 }

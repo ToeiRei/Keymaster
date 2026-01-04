@@ -18,10 +18,10 @@ func TestDBPoolDefaultsSQLite(t *testing.T) {
 		t.Fatalf("expected *SqliteStore, got %T", s)
 	}
 	// The default in NewStoreFromDSN is 25. Check that the sql.DB Stats reflects that.
-	stats := ss.bun.DB.Stats()
+	stats := ss.BunDB().DB.Stats()
 	want := 25
 	if stats.MaxOpenConnections != want {
 		t.Fatalf("MaxOpenConnections = %d; want %d", stats.MaxOpenConnections, want)
 	}
-	_ = ss.bun.DB.Close()
+	_ = ss.BunDB().DB.Close()
 }

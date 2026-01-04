@@ -21,6 +21,11 @@ type PostgresStore struct {
 	bun *bun.DB
 }
 
+// BunDB returns the underlying *bun.DB for the postgres store.
+func (s *PostgresStore) BunDB() *bun.DB {
+	return s.bun
+}
+
 // NewPostgresStore initializes the database connection and creates tables if they don't exist.
 func NewPostgresStore(dataSourceName string) (*PostgresStore, error) {
 	// This function is now a placeholder. The actual initialization happens in InitDB.
