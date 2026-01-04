@@ -22,14 +22,12 @@ func TestKeyManager_AssignUnassign_Audit(t *testing.T) {
 		t.Fatalf("AddAccount error: %v", err)
 	}
 
-	// Add a public key
-	pk, err := s.AddPublicKeyAndGetModel("ssh-ed25519", "ssh-ed25519 AAAAB3Nza... test-key", "k-one", false)
+	// Use the bunKeyManager adapter directly and add a public key via KeyManager
+	km := &bunKeyManager{bStore: s}
+	pk, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "ssh-ed25519 AAAAB3Nza... test-key", "k-one", false)
 	if err != nil {
 		t.Fatalf("AddPublicKeyAndGetModel error: %v", err)
 	}
-
-	// Use the bunKeyManager adapter directly
-	km := &bunKeyManager{bStore: s}
 
 	// Assign key to account
 	if err := km.AssignKeyToAccount(pk.ID, acctID); err != nil {

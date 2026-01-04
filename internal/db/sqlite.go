@@ -118,50 +118,7 @@ func (s *SqliteStore) GetAllActiveAccounts() ([]model.Account, error) {
 	return GetAllActiveAccountsBun(s.bun)
 }
 
-// AddPublicKey adds a new public key to the database.
-func (s *SqliteStore) AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error {
-	err := AddPublicKeyBun(s.bun, algorithm, keyData, comment, isGlobal)
-	if err == nil {
-		_ = s.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
-	}
-	return err
-}
-
-// GetAllPublicKeys retrieves all public keys from the database.
-func (s *SqliteStore) GetAllPublicKeys() ([]model.PublicKey, error) {
-	return GetAllPublicKeysBun(s.bun)
-}
-
-// GetPublicKeyByComment retrieves a single public key by its unique comment.
-func (s *SqliteStore) GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
-	return GetPublicKeyByCommentBun(s.bun, comment)
-}
-
-// AddPublicKeyAndGetModel adds a public key to the database if it doesn't already
-// exist (based on the comment) and returns the full key model.
-// It returns (nil, nil) if the key is a duplicate.
-func (s *SqliteStore) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) {
-	// First, check if it exists to avoid constraint errors.
-	pk, err := AddPublicKeyAndGetModelBun(s.bun, algorithm, keyData, comment, isGlobal)
-	if err == nil && pk != nil {
-		_ = s.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
-	}
-	return pk, err
-}
-
-// TogglePublicKeyGlobal flips the 'is_global' status of a public key.
-func (s *SqliteStore) TogglePublicKeyGlobal(id int) error {
-	err := TogglePublicKeyGlobalBun(s.bun, id)
-	if err == nil {
-		_ = s.LogAction("TOGGLE_KEY_GLOBAL", fmt.Sprintf("key_id: %d", id))
-	}
-	return err
-}
-
-// GetGlobalPublicKeys retrieves all keys marked as global.
-func (s *SqliteStore) GetGlobalPublicKeys() ([]model.PublicKey, error) {
-	return GetGlobalPublicKeysBun(s.bun)
-}
+// Public-key CRUD is provided by KeyManager; store keeps Bun helpers.
 
 // GetKnownHostKey retrieves the trusted public key for a given hostname.
 func (s *SqliteStore) GetKnownHostKey(hostname string) (string, error) {

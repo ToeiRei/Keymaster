@@ -107,53 +107,7 @@ func (s *PostgresStore) GetAllActiveAccounts() ([]model.Account, error) {
 	return GetAllActiveAccountsBun(s.bun)
 }
 
-func (s *PostgresStore) AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error {
-	err := AddPublicKeyBun(s.bun, algorithm, keyData, comment, isGlobal)
-	if err == nil {
-		_ = s.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
-	}
-	return err
-}
-
-func (s *PostgresStore) GetAllPublicKeys() ([]model.PublicKey, error) {
-	return GetAllPublicKeysBun(s.bun)
-}
-
-func (s *PostgresStore) GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
-	return GetPublicKeyByCommentBun(s.bun, comment)
-}
-
-func (s *PostgresStore) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) {
-	pk, err := AddPublicKeyAndGetModelBun(s.bun, algorithm, keyData, comment, isGlobal)
-	if err == nil && pk != nil {
-		_ = s.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
-	}
-	return pk, err
-}
-
-func (s *PostgresStore) TogglePublicKeyGlobal(id int) error {
-	err := TogglePublicKeyGlobalBun(s.bun, id)
-	if err == nil {
-		_ = s.LogAction("TOGGLE_KEY_GLOBAL", fmt.Sprintf("key_id: %d", id))
-	}
-	return err
-}
-
-func (s *PostgresStore) GetGlobalPublicKeys() ([]model.PublicKey, error) {
-	return GetGlobalPublicKeysBun(s.bun)
-}
-
-func (s *PostgresStore) DeletePublicKey(id int) error {
-	details := fmt.Sprintf("id: %d", id)
-	if pk, err2 := GetPublicKeyByIDBun(s.bun, id); err2 == nil && pk != nil {
-		details = fmt.Sprintf("comment: %s", pk.Comment)
-	}
-	err := DeletePublicKeyBun(s.bun, id)
-	if err == nil {
-		_ = s.LogAction("DELETE_PUBLIC_KEY", details)
-	}
-	return err
-}
+// Public-key CRUD is provided by KeyManager; store keeps Bun helpers.
 func (s *PostgresStore) GetKnownHostKey(hostname string) (string, error) {
 	return GetKnownHostKeyBun(s.bun, hostname)
 }

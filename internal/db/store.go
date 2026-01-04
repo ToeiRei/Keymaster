@@ -26,13 +26,8 @@ type Store interface {
 	GetAllActiveAccounts() ([]model.Account, error)
 
 	// Public Key methods
-	AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error
-	GetAllPublicKeys() ([]model.PublicKey, error)
-	GetPublicKeyByComment(comment string) (*model.PublicKey, error)
-	AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error)
-	TogglePublicKeyGlobal(id int) error
-	GetGlobalPublicKeys() ([]model.PublicKey, error)
-	DeletePublicKey(id int) error
+	// Public Key methods have been moved to the KeyManager abstraction. Store
+	// implementations continue to provide Bun helpers in `bun_adapter.go`.
 
 	// Host Key methods
 	GetKnownHostKey(hostname string) (string, error)

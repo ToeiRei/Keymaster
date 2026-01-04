@@ -249,25 +249,51 @@ func DefaultKeyManager() KeyManager {
 type bunKeyManager struct{ bStore Store }
 
 func (b *bunKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error {
-	return b.bStore.AddPublicKey(algorithm, keyData, comment, isGlobal)
+	err := AddPublicKeyBun(b.bStore.BunDB(), algorithm, keyData, comment, isGlobal)
+	if err == nil {
+		_ = b.bStore.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
+	}
+	return err
 }
 
 func (b *bunKeyManager) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) {
-	return b.bStore.AddPublicKeyAndGetModel(algorithm, keyData, comment, isGlobal)
+	pk, err := AddPublicKeyAndGetModelBun(b.bStore.BunDB(), algorithm, keyData, comment, isGlobal)
+	if err == nil && pk != nil {
+		_ = b.bStore.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
+	}
+	return pk, err
 }
 
-func (b *bunKeyManager) DeletePublicKey(id int) error { return b.bStore.DeletePublicKey(id) }
+func (b *bunKeyManager) DeletePublicKey(id int) error {
+	details := fmt.Sprintf("id: %d", id)
+	if pk, _ := GetPublicKeyByIDBun(b.bStore.BunDB(), id); pk != nil {
+		details = fmt.Sprintf("comment: %s", pk.Comment)
+	}
+	err := DeletePublicKeyBun(b.bStore.BunDB(), id)
+	if err == nil {
+		_ = b.bStore.LogAction("DELETE_PUBLIC_KEY", details)
+	}
+	return err
+}
+
 func (b *bunKeyManager) TogglePublicKeyGlobal(id int) error {
-	return b.bStore.TogglePublicKeyGlobal(id)
+	err := TogglePublicKeyGlobalBun(b.bStore.BunDB(), id)
+	if err == nil {
+		_ = b.bStore.LogAction("TOGGLE_KEY_GLOBAL", fmt.Sprintf("key_id: %d", id))
+	}
+	return err
 }
+
 func (b *bunKeyManager) GetAllPublicKeys() ([]model.PublicKey, error) {
-	return b.bStore.GetAllPublicKeys()
+	return GetAllPublicKeysBun(b.bStore.BunDB())
 }
+
 func (b *bunKeyManager) GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
-	return b.bStore.GetPublicKeyByComment(comment)
+	return GetPublicKeyByCommentBun(b.bStore.BunDB(), comment)
 }
+
 func (b *bunKeyManager) GetGlobalPublicKeys() ([]model.PublicKey, error) {
-	return b.bStore.GetGlobalPublicKeys()
+	return GetGlobalPublicKeysBun(b.bStore.BunDB())
 }
 func (b *bunKeyManager) AssignKeyToAccount(keyID, accountID int) error {
 	err := AssignKeyToAccountBun(b.bStore.BunDB(), keyID, accountID)
