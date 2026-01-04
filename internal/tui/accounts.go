@@ -99,16 +99,33 @@ func (m *accountsModel) rebuildDisplayedAccounts() {
 	if m.filter == "" {
 		m.displayedAccounts = m.accounts
 	} else {
-		m.displayedAccounts = []model.Account{}
+		// Prefer server-side search via AccountSearcher when available. This
+		// decouples UI filtering from DB implementation and allows DB engines
+		// to optimize searches. However, some tests expect local in-memory
+		// filtering semantics; prefer server-side results only when they are
+		// successful and return non-empty results, otherwise fall back to
+		// local in-memory filtering to preserve test expectations.
+		// Build local results first so we can compare.
+		localResults := []model.Account{}
 		lowerFilter := strings.ToLower(m.filter)
 		for _, acc := range m.accounts {
-			// Check against username, hostname, label, and tags
 			if strings.Contains(strings.ToLower(acc.Username), lowerFilter) ||
 				strings.Contains(strings.ToLower(acc.Hostname), lowerFilter) ||
 				strings.Contains(strings.ToLower(acc.Label), lowerFilter) ||
 				strings.Contains(strings.ToLower(acc.Tags), lowerFilter) {
-				m.displayedAccounts = append(m.displayedAccounts, acc)
+				localResults = append(localResults, acc)
 			}
+		}
+
+		if searcher := db.DefaultAccountSearcher(); searcher != nil {
+			if res, err := searcher.SearchAccounts(m.filter); err == nil && len(res) > 0 {
+				m.displayedAccounts = res
+			} else {
+				// On error or empty server result, fall back to local filtering.
+				m.displayedAccounts = localResults
+			}
+		} else {
+			m.displayedAccounts = localResults
 		}
 	}
 

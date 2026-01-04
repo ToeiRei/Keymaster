@@ -222,7 +222,8 @@ func (s *MySQLStore) GetAccountsForKey(keyID int) ([]model.Account, error) {
 
 // SearchAccounts performs a fuzzy search for accounts using the centralized Bun helper.
 func (s *MySQLStore) SearchAccounts(query string) ([]model.Account, error) {
-	return SearchAccountsBun(s.bun, query)
+	// Use Bun-backed AccountSearcher adapter for search logic.
+	return NewBunAccountSearcher(s.bun).SearchAccounts(query)
 }
 func (s *MySQLStore) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
 	return GetAllAuditLogEntriesBun(s.bun)
