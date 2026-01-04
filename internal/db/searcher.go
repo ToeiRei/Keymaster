@@ -166,6 +166,54 @@ func ClearDefaultKeySearcher() {
 	defaultKeySearcher = nil
 }
 
+// AccountManager defines a minimal interface for managing accounts (add/delete).
+// This allows higher-level components to avoid depending directly on the Store
+// implementation and enables tests to inject fakes.
+type AccountManager interface {
+	AddAccount(username, hostname, label, tags string) (int, error)
+	DeleteAccount(id int) error
+}
+
+// DefaultAccountManager returns an AccountManager backed by the package-level
+// `store` if available. Tests may inject a fake via SetDefaultAccountManager.
+func DefaultAccountManager() AccountManager {
+	if defaultAccountManager != nil {
+		return defaultAccountManager
+	}
+	if store == nil {
+		return nil
+	}
+	// Use the package store as the default AccountManager by delegating to it.
+	return &bunAccountManager{bStore: store}
+}
+
+// bunAccountManager adapts the existing Store to the AccountManager interface.
+type bunAccountManager struct {
+	bStore Store
+}
+
+func (b *bunAccountManager) AddAccount(username, hostname, label, tags string) (int, error) {
+	return b.bStore.AddAccount(username, hostname, label, tags)
+}
+
+func (b *bunAccountManager) DeleteAccount(id int) error {
+	return b.bStore.DeleteAccount(id)
+}
+
+// package-level override used primarily by tests to inject a fake account manager.
+var defaultAccountManager AccountManager
+
+// SetDefaultAccountManager sets a package-level AccountManager that will be
+// returned by DefaultAccountManager(). Useful for tests to inject a fake.
+func SetDefaultAccountManager(m AccountManager) {
+	defaultAccountManager = m
+}
+
+// ClearDefaultAccountManager clears any previously set package-level account manager.
+func ClearDefaultAccountManager() {
+	defaultAccountManager = nil
+}
+
 // AuditWriter defines a minimal interface for recording audit log events.
 type AuditWriter interface {
 	LogAction(action string, details string) error

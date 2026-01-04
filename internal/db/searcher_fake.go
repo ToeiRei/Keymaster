@@ -1,6 +1,10 @@
 package db
 
-import "github.com/toeirei/keymaster/internal/model"
+import (
+	"strconv"
+
+	"github.com/toeirei/keymaster/internal/model"
+)
 
 // FakeAccountSearcher is a minimal, configurable fake used by tests.
 type FakeAccountSearcher struct {
@@ -72,5 +76,34 @@ func (f *FakeAuditWriter) LogAction(action string, details string) error {
 		return f.Err
 	}
 	f.Calls = append(f.Calls, [2]string{action, details})
+	return nil
+}
+
+// FakeAccountManager is a minimal fake used by tests for account add/delete.
+type FakeAccountManager struct {
+	// Calls records method name and arguments for assertions.
+	Calls [][3]string // method, arg1, arg2 (arg2 unused for Delete)
+	// NextID is returned from AddAccount (default 1)
+	NextID int
+	// Err to return from methods if set
+	Err error
+}
+
+func (f *FakeAccountManager) AddAccount(username, hostname, label, tags string) (int, error) {
+	if f.Err != nil {
+		return 0, f.Err
+	}
+	f.Calls = append(f.Calls, [3]string{"AddAccount", username, hostname})
+	if f.NextID == 0 {
+		f.NextID = 1
+	}
+	return f.NextID, nil
+}
+
+func (f *FakeAccountManager) DeleteAccount(id int) error {
+	if f.Err != nil {
+		return f.Err
+	}
+	f.Calls = append(f.Calls, [3]string{"DeleteAccount", strconv.Itoa(id), ""})
 	return nil
 }
