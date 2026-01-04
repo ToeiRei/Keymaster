@@ -75,10 +75,13 @@ type deployModel struct {
 	pendingCmd         tea.Cmd // Command to re-run after getting passphrase
 	wasFleetDeploy     bool    // Flag to remember if the last operation was a fleet deployment
 	width, height      int
+	searcher           db.AccountSearcher
 }
 
 // newDeployModel creates a new model for the deployment view.
-func newDeployModel() deployModel {
+// newDeployModelWithSearcher creates a deploy model and accepts an optional
+// AccountSearcher for server-side lookups.
+func newDeployModelWithSearcher(s db.AccountSearcher) deployModel {
 	pi := newPassphraseInput()
 	fi := newFilenameInput()
 	return deployModel{
@@ -86,7 +89,13 @@ func newDeployModel() deployModel {
 		fleetResults:    make(map[int]error),
 		passphraseInput: pi,
 		filenameInput:   fi,
+		searcher:        s,
 	}
+}
+
+// newDeployModel is a convenience wrapper that uses the package default searcher.
+func newDeployModel() deployModel {
+	return newDeployModelWithSearcher(db.DefaultAccountSearcher())
 }
 
 // Init initializes the deploy model.

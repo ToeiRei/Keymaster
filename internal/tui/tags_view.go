@@ -29,11 +29,15 @@ type tagsViewModel struct {
 	filter      string
 	isFiltering bool
 	err         error
+	searcher    db.AccountSearcher
 }
 
-func newTagsViewModel() tagsViewModel {
+// newTagsViewModelWithSearcher constructs a tags view model and allows an
+// optional AccountSearcher to be provided for server-side operations.
+func newTagsViewModelWithSearcher(s db.AccountSearcher) tagsViewModel {
 	m := tagsViewModel{
 		expanded: make(map[string]bool),
+		searcher: s,
 	}
 
 	accounts, err := db.GetAllAccounts()
@@ -82,6 +86,11 @@ func newTagsViewModel() tagsViewModel {
 	m.rebuildLines()
 
 	return m
+}
+
+// newTagsViewModel is a convenience wrapper that uses the package default searcher.
+func newTagsViewModel() tagsViewModel {
+	return newTagsViewModelWithSearcher(db.DefaultAccountSearcher())
 }
 
 // rebuildLines constructs the flattened list of items to display.

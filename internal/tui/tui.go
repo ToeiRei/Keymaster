@@ -81,6 +81,9 @@ type mainModel struct {
 	width      int
 	height     int
 	err        error
+	// Injected searchers to propagate to sub-models for server-side search.
+	accountSearcher db.AccountSearcher
+	keySearcher     db.KeySearcher
 }
 
 // menuModel holds the state for the main menu.
@@ -97,7 +100,10 @@ type languageModel struct {
 }
 
 // initialModel creates the starting state of the TUI, beginning at the main menu.
-func initialModel() mainModel {
+// initialModelWithSearchers creates the starting state of the TUI while
+// allowing injection of searchers used by sub-models. Pass nil to use
+// package defaults.
+func initialModelWithSearchers(a db.AccountSearcher, k db.KeySearcher) mainModel {
 	return mainModel{
 		state: menuView,
 		menu: menuModel{
@@ -113,7 +119,13 @@ func initialModel() mainModel {
 				i18n.T("menu.language"),
 			},
 		},
+		accountSearcher: a,
+		keySearcher:     k,
 	}
+}
+
+func initialModel() mainModel {
+	return initialModelWithSearchers(db.DefaultAccountSearcher(), db.DefaultKeySearcher())
 }
 
 // Init is the first function that will be called by the Bubble Tea runtime.
@@ -152,7 +164,8 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case languageChangedMsg:
 		// The language has changed. Re-initialize the entire model to apply new translations everywhere.
-		newModel := initialModel()
+		// Preserve injected searchers so ongoing tests or injected fakes remain in effect.
+		newModel := initialModelWithSearchers(m.accountSearcher, m.keySearcher)
 		// Preserve the current window dimensions so the layout remains correct.
 		newModel.width = m.width
 		newModel.height = m.height
@@ -250,7 +263,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if _, ok := msg.(backToListMsg); ok {
 			m.state = accountsView
 			// Reinitialize accounts view to show updated list
-			newModel := newAccountsModel()
+			newModel := newAccountsModelWithSearcher(m.accountSearcher)
 			m.accounts = &newModel
 			var updatedModel tea.Model
 			updatedModel, cmd = m.accounts.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
@@ -261,7 +274,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if accountMsg, ok := msg.(accountModifiedMsg); ok {
 			m.state = accountsView
 			// Reinitialize accounts view to show new account
-			newModel := newAccountsModel()
+			newModel := newAccountsModelWithSearcher(m.accountSearcher)
 			m.accounts = &newModel
 			var updatedModel tea.Model
 			updatedModel, cmd = m.accounts.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
@@ -323,7 +336,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case 0: // Manage Accounts
 					m.state = accountsView
 					// newAccountsModel returns a value, but we need a pointer.
-					newModel := newAccountsModel()
+					newModel := newAccountsModelWithSearcher(m.accountSearcher)
 					m.accounts = &newModel
 					// Manually update the new sub-model with the current window size
 					// to ensure the viewport is initialized correctly.
@@ -333,7 +346,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				case 1: // Manage Public Keys
 					m.state = publicKeysView
-					newModel := newPublicKeysModel()
+					newModel := newPublicKeysModelWithSearcher(m.keySearcher)
 					m.keys = &newModel
 					var updatedModel tea.Model
 					updatedModel, cmd = m.keys.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
@@ -353,7 +366,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				case 4: // Deploy to Fleet
 					m.state = deployView
-					m.deployer = newDeployModel()
+					m.deployer = newDeployModelWithSearcher(m.accountSearcher)
 					return m, nil
 				case 5: // View Audit Log
 					m.state = auditLogView
@@ -370,7 +383,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				case 7: // View Accounts by Tag
 					m.state = tagsView
-					m.tags = newTagsViewModel()
+					m.tags = newTagsViewModelWithSearcher(m.accountSearcher)
 					return m, nil
 				case 8: // Language
 					m.state = languageView
