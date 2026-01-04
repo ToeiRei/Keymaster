@@ -39,6 +39,9 @@ var (
 	// currentReaperTicker holds the active ticker started by StartSessionReaper
 	// so tests can stop it when needed.
 	currentReaperTicker *time.Ticker
+	// Package-level hooks to allow tests to override SSH and SFTP creation.
+	sshDialFunc   = ssh.Dial
+	sftpNewClient = sftp.NewClient
 )
 
 // RegisterSession adds a bootstrap session to the active sessions registry.
@@ -261,14 +264,14 @@ func removeTempKeyFromRemoteHost(session *BootstrapSession) error {
 	}
 
 	// Connect to the remote host
-	conn, err := ssh.Dial("tcp", session.PendingAccount.Hostname+":22", config)
+	conn, err := sshDialFunc("tcp", session.PendingAccount.Hostname+":22", config)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s: %w", session.PendingAccount.Hostname, err)
 	}
 	defer func() { _ = conn.Close() }()
 
 	// Create SFTP session
-	sftpClient, err := sftp.NewClient(conn)
+	sftpClient, err := sftpNewClient(conn)
 	if err != nil {
 		return fmt.Errorf("failed to create SFTP client: %w", err)
 	}
