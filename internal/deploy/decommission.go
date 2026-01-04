@@ -91,7 +91,7 @@ func DecommissionAccount(account model.Account, systemKey string, options Decomm
 		auditAction = "DECOMMISSION_DRYRUN"
 		auditDetails = fmt.Sprintf("DRY RUN: Would decommission account %s (ID: %d)", account.String(), account.ID)
 	}
-	if err := db.LogAction(auditAction, auditDetails); err != nil {
+	if err := logAction(auditAction, auditDetails); err != nil {
 		// Log the error but continue - audit logging shouldn't block decommission
 		fmt.Printf("Warning: Failed to log audit entry: %v\n", err)
 	}
@@ -120,7 +120,7 @@ func DecommissionAccount(account model.Account, systemKey string, options Decomm
 				result.SkipReason = fmt.Sprintf("remote cleanup failed and --force not specified: %v", err)
 
 				// Log the failure
-				_ = db.LogAction("DECOMMISSION_FAILED",
+				_ = logAction("DECOMMISSION_FAILED",
 					fmt.Sprintf("Failed to decommission %s: %v", account.String(), err))
 				return result
 			}
@@ -131,7 +131,7 @@ func DecommissionAccount(account model.Account, systemKey string, options Decomm
 	// Step 2: Database cleanup
 	if err := db.DeleteAccount(account.ID); err != nil {
 		result.DatabaseDeleteError = err
-		_ = db.LogAction("DECOMMISSION_FAILED",
+		_ = logAction("DECOMMISSION_FAILED",
 			fmt.Sprintf("Failed to delete account %s from database: %v", account.String(), err))
 		return result
 	}
@@ -145,7 +145,7 @@ func DecommissionAccount(account model.Account, systemKey string, options Decomm
 	if result.BackupPath != "" {
 		details += fmt.Sprintf(" - Backup created: %s", result.BackupPath)
 	}
-	_ = db.LogAction("DECOMMISSION_SUCCESS", details)
+	_ = logAction("DECOMMISSION_SUCCESS", details)
 
 	return result
 }
