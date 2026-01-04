@@ -101,10 +101,11 @@ type AccountModel struct {
 // PublicKeyModel maps the subset of public_keys used in joins.
 type PublicKeyModel struct {
 	bun.BaseModel `bun:"table:public_keys"`
-	ID            int    `bun:"id,pk,autoincrement"`
-	Algorithm     string `bun:"algorithm"`
-	KeyData       string `bun:"key_data"`
-	Comment       string `bun:"comment"`
+	ID            int          `bun:"id,pk,autoincrement"`
+	Algorithm     string       `bun:"algorithm"`
+	KeyData       string       `bun:"key_data"`
+	Comment       string       `bun:"comment"`
+	ExpiresAt     sql.NullTime `bun:"expires_at"`
 }
 
 // AuditLogModel maps the audit_log table.
@@ -176,7 +177,11 @@ func bootstrapSessionModelToModel(bsm BootstrapSessionModel) model.BootstrapSess
 }
 
 func publicKeyModelToModel(p PublicKeyModel) model.PublicKey {
-	return model.PublicKey{ID: p.ID, Algorithm: p.Algorithm, KeyData: p.KeyData, Comment: p.Comment}
+	pk := model.PublicKey{ID: p.ID, Algorithm: p.Algorithm, KeyData: p.KeyData, Comment: p.Comment}
+	if p.ExpiresAt.Valid {
+		pk.ExpiresAt = p.ExpiresAt.Time
+	}
+	return pk
 }
 
 func systemKeyModelToModel(skm SystemKeyModel) model.SystemKey {

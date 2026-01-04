@@ -45,6 +45,8 @@ type PublicKey struct {
 	Comment   string // The unique comment associated with the key, used as an identifier.
 	// IsGlobal indicates if the key should be deployed to all active accounts by default.
 	IsGlobal bool
+	// ExpiresAt is the optional expiration time for this public key. A zero value means no expiration.
+	ExpiresAt time.Time
 }
 
 // String returns the full public key line suitable for an authorized_keys file.
