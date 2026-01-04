@@ -198,18 +198,34 @@ func NewStoreFromDSN(dbType, dsn string) (Store, error) {
 	}
 	log.Printf("db: migrations for %s completed in %s", dbType, time.Since(migStart))
 
+	// Create a Bun DB wrapper for the sql.DB based on dialect
+	bunDB := createBunDB(sqlDB, dbType)
 	switch dbType {
 	case "sqlite":
-		bunDB := bun.NewDB(sqlDB, sqlitedialect.New())
 		return &SqliteStore{bun: bunDB}, nil
 	case "postgres":
-		bunDB := bun.NewDB(sqlDB, pgdialect.New())
 		return &PostgresStore{bun: bunDB}, nil
 	case "mysql":
-		bunDB := bun.NewDB(sqlDB, mysqldialect.New())
 		return &MySQLStore{bun: bunDB}, nil
 	default:
 		return nil, fmt.Errorf("unsupported database type for store creation: '%s'", dbType)
+	}
+}
+
+// createBunDB constructs a *bun.DB for the provided *sql.DB and dbType.
+// Centralizing construction makes it easier to apply consistent options
+// and to test Bun initialization in one place.
+func createBunDB(sqlDB *sql.DB, dbType string) *bun.DB {
+	switch dbType {
+	case "sqlite":
+		return bun.NewDB(sqlDB, sqlitedialect.New())
+	case "postgres":
+		return bun.NewDB(sqlDB, pgdialect.New())
+	case "mysql":
+		return bun.NewDB(sqlDB, mysqldialect.New())
+	default:
+		// Fallback to SQLite dialect as a safe default; callers should validate dbType earlier.
+		return bun.NewDB(sqlDB, sqlitedialect.New())
 	}
 }
 

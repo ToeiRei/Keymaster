@@ -21,13 +21,16 @@ type SqliteStore struct {
 
 // NewSqliteStore initializes the database connection and creates tables if they don't exist.
 func NewSqliteStore(dataSourceName string) (*SqliteStore, error) {
-	// This function is now a placeholder. The actual initialization happens in InitDB.
-	// It's kept for potential future logic specific to the store's creation.
-	s, ok := store.(*SqliteStore)
-	if !ok {
-		return nil, fmt.Errorf("internal error: store is not a *SqliteStore")
+	// Construct a new SqliteStore using the central NewStoreFromDSN helper.
+	s, err := NewStoreFromDSN("sqlite", dataSourceName)
+	if err != nil {
+		return nil, err
 	}
-	return s, nil
+	ss, ok := s.(*SqliteStore)
+	if !ok {
+		return nil, fmt.Errorf("internal error: expected *SqliteStore, got %T", s)
+	}
+	return ss, nil
 }
 
 // GetAllAccounts retrieves all accounts from the database.
