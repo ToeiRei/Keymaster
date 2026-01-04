@@ -141,8 +141,22 @@ type sftpClient interface {
 
 // sftpClientAdapter adapts a *sftp.Client to the sftpClient interface by
 // delegating calls and returning *sftp.File values as io.ReadWriteCloser.
+// sftpRaw is an internal abstraction over the concrete *sftp.Client methods we
+// use. Using this interface allows tests to inject a mock implementation while
+// production code wraps the real *sftp.Client behind a small adapter.
+type sftpRaw interface {
+	Create(path string) (io.ReadWriteCloser, error)
+	Stat(p string) (os.FileInfo, error)
+	Mkdir(path string) error
+	Chmod(path string, mode os.FileMode) error
+	Remove(path string) error
+	Rename(oldpath, newpath string) error
+	Open(path string) (io.ReadWriteCloser, error)
+	Close() error
+}
+
 type sftpClientAdapter struct {
-	client *sftp.Client
+	client sftpRaw
 }
 
 func (a *sftpClientAdapter) Create(path string) (io.ReadWriteCloser, error) {
@@ -176,6 +190,29 @@ func (a *sftpClientAdapter) Open(path string) (io.ReadWriteCloser, error) {
 func (a *sftpClientAdapter) Close() error {
 	return a.client.Close()
 }
+
+// sftpRealAdapter wraps a *sftp.Client and implements sftpRaw by delegating
+// calls and converting the concrete *sftp.File return values to
+// io.ReadWriteCloser where necessary.
+type sftpRealAdapter struct {
+	client *sftp.Client
+}
+
+func (r *sftpRealAdapter) Create(path string) (io.ReadWriteCloser, error) {
+	return r.client.Create(path)
+}
+
+func (r *sftpRealAdapter) Stat(p string) (os.FileInfo, error) { return r.client.Stat(p) }
+func (r *sftpRealAdapter) Mkdir(path string) error            { return r.client.Mkdir(path) }
+func (r *sftpRealAdapter) Chmod(path string, mode os.FileMode) error {
+	return r.client.Chmod(path, mode)
+}
+func (r *sftpRealAdapter) Remove(path string) error { return r.client.Remove(path) }
+func (r *sftpRealAdapter) Rename(oldpath, newpath string) error {
+	return r.client.Rename(oldpath, newpath)
+}
+func (r *sftpRealAdapter) Open(path string) (io.ReadWriteCloser, error) { return r.client.Open(path) }
+func (r *sftpRealAdapter) Close() error                                 { return r.client.Close() }
 
 // Deployer handles the connection and deployment to a remote host.
 type Deployer struct {
@@ -311,7 +348,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 					_ = client.Close()
 					return nil, fmt.Errorf("failed to create sftp client: %w", sftpErr)
 				}
-				return &Deployer{client: client, sftp: &sftpClientAdapter{client: realSftpClient}, config: config}, nil
+				return &Deployer{client: client, sftp: &sftpClientAdapter{client: &sftpRealAdapter{client: realSftpClient}}, config: config}, nil
 			} else {
 				// Classify the error for better debugging (log it); we'll fall back to ssh-agent.
 				fmt.Printf("Info: system key connection attempt failed for %s: %v\n", host, err)
@@ -350,7 +387,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 
 	return &Deployer{
 		client: client,
-		sftp:   &sftpClientAdapter{client: realSftpClient},
+		sftp:   &sftpClientAdapter{client: &sftpRealAdapter{client: realSftpClient}},
 		config: config,
 	}, nil
 }
@@ -411,7 +448,7 @@ func newDeployerWithExpectedHostKey(host, user, privateKey string, config *Conne
 
 	return &Deployer{
 		client: client,
-		sftp:   &sftpClientAdapter{client: realSftpClient},
+		sftp:   &sftpClientAdapter{client: &sftpRealAdapter{client: realSftpClient}},
 		config: config,
 	}, nil
 }
