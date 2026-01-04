@@ -1,0 +1,36 @@
+package deploy
+
+import (
+	"strings"
+	"testing"
+
+	"golang.org/x/crypto/ssh/agent"
+
+	genssh "github.com/toeirei/keymaster/internal/crypto/ssh"
+)
+
+func TestNewDeployer_NoAgentAvailable(t *testing.T) {
+	orig := sshAgentGetter
+	defer func() { sshAgentGetter = orig }()
+
+	// Simulate no ssh agent present
+	sshAgentGetter = func() agent.Agent { return nil }
+
+	_, err := NewDeployerWithConfig("example.com", "user", "", nil, DefaultConnectionConfig(), false)
+	if err == nil || !strings.Contains(err.Error(), "no authentication method available") {
+		t.Fatalf("expected no authentication method error, got: %v", err)
+	}
+}
+
+func TestNewDeployer_EncryptedPrivateKeyRequiresPassphrase(t *testing.T) {
+	// Generate an encrypted private key (PEM) via internal helper
+	_, priv, err := genssh.GenerateAndMarshalEd25519Key("test", "passphrase")
+	if err != nil {
+		t.Fatalf("failed to generate key: %v", err)
+	}
+
+	_, err = NewDeployerWithConfig("example.com", "user", priv, nil, DefaultConnectionConfig(), false)
+	if err != ErrPassphraseRequired {
+		t.Fatalf("expected ErrPassphraseRequired, got: %v", err)
+	}
+}

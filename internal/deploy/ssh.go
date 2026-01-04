@@ -243,6 +243,10 @@ var newSftpClient = func(c *ssh.Client) (sftpRaw, error) {
 	return &sftpRealAdapter{client: real}, nil
 }
 
+// sshAgentGetter is an overrideable hook used to retrieve an SSH agent for
+// authentication. Tests may replace this to return a fake agent.Agent.
+var sshAgentGetter = getSSHAgent
+
 // NewDeployer creates a new SSH connection and returns a Deployer.
 // For bootstrap connections, use NewBootstrapDeployer instead.
 func NewDeployer(host, user, privateKey string, passphrase []byte) (*Deployer, error) {
@@ -375,7 +379,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 
 	// If no private key was provided, attempt to use the SSH agent.
 	// This is used for bootstrapping/importing keys.
-	agentClient := getSSHAgent()
+	agentClient := sshAgentGetter()
 	if agentClient == nil {
 		return nil, fmt.Errorf("no authentication method available (system key failed and no ssh agent found)")
 	}
