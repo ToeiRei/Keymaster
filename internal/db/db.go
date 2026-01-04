@@ -161,6 +161,15 @@ func NewStoreFromDSN(dbType, dsn string) (Store, error) {
 			maxIdle = n
 		}
 	}
+
+	// For in-memory SQLite databases (":memory:" or file::memory:), force a single
+	// open connection to avoid the SQLite per-connection in-memory database
+	// semantics which can make schema changes invisible across different
+	// connections. Tests commonly use ":memory:" and rely on a single DB.
+	if dbType == "sqlite" && dsn == ":memory:" {
+		maxOpen = 1
+		maxIdle = 1
+	}
 	connMax := defaultConnMaxLifetime
 	if v := os.Getenv("KEYMASTER_DB_CONN_MAX_LIFETIME_SECONDS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
