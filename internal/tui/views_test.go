@@ -100,7 +100,5 @@ func TestManyViews_RenderNonEmpty(t *testing.T) {
 
 	// accountFormModel.View (zero value should not panic)
 	var af accountFormModel
-	if v := af.View(); v == "" {
-		// acceptable but ensure no panic
-	}
+	_ = af.View() // acceptable but ensure no panic
 }

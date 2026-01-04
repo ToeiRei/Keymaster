@@ -55,6 +55,7 @@ func TestAssignKeys_AssignAndUnassign(t *testing.T) {
 	// Trigger selection
 	m2, _ := m.updateAccountSelection(tea.KeyMsg{Type: tea.KeyEnter})
 	m = m2.(*assignKeysModel)
+	_ = m
 
 	if m.selectedAccount.ID != acctID {
 		t.Fatalf("expected selected account %d, got %d", acctID, m.selectedAccount.ID)
@@ -69,6 +70,7 @@ func TestAssignKeys_AssignAndUnassign(t *testing.T) {
 	// assign
 	m2, _ = m.updateKeySelection(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
 	m = m2.(*assignKeysModel)
+	_ = m
 
 	// Verify in DB that the key is assigned
 	assigned, err := db.GetKeysForAccount(acctID)
@@ -82,6 +84,7 @@ func TestAssignKeys_AssignAndUnassign(t *testing.T) {
 	// Now unassign using space again (on the same key)
 	m2, _ = m.updateKeySelection(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
 	m = m2.(*assignKeysModel)
+	_ = m
 
 	assigned, err = db.GetKeysForAccount(acctID)
 	if err != nil {

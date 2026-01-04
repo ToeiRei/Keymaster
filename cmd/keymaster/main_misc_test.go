@@ -51,7 +51,7 @@ func TestWriteAndReadCompressedBackup_RoundTrip(t *testing.T) {
 		t.Fatalf("CreateTemp failed: %v", err)
 	}
 	name := tmp.Name()
-	tmp.Close()
+	_ = tmp.Close()
 	defer func() { _ = os.Remove(name) }()
 
 	if err := writeCompressedBackup(name, data); err != nil {

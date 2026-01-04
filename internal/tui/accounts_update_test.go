@@ -54,9 +54,7 @@ func TestAccounts_Update_EditAndAdd_OpenForm(t *testing.T) {
 	if m1.state != accountsFormView {
 		t.Fatalf("expected state accountsFormView after 'e', got %v", m1.state)
 	}
-	if cmd == nil {
-		// Init command may be nil depending on form; accept nil but ensure form populated
-	}
+	_ = cmd // Init command may be nil depending on form; accept nil but ensure form populated
 
 	// Add (new account) - should also open form
 	m2 := accountsModel{}

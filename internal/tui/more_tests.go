@@ -64,24 +64,8 @@ func TestEnsureCursorInView_TopAndBottom(t *testing.T) {
 	}
 }
 
-// viewportStub implements minimal methods used by ensureCursorInView for tests.
-type viewportStub struct {
-	Height  int
-	YOffset int
-}
-
-func (v *viewportStub) SetContent(_ string)                        {}
-func (v *viewportStub) Update(msg tea.Msg) (viewportStub, tea.Cmd) { return *v, nil }
-func (v *viewportStub) SetYOffset(y int)                           { v.YOffset = y }
-
-// satisfy used fields/methods
-func (v *viewportStub) SetHeight(h int) { v.Height = h }
-
-func (v *viewportStub) String() string { return "" }
-
-func (v *viewportStub) View() string { return "" }
-
-func (v *viewportStub) SetWidth(_ int) {}
+// Note: viewportStub previously existed here but was unused; removed to
+// satisfy linter unused checks. Tests use the real `viewport` in current code.
 
 func TestViewConfirmationAndKeySelection_Render(t *testing.T) {
 	i18n.Init("en")

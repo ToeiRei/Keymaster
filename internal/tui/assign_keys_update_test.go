@@ -50,15 +50,13 @@ func TestAssignKeys_SwitchToKeysAndBack(t *testing.T) {
 	m.keys = []model.PublicKey{k1, k2}
 
 	// Select account by simulating Enter (accountCursor defaults to 0)
-	mi, _ := m.updateAccountSelection(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'\n'}})
-	_ = mi
+	_, _ = m.updateAccountSelection(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'\n'}})
 
 	// Force select via Enter string path
-	m2, _ := m.updateAccountSelection(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'\r'}})
-	_ = m2
+	_, _ = m.updateAccountSelection(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'\r'}})
 
 	// Use the explicit Enter effect by calling with KeyEnter
-	m2, _ = m.updateAccountSelection(tea.KeyMsg{Type: tea.KeyEnter})
+	_, _ = m.updateAccountSelection(tea.KeyMsg{Type: tea.KeyEnter})
 	// model may have transitioned state; ensure it can handle key selection updates
 	// Now press 'q' to go back to account selection
 	m3, _ := m.updateKeySelection(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
