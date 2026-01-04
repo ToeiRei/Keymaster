@@ -84,8 +84,10 @@ func RunDBMaintenance(dbType, dsn string) error {
 	switch dbType {
 	case "sqlite":
 		// Run PRAGMA optimize, VACUUM, and checkpoint WAL (if present).
+		// PRAGMA optimize may not be supported or useful in some environments
+		// (e.g., in-memory filesystems); treat optimize errors as non-fatal.
 		if _, err := sqlDB.ExecContext(ctx, "PRAGMA optimize;"); err != nil {
-			return fmt.Errorf("sqlite optimize failed: %w", err)
+			log.Printf("db: sqlite optimize failed (ignored): %v", err)
 		}
 		if _, err := sqlDB.ExecContext(ctx, "VACUUM;"); err != nil {
 			return fmt.Errorf("sqlite vacuum failed: %w", err)
@@ -113,13 +115,19 @@ func RunDBMaintenance(dbType, dsn string) error {
 		}
 		defer func() { _ = rows.Close() }()
 		var table string
+		var lastErr error
 		for rows.Next() {
 			if err := rows.Scan(&table); err != nil {
 				return fmt.Errorf("mysql read table name failed: %w", err)
 			}
 			if _, err := sqlDB.ExecContext(ctx, fmt.Sprintf("OPTIMIZE TABLE %s", table)); err != nil {
-				return fmt.Errorf("mysql optimize table %s failed: %w", table, err)
+				// Non-fatal per-table: log and continue, but remember last error
+				log.Printf("db: mysql optimize table %s failed: %v", table, err)
+				lastErr = err
 			}
+		}
+		if lastErr != nil {
+			return fmt.Errorf("mysql optimize encountered errors: %w", lastErr)
 		}
 	default:
 		return fmt.Errorf("unsupported db type for maintenance: %s", dbType)
