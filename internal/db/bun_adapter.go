@@ -53,13 +53,13 @@ func RotateSystemKeyBun(bdb *bun.DB, publicKey, privateKey string) (int, error) 
 
 	// Deactivate existing keys. Use a raw UPDATE because Bun requires a WHERE
 	// clause for Update/Delete queries to prevent accidental full-table updates.
-	if _, err := tx.NewRaw("UPDATE system_keys SET is_active = FALSE").Exec(ctx); err != nil {
+	if _, err := ExecRaw(ctx, tx, "UPDATE system_keys SET is_active = FALSE"); err != nil {
 		return 0, fmt.Errorf("failed to deactivate old system keys: %w", err)
 	}
 
 	// Get current max serial
 	var max sql.NullInt64
-	if err := tx.NewRaw("SELECT MAX(serial) FROM system_keys").Scan(ctx, &max); err != nil {
+	if err := QueryRawInto(ctx, tx, &max, "SELECT MAX(serial) FROM system_keys"); err != nil {
 		return 0, err
 	}
 	newSerial := 1
@@ -242,14 +242,14 @@ func DeleteAccountBun(bdb *bun.DB, id int) error {
 func AssignKeyToAccountBun(bdb *bun.DB, keyID, accountID int) error {
 	ctx := context.Background()
 	// Use raw insert since account_keys likely has no PK model in codebase.
-	_, err := bdb.NewRaw("INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, accountID).Exec(ctx)
+	_, err := ExecRaw(ctx, bdb, "INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, accountID)
 	return MapDBError(err)
 }
 
 // UnassignKeyFromAccountBun removes an association from account_keys.
 func UnassignKeyFromAccountBun(bdb *bun.DB, keyID, accountID int) error {
 	ctx := context.Background()
-	_, err := bdb.NewRaw("DELETE FROM account_keys WHERE key_id = ? AND account_id = ?", keyID, accountID).Exec(ctx)
+	_, err := ExecRaw(ctx, bdb, "DELETE FROM account_keys WHERE key_id = ? AND account_id = ?", keyID, accountID)
 	return err
 }
 
@@ -363,7 +363,7 @@ func LogActionBun(bdb *bun.DB, action string, details string) error {
 			username = curUser.Username
 		}
 	}
-	_, err = bdb.NewRaw("INSERT INTO audit_log (username, action, details) VALUES (?, ?, ?)", username, action, details).Exec(ctx)
+	_, err = ExecRaw(ctx, bdb, "INSERT INTO audit_log (username, action, details) VALUES (?, ?, ?)", username, action, details)
 	return MapDBError(err)
 }
 
@@ -399,7 +399,7 @@ func ExportDataForBackupBun(bdb *bun.DB) (*model.BackupData, error) {
 	// Account keys
 	type akRow struct{ KeyID, AccountID int }
 	var aks []akRow
-	if err := tx.NewRaw("SELECT key_id, account_id FROM account_keys").Scan(ctx, &aks); err != nil {
+	if err := QueryRawInto(ctx, tx, &aks, "SELECT key_id, account_id FROM account_keys"); err != nil {
 		return nil, err
 	}
 	for _, r := range aks {
@@ -467,38 +467,38 @@ func ImportDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 	// Wipe tables
 	tables := []string{"account_keys", "bootstrap_sessions", "audit_log", "known_hosts", "system_keys", "public_keys", "accounts"}
 	for _, t := range tables {
-		if _, err := tx.NewRaw(fmt.Sprintf("DELETE FROM %s", t)).Exec(ctx); err != nil {
+		if _, err := ExecRaw(ctx, tx, fmt.Sprintf("DELETE FROM %s", t)); err != nil {
 			return err
 		}
 	}
 
 	// Insert accounts
 	for _, acc := range backup.Accounts {
-		if _, err := tx.NewRaw("INSERT INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive).Exec(ctx); err != nil {
+		if _, err := ExecRaw(ctx, tx, "INSERT INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
 			return MapDBError(err)
 		}
 	}
 	// Public keys
 	for _, pk := range backup.PublicKeys {
-		if _, err := tx.NewRaw("INSERT INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?, ?)", pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal).Exec(ctx); err != nil {
+		if _, err := ExecRaw(ctx, tx, "INSERT INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?, ?)", pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal); err != nil {
 			return MapDBError(err)
 		}
 	}
 	// AccountKeys
 	for _, ak := range backup.AccountKeys {
-		if _, err := tx.NewRaw("INSERT INTO account_keys (key_id, account_id) VALUES (?, ?)", ak.KeyID, ak.AccountID).Exec(ctx); err != nil {
+		if _, err := ExecRaw(ctx, tx, "INSERT INTO account_keys (key_id, account_id) VALUES (?, ?)", ak.KeyID, ak.AccountID); err != nil {
 			return MapDBError(err)
 		}
 	}
 	// SystemKeys
 	for _, sk := range backup.SystemKeys {
-		if _, err := tx.NewRaw("INSERT INTO system_keys (id, serial, public_key, private_key, is_active) VALUES (?, ?, ?, ?, ?)", sk.ID, sk.Serial, sk.PublicKey, sk.PrivateKey, sk.IsActive).Exec(ctx); err != nil {
+		if _, err := ExecRaw(ctx, tx, "INSERT INTO system_keys (id, serial, public_key, private_key, is_active) VALUES (?, ?, ?, ?, ?)", sk.ID, sk.Serial, sk.PublicKey, sk.PrivateKey, sk.IsActive); err != nil {
 			return MapDBError(err)
 		}
 	}
 	// KnownHosts
 	for _, kh := range backup.KnownHosts {
-		if _, err := tx.NewRaw("INSERT INTO known_hosts (hostname, key) VALUES (?, ?)", kh.Hostname, kh.Key).Exec(ctx); err != nil {
+		if _, err := ExecRaw(ctx, tx, "INSERT INTO known_hosts (hostname, key) VALUES (?, ?)", kh.Hostname, kh.Key); err != nil {
 			return MapDBError(err)
 		}
 	}
@@ -516,13 +516,13 @@ func ImportDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 				ts = s
 			}
 		}
-		if _, err := tx.NewRaw("INSERT INTO audit_log (id, timestamp, username, action, details) VALUES (?, ?, ?, ?, ?)", ale.ID, ts, ale.Username, ale.Action, ale.Details).Exec(ctx); err != nil {
+		if _, err := ExecRaw(ctx, tx, "INSERT INTO audit_log (id, timestamp, username, action, details) VALUES (?, ?, ?, ?, ?)", ale.ID, ts, ale.Username, ale.Action, ale.Details); err != nil {
 			return MapDBError(err)
 		}
 	}
 	// Bootstrap sessions: include CreatedAt/ExpiresAt when importing
 	for _, bs := range backup.BootstrapSessions {
-		if _, err := tx.NewRaw("INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, created_at, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", bs.ID, bs.Username, bs.Hostname, bs.Label, bs.Tags, bs.TempPublicKey, bs.CreatedAt, bs.ExpiresAt, bs.Status).Exec(ctx); err != nil {
+		if _, err := ExecRaw(ctx, tx, "INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, created_at, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", bs.ID, bs.Username, bs.Hostname, bs.Label, bs.Tags, bs.TempPublicKey, bs.CreatedAt, bs.ExpiresAt, bs.Status); err != nil {
 			return MapDBError(err)
 		}
 	}
@@ -540,17 +540,17 @@ func IntegrateDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 	defer func() { _ = tx.Rollback() }()
 
 	for _, acc := range backup.Accounts {
-		if _, err := tx.NewRaw("INSERT OR IGNORE INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive).Exec(ctx); err != nil {
+		if _, err := ExecRaw(ctx, tx, "INSERT OR IGNORE INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
 			return err
 		}
 	}
 	for _, pk := range backup.PublicKeys {
-		if _, err := tx.NewRaw("INSERT OR IGNORE INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?, ?)", pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal).Exec(ctx); err != nil {
+		if _, err := ExecRaw(ctx, tx, "INSERT OR IGNORE INTO public_keys (id, algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?, ?)", pk.ID, pk.Algorithm, pk.KeyData, pk.Comment, pk.IsGlobal); err != nil {
 			return err
 		}
 	}
 	for _, ak := range backup.AccountKeys {
-		if _, err := tx.NewRaw("INSERT OR IGNORE INTO account_keys (key_id, account_id) VALUES (?, ?)", ak.KeyID, ak.AccountID).Exec(ctx); err != nil {
+		if _, err := ExecRaw(ctx, tx, "INSERT OR IGNORE INTO account_keys (key_id, account_id) VALUES (?, ?)", ak.KeyID, ak.AccountID); err != nil {
 			return err
 		}
 	}
@@ -590,7 +590,7 @@ func GetPublicKeyByCommentBun(bdb *bun.DB, comment string) (*model.PublicKey, er
 // AddPublicKeyBun inserts a public key.
 func AddPublicKeyBun(bdb *bun.DB, algorithm, keyData, comment string, isGlobal bool) error {
 	ctx := context.Background()
-	_, err := bdb.NewRaw("INSERT INTO public_keys(algorithm, key_data, comment, is_global) VALUES(?, ?, ?, ?)", algorithm, keyData, comment, isGlobal).Exec(ctx)
+	_, err := ExecRaw(ctx, bdb, "INSERT INTO public_keys(algorithm, key_data, comment, is_global) VALUES(?, ?, ?, ?)", algorithm, keyData, comment, isGlobal)
 	return MapDBError(err)
 }
 
@@ -606,7 +606,7 @@ func AddPublicKeyAndGetModelBun(bdb *bun.DB, algorithm, keyData, comment string,
 		return nil, nil
 	}
 	ctx := context.Background()
-	res, err := bdb.NewRaw("INSERT INTO public_keys (algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?)", algorithm, keyData, comment, isGlobal).Exec(ctx)
+	res, err := ExecRaw(ctx, bdb, "INSERT INTO public_keys (algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?)", algorithm, keyData, comment, isGlobal)
 	if err != nil {
 		return nil, MapDBError(err)
 	}
@@ -620,7 +620,7 @@ func AddPublicKeyAndGetModelBun(bdb *bun.DB, algorithm, keyData, comment string,
 // TogglePublicKeyGlobalBun flips is_global for a key by id.
 func TogglePublicKeyGlobalBun(bdb *bun.DB, id int) error {
 	ctx := context.Background()
-	_, err := bdb.NewRaw("UPDATE public_keys SET is_global = NOT is_global WHERE id = ?", id).Exec(ctx)
+	_, err := ExecRaw(ctx, bdb, "UPDATE public_keys SET is_global = NOT is_global WHERE id = ?", id)
 	return err
 }
 
@@ -641,7 +641,7 @@ func GetGlobalPublicKeysBun(bdb *bun.DB) ([]model.PublicKey, error) {
 // DeletePublicKeyBun deletes a public key by id.
 func DeletePublicKeyBun(bdb *bun.DB, id int) error {
 	ctx := context.Background()
-	_, err := bdb.NewRaw("DELETE FROM public_keys WHERE id = ?", id).Exec(ctx)
+	_, err := ExecRaw(ctx, bdb, "DELETE FROM public_keys WHERE id = ?", id)
 	return err
 }
 
@@ -676,14 +676,14 @@ func GetKnownHostKeyBun(bdb *bun.DB, hostname string) (string, error) {
 
 func AddKnownHostKeyBun(bdb *bun.DB, hostname, key string) error {
 	ctx := context.Background()
-	_, err := bdb.NewRaw("INSERT OR REPLACE INTO known_hosts (hostname, key) VALUES (?, ?)", hostname, key).Exec(ctx)
+	_, err := ExecRaw(ctx, bdb, "INSERT OR REPLACE INTO known_hosts (hostname, key) VALUES (?, ?)", hostname, key)
 	return MapDBError(err)
 }
 
 // --- Bootstrap session helpers ---
 func SaveBootstrapSessionBun(bdb *bun.DB, id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error {
 	ctx := context.Background()
-	_, err := bdb.NewRaw(`INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, id, username, hostname, label, tags, tempPublicKey, expiresAt, status).Exec(ctx)
+	_, err := ExecRaw(ctx, bdb, `INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, id, username, hostname, label, tags, tempPublicKey, expiresAt, status)
 	return MapDBError(err)
 }
 
@@ -703,13 +703,13 @@ func GetBootstrapSessionBun(bdb *bun.DB, id string) (*model.BootstrapSession, er
 
 func DeleteBootstrapSessionBun(bdb *bun.DB, id string) error {
 	ctx := context.Background()
-	_, err := bdb.NewRaw("DELETE FROM bootstrap_sessions WHERE id = ?", id).Exec(ctx)
+	_, err := ExecRaw(ctx, bdb, "DELETE FROM bootstrap_sessions WHERE id = ?", id)
 	return err
 }
 
 func UpdateBootstrapSessionStatusBun(bdb *bun.DB, id string, status string) error {
 	ctx := context.Background()
-	_, err := bdb.NewRaw("UPDATE bootstrap_sessions SET status = ? WHERE id = ?", status, id).Exec(ctx)
+	_, err := ExecRaw(ctx, bdb, "UPDATE bootstrap_sessions SET status = ? WHERE id = ?", status, id)
 	return err
 }
 
@@ -759,13 +759,13 @@ func GetAccountByIDBun(bdb *bun.DB, id int) (*model.Account, error) {
 
 func UpdateAccountSerialBun(bdb *bun.DB, id, serial int) error {
 	ctx := context.Background()
-	_, err := bdb.NewRaw("UPDATE accounts SET serial = ? WHERE id = ?", serial, id).Exec(ctx)
+	_, err := ExecRaw(ctx, bdb, "UPDATE accounts SET serial = ? WHERE id = ?", serial, id)
 	return err
 }
 
 func ToggleAccountStatusBun(bdb *bun.DB, id int) (bool, error) {
 	ctx := context.Background()
-	if _, err := bdb.NewRaw("UPDATE accounts SET is_active = NOT is_active WHERE id = ?", id).Exec(ctx); err != nil {
+	if _, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_active = NOT is_active WHERE id = ?", id); err != nil {
 		return false, err
 	}
 	var am AccountModel
@@ -777,19 +777,19 @@ func ToggleAccountStatusBun(bdb *bun.DB, id int) (bool, error) {
 
 func UpdateAccountLabelBun(bdb *bun.DB, id int, label string) error {
 	ctx := context.Background()
-	_, err := bdb.NewRaw("UPDATE accounts SET label = ? WHERE id = ?", label, id).Exec(ctx)
+	_, err := ExecRaw(ctx, bdb, "UPDATE accounts SET label = ? WHERE id = ?", label, id)
 	return err
 }
 
 func UpdateAccountHostnameBun(bdb *bun.DB, id int, hostname string) error {
 	ctx := context.Background()
-	_, err := bdb.NewRaw("UPDATE accounts SET hostname = ? WHERE id = ?", hostname, id).Exec(ctx)
+	_, err := ExecRaw(ctx, bdb, "UPDATE accounts SET hostname = ? WHERE id = ?", hostname, id)
 	return err
 }
 
 func UpdateAccountTagsBun(bdb *bun.DB, id int, tags string) error {
 	ctx := context.Background()
-	_, err := bdb.NewRaw("UPDATE accounts SET tags = ? WHERE id = ?", tags, id).Exec(ctx)
+	_, err := ExecRaw(ctx, bdb, "UPDATE accounts SET tags = ? WHERE id = ?", tags, id)
 	return err
 }
 
@@ -811,7 +811,7 @@ func GetSystemKeyBySerialBun(bdb *bun.DB, serial int) (*model.SystemKey, error) 
 func HasSystemKeysBun(bdb *bun.DB) (bool, error) {
 	ctx := context.Background()
 	var count int
-	if err := bdb.NewRaw("SELECT COUNT(id) FROM system_keys").Scan(ctx, &count); err != nil {
+	if err := QueryRawInto(ctx, bdb, &count, "SELECT COUNT(id) FROM system_keys"); err != nil {
 		return false, err
 	}
 	return count > 0, nil
