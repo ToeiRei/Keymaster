@@ -65,10 +65,6 @@ func GenerateKeysContentForSerial(accountID int, serial int) (string, error) {
 	}
 
 	// 3. Get keys specifically assigned to this account.
-	km := db.DefaultKeyManager()
-	if km == nil {
-		return "", fmt.Errorf("no key manager available")
-	}
 	accountKeys, err := km.GetKeysForAccount(accountID)
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve keys for account ID %d: %w", accountID, err)
