@@ -1,6 +1,6 @@
 module github.com/toeirei/keymaster
 
-go 1.25.1
+go 1.25.5
 
 require (
 	github.com/Microsoft/go-winio v0.6.2
