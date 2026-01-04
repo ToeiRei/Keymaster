@@ -229,53 +229,8 @@ func (s *SqliteStore) DeletePublicKey(id int) error {
 	return err
 }
 
-// AssignKeyToAccount creates an association between a key and an account.
-func (s *SqliteStore) AssignKeyToAccount(keyID, accountID int) error {
-	err := AssignKeyToAccountBun(s.bun, keyID, accountID)
-	if err == nil {
-		// Get details for logging, ignoring errors as this is best-effort.
-		var keyComment, accUser, accHost string
-		if pk, _ := GetPublicKeyByIDBun(s.bun, keyID); pk != nil {
-			keyComment = pk.Comment
-		}
-		if acc, _ := GetAccountByIDBun(s.bun, accountID); acc != nil {
-			accUser = acc.Username
-			accHost = acc.Hostname
-		}
-		details := fmt.Sprintf("key: '%s' to account: %s@%s", keyComment, accUser, accHost)
-		_ = s.LogAction("ASSIGN_KEY", details)
-	}
-	return err
-}
-
-// UnassignKeyFromAccount removes an association between a key and an account.
-func (s *SqliteStore) UnassignKeyFromAccount(keyID, accountID int) error {
-	// Get details before unassigning for logging (best-effort via Bun).
-	var keyComment, accUser, accHost string
-	if pk, _ := GetPublicKeyByIDBun(s.bun, keyID); pk != nil {
-		keyComment = pk.Comment
-	}
-	if acc, _ := GetAccountByIDBun(s.bun, accountID); acc != nil {
-		accUser = acc.Username
-		accHost = acc.Hostname
-	}
-	details := fmt.Sprintf("key: '%s' from account: %s@%s", keyComment, accUser, accHost)
-	err := UnassignKeyFromAccountBun(s.bun, keyID, accountID)
-	if err == nil {
-		_ = s.LogAction("UNASSIGN_KEY", details)
-	}
-	return err
-}
-
-// GetKeysForAccount retrieves all public keys assigned to a specific account.
-func (s *SqliteStore) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
-	return GetKeysForAccountBun(s.bun, accountID)
-}
-
-// GetAccountsForKey retrieves all accounts that have a specific public key assigned.
-func (s *SqliteStore) GetAccountsForKey(keyID int) ([]model.Account, error) {
-	return GetAccountsForKeyBun(s.bun, keyID)
-}
+// Key<->Account assignment methods are provided by the `KeyManager` and
+// implemented via Bun helpers (see `searcher.go` for the adapter).
 
 // SearchAccounts performs a fuzzy search for accounts using the centralized Bun helper.
 func (s *SqliteStore) SearchAccounts(query string) ([]model.Account, error) {

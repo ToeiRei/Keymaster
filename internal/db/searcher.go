@@ -1,6 +1,8 @@
 package db
 
 import (
+	"fmt"
+
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/uptrace/bun"
 )
@@ -268,16 +270,45 @@ func (b *bunKeyManager) GetGlobalPublicKeys() ([]model.PublicKey, error) {
 	return b.bStore.GetGlobalPublicKeys()
 }
 func (b *bunKeyManager) AssignKeyToAccount(keyID, accountID int) error {
-	return b.bStore.AssignKeyToAccount(keyID, accountID)
+	err := AssignKeyToAccountBun(b.bStore.BunDB(), keyID, accountID)
+	if err == nil {
+		var keyComment, accUser, accHost string
+		if pk, _ := GetPublicKeyByIDBun(b.bStore.BunDB(), keyID); pk != nil {
+			keyComment = pk.Comment
+		}
+		if acc, _ := GetAccountByIDBun(b.bStore.BunDB(), accountID); acc != nil {
+			accUser = acc.Username
+			accHost = acc.Hostname
+		}
+		details := fmt.Sprintf("key: '%s' to account: %s@%s", keyComment, accUser, accHost)
+		_ = b.bStore.LogAction("ASSIGN_KEY", details)
+	}
+	return err
 }
+
 func (b *bunKeyManager) UnassignKeyFromAccount(keyID, accountID int) error {
-	return b.bStore.UnassignKeyFromAccount(keyID, accountID)
+	var keyComment, accUser, accHost string
+	if pk, _ := GetPublicKeyByIDBun(b.bStore.BunDB(), keyID); pk != nil {
+		keyComment = pk.Comment
+	}
+	if acc, _ := GetAccountByIDBun(b.bStore.BunDB(), accountID); acc != nil {
+		accUser = acc.Username
+		accHost = acc.Hostname
+	}
+	details := fmt.Sprintf("key: '%s' from account: %s@%s", keyComment, accUser, accHost)
+	err := UnassignKeyFromAccountBun(b.bStore.BunDB(), keyID, accountID)
+	if err == nil {
+		_ = b.bStore.LogAction("UNASSIGN_KEY", details)
+	}
+	return err
 }
+
 func (b *bunKeyManager) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
-	return b.bStore.GetKeysForAccount(accountID)
+	return GetKeysForAccountBun(b.bStore.BunDB(), accountID)
 }
+
 func (b *bunKeyManager) GetAccountsForKey(keyID int) ([]model.Account, error) {
-	return b.bStore.GetAccountsForKey(keyID)
+	return GetAccountsForKeyBun(b.bStore.BunDB(), keyID)
 }
 
 // package-level override used by tests

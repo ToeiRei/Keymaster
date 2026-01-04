@@ -46,10 +46,10 @@ type Store interface {
 	HasSystemKeys() (bool, error)
 
 	// Assignment methods
-	AssignKeyToAccount(keyID, accountID int) error
-	UnassignKeyFromAccount(keyID, accountID int) error
-	GetKeysForAccount(accountID int) ([]model.PublicKey, error)
-	GetAccountsForKey(keyID int) ([]model.Account, error)
+	// NOTE: key<->account assignment helpers have been moved behind the
+	// `KeyManager` abstraction. Store implementations should continue to
+	// provide low-level Bun helpers in `bun_adapter.go` (used by the
+	// KeyManager) but no longer need to expose assignment methods here.
 	// SearchAccounts performs a fuzzy search for accounts matching the query.
 	// Implementations should provide sensible, portable search semantics.
 	SearchAccounts(query string) ([]model.Account, error)

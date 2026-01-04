@@ -180,45 +180,10 @@ func (s *MySQLStore) GetSystemKeyBySerial(serial int) (*model.SystemKey, error) 
 func (s *MySQLStore) HasSystemKeys() (bool, error) {
 	return HasSystemKeysBun(s.bun)
 }
-func (s *MySQLStore) AssignKeyToAccount(keyID, accountID int) error {
-	err := AssignKeyToAccountBun(s.bun, keyID, accountID)
-	if err == nil {
-		var keyComment, accUser, accHost string
-		if pk, err2 := GetPublicKeyByIDBun(s.bun, keyID); err2 == nil && pk != nil {
-			keyComment = pk.Comment
-		}
-		if acc, err2 := GetAccountByIDBun(s.bun, accountID); err2 == nil && acc != nil {
-			accUser = acc.Username
-			accHost = acc.Hostname
-		}
-		details := fmt.Sprintf("key: '%s' to account: %s@%s", keyComment, accUser, accHost)
-		_ = s.LogAction("ASSIGN_KEY", details)
-	}
-	return err
-}
-func (s *MySQLStore) UnassignKeyFromAccount(keyID, accountID int) error {
-	var keyComment, accUser, accHost string
-	if pk, err2 := GetPublicKeyByIDBun(s.bun, keyID); err2 == nil && pk != nil {
-		keyComment = pk.Comment
-	}
-	if acc, err2 := GetAccountByIDBun(s.bun, accountID); err2 == nil && acc != nil {
-		accUser = acc.Username
-		accHost = acc.Hostname
-	}
-	details := fmt.Sprintf("key: '%s' from account: %s@%s", keyComment, accUser, accHost)
 
-	err := UnassignKeyFromAccountBun(s.bun, keyID, accountID)
-	if err == nil {
-		_ = s.LogAction("UNASSIGN_KEY", details)
-	}
-	return err
-}
-func (s *MySQLStore) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
-	return GetKeysForAccountBun(s.bun, accountID)
-}
-func (s *MySQLStore) GetAccountsForKey(keyID int) ([]model.Account, error) {
-	return GetAccountsForKeyBun(s.bun, keyID)
-}
+// Key<->Account assignment methods are now provided by the `KeyManager`.
+// Store implementations keep Bun helpers in `bun_adapter.go` for use by
+// the KeyManager adapter.
 
 // SearchAccounts performs a fuzzy search for accounts using the centralized Bun helper.
 func (s *MySQLStore) SearchAccounts(query string) ([]model.Account, error) {
