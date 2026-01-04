@@ -99,7 +99,7 @@ ssh-ed25519 CCCCC3NzaC1lZDI1NTE5AAAAIGy5E/P9Ea45T/k+s/p3g4zJzE4Q3g== user@exampl
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpfile.Name()) // Clean up
+	defer func() { _ = os.Remove(tmpfile.Name()) }() // Clean up
 
 	if _, err := tmpfile.Write([]byte(content)); err != nil {
 		t.Fatal(err)
@@ -167,7 +167,7 @@ func TestTrustHostCmd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to listen on a port: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	go func() {
 		conn, err := listener.Accept()
@@ -175,7 +175,7 @@ func TestTrustHostCmd(t *testing.T) {
 			// This error is expected when the listener is closed.
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		// Perform SSH handshake to present the host key.
 		_, _, _, _ = ssh.NewServerConn(conn, server)
 	}()
@@ -183,7 +183,7 @@ func TestTrustHostCmd(t *testing.T) {
 	// Prepare to mock stdin by writing "yes" to a pipe.
 	inputReader, inputWriter, _ := os.Pipe()
 	go func() {
-		defer inputWriter.Close()
+		defer func() { _ = inputWriter.Close() }()
 		fmt.Fprintln(inputWriter, "yes")
 	}()
 
@@ -244,21 +244,21 @@ func TestTrustHostCmd_WeakKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to listen on a port: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	go func() {
 		conn, err := listener.Accept()
 		if err != nil {
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		_, _, _, _ = ssh.NewServerConn(conn, server)
 	}()
 
 	// Prepare to mock stdin by writing "yes" to a pipe.
 	inputReader, inputWriter, _ := os.Pipe()
 	go func() {
-		defer inputWriter.Close()
+		defer func() { _ = inputWriter.Close() }()
 		fmt.Fprintln(inputWriter, "yes")
 	}()
 
@@ -509,9 +509,9 @@ func TestExportSSHConfigCmd(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create temp file: %v", err)
 		}
-		defer os.Remove(tmpfile.Name())
+		defer func() { _ = os.Remove(tmpfile.Name()) }()
 		tmpfilePath := tmpfile.Name()
-		tmpfile.Close() // Close the file so the command can write to it
+		_ = tmpfile.Close() // Close the file so the command can write to it
 
 		output := executeCommand(t, nil, "export-ssh-client-config", tmpfilePath)
 

@@ -59,7 +59,7 @@ func TestGetConfigPathFromCli_WithValidFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
-	defer os.Remove(file.Name())
+	defer func() { _ = os.Remove(file.Name()) }()
 	file.Close()
 
 	cmd := &cobra.Command{}

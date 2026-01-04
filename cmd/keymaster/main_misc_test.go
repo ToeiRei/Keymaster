@@ -52,7 +52,7 @@ func TestWriteAndReadCompressedBackup_RoundTrip(t *testing.T) {
 	}
 	name := tmp.Name()
 	tmp.Close()
-	defer os.Remove(name)
+	defer func() { _ = os.Remove(name) }()
 
 	if err := writeCompressedBackup(name, data); err != nil {
 		t.Fatalf("writeCompressedBackup failed: %v", err)
@@ -63,7 +63,7 @@ func TestWriteAndReadCompressedBackup_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open backup failed: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	zr, err := zstd.NewReader(f)
 	if err != nil {
 		t.Fatalf("zstd.NewReader failed: %v", err)
