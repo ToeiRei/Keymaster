@@ -134,3 +134,93 @@ func TestRemoveTempKeyFromRemoteHost_FullSuccess(t *testing.T) {
 		t.Fatalf("expected temp key removed from written authorized_keys")
 	}
 }
+
+// helper writer that always fails on Write
+type badWriter struct{}
+
+func (b *badWriter) Write(p []byte) (int, error) { return 0, errors.New("write fail") }
+func (b *badWriter) Close() error                { return nil }
+
+// helper reader that always fails on Read
+type errReader struct{}
+
+func (e *errReader) Read(p []byte) (int, error) { return 0, errors.New("read fail") }
+func (e *errReader) Close() error               { return nil }
+
+// wrapper that uses fakeSFTP but overrides Create
+type createFail struct{ *fakeSFTP }
+
+func (c *createFail) Create(path string) (io.WriteCloser, error) { return &badWriter{}, nil }
+
+// wrapper that uses fakeSFTP but overrides Open
+type openErr struct{ *fakeSFTP }
+
+func (o *openErr) Open(path string) (io.ReadCloser, error) { return &errReader{}, nil }
+
+func TestRemoveTempKeyFromRemoteHost_OpenFail(t *testing.T) {
+	origSshDial := sshDialFunc
+	origSftpNew := sftpNewClient
+	defer func() { sshDialFunc = origSshDial; sftpNewClient = origSftpNew }()
+
+	tk, err := generateTemporaryKeyPair()
+	if err != nil {
+		t.Fatalf("generateTemporaryKeyPair: %v", err)
+	}
+	sess := &BootstrapSession{PendingAccount: model.Account{Username: "u", Hostname: "h"}, TempKeyPair: tk}
+
+	sshDialFunc = func(network, addr string, config *ssh.ClientConfig) (*ssh.Client, error) { return &ssh.Client{}, nil }
+	// Return a fake SFTP whose Open fails
+	sftpNewClient = func(conn *ssh.Client, opts ...sftp.ClientOption) (sftpClientIface, error) {
+		return &fakeSFTP{files: nil}, nil
+	}
+
+	if err := removeTempKeyFromRemoteHost(sess); err == nil {
+		t.Fatalf("expected error when Open fails")
+	}
+}
+
+func TestRemoveTempKeyFromRemoteHost_CreateWriteFail(t *testing.T) {
+	origSshDial := sshDialFunc
+	origSftpNew := sftpNewClient
+	defer func() { sshDialFunc = origSshDial; sftpNewClient = origSftpNew }()
+
+	tk, err := generateTemporaryKeyPair()
+	if err != nil {
+		t.Fatalf("generateTemporaryKeyPair: %v", err)
+	}
+	sess := &BootstrapSession{PendingAccount: model.Account{Username: "u", Hostname: "h"}, TempKeyPair: tk}
+
+	fake := &fakeSFTP{files: map[string][]byte{".ssh/authorized_keys": []byte(tk.GetPublicKey() + "\nother\n")}}
+	sftpNewClient = func(conn *ssh.Client, opts ...sftp.ClientOption) (sftpClientIface, error) {
+		return &createFail{fake}, nil
+	}
+
+	sshDialFunc = func(network, addr string, config *ssh.ClientConfig) (*ssh.Client, error) { return &ssh.Client{}, nil }
+
+	if err := removeTempKeyFromRemoteHost(sess); err == nil {
+		t.Fatalf("expected error when Create/Write fails")
+	}
+}
+
+func TestRemoveTempKeyFromRemoteHost_ReadError(t *testing.T) {
+	origSshDial := sshDialFunc
+	origSftpNew := sftpNewClient
+	defer func() { sshDialFunc = origSshDial; sftpNewClient = origSftpNew }()
+
+	tk, err := generateTemporaryKeyPair()
+	if err != nil {
+		t.Fatalf("generateTemporaryKeyPair: %v", err)
+	}
+	sess := &BootstrapSession{PendingAccount: model.Account{Username: "u", Hostname: "h"}, TempKeyPair: tk}
+
+	fake := &fakeSFTP{files: make(map[string][]byte)}
+	sftpNewClient = func(conn *ssh.Client, opts ...sftp.ClientOption) (sftpClientIface, error) {
+		return &openErr{fake}, nil
+	}
+
+	sshDialFunc = func(network, addr string, config *ssh.ClientConfig) (*ssh.Client, error) { return &ssh.Client{}, nil }
+
+	if err := removeTempKeyFromRemoteHost(sess); err == nil {
+		t.Fatalf("expected error when Read fails")
+	}
+}
