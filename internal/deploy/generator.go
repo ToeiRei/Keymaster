@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
@@ -70,6 +71,18 @@ func GenerateKeysContentForSerial(accountID int, serial int) (string, error) {
 		return "", fmt.Errorf("could not retrieve keys for account ID %d: %w", accountID, err)
 	}
 
+	// Helper: filter out expired keys (ExpiresAt set and <= now)
+	filterExpired := func(keys []model.PublicKey) []model.PublicKey {
+		var out []model.PublicKey
+		now := time.Now().UTC()
+		for _, k := range keys {
+			if k.ExpiresAt.IsZero() || k.ExpiresAt.After(now) {
+				out = append(out, k)
+			}
+		}
+		return out
+	}
+
 	// 4. Combine and de-duplicate keys.
 	// Use a map to de-duplicate by key ID, and a struct to hold key parts for sorting.
 	type keyInfo struct {
@@ -85,6 +98,10 @@ func GenerateKeysContentForSerial(accountID int, serial int) (string, error) {
 		}
 		return fmt.Sprintf("%s %s", key.Algorithm, key.KeyData)
 	}
+
+	// Filter expired keys first
+	globalKeys = filterExpired(globalKeys)
+	accountKeys = filterExpired(accountKeys)
 
 	for _, key := range globalKeys {
 		allUserKeysMap[key.ID] = keyInfo{id: key.ID, line: formatKey(key), comment: key.Comment}
@@ -187,6 +204,20 @@ func GenerateSelectiveKeysContent(accountID int, serial int, excludeKeyIDs []int
 		}
 		return fmt.Sprintf("%s %s", key.Algorithm, key.KeyData)
 	}
+
+	// Filter expired keys first
+	filterExpired := func(keys []model.PublicKey) []model.PublicKey {
+		var out []model.PublicKey
+		now := time.Now().UTC()
+		for _, k := range keys {
+			if k.ExpiresAt.IsZero() || k.ExpiresAt.After(now) {
+				out = append(out, k)
+			}
+		}
+		return out
+	}
+	globalKeys = filterExpired(globalKeys)
+	accountKeys = filterExpired(accountKeys)
 
 	// Add global keys (excluding those in excludeSet)
 	for _, key := range globalKeys {
