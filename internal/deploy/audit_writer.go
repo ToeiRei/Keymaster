@@ -21,5 +21,8 @@ func logAction(action, details string) error {
 	if auditWriter != nil {
 		return auditWriter.LogAction(action, details)
 	}
-	return db.LogAction(action, details)
+	if w := db.DefaultAuditWriter(); w != nil {
+		return w.LogAction(action, details)
+	}
+	return nil
 }

@@ -231,7 +231,7 @@ func (m *bootstrapModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Cancel bootstrap and go back
 		if m.session != nil {
 			// Log the abort
-			_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
 				m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
 			bootstrap.UnregisterSession(m.session.ID)
 			_ = m.session.Delete()
@@ -308,7 +308,7 @@ func (m *bootstrapModel) handleErrorKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case 2: // Cancel - go back to accounts list
 			if m.session != nil {
 				// Log the abort
-				_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
+				_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
 					m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
 				bootstrap.UnregisterSession(m.session.ID)
 				_ = m.session.Delete()
@@ -320,7 +320,7 @@ func (m *bootstrapModel) handleErrorKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Same as cancel
 		if m.session != nil {
 			// Log the abort
-			_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
 				m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
 			bootstrap.UnregisterSession(m.session.ID)
 			_ = m.session.Delete()
@@ -1241,7 +1241,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			accountData.Label, accountData.Tags)
 		if err != nil {
 			// Log the failure
-			_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to create account: %v",
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to create account: %v",
 				accountData.Username, accountData.Hostname, err))
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to create account: %w", err)}
 		}
@@ -1264,7 +1264,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 		for _, keyID := range selectedKeyIDs {
 			if err := db.AssignKeyToAccount(keyID, accountID); err != nil {
 				// Log the failure
-				_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to assign key: %v",
+				_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to assign key: %v",
 					accountData.Username, accountData.Hostname, err))
 				// Cleanup: delete the account if key assignment fails
 				_ = db.DeleteAccount(accountID)
@@ -1276,7 +1276,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 		content, err := deploy.GenerateKeysContent(accountID)
 		if err != nil {
 			// Log the failure
-			_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to generate keys content: %v",
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to generate keys content: %v",
 				accountData.Username, accountData.Hostname, err))
 			// Cleanup: delete the account if content generation fails
 			_ = db.DeleteAccount(accountID)
@@ -1293,7 +1293,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 		)
 		if err != nil {
 			// Log the failure
-			_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to connect: %v",
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to connect: %v",
 				accountData.Username, accountData.Hostname, err))
 			// Cleanup: delete the account if deployer creation fails
 			_ = db.DeleteAccount(accountID)
@@ -1303,7 +1303,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 
 		if err := deployer.DeployAuthorizedKeys(content); err != nil {
 			// Log the failure
-			_ = db.LogAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: deployment failed: %v",
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: deployment failed: %v",
 				accountData.Username, accountData.Hostname, err))
 			// Cleanup: delete the account if SSH deployment fails
 			_ = db.DeleteAccount(accountID)
@@ -1320,7 +1320,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 
 		// 6. Log successful bootstrap
 		keyCount := len(selectedKeyIDs)
-		_ = db.LogAction("BOOTSTRAP_HOST", fmt.Sprintf("account: %s@%s, keys_deployed: %d",
+		_ = logAction("BOOTSTRAP_HOST", fmt.Sprintf("account: %s@%s, keys_deployed: %d",
 			accountData.Username, accountData.Hostname, keyCount))
 
 		// 7. Cleanup bootstrap session

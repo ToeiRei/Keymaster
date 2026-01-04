@@ -1,16 +1,16 @@
-package tui
+package bootstrap
 
 import "github.com/toeirei/keymaster/internal/db"
 
-// package-level audit writer override for tui tests
+// package-level audit writer override for tests
 var auditWriter db.AuditWriter
 
-// SetAuditWriter sets a package-level AuditWriter for tui components.
+// SetAuditWriter sets a package-level AuditWriter for bootstrap operations.
 func SetAuditWriter(w db.AuditWriter) {
 	auditWriter = w
 }
 
-// ClearAuditWriter clears any previously set package-level AuditWriter for tui.
+// ClearAuditWriter clears any previously set package-level AuditWriter.
 func ClearAuditWriter() {
 	auditWriter = nil
 }

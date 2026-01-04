@@ -695,10 +695,10 @@ func runParallelTasks(accounts []model.Account, task parallelTask) {
 			details := fmt.Sprintf("account: %s", account.String())
 			if err != nil {
 				results <- fmt.Sprintf(task.failMsg, account.String(), err.Error())
-				_ = db.LogAction(task.failLog, fmt.Sprintf("%s, error: %v", details, err))
+				_ = logAction(task.failLog, fmt.Sprintf("%s, error: %v", details, err))
 			} else {
 				results <- fmt.Sprintf(task.successMsg, account.String()) // Pass account string as arg
-				_ = db.LogAction(task.successLog, details)
+				_ = logAction(task.successLog, details)
 			}
 		}(acc)
 	}
