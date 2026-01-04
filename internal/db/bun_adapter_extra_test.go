@@ -2,6 +2,7 @@ package db
 
 import (
 	"testing"
+	"time"
 )
 
 func TestGetAllAccounts_Delete_Update_Search(t *testing.T) {
@@ -77,11 +78,11 @@ func TestPublicKeys_List_Toggle_Search_Delete_Assignments(t *testing.T) {
 			t.Fatalf("AddAccountBun failed: %v", err)
 		}
 
-		pk1, err := AddPublicKeyAndGetModelBun(bdb, "ed25519", "AAAAB3NzaC1", "k1", false)
+		pk1, err := AddPublicKeyAndGetModelBun(bdb, "ed25519", "AAAAB3NzaC1", "k1", false, time.Time{})
 		if err != nil {
 			t.Fatalf("AddPublicKeyAndGetModelBun failed: %v", err)
 		}
-		pk2, err := AddPublicKeyAndGetModelBun(bdb, "rsa", "AAAAB3NzaC2", "k2", true)
+		pk2, err := AddPublicKeyAndGetModelBun(bdb, "rsa", "AAAAB3NzaC2", "k2", true, time.Time{})
 		if err != nil {
 			t.Fatalf("AddPublicKeyAndGetModelBun failed: %v", err)
 		}

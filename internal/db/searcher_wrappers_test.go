@@ -40,10 +40,10 @@ func (f *fakeAuditWriter) LogAction(action string, details string) error { retur
 // Minimal fake KeyManager implementing all methods with simple responses.
 type fakeKeyManager struct{}
 
-func (f *fakeKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error {
+func (f *fakeKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) error {
 	return nil
 }
-func (f *fakeKeyManager) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) {
+func (f *fakeKeyManager) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) (*model.PublicKey, error) {
 	return &model.PublicKey{ID: 1, Comment: comment}, nil
 }
 func (f *fakeKeyManager) DeletePublicKey(id int) error       { return nil }
@@ -132,7 +132,7 @@ func TestSearcherAndManagerWrappers_Injection(t *testing.T) {
 	if km == nil {
 		t.Fatal("expected DefaultKeyManager to return injected manager")
 	}
-	if _, err := km.AddPublicKeyAndGetModel("alg", "data", "c", false); err != nil {
+	if _, err := km.AddPublicKeyAndGetModel("alg", "data", "c", false, time.Time{}); err != nil {
 		t.Fatalf("AddPublicKeyAndGetModel returned error: %v", err)
 	}
 	ClearDefaultKeyManager()

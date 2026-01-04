@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/toeirei/keymaster/internal/db"
 )
@@ -32,11 +33,11 @@ func TestRemoveSelectiveKeymasterContent_RemovesExcludedKey(t *testing.T) {
 	if km == nil {
 		t.Fatalf("no key manager available")
 	}
-	k1, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3...1", "k-one", false)
+	k1, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3...1", "k-one", false, time.Time{})
 	if err != nil || k1 == nil {
 		t.Fatalf("AddPublicKeyAndGetModel k1 failed: %v %v", err, k1)
 	}
-	k2, err := km.AddPublicKeyAndGetModel("ssh-rsa", "AAAAB3...2", "k-two", false)
+	k2, err := km.AddPublicKeyAndGetModel("ssh-rsa", "AAAAB3...2", "k-two", false, time.Time{})
 	if err != nil || k2 == nil {
 		t.Fatalf("AddPublicKeyAndGetModel k2 failed: %v %v", err, k2)
 	}

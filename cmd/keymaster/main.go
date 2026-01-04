@@ -590,7 +590,7 @@ var importCmd = &cobra.Command{
 				skippedCount++
 				continue
 			}
-			if err := km.AddPublicKey(alg, keyData, comment, false); err != nil {
+			if err := km.AddPublicKey(alg, keyData, comment, false, time.Time{}); err != nil {
 				// Check if the error is a unique constraint violation. This makes the CLI
 				// import behave consistently with the TUI remote import.
 				// The exact error string can vary between DB drivers.

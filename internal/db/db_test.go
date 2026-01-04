@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -63,7 +64,7 @@ func TestPublicKey_AddDuplicateBehavior(t *testing.T) {
 	if km == nil {
 		t.Fatalf("no key manager available")
 	}
-	pk, err := km.AddPublicKeyAndGetModel("ed25519", keyData, "dup-comment", false)
+	pk, err := km.AddPublicKeyAndGetModel("ed25519", keyData, "dup-comment", false, time.Time{})
 	if err != nil {
 		t.Fatalf("unexpected error adding public key: %v", err)
 	}
@@ -72,7 +73,7 @@ func TestPublicKey_AddDuplicateBehavior(t *testing.T) {
 	}
 
 	// Second call should return (nil, nil) to indicate duplicate
-	pk2, err := km.AddPublicKeyAndGetModel("ed25519", keyData, "dup-comment", false)
+	pk2, err := km.AddPublicKeyAndGetModel("ed25519", keyData, "dup-comment", false, time.Time{})
 	if err != nil {
 		t.Fatalf("unexpected error on duplicate AddPublicKeyAndGetModel: %v", err)
 	}
@@ -81,10 +82,10 @@ func TestPublicKey_AddDuplicateBehavior(t *testing.T) {
 	}
 
 	// AddPublicKey should return ErrDuplicate on the second insert
-	if err := km.AddPublicKey("ed25519", keyData, "another-comment", false); err != nil {
+	if err := km.AddPublicKey("ed25519", keyData, "another-comment", false, time.Time{}); err != nil {
 		t.Fatalf("unexpected error on first AddPublicKey: %v", err)
 	}
-	if err := km.AddPublicKey("ed25519", keyData, "another-comment", false); !errors.Is(err, ErrDuplicate) {
+	if err := km.AddPublicKey("ed25519", keyData, "another-comment", false, time.Time{}); !errors.Is(err, ErrDuplicate) {
 		t.Fatalf("expected ErrDuplicate on duplicate AddPublicKey, got: %v", err)
 	}
 }

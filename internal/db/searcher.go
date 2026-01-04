@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/uptrace/bun"
@@ -220,8 +221,8 @@ func ClearDefaultAccountManager() {
 // toggle global, assignments, and simple retrievals). This mirrors the Store
 // methods but keeps higher-level code decoupled from the concrete Store.
 type KeyManager interface {
-	AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error
-	AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error)
+	AddPublicKey(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) error
+	AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) (*model.PublicKey, error)
 	DeletePublicKey(id int) error
 	TogglePublicKeyGlobal(id int) error
 	GetAllPublicKeys() ([]model.PublicKey, error)
@@ -248,16 +249,16 @@ func DefaultKeyManager() KeyManager {
 // bunKeyManager adapts the Store to KeyManager.
 type bunKeyManager struct{ bStore Store }
 
-func (b *bunKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error {
-	err := AddPublicKeyBun(b.bStore.BunDB(), algorithm, keyData, comment, isGlobal)
+func (b *bunKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) error {
+	err := AddPublicKeyBun(b.bStore.BunDB(), algorithm, keyData, comment, isGlobal, expiresAt)
 	if err == nil {
 		_ = b.bStore.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
 	}
 	return err
 }
 
-func (b *bunKeyManager) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) {
-	pk, err := AddPublicKeyAndGetModelBun(b.bStore.BunDB(), algorithm, keyData, comment, isGlobal)
+func (b *bunKeyManager) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) (*model.PublicKey, error) {
+	pk, err := AddPublicKeyAndGetModelBun(b.bStore.BunDB(), algorithm, keyData, comment, isGlobal, expiresAt)
 	if err == nil && pk != nil {
 		_ = b.bStore.LogAction("ADD_PUBLIC_KEY", fmt.Sprintf("comment: %s", comment))
 	}

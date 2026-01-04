@@ -2,6 +2,7 @@ package db
 
 import (
 	"testing"
+	"time"
 )
 
 // TestKeyManager_AssignUnassign_Audit verifies that the bunKeyManager correctly
@@ -24,7 +25,7 @@ func TestKeyManager_AssignUnassign_Audit(t *testing.T) {
 
 	// Use the bunKeyManager adapter directly and add a public key via KeyManager
 	km := &bunKeyManager{bStore: s}
-	pk, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "ssh-ed25519 AAAAB3Nza... test-key", "k-one", false)
+	pk, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "ssh-ed25519 AAAAB3Nza... test-key", "k-one", false, time.Time{})
 	if err != nil {
 		t.Fatalf("AddPublicKeyAndGetModel error: %v", err)
 	}

@@ -9,6 +9,8 @@ package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -24,8 +26,9 @@ type publicKeyCreatedMsg struct{}
 
 // publicKeyFormModel holds the state for the public key creation form.
 type publicKeyFormModel struct {
-	focusIndex int             // 0 for input, 1 for checkbox
+	focusIndex int             // 0 for input, 1 for expiration, 2 for checkbox
 	input      textinput.Model // The text input for pasting the raw key.
+	expInput   textinput.Model // The text input for optional expiration date.
 	isGlobal   bool            // Whether the 'global' checkbox is checked.
 	err        error           // Any error that occurred during submission.
 }
@@ -43,9 +46,17 @@ func newPublicKeyFormModel() publicKeyFormModel {
 	ti.TextStyle = focusedStyle
 	ti.Cursor.Style = focusedStyle
 
+	ei := textinput.New()
+	ei.Placeholder = "YYYY-MM-DD or RFC3339"
+	ei.CharLimit = 64
+	ei.Width = 30
+	ei.Prompt = "Expires: "
+	ei.TextStyle = focusedStyle
+
 	return publicKeyFormModel{
 		focusIndex: 0,
 		input:      ti,
+		expInput:   ei,
 	}
 }
 
@@ -65,22 +76,27 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			return m, func() tea.Msg { return backToListMsg{} }
 		case "tab", "shift+tab", "up", "down":
-			if m.focusIndex == 0 {
-				m.focusIndex = 1
-				m.input.Blur()
-			} else {
-				m.focusIndex = 0
+			// cycle focus through input -> expiration -> checkbox
+			m.input.Blur()
+			m.expInput.Blur()
+			m.focusIndex = (m.focusIndex + 1) % 3
+			switch m.focusIndex {
+			case 0:
 				cmd = m.input.Focus()
+			case 1:
+				cmd = m.expInput.Focus()
+			case 2:
+				// checkbox; no focus command
 			}
 			return m, cmd
 
 		case "enter":
 			// If checkbox is focused, it's a toggle.
-			if m.focusIndex == 1 {
+			if m.focusIndex == 2 {
 				m.isGlobal = !m.isGlobal
 				return m, nil
 			}
-			// If input is focused, it's a submit.
+			// If input or expiration is focused, submit.
 			rawKey := m.input.Value()
 			alg, keyData, comment, err := sshkey.Parse(rawKey)
 			if err != nil {
@@ -93,12 +109,27 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
+			// parse expiration field if present
+			var expiresAt time.Time
+			expVal := strings.TrimSpace(m.expInput.Value())
+			if expVal != "" {
+				if t, err := time.Parse(time.RFC3339, expVal); err == nil {
+					expiresAt = t
+				} else if t2, err2 := time.Parse("2006-01-02", expVal); err2 == nil {
+					// interpret date-only as UTC midnight
+					expiresAt = time.Date(t2.Year(), t2.Month(), t2.Day(), 0, 0, 0, 0, time.UTC)
+				} else {
+					m.err = fmt.Errorf("invalid expiration format; use YYYY-MM-DD or RFC3339")
+					return m, nil
+				}
+			}
+
 			mgr := db.DefaultKeyManager()
 			if mgr == nil {
 				m.err = fmt.Errorf("no key manager available")
 				return m, nil
 			}
-			if err := mgr.AddPublicKey(alg, keyData, comment, m.isGlobal); err != nil {
+			if err := mgr.AddPublicKey(alg, keyData, comment, m.isGlobal, expiresAt); err != nil {
 				m.err = err
 				return m, nil
 			}
@@ -109,6 +140,8 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update the focused component
 	if m.focusIndex == 0 {
 		m.input, cmd = m.input.Update(msg)
+	} else if m.focusIndex == 1 {
+		m.expInput, cmd = m.expInput.Update(msg)
 	} else {
 		// The checkbox is toggled with space when focused
 		if key, ok := msg.(tea.KeyMsg); ok && key.String() == " " {
@@ -123,16 +156,19 @@ func (m publicKeyFormModel) View() string {
 	title := mainTitleStyle.Render("✨ " + i18n.T("public_key_form.add_title"))
 	header := lipgloss.NewStyle().Align(lipgloss.Center).Render(title)
 
-	// Left pane: input and checkbox
+	// Left pane: input, expiration, and checkbox
 	var leftItems []string
 	leftItems = append(leftItems, m.input.View())
+	leftItems = append(leftItems, "")
+	// expiration input row
+	leftItems = append(leftItems, m.expInput.View())
 	leftItems = append(leftItems, "")
 
 	checkbox := i18n.T("public_key_form.checkbox_unchecked")
 	if m.isGlobal {
 		checkbox = i18n.T("public_key_form.checkbox_checked")
 	}
-	if m.focusIndex == 1 {
+	if m.focusIndex == 2 {
 		leftItems = append(leftItems, formSelectedItemStyle.Render(checkbox))
 	} else {
 		leftItems = append(leftItems, formItemStyle.Render(checkbox))

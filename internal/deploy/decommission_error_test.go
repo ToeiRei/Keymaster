@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/toeirei/keymaster/internal/db"
 )
@@ -55,7 +56,7 @@ func TestRemoveSelectiveKeymasterContent_RemoveSystemKeyOnly(t *testing.T) {
 	if km == nil {
 		t.Fatalf("no key manager available")
 	}
-	k1, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3...X", "k-remains", false)
+	k1, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3...X", "k-remains", false, time.Time{})
 	if err != nil || k1 == nil {
 		t.Fatalf("AddPublicKeyAndGetModel failed: %v", err)
 	}

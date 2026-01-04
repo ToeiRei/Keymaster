@@ -42,11 +42,11 @@ func TestIntegration_Smoke(t *testing.T) {
 
 	// Use KeyManager adapter for public-key CRUD operations in integration tests.
 	km := &bunKeyManager{bStore: storeInst}
-	if _, err := km.AddPublicKeyAndGetModel("ed25519", "intkeydata", "int-comment", false); err != nil {
+	if _, err := km.AddPublicKeyAndGetModel("ed25519", "intkeydata", "int-comment", false, time.Time{}); err != nil {
 		t.Fatalf("AddPublicKey failed on %s: %v", dbType, err)
 	}
 	// duplicate should return ErrDuplicate from the Bun helper mapping
-	if _, err := km.AddPublicKeyAndGetModel("ed25519", "intkeydata", "int-comment", false); !errors.Is(err, ErrDuplicate) {
+	if _, err := km.AddPublicKeyAndGetModel("ed25519", "intkeydata", "int-comment", false, time.Time{}); !errors.Is(err, ErrDuplicate) {
 		t.Fatalf("expected ErrDuplicate on duplicate AddPublicKey for %s, got: %v", dbType, err)
 	}
 

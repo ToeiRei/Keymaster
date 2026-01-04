@@ -567,15 +567,21 @@ func GetPublicKeyByCommentBun(bdb *bun.DB, comment string) (*model.PublicKey, er
 }
 
 // AddPublicKeyBun inserts a public key.
-func AddPublicKeyBun(bdb *bun.DB, algorithm, keyData, comment string, isGlobal bool) error {
+func AddPublicKeyBun(bdb *bun.DB, algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) error {
 	ctx := context.Background()
-	_, err := ExecRaw(ctx, bdb, "INSERT INTO public_keys(algorithm, key_data, comment, is_global) VALUES(?, ?, ?, ?)", algorithm, keyData, comment, isGlobal)
+	var exp interface{}
+	if !expiresAt.IsZero() {
+		exp = expiresAt
+	} else {
+		exp = nil
+	}
+	_, err := ExecRaw(ctx, bdb, "INSERT INTO public_keys(algorithm, key_data, comment, is_global, expires_at) VALUES(?, ?, ?, ?, ?)", algorithm, keyData, comment, isGlobal, exp)
 	return MapDBError(err)
 }
 
 // AddPublicKeyAndGetModelBun inserts a public key if not exists and returns the model.
 // Returns (nil, nil) when duplicate.
-func AddPublicKeyAndGetModelBun(bdb *bun.DB, algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) {
+func AddPublicKeyAndGetModelBun(bdb *bun.DB, algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) (*model.PublicKey, error) {
 	// Check for existing
 	existing, err := GetPublicKeyByCommentBun(bdb, comment)
 	if err != nil {
@@ -585,7 +591,13 @@ func AddPublicKeyAndGetModelBun(bdb *bun.DB, algorithm, keyData, comment string,
 		return nil, nil
 	}
 	ctx := context.Background()
-	res, err := ExecRaw(ctx, bdb, "INSERT INTO public_keys (algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?)", algorithm, keyData, comment, isGlobal)
+	var exp interface{}
+	if !expiresAt.IsZero() {
+		exp = expiresAt
+	} else {
+		exp = nil
+	}
+	res, err := ExecRaw(ctx, bdb, "INSERT INTO public_keys (algorithm, key_data, comment, is_global, expires_at) VALUES (?, ?, ?, ?, ?)", algorithm, keyData, comment, isGlobal, exp)
 	if err != nil {
 		return nil, MapDBError(err)
 	}

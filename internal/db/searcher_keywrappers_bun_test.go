@@ -1,16 +1,19 @@
 package db
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestBunKeyWrappers_GetAllAndQuery(t *testing.T) {
 	WithTestStore(t, func(s *SqliteStore) {
 		bdb := s.bun
 
-		_, err := AddPublicKeyAndGetModelBun(bdb, "ssh-ed25519", "D1", "k1", false)
+		_, err := AddPublicKeyAndGetModelBun(bdb, "ssh-ed25519", "D1", "k1", false, time.Time{})
 		if err != nil {
 			t.Fatalf("AddPublicKeyAndGetModelBun failed: %v", err)
 		}
-		_, err = AddPublicKeyAndGetModelBun(bdb, "ssh-rsa", "D2", "k2", true)
+		_, err = AddPublicKeyAndGetModelBun(bdb, "ssh-rsa", "D2", "k2", true, time.Time{})
 		if err != nil {
 			t.Fatalf("AddPublicKeyAndGetModelBun failed: %v", err)
 		}

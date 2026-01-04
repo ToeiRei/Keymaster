@@ -2,6 +2,7 @@ package db
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/toeirei/keymaster/internal/model"
 )
@@ -116,7 +117,7 @@ type FakeKeyManager struct {
 	Err       error
 }
 
-func (f *FakeKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error {
+func (f *FakeKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) error {
 	if f.Err != nil {
 		return f.Err
 	}
@@ -124,7 +125,7 @@ func (f *FakeKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlob
 	return nil
 }
 
-func (f *FakeKeyManager) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) {
+func (f *FakeKeyManager) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) (*model.PublicKey, error) {
 	if f.Err != nil {
 		return nil, f.Err
 	}
@@ -133,6 +134,9 @@ func (f *FakeKeyManager) AddPublicKeyAndGetModel(algorithm, keyData, comment str
 		id = 1
 	}
 	pk := &model.PublicKey{ID: id, Algorithm: algorithm, KeyData: keyData, Comment: comment, IsGlobal: isGlobal}
+	if !expiresAt.IsZero() {
+		pk.ExpiresAt = expiresAt
+	}
 	f.Calls = append(f.Calls, [3]string{"AddPublicKeyAndGetModel", algorithm, comment})
 	return pk, nil
 }

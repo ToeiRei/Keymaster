@@ -2,6 +2,7 @@ package db
 
 import (
 	"testing"
+	"time"
 )
 
 func TestBunDefaultManagers_KeyAndAccountFlow(t *testing.T) {
@@ -25,7 +26,7 @@ func TestBunDefaultManagers_KeyAndAccountFlow(t *testing.T) {
 		}
 
 		// Public key and assignments via DefaultKeyManager
-		pk, err := AddPublicKeyAndGetModelBun(bdb, "ssh-ed25519", "DATA", "tkey", false)
+		pk, err := AddPublicKeyAndGetModelBun(bdb, "ssh-ed25519", "DATA", "tkey", false, time.Time{})
 		if err != nil {
 			t.Fatalf("AddPublicKeyAndGetModelBun failed: %v", err)
 		}

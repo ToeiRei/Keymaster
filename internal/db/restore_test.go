@@ -2,6 +2,7 @@ package db
 
 import (
 	"testing"
+	"time"
 
 	"github.com/toeirei/keymaster/internal/model"
 )
@@ -22,7 +23,7 @@ func TestIntegrateDataFromBackup_NonDestructive(t *testing.T) {
 	if km == nil {
 		t.Fatalf("no key manager available")
 	}
-	if err := km.AddPublicKey("ed25519", "AAAAB3NzaC1lZDI1NTE5AAAAIkey1", "c1", false); err != nil {
+	if err := km.AddPublicKey("ed25519", "AAAAB3NzaC1lZDI1NTE5AAAAIkey1", "c1", false, time.Time{}); err != nil {
 		t.Fatalf("AddPublicKey c1 failed: %v", err)
 	}
 

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/internal/db"
@@ -28,7 +29,7 @@ func TestAssignKeys_AssignAndUnassign(t *testing.T) {
 	if km == nil {
 		t.Fatalf("no key manager available")
 	}
-	k1, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3Nza...1", "k-one", false)
+	k1, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3Nza...1", "k-one", false, time.Time{})
 	if err != nil || k1 == nil {
 		t.Fatalf("AddPublicKeyAndGetModel k1 failed: %v %v", err, k1)
 	}

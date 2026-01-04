@@ -29,7 +29,7 @@ func TestBackupImport_RoundTrip(t *testing.T) {
 	if km == nil {
 		t.Fatalf("no key manager available")
 	}
-	pk, err := km.AddPublicKeyAndGetModel("ed25519", "AAAAB3NzaC1lZDI1NTE5AAAAIbackupkey", "bk-1", false)
+	pk, err := km.AddPublicKeyAndGetModel("ed25519", "AAAAB3NzaC1lZDI1NTE5AAAAIbackupkey", "bk-1", false, time.Time{})
 	if err != nil {
 		t.Fatalf("AddPublicKeyAndGetModel failed: %v", err)
 	}

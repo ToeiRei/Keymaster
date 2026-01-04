@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
@@ -93,7 +94,7 @@ func ImportRemoteKeys(account model.Account) (importedKeys []model.PublicKey, sk
 			skippedCount++
 			continue
 		}
-		newKey, dbErr := km.AddPublicKeyAndGetModel(alg, keyData, comment, false)
+		newKey, dbErr := km.AddPublicKeyAndGetModel(alg, keyData, comment, false, time.Time{})
 		if dbErr != nil {
 			// A real DB error occurred, log it or handle it. For now, we just skip.
 			skippedCount++

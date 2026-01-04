@@ -2,6 +2,7 @@ package db
 
 import (
 	"testing"
+	"time"
 )
 
 // Tests that exercise Bun-backed searcher wrappers and helpers using an
@@ -29,10 +30,10 @@ func TestBunAccountKeyAndAuditSearchers(t *testing.T) {
 		}
 
 		// Add public keys
-		if err := AddPublicKeyBun(bdb, "ssh-rsa", "AAAAB3NzaRSAdata", "alice@key", false); err != nil {
+		if err := AddPublicKeyBun(bdb, "ssh-rsa", "AAAAB3NzaRSAdata", "alice@key", false, time.Time{}); err != nil {
 			t.Fatalf("AddPublicKeyBun failed: %v", err)
 		}
-		if err := AddPublicKeyBun(bdb, "ssh-ed25519", "ED25519data", "service-key", true); err != nil {
+		if err := AddPublicKeyBun(bdb, "ssh-ed25519", "ED25519data", "service-key", true, time.Time{}); err != nil {
 			t.Fatalf("AddPublicKeyBun failed: %v", err)
 		}
 

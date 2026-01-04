@@ -3,6 +3,7 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/toeirei/keymaster/internal/db"
@@ -17,10 +18,10 @@ func TestRebuildDisplayedKeys_LocalFilter(t *testing.T) {
 		t.Fatal("no key manager")
 	}
 
-	if _, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3...A", "alpha", false); err != nil {
+	if _, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3...A", "alpha", false, time.Time{}); err != nil {
 		t.Fatalf("add key alpha: %v", err)
 	}
-	if _, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3...B", "beta", false); err != nil {
+	if _, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3...B", "beta", false, time.Time{}); err != nil {
 		t.Fatalf("add key beta: %v", err)
 	}
 
