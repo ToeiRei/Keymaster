@@ -7,45 +7,39 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
-func mkAcc(id int, user, host, label string) model.Account {
-	return model.Account{ID: id, Username: user, Hostname: host, Label: label}
+func mkKey(alg, data, comment string) model.PublicKey {
+	return model.PublicKey{Algorithm: alg, KeyData: data, Comment: comment}
 }
 
-func TestFilterAccountsByTokens_NoTokensReturnsAll(t *testing.T) {
-	in := []model.Account{mkAcc(1, "u1", "h1", "l1"), mkAcc(2, "u2", "h2", "l2")}
-	out := FilterAccountsByTokens(in, nil)
-	if !reflect.DeepEqual(in, out) {
-		t.Fatalf("expected same slice when no tokens, got %#v", out)
-	}
-}
+func TestFilterPublicKeysByTokens(t *testing.T) {
+	k1 := mkKey("ssh-ed25519", "AAAAB3NzaEd25519data", "alice@example.com")
+	k2 := mkKey("ssh-rsa", "AAAAB3NzaRSAdata", "bob@host")
+	k3 := mkKey("ecdsa-sha2-nistp256", "ECdata123", "service-key")
 
-func TestFilterAccountsByTokens_MatchUsername(t *testing.T) {
-	in := []model.Account{mkAcc(1, "alice", "host", "lab"), mkAcc(2, "bob", "host", "lab")}
-	out := FilterAccountsByTokens(in, []string{"ali"})
-	if len(out) != 1 || out[0].Username != "alice" {
-		t.Fatalf("unexpected result: %#v", out)
-	}
-}
+	keys := []model.PublicKey{k1, k2, k3}
 
-func TestFilterAccountsByTokens_MatchMultipleTokens(t *testing.T) {
-	in := []model.Account{
-		mkAcc(1, "alice", "web-prod", "frontend"),
-		mkAcc(2, "alice", "db-prod", "backend"),
+	tests := []struct {
+		name   string
+		tokens []string
+		want   []model.PublicKey
+	}{
+		{name: "no tokens - nil", tokens: nil, want: keys},
+		{name: "no tokens - empty", tokens: []string{}, want: keys},
+		{name: "match comment", tokens: []string{"alice"}, want: []model.PublicKey{k1}},
+		{name: "match algorithm", tokens: []string{"rsa"}, want: []model.PublicKey{k2}},
+		{name: "match keydata", tokens: []string{"ecdata"}, want: []model.PublicKey{k3}},
+		{name: "multiple tokens", tokens: []string{"alice", "ed25519"}, want: []model.PublicKey{k1}},
+		{name: "case insensitive", tokens: []string{"ALICE"}, want: []model.PublicKey{k1}},
+		{name: "spaces and empty token", tokens: []string{" ", "bob"}, want: []model.PublicKey{k2}},
+		{name: "no matches", tokens: []string{"nomatch"}, want: []model.PublicKey{}},
 	}
-	out := FilterAccountsByTokens(in, []string{"alice", "prod"})
-	if len(out) != 2 {
-		t.Fatalf("expected 2 matches, got %d", len(out))
-	}
-	out = FilterAccountsByTokens(in, []string{"alice", "db"})
-	if len(out) != 1 || out[0].Hostname != "db-prod" {
-		t.Fatalf("expected single db match, got %#v", out)
-	}
-}
 
-func TestFilterAccountsByTokens_NoMatch(t *testing.T) {
-	in := []model.Account{mkAcc(1, "u1", "h1", "l1")}
-	out := FilterAccountsByTokens(in, []string{"nomatch"})
-	if len(out) != 0 {
-		t.Fatalf("expected no matches, got %#v", out)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FilterPublicKeysByTokens(keys, tt.tokens)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("FilterPublicKeysByTokens(%v) = %v, want %v", tt.tokens, got, tt.want)
+			}
+		})
 	}
 }
