@@ -75,11 +75,20 @@ type accountsModel struct {
 	keySelectionButtonCursor int          // 0 for Cancel, 1 for Continue
 	keySelectionInButtonMode bool         // True when navigating buttons instead of keys
 	width, height            int
+	searcher                 db.AccountSearcher
 }
 
 func newAccountsModel() accountsModel {
+	return newAccountsModelWithSearcher(db.DefaultAccountSearcher())
+}
+
+// newAccountsModelWithSearcher creates an accountsModel that will use the
+// provided AccountSearcher for server-side searches. Pass nil to rely on the
+// package default searcher.
+func newAccountsModelWithSearcher(s db.AccountSearcher) accountsModel {
 	m := accountsModel{
 		viewport: viewport.New(0, 0),
+		searcher: s,
 	}
 	var err error
 	m.accounts, err = db.GetAllAccounts()
@@ -117,7 +126,15 @@ func (m *accountsModel) rebuildDisplayedAccounts() {
 			}
 		}
 
-		if searcher := db.DefaultAccountSearcher(); searcher != nil {
+		// Prefer the injected searcher if present, otherwise use the package default.
+		var searcher db.AccountSearcher
+		if m.searcher != nil {
+			searcher = m.searcher
+		} else {
+			searcher = db.DefaultAccountSearcher()
+		}
+
+		if searcher != nil {
 			if res, err := searcher.SearchAccounts(m.filter); err == nil && len(res) > 0 {
 				m.displayedAccounts = res
 			} else {
