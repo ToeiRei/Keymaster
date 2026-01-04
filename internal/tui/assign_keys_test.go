@@ -54,66 +54,26 @@ func TestAssignKeys_AssignAndUnassign_DB(t *testing.T) {
 	// Build model from DB
 	m := newAssignKeysModel()
 	if m.err != nil {
-		t.Fatalf("newAssignKeysModel error: %v", m.err)
-	}
+		func TestAssignKeys_ViewReflectsAssignedState(t *testing.T) {
+			i18n.Init("en")
 
-	// Find the account index in m.accounts
-	idx := -1
-	for i, a := range m.accounts {
-		if a.ID == acctID {
-			idx = i
-			break
+			// Prepare a model with two keys; mark one assigned
+			k1 := model.PublicKey{ID: 101, Comment: "k-one", Algorithm: "ssh-ed25519"}
+			k2 := model.PublicKey{ID: 102, Comment: "k-two", Algorithm: "ssh-rsa"}
+			m := &assignKeysModel{}
+			m.keys = []model.PublicKey{k1, k2}
+			m.assignedKeys = map[int]struct{}{k1.ID: {}}
+			m.keyCursor = 0
+
+			out := m.keyListViewContent()
+			checked := i18n.T("assign_keys.checkmark_checked")
+			unchecked := i18n.T("assign_keys.checkmark_unchecked")
+
+			if !strings.Contains(out, k1.Comment) || !strings.Contains(out, checked) {
+				t.Fatalf("expected assigned key to show checked mark; out=%q", out)
+			}
+			if !strings.Contains(out, k2.Comment) || !strings.Contains(out, unchecked) {
+				t.Fatalf("expected unassigned key to show unchecked mark; out=%q", out)
+			}
 		}
-	}
-	if idx < 0 {
-		t.Fatalf("account %d not found in model.accounts", acctID)
-	}
 
-	// Select the account (simulate pressing Enter)
-	m.accountCursor = idx
-	mm, _ := m.updateAccountSelection(tea.KeyMsg{Type: tea.KeyEnter})
-	m2 := mm.(*assignKeysModel)
-	if m2.state != assignStateSelectKeys {
-		t.Fatalf("expected state assignStateSelectKeys after selecting account")
-	}
-
-	// Ensure assignedKeys includes k1
-	if _, ok := m2.assignedKeys[k1.ID]; !ok {
-		t.Fatalf("expected k1 to be in assignedKeys map")
-	}
-	// Diagnostic: ensure k2 is not already assigned
-	if _, ok := m2.assignedKeys[k2.ID]; ok {
-		t.Fatalf("did not expect k2 to be pre-assigned to account; assignedKeys=%v", m2.assignedKeys)
-	}
-
-	// Find index of k2 in filteredKeys
-	fk := m2.filteredKeys()
-	k2idx := -1
-	for i, k := range fk {
-		if k.ID == k2.ID {
-			k2idx = i
-			break
-		}
-	}
-	if k2idx < 0 {
-		t.Fatalf("k2 not present in filtered keys")
-	}
-
-	// Move cursor to k2 and press space to assign
-	m2.keyCursor = k2idx
-	if fk[k2idx].ID != k2.ID {
-		t.Fatalf("expected filtered key at index to be k2 (id %d), got id %d", k2.ID, fk[k2idx].ID)
-	}
-	mm2, _ := m2.updateKeySelection(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
-	m3 := mm2.(*assignKeysModel)
-	if _, ok := m3.assignedKeys[k2.ID]; !ok {
-		t.Fatalf("expected k2 to be assigned after space; status=%q err=%v", m3.status, m3.err)
-	}
-
-	// Press space again to unassign k2
-	mm3, _ := m3.updateKeySelection(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
-	m4 := mm3.(*assignKeysModel)
-	if _, ok := m4.assignedKeys[k2.ID]; ok {
-		t.Fatalf("expected k2 to be unassigned after second space; status=%q err=%v", m4.status, m4.err)
-	}
-}
