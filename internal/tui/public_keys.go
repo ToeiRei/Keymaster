@@ -532,6 +532,9 @@ func (m *publicKeysModel) viewExpiryModal() string {
 	// expiration input
 	b.WriteString(m.expireInput.View() + "\n\n")
 	b.WriteString(helpStyle.Render(i18n.T("public_keys.expire.help")))
+	b.WriteString("\n\n")
+	// explanatory three-state help (Always Active / Still Active / Inactive)
+	b.WriteString(helpStyle.Render(i18n.T("public_keys.expire.help_states")))
 
 	return lipgloss.Place(m.width, m.height,
 		lipgloss.Center, lipgloss.Center,
