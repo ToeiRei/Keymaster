@@ -120,6 +120,18 @@ func GenerateSelectiveKeysContent(accountID int, serial int, excludeKeyIDs []int
 
 	// 1. Get the system key (always included unless removeSystemKey is true)
 	if !removeSystemKey {
+		// If serial==0, treat it as "use active system key"
+		if serial == 0 {
+			activeKey, err := db.GetActiveSystemKey()
+			if err != nil {
+				return "", fmt.Errorf("could not retrieve active system key: %w", err)
+			}
+			if activeKey == nil {
+				return "", fmt.Errorf("no active system key found. please generate one first")
+			}
+			serial = activeKey.Serial
+		}
+
 		systemKey, err := db.GetSystemKeyBySerial(serial)
 		if err != nil {
 			return "", fmt.Errorf("could not retrieve system key: %w", err)
