@@ -137,7 +137,11 @@ ssh-ed25519 CCCCC3NzaC1lZDI1NTE5AAAAIGy5E/P9Ea45T/k+s/p3g4zJzE4Q3g== user@exampl
 	})
 
 	t.Run("database should contain exactly one key", func(t *testing.T) {
-		keys, err := db.GetAllPublicKeys()
+		km := db.DefaultKeyManager()
+		if km == nil {
+			t.Fatalf("no key manager available")
+		}
+		keys, err := km.GetAllPublicKeys()
 		if err != nil {
 			t.Fatalf("Failed to get public keys from DB: %v", err)
 		}

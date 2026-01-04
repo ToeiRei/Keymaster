@@ -24,7 +24,11 @@ func TestAssignKeys_AssignAndUnassign(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddAccount failed: %v", err)
 	}
-	k1, err := db.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3Nza...1", "k-one", false)
+	km := db.DefaultKeyManager()
+	if km == nil {
+		t.Fatalf("no key manager available")
+	}
+	k1, err := km.AddPublicKeyAndGetModel("ssh-ed25519", "AAAAB3Nza...1", "k-one", false)
 	if err != nil || k1 == nil {
 		t.Fatalf("AddPublicKeyAndGetModel k1 failed: %v %v", err, k1)
 	}
@@ -77,7 +81,11 @@ func TestAssignKeys_AssignAndUnassign(t *testing.T) {
 	_ = m
 
 	// Verify in DB that the key is assigned
-	assigned, err := db.GetKeysForAccount(acctID)
+	km2 := db.DefaultKeyManager()
+	if km2 == nil {
+		t.Fatalf("no key manager available")
+	}
+	assigned, err := km2.GetKeysForAccount(acctID)
 	if err != nil {
 		t.Fatalf("GetKeysForAccount failed: %v", err)
 	}
@@ -90,7 +98,7 @@ func TestAssignKeys_AssignAndUnassign(t *testing.T) {
 	m = m2.(*assignKeysModel)
 	_ = m
 
-	assigned, err = db.GetKeysForAccount(acctID)
+	assigned, err = km2.GetKeysForAccount(acctID)
 	if err != nil {
 		t.Fatalf("GetKeysForAccount failed: %v", err)
 	}

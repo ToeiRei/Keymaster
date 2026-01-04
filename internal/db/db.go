@@ -440,39 +440,6 @@ func GetAllActiveAccounts() ([]model.Account, error) {
 	return store.GetAllActiveAccounts()
 }
 
-// AddPublicKey adds a new public key to the database.
-func AddPublicKey(algorithm, keyData, comment string, isGlobal bool) error {
-	return store.AddPublicKey(algorithm, keyData, comment, isGlobal)
-}
-
-// GetAllPublicKeys retrieves all public keys from the database.
-func GetAllPublicKeys() ([]model.PublicKey, error) {
-	return store.GetAllPublicKeys()
-}
-
-// GetPublicKeyByComment retrieves a single public key by its unique comment.
-func GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
-	return store.GetPublicKeyByComment(comment)
-}
-
-// AddPublicKeyAndGetModel adds a public key to the database if it doesn't already
-// exist (based on the comment) and returns the full key model. If a key with
-// the same comment already exists, it returns (nil, nil) to indicate a
-// duplicate without an error.
-func AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool) (*model.PublicKey, error) { //
-	return store.AddPublicKeyAndGetModel(algorithm, keyData, comment, isGlobal)
-}
-
-// TogglePublicKeyGlobal flips the 'is_global' status of a public key.
-func TogglePublicKeyGlobal(id int) error {
-	return store.TogglePublicKeyGlobal(id)
-}
-
-// GetGlobalPublicKeys retrieves all keys marked as global.
-func GetGlobalPublicKeys() ([]model.PublicKey, error) {
-	return store.GetGlobalPublicKeys()
-}
-
 // GetKnownHostKey retrieves the trusted public key for a given hostname.
 func GetKnownHostKey(hostname string) (string, error) {
 	return store.GetKnownHostKey(hostname)
@@ -509,31 +476,9 @@ func HasSystemKeys() (bool, error) {
 	return store.HasSystemKeys()
 }
 
-// DeletePublicKey removes a public key and all its associations.
-// The ON DELETE CASCADE constraint handles the associations in account_keys.
-func DeletePublicKey(id int) error {
-	return store.DeletePublicKey(id)
-}
-
-// AssignKeyToAccount creates an association between a key and an account.
-func AssignKeyToAccount(keyID, accountID int) error {
-	return store.AssignKeyToAccount(keyID, accountID)
-}
-
-// UnassignKeyFromAccount removes an association between a key and an account.
-func UnassignKeyFromAccount(keyID, accountID int) error {
-	return store.UnassignKeyFromAccount(keyID, accountID)
-}
-
-// GetKeysForAccount retrieves all public keys assigned to a specific account.
-func GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
-	return store.GetKeysForAccount(accountID)
-}
-
-// GetAccountsForKey retrieves all accounts that have a specific public key assigned.
-func GetAccountsForKey(keyID int) ([]model.Account, error) {
-	return store.GetAccountsForKey(keyID)
-}
+// Key-related operations are handled via the KeyManager interface (use
+// DefaultKeyManager() or inject a KeyManager). The old package-level
+// helper wrappers were removed to encourage explicit dependency injection.
 
 // GetAllAuditLogEntries retrieves all entries from the audit log, most recent first.
 func GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {

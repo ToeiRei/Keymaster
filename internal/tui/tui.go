@@ -666,7 +666,11 @@ func refreshDashboardCmd() tea.Cmd {
 			return dashboardDataMsg{data: dashboardData{err: err}}
 		}
 
-		keys, err := db.GetAllPublicKeys()
+		km := db.DefaultKeyManager()
+		if km == nil {
+			return dashboardDataMsg{data: dashboardData{err: fmt.Errorf("no key manager available")}}
+		}
+		keys, err := km.GetAllPublicKeys()
 		if err != nil {
 			return dashboardDataMsg{data: dashboardData{err: err}}
 		}

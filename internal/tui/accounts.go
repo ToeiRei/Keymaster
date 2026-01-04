@@ -913,13 +913,17 @@ func importRemoteKeysCmd(account model.Account) tea.Cmd {
 func (m *accountsModel) loadKeysForSelection() tea.Cmd {
 	return func() tea.Msg {
 		// Get global keys
-		globalKeys, err := db.GetGlobalPublicKeys()
+		km := db.DefaultKeyManager()
+		if km == nil {
+			return fmt.Errorf("no key manager available")
+		}
+		globalKeys, err := km.GetGlobalPublicKeys()
 		if err != nil {
 			return fmt.Errorf("failed to get global keys: %w", err)
 		}
 
 		// Get account-specific keys
-		accountKeys, err := db.GetKeysForAccount(m.accountToDelete.ID)
+		accountKeys, err := km.GetKeysForAccount(m.accountToDelete.ID)
 		if err != nil {
 			return fmt.Errorf("failed to get account keys: %w", err)
 		}

@@ -69,7 +69,12 @@ func newAssignKeysModel() *assignKeysModel {
 		return m
 	}
 	// We also fetch all keys now, so we don't have to do it later.
-	m.keys, err = db.GetAllPublicKeys()
+	km := db.DefaultKeyManager()
+	if km == nil {
+		m.err = fmt.Errorf("no key manager available")
+		return m
+	}
+	m.keys, err = km.GetAllPublicKeys()
 	if err != nil {
 		m.err = err
 	}
@@ -178,7 +183,12 @@ func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cm
 			m.status = ""
 
 			// Refresh the key list to ensure we have the latest data
-			keys, err := db.GetAllPublicKeys()
+			km := db.DefaultKeyManager()
+			if km == nil {
+				m.err = fmt.Errorf("no key manager available")
+				return m, nil
+			}
+			keys, err := km.GetAllPublicKeys()
 			if err != nil {
 				m.err = fmt.Errorf("error refreshing key list: %v", err)
 				return m, nil
@@ -186,7 +196,7 @@ func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cm
 			m.keys = keys
 
 			// Get currently assigned keys
-			assigned, err := db.GetKeysForAccount(m.selectedAccount.ID)
+			assigned, err := km.GetKeysForAccount(m.selectedAccount.ID)
 			if err != nil {
 				m.err = err
 				return m, nil

@@ -55,13 +55,21 @@ func GenerateKeysContentForSerial(accountID int, serial int) (string, error) {
 	content.WriteString(restrictedSystemKey)
 
 	// 2. Get all global public keys.
-	globalKeys, err := db.GetGlobalPublicKeys()
+	km := db.DefaultKeyManager()
+	if km == nil {
+		return "", fmt.Errorf("no key manager available")
+	}
+	globalKeys, err := km.GetGlobalPublicKeys()
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve global public keys: %w", err)
 	}
 
 	// 3. Get keys specifically assigned to this account.
-	accountKeys, err := db.GetKeysForAccount(accountID)
+	km := db.DefaultKeyManager()
+	if km == nil {
+		return "", fmt.Errorf("no key manager available")
+	}
+	accountKeys, err := km.GetKeysForAccount(accountID)
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve keys for account ID %d: %w", accountID, err)
 	}
@@ -147,13 +155,18 @@ func GenerateSelectiveKeysContent(accountID int, serial int, excludeKeyIDs []int
 	}
 
 	// 2. Get all global public keys.
-	globalKeys, err := db.GetGlobalPublicKeys()
+	// Reuse KeyManager for both global and account keys.
+	km := db.DefaultKeyManager()
+	if km == nil {
+		return "", fmt.Errorf("no key manager available")
+	}
+	globalKeys, err := km.GetGlobalPublicKeys()
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve global public keys: %w", err)
 	}
 
 	// 3. Get keys specifically assigned to this account.
-	accountKeys, err := db.GetKeysForAccount(accountID)
+	accountKeys, err := km.GetKeysForAccount(accountID)
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve keys for account ID %d: %w", accountID, err)
 	}

@@ -70,11 +70,12 @@ func newPublicKeysModelWithSearcher(s db.KeySearcher) publicKeysModel {
 		searcher: s,
 	}
 	var err error
-	if km := db.DefaultKeyManager(); km != nil {
-		m.keys, err = km.GetAllPublicKeys()
-	} else {
-		m.keys, err = db.GetAllPublicKeys()
+	km := db.DefaultKeyManager()
+	if km == nil {
+		m.err = fmt.Errorf("no key manager available")
+		return m
 	}
+	m.keys, err = km.GetAllPublicKeys()
 	if err != nil {
 		m.err = err
 	}
@@ -155,7 +156,12 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if _, ok := msg.(publicKeyCreatedMsg); ok {
 			m.state = publicKeysListView
 			m.status = i18n.T("public_keys.status.add_success")
-			m.keys, m.err = db.GetAllPublicKeys()
+			km := db.DefaultKeyManager()
+			if km == nil {
+				m.err = fmt.Errorf("no key manager available")
+			} else {
+				m.keys, m.err = km.GetAllPublicKeys()
+			}
 			m.rebuildDisplayedKeys()
 			m.viewport.SetContent(m.listContentView())
 			return m, nil

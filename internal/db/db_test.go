@@ -72,7 +72,7 @@ func TestPublicKey_AddDuplicateBehavior(t *testing.T) {
 	}
 
 	// Second call should return (nil, nil) to indicate duplicate
-	pk2, err := AddPublicKeyAndGetModel("ed25519", keyData, "dup-comment", false)
+	pk2, err := km.AddPublicKeyAndGetModel("ed25519", keyData, "dup-comment", false)
 	if err != nil {
 		t.Fatalf("unexpected error on duplicate AddPublicKeyAndGetModel: %v", err)
 	}

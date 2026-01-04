@@ -1153,7 +1153,11 @@ func (m *bootstrapModel) testConnection() tea.Cmd {
 // System keys are automatically deployed and should not be selectable.
 func (m *bootstrapModel) loadAvailableKeys() tea.Cmd {
 	return func() tea.Msg {
-		allKeys, err := db.GetAllPublicKeys()
+		km := db.DefaultKeyManager()
+		if km == nil {
+			return fmt.Errorf("no key manager available")
+		}
+		allKeys, err := km.GetAllPublicKeys()
 		if err != nil {
 			return err
 		}
