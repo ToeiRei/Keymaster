@@ -842,6 +842,12 @@ func promptForConfirmation(prompt string) string {
 // signature required by runParallelTasks. It calls the centralized
 // deployment logic from the deploy package.
 func runDeploymentForAccount(account model.Account) error {
+	return runDeploymentFunc(account)
+}
+
+// runDeploymentFunc is a package-level variable so tests can inject a mock
+// implementation. By default it calls into the deploy package with CLI mode.
+var runDeploymentFunc = func(account model.Account) error {
 	return deploy.RunDeploymentForAccount(account, false)
 }
 

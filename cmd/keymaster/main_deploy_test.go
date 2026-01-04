@@ -33,3 +33,26 @@ func TestRunDeploymentForAccount_MissingSerialKey_ReturnsError(t *testing.T) {
 		t.Fatalf("expected error when specified serial key is missing")
 	}
 }
+
+func TestRunDeploymentForAccount_Success(t *testing.T) {
+	// Inject a mock implementation to simulate a successful deployment
+	orig := runDeploymentFunc
+	defer func() { runDeploymentFunc = orig }()
+
+	called := false
+	runDeploymentFunc = func(account model.Account) error {
+		called = true
+		if account.ID != 1 {
+			t.Fatalf("unexpected account ID: %d", account.ID)
+		}
+		return nil
+	}
+
+	acct := model.Account{ID: 1, Username: "u", Hostname: "h", Serial: 0}
+	if err := runDeploymentForAccount(acct); err != nil {
+		t.Fatalf("expected nil error, got: %v", err)
+	}
+	if !called {
+		t.Fatalf("injected runDeploymentFunc was not called")
+	}
+}
