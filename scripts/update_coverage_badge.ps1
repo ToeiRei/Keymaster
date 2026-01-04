@@ -6,7 +6,7 @@ $ErrorActionPreference = 'Stop'
 Write-Output "Running go test to produce coverage profile (this may take a while)..."
 & go test -coverpkg=./... ./... -coverprofile=coverage.out
 
-if (Test-Path -Path './coverage' -PathType Leaf -and -not (Test-Path -Path './coverage.out')) {
+if ((Test-Path -Path './coverage' -PathType Leaf) -and -not (Test-Path -Path './coverage.out')) {
     Write-Output "Normalizing 'coverage' -> 'coverage.out'"
     Move-Item -Path './coverage' -Destination './coverage.out' -Force
 }
@@ -16,7 +16,7 @@ if (-not (Test-Path -Path './coverage.out')) {
     exit 1
 }
 
-$func = & go tool cover -func=coverage.out
+$func = & go tool cover -func coverage.out
 $line = $func | Select-String 'total:' | Select-Object -First 1
 if (-not $line) {
     Write-Error "failed to parse coverage output"
