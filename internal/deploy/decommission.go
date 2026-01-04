@@ -168,7 +168,7 @@ func cleanupRemoteAuthorizedKeys(account model.Account, systemKey string, keepFi
 	}()
 
 	// Create deployer connection
-	deployer, err := NewDeployer(account.Hostname, account.Username, systemKey, passphrase)
+	deployer, err := NewDeployerFunc(account.Hostname, account.Username, systemKey, passphrase)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s@%s: %w", account.Username, account.Hostname, err)
 	}
@@ -194,7 +194,7 @@ func cleanupRemoteAuthorizedKeysSelective(account model.Account, systemKey strin
 	}()
 
 	// Create deployer connection
-	deployer, err := NewDeployer(account.Hostname, account.Username, systemKey, passphrase)
+	deployer, err := NewDeployerFunc(account.Hostname, account.Username, systemKey, passphrase)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s@%s: %w", account.Username, account.Hostname, err)
 	}

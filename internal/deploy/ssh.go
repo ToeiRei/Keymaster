@@ -184,6 +184,12 @@ type Deployer struct {
 	config *ConnectionConfig
 }
 
+// NewDeployerFunc is a overridable factory used to create Deployers. Tests may
+// replace this with a fake implementation to avoid real network connections.
+var NewDeployerFunc = func(host, user, privateKey string, passphrase []byte) (*Deployer, error) {
+	return NewDeployerWithConfig(host, user, privateKey, passphrase, DefaultConnectionConfig(), false)
+}
+
 // NewDeployer creates a new SSH connection and returns a Deployer.
 // For bootstrap connections, use NewBootstrapDeployer instead.
 func NewDeployer(host, user, privateKey string, passphrase []byte) (*Deployer, error) {

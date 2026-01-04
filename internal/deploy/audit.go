@@ -42,7 +42,7 @@ func AuditAccountStrict(account model.Account) error {
 	}()
 
 	// 3. Attempt to connect with that key.
-	deployer, err := NewDeployer(account.Hostname, account.Username, connectKey.PrivateKey, passphrase)
+	deployer, err := NewDeployerFunc(account.Hostname, account.Username, connectKey.PrivateKey, passphrase)
 	if err != nil {
 		if errors.Is(err, ErrPassphraseRequired) {
 			return err // Pass the specific error up to the caller (TUI)
