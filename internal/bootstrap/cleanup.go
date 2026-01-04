@@ -32,6 +32,13 @@ var (
 	// Signal handler installed flag
 	signalHandlerInstalled bool
 	signalHandlerMutex     sync.Mutex
+	// sessionReaperInterval controls how often the background reaper runs.
+	// Tests may override this to run quickly.
+	sessionReaperInterval = 5 * time.Minute
+
+	// currentReaperTicker holds the active ticker started by StartSessionReaper
+	// so tests can stop it when needed.
+	currentReaperTicker *time.Ticker
 )
 
 // RegisterSession adds a bootstrap session to the active sessions registry.
@@ -146,7 +153,9 @@ func CleanupExpiredSessions() error {
 // StartSessionReaper launches a background goroutine that periodically cleans up
 // expired bootstrap sessions. This helps prevent database accumulation.
 func StartSessionReaper() {
-	ticker := time.NewTicker(5 * time.Minute)
+	ticker := time.NewTicker(sessionReaperInterval)
+	// store reference so tests can stop the ticker
+	currentReaperTicker = ticker
 	go func() {
 		for range ticker.C {
 			_ = CleanupExpiredSessions()
