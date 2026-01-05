@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
@@ -481,7 +482,7 @@ func (m *accountFormModel) updateSuggestions() {
 	if m.tagSuggester != nil {
 		m.suggestions = m.tagSuggester.Suggest(currentVal)
 	} else {
-		m.suggestions = ui.SuggestTags(m.allTags, currentVal)
+		m.suggestions = core.SuggestTags(m.allTags, currentVal)
 	}
 	m.suggestionCursor = 0
 	m.isSuggesting = len(m.suggestions) > 0
@@ -494,9 +495,7 @@ func (m *accountFormModel) applySuggestion() {
 	}
 	selectedSuggestion := m.suggestions[m.suggestionCursor]
 	currentVal := m.inputs[3].Value()
-	parts := ui.SplitTagsPreserveTrailing(currentVal)
-	parts[len(parts)-1] = selectedSuggestion
-	newValue := ui.JoinTags(parts) + ", "
+	newValue := core.ApplySuggestion(currentVal, selectedSuggestion)
 	m.inputs[3].SetValue(newValue)
 	m.inputs[3].SetCursor(len(newValue))
 }
