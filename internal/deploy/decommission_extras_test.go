@@ -80,4 +80,3 @@ func TestDecommissionResult_StringVariants(t *testing.T) {
 type errDummy string
 
 func (e errDummy) Error() string { return string(e) }
-

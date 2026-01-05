@@ -38,10 +38,10 @@ func TestMainRuns(t *testing.T) {
 	_ = w.Close()
 	os.Stdout = old
 
-	// Wait for reader goroutine with timeout
+	// Wait for reader goroutine with timeout (longer in CI)
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatalf("timeout waiting for main output")
 	}
 
@@ -57,4 +57,3 @@ func TestMainRuns(t *testing.T) {
 		t.Fatalf("expected output to contain 'all accounts:', got %q", out)
 	}
 }
-

@@ -97,4 +97,3 @@ func TestNewDeployer_HostKeyMismatchClassified(t *testing.T) {
 		t.Fatalf("expected classified host key error, got: %v", err)
 	}
 }
-

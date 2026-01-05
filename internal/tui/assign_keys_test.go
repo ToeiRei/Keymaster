@@ -52,4 +52,3 @@ func TestAssignKeys_ViewReflectsAssignedState(t *testing.T) {
 		t.Fatalf("expected unassigned key to show unchecked mark; out=%q", out)
 	}
 }
-

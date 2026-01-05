@@ -51,4 +51,3 @@ func TestResolveBuildVersion_GitCommitFallback(t *testing.T) {
 		t.Fatalf("expected gitCommit fallback got %s", v)
 	}
 }
-

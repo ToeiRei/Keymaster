@@ -71,4 +71,3 @@ func AssignKeys(keyIDs []int, accountID int, assignFunc AssignFunc) error {
 	}
 	return nil
 }
-

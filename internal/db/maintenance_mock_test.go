@@ -144,4 +144,3 @@ func TestRunDBMaintenance_MySQL_WithMock_Failure(t *testing.T) {
 		t.Fatalf("expected error when OPTIMIZE TABLE fails")
 	}
 }
-

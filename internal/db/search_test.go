@@ -28,4 +28,3 @@ func TestTokenizeSearchQuery_MultipleAndTrim(t *testing.T) {
 		t.Fatalf("unexpected tokens: got %#v want %#v", got, want)
 	}
 }
-

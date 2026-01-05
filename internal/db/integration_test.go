@@ -85,4 +85,3 @@ func TestIntegration_Smoke(t *testing.T) {
 		t.Fatalf("restore mismatch on %s: want accounts=%d keys=%d got accounts=%d keys=%d", dbType, len(backup.Accounts), len(backup.PublicKeys), len(restored.Accounts), len(restored.PublicKeys))
 	}
 }
-

@@ -22,4 +22,3 @@ func SetClock(c Clock) { defaultClock = c }
 
 // ResetClock restores the default system clock.
 func ResetClock() { defaultClock = systemClock{} }
-

@@ -58,4 +58,3 @@ func TestNewDeployer_AgentAuthClassified(t *testing.T) {
 		t.Fatalf("expected classified authentication error, got: %v", err)
 	}
 }
-

@@ -72,4 +72,3 @@ func FilterPublicKeysByTokens(keys []model.PublicKey, tokens []string) []model.P
 	}
 	return out
 }
-

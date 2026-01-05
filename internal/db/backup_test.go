@@ -108,4 +108,3 @@ func TestBackupImport_RoundTrip(t *testing.T) {
 		t.Fatalf("account_keys count mismatch after restore: want=%d got=%d", len(backup.AccountKeys), len(restored.AccountKeys))
 	}
 }
-

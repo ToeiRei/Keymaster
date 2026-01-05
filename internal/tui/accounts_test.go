@@ -54,4 +54,3 @@ func TestRebuildDisplayedAccounts_FilteringAndListContent(t *testing.T) {
 		t.Fatalf("expected filtered content to include 'carol', got: %q", content)
 	}
 }
-

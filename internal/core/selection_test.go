@@ -25,4 +25,3 @@ func TestEnsureCursorInView_TopBottomAndNoop(t *testing.T) {
 		t.Fatalf("expected 5 for cursor below bottom, got %d", got)
 	}
 }
-

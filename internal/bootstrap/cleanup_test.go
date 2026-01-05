@@ -227,4 +227,3 @@ func TestStartSessionReaper_CleansExpired(t *testing.T) {
 		t.Fatalf("expected expired session removed by reaper, still present: %+v", got)
 	}
 }
-

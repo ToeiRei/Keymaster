@@ -20,4 +20,3 @@ func EnsureCursorInView(cursor, yOffset, height int) int {
 	}
 	return yOffset
 }
-

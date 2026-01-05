@@ -55,4 +55,3 @@ func WithAuditWriter(t *testing.T, w AuditWriter, fn func()) {
 	defer func() { defaultAuditWriter = prev }()
 	fn()
 }
-

@@ -65,4 +65,3 @@ func TestIntegrateDataFromBackup_NonDestructive(t *testing.T) {
 		t.Fatalf("expected public keys to increase by 1: before=%d after=%d", len(before.PublicKeys), len(after.PublicKeys))
 	}
 }
-

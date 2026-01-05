@@ -119,4 +119,3 @@ func Pad(s string, width int) string {
 func FormatLabelPadding(label, value string, labelWidth int) string {
 	return Pad(label, labelWidth) + " " + value
 }
-

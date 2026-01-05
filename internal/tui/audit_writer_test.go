@@ -49,4 +49,3 @@ func TestTuiLogAction_UsesPackageOverride(t *testing.T) {
 		t.Fatalf("unexpected audit call: %#v", fake.Calls[0])
 	}
 }
-

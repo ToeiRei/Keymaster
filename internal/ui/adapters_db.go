@@ -71,4 +71,3 @@ func DefaultAuditSearcher() AuditSearcher {
 	}
 	return &dbAuditSearcherAdapter{s: s}
 }
-

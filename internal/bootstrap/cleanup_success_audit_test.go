@@ -48,4 +48,3 @@ func TestBootstrapLogAction_UsesWriters(t *testing.T) {
 		t.Fatalf("unexpected action recorded: %s", fake2.Calls[0][0])
 	}
 }
-

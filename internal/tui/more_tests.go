@@ -96,4 +96,3 @@ func TestViewConfirmationAndKeySelection_Render(t *testing.T) {
 		}
 	}
 }
-

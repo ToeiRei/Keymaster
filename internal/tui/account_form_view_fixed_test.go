@@ -48,4 +48,3 @@ func TestAccountForm_UpdateSuggestionsAndApply_Fixed(t *testing.T) {
 		t.Fatalf("expected input to be replaced with suggestion and trailing comma, got: %q", got)
 	}
 }
-

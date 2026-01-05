@@ -54,4 +54,3 @@ func (d *dbTagSuggester) Suggest(currentVal string) []string {
 func DefaultTagSuggester() TagSuggester {
 	return &dbTagSuggester{}
 }
-

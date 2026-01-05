@@ -54,4 +54,3 @@ func TestAssignAndUnassignKeyOps(t *testing.T) {
 		t.Fatalf("key still present after unassign")
 	}
 }
-

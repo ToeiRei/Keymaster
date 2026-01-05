@@ -107,4 +107,3 @@ func TestRunParallelTasks_PrintsResultsAndLogs(t *testing.T) {
 		t.Fatalf("expected a failure message for second account, got: %s", out)
 	}
 }
-

@@ -84,4 +84,3 @@ func TestRemoveSelectiveKeymasterContent_RemovesExcludedKey(t *testing.T) {
 		t.Fatalf("expected excluded key 'k-two' to be removed, but found in final content")
 	}
 }
-

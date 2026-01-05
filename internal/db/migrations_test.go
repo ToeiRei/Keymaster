@@ -60,4 +60,3 @@ func TestRunDBMaintenanceSqlite_Smoke(t *testing.T) {
 		t.Fatalf("RunDBMaintenance failed: %v", err)
 	}
 }
-

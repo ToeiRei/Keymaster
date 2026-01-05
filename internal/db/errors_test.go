@@ -45,4 +45,3 @@ func TestMapDBError_NonDuplicatePassthrough(t *testing.T) {
 		t.Fatalf("expected original error to be returned unchanged, got: %v", mapped)
 	}
 }
-

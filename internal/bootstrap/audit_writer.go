@@ -30,4 +30,3 @@ func logAction(action, details string) error {
 	}
 	return nil
 }
-

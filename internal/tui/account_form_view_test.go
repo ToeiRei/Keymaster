@@ -84,4 +84,3 @@ func TestAccountForm_View_ShowsSuggestions(t *testing.T) {
 		t.Fatalf("expected suggestion 'vault' in view output, got: %q", out)
 	}
 }
-

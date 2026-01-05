@@ -33,4 +33,3 @@ func TestDBPoolDefaultsSQLite(t *testing.T) {
 	}
 	_ = ss.BunDB().DB.Close()
 }
-

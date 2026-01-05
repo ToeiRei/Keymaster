@@ -59,4 +59,3 @@ func TestSftpClientAdapter_Delegates(t *testing.T) {
 		t.Fatalf("Close failed: %v", err)
 	}
 }
-

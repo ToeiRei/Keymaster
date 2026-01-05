@@ -64,4 +64,3 @@ func TestBunAccountKeyAndAuditSearchers(t *testing.T) {
 		}
 	})
 }
-

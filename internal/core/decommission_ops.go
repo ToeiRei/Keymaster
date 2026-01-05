@@ -40,4 +40,3 @@ func PerformDecommissionWithKeys(account model.Account, selectedKeysToKeep map[i
 	result := deploy.DecommissionAccount(account, systemKey.PrivateKey, options)
 	return result, nil
 }
-

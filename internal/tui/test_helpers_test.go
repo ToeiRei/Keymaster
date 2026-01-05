@@ -22,4 +22,3 @@ func initTestDBT(t *testing.T) {
 		// rely on process exit and the in-memory database scoping.
 	})
 }
-

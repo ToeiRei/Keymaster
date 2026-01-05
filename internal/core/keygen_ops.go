@@ -39,4 +39,3 @@ func RotateSystemKey(passphrase string) (int, error) {
 	}
 	return serial, nil
 }
-

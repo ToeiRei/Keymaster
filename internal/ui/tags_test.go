@@ -32,4 +32,3 @@ func TestSuggestTags(t *testing.T) {
 		})
 	}
 }
-

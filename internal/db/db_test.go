@@ -110,4 +110,3 @@ func TestAccount_AddDuplicateBehavior(t *testing.T) {
 		t.Fatalf("expected ErrDuplicate on duplicate AddAccount, got: %v", err)
 	}
 }
-

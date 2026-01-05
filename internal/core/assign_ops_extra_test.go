@@ -26,4 +26,3 @@ func TestAssignKeys_LoopsAndStopsOnError(t *testing.T) {
 		t.Fatalf("expected 2 calls, got %d", calls)
 	}
 }
-

@@ -89,4 +89,3 @@ func TestUpdate_ToggleExpandOnEnter(t *testing.T) {
 		t.Fatalf("expected 'alpha' to be expanded after Enter")
 	}
 }
-

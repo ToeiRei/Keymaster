@@ -108,4 +108,3 @@ func TestAssignKeys_KeyNavigationAndFiltering(t *testing.T) {
 		t.Fatalf("expected isFilteringKey false after Esc")
 	}
 }
-

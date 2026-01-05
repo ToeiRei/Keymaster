@@ -49,4 +49,3 @@ func TestGetRemoteHostKey_WithInjectedDial(t *testing.T) {
 		t.Fatalf("retrieved key does not match expected key")
 	}
 }
-

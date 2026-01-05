@@ -875,4 +875,3 @@ func CreateSystemKeyBun(bdb *bun.DB, publicKey, privateKey string) (int, error) 
 	}
 	return newSerial, nil
 }
-

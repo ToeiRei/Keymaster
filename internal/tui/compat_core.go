@@ -10,4 +10,3 @@ import "github.com/toeirei/keymaster/internal/core"
 func containsIgnoreCase(s, substr string) bool {
 	return core.ContainsIgnoreCase(s, substr)
 }
-

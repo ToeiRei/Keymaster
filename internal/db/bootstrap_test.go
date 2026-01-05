@@ -107,4 +107,3 @@ func TestBootstrapSession_LifecycleAndQueries(t *testing.T) {
 		t.Fatalf("expected deleted session to be nil, got: %+v", bs)
 	}
 }
-

@@ -28,4 +28,3 @@ func MapDBError(err error) error {
 	}
 	return err
 }
-

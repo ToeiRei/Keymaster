@@ -10,4 +10,3 @@ import "testing"
 func Test_UseInitTestDBT(t *testing.T) {
 	initTestDBT(t)
 }
-

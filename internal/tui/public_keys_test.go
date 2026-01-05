@@ -74,4 +74,3 @@ func TestViewConfirmation_IncludesComment(t *testing.T) {
 		t.Fatalf("expected confirmation view to include key comment, got: %s", out)
 	}
 }
-

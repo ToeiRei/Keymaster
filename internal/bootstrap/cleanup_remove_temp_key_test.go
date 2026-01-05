@@ -228,4 +228,3 @@ func TestRemoveTempKeyFromRemoteHost_ReadError(t *testing.T) {
 		t.Fatalf("expected error when Read fails")
 	}
 }
-

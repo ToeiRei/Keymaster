@@ -94,4 +94,3 @@ func BuildDashboardData() (DashboardData, error) {
 
 	return out, nil
 }
-
