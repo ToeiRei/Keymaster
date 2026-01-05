@@ -346,6 +346,11 @@ func RunDeployCmd(ctx context.Context, st Store, dm DeployerManager, identifier 
 	return DeployAccounts(ctx, st, dm, identifier, rep)
 }
 
+// RunDeployForAccount calls DeployerManager for a single account deployment.
+func RunDeployForAccount(ctx context.Context, dm DeployerManager, account model.Account, rep Reporter) error {
+	return dm.DeployForAccount(account, false)
+}
+
 func RunRotateKeyCmd(ctx context.Context, kg KeyGenerator, st Store, passphrase string) (int, error) {
 	pub, priv, err := kg.GenerateAndMarshalEd25519Key("keymaster-system-key", passphrase)
 	if err != nil {
@@ -358,8 +363,31 @@ func RunAuditCmd(ctx context.Context, st Store, dm DeployerManager, mode string,
 	return AuditAccounts(ctx, st, dm, mode, rep)
 }
 
+// RunAuditForAccount runs audit for a single account via the DeployerManager.
+func RunAuditForAccount(ctx context.Context, dm DeployerManager, account model.Account, mode string, rep Reporter) error {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case "serial":
+		return dm.AuditSerial(account)
+	case "strict", "":
+		return dm.AuditStrict(account)
+	default:
+		return fmt.Errorf("invalid audit mode: %s", mode)
+	}
+}
+
 func RunImportCmd(ctx context.Context, r io.Reader, km KeyManager, rep Reporter) (imported int, skipped int, err error) {
 	return ImportAuthorizedKeys(ctx, r, km, rep)
+}
+
+// RunImportRemoteCmd fetches authorized_keys from remote via DeployerManager
+// and imports via the provided KeyManager, reporting via Reporter.
+func RunImportRemoteCmd(ctx context.Context, account model.Account, dm DeployerManager, km KeyManager, rep Reporter) (imported int, skipped int, warning string, err error) {
+	content, ferr := dm.FetchAuthorizedKeys(account)
+	if ferr != nil {
+		return 0, 0, "", fmt.Errorf("fetch remote authorized_keys: %w", ferr)
+	}
+	imported, skipped, ierr := ImportAuthorizedKeys(ctx, strings.NewReader(string(content)), km, rep)
+	return imported, skipped, "", ierr
 }
 
 func RunTrustHostCmd(ctx context.Context, canonicalHost string, dm DeployerManager, st Store, save bool) (string, error) {

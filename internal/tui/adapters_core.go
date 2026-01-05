@@ -147,7 +147,6 @@ func (coreDeployAdapter) ImportRemoteKeys(account model.Account) ([]model.Public
 }
 
 func (coreDeployAdapter) DecommissionAccount(account model.Account, systemKey string, options deploy.DecommissionOptions) (deploy.DecommissionResult, error) {
-	// deploy.DecommissionAccount returns a DecommissionResult; adapt to return (result, nil)
 	res := deploy.DecommissionAccount(account, systemKey, options)
 	return res, nil
 }

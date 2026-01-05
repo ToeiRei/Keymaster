@@ -72,6 +72,8 @@ type DeployerManager interface {
 	CanonicalizeHostPort(host string) string
 	ParseHostPort(host string) (string, string, error)
 	GetRemoteHostKey(host string) (string, error)
+	// FetchAuthorizedKeys should return the raw authorized_keys content from the remote host for the given account.
+	FetchAuthorizedKeys(account model.Account) ([]byte, error)
 }
 
 // DecommissionResult mirrors the outcome reported by deploy package for each account.

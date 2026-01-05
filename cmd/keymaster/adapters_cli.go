@@ -8,6 +8,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/state"
 )
 
 // cliStoreAdapter adapts package-level db helpers to core.Store.
@@ -136,6 +137,51 @@ func (c *cliDeployerManager) GetRemoteHostKey(host string) (string, error) {
 		return "", err
 	}
 	return string(crypto_ssh.MarshalAuthorizedKey(pk)), nil
+}
+
+// FetchAuthorizedKeys fetches the raw authorized_keys content bytes for the account.
+func (c *cliDeployerManager) FetchAuthorizedKeys(account model.Account) ([]byte, error) {
+	var privateKey string
+	if account.Serial == 0 {
+		sk, err := db.GetActiveSystemKey()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get active system key: %w", err)
+		}
+		if sk != nil {
+			privateKey = sk.PrivateKey
+		} else {
+			privateKey = ""
+		}
+	} else {
+		sk, err := db.GetSystemKeyBySerial(account.Serial)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get system key for serial %d: %w", account.Serial, err)
+		}
+		if sk == nil {
+			return nil, fmt.Errorf("no system key for serial %d", account.Serial)
+		}
+		privateKey = sk.PrivateKey
+	}
+
+	passphrase := state.PasswordCache.Get()
+	defer func() {
+		for i := range passphrase {
+			passphrase[i] = 0
+		}
+	}()
+
+	deployer, err := deploy.NewDeployerFunc(account.Hostname, account.Username, privateKey, passphrase)
+	if err != nil {
+		return nil, err
+	}
+	defer deployer.Close()
+	state.PasswordCache.Clear()
+
+	content, err := deployer.GetAuthorizedKeys()
+	if err != nil {
+		return nil, err
+	}
+	return content, nil
 }
 
 // cliDBMaintainer adapts db.RunDBMaintenance to core.DBMaintainer.
