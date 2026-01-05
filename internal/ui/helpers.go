@@ -1,6 +1,10 @@
 package ui
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
 // ContainsIgnoreCase reports whether s contains sub, case-insensitive.
 func ContainsIgnoreCase(s, sub string) bool {
@@ -73,4 +77,41 @@ func SplitTagsPreserveTrailing(s string) []string {
 // JoinTags joins tags with ", " producing a normalized tags string.
 func JoinTags(tags []string) string {
 	return strings.Join(tags, ", ")
+}
+
+// ParseExpiryInput parses an expiration input string. Accepts RFC3339 or
+// date-only `YYYY-MM-DD`. Returns a time.Time (UTC for date-only inputs)
+// or an error if the format is unrecognized. Empty input yields zero time
+// and nil error.
+func ParseExpiryInput(s string) (time.Time, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}, nil
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t, nil
+	}
+	if t2, err := time.Parse("2006-01-02", s); err == nil {
+		return time.Date(t2.Year(), t2.Month(), t2.Day(), 0, 0, 0, 0, time.UTC), nil
+	}
+	return time.Time{}, fmt.Errorf("invalid expiry format")
+}
+
+// Pad returns the input string right-padded with spaces to reach width.
+// If the string is already equal or longer, it is returned unchanged.
+func Pad(s string, width int) string {
+	if width <= 0 {
+		return s
+	}
+	if len(s) >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-len(s))
+}
+
+// FormatLabelPadding formats a label/value pair so the label is left-aligned
+// within labelWidth characters and the value follows immediately. This is
+// useful for dashboard/status rows where labels should align vertically.
+func FormatLabelPadding(label, value string, labelWidth int) string {
+	return Pad(label, labelWidth) + " " + value
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/sshkey"
+	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // publicKeyCreatedMsg is a message to signal that a key was created successfully
@@ -113,15 +114,12 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var expiresAt time.Time
 			expVal := strings.TrimSpace(m.expInput.Value())
 			if expVal != "" {
-				if t, err := time.Parse(time.RFC3339, expVal); err == nil {
-					expiresAt = t
-				} else if t2, err2 := time.Parse("2006-01-02", expVal); err2 == nil {
-					// interpret date-only as UTC midnight
-					expiresAt = time.Date(t2.Year(), t2.Month(), t2.Day(), 0, 0, 0, 0, time.UTC)
-				} else {
+				t, err := ui.ParseExpiryInput(expVal)
+				if err != nil {
 					m.err = fmt.Errorf("invalid expiration format; use YYYY-MM-DD or RFC3339")
 					return m, nil
 				}
+				expiresAt = t
 			}
 
 			mgr := db.DefaultKeyManager()

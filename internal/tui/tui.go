@@ -20,6 +20,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // viewState represents which part of the UI is currently active.
@@ -502,8 +503,7 @@ func (m menuModel) View(data dashboardData, width, height int) string {
 	}
 
 	for i, label := range labelsOnly {
-		padding := strings.Repeat(" ", maxLabelLen-len(label))
-		dashboardItems = append(dashboardItems, fmt.Sprintf("%s%s%s", label, padding, statusItems[i].value))
+		dashboardItems = append(dashboardItems, ui.FormatLabelPadding(label, statusItems[i].value, maxLabelLen))
 	}
 
 	// Deployment Status
