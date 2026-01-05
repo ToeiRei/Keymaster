@@ -8,7 +8,7 @@ _All notable changes to Keymaster are documented here. This project follows [Kee
 
 This release brings major improvements to reliability, performance, and day‑to‑day usability across Keymaster. It includes expanded test coverage, internal stability work, and several new features that make managing SSH keys and deployments smoother.
 
-### Added
+### Added — Unreleased
 
 - **Export `authorized_keys` to disk**  
   Allows offline or air‑gapped updates using local files.
@@ -19,7 +19,7 @@ This release brings major improvements to reliability, performance, and day‑to
 - **Deployment planning**  
   Keymaster now builds a structured deployment plan before applying changes.
 
-### Changed
+### Changed — Unreleased
 
 - **Faster TUI performance**  
   Noticeably improved filtering and autocompletion responsiveness.
@@ -30,7 +30,7 @@ This release brings major improvements to reliability, performance, and day‑to
 - **Cleaner internal architecture**  
   Deterministic logic consolidated into a shared core for long‑term maintainability.
 
-### Fixed
+### Fixed — Unreleased
 
 - **Global key indicator restored**  
   Global keys now display correctly in the UI.
@@ -45,16 +45,16 @@ This release brings major improvements to reliability, performance, and day‑to
 
 A patch release focused on stability, diagnostics, and small workflow improvements.
 
-### Added
+### Added — 1.5.1
 
 - **`debug` command** to inspect runtime configuration, flags, and environment.
 
-### Changed
+### Changed — 1.5.1
 
 - Improved configuration loading and default config generation.
 - CI now enforces formatting and vetting checks.
 
-### Fixed
+### Fixed — 1.5.1
 
 - Clearer error messages for broken configs.
 - Test fixes for SSH key parsing.
@@ -66,14 +66,14 @@ A patch release focused on stability, diagnostics, and small workflow improvemen
 
 A major update to the data layer and build pipeline.
 
-### Added
+### Added — 1.5.0
 
 - **Build metadata** (commit SHA and build date) embedded in the binary.
 - **`version` command** to display build information.
 - **Comprehensive database tests** for the new Bun‑based data layer.
 - **Automated CI/CD pipeline** for testing and building.
 
-### Changed
+### Changed — 1.5.0
 
 - **Database layer migrated to Bun**, improving consistency and type safety.
 - Updated cryptography and other dependencies.
@@ -89,16 +89,16 @@ A major update to the data layer and build pipeline.
 
 Focused on encrypted key handling and TUI workflow improvements.
 
-### Added
+### Added — 1.4.3
 
 - **Interactive passphrase prompts** for encrypted system keys.
 - **Tag autocompletion** in the account editor.
 
-### Changed
+### Changed — 1.4.3
 
 - Improved SSH authentication fallback behavior.
 
-### Fixed
+### Fixed — 1.4.3
 
 - Account editing issues.
 - Several TUI navigation and state bugs.
@@ -110,7 +110,7 @@ Focused on encrypted key handling and TUI workflow improvements.
 
 A major feature release introducing database portability, a more resilient bootstrap process, and dashboard enhancements.
 
-### Added
+### Added — 1.4.0
 
 - **Backup, restore, and migrate commands** for full database portability.
 - **Resilient bootstrap workflow** with temporary key cleanup and crash recovery.
@@ -118,18 +118,18 @@ A major feature release introducing database portability, a more resilient boots
 - **Decommission command** to safely remove accounts.
 - **Dashboard improvements** showing deployment status and key type breakdowns.
 
-### Changed
+### Changed — 1.4.0
 
 - Configuration files now follow platform‑specific standards.
 - More robust host parsing.
 - Completed German translations.
 
-### Fixed
+### Fixed — 1.4.0
 
 - Config loading issues.
 - TUI window size persistence.
 
-### Security
+### Security — 1.4.0
 
 - Hardened bootstrap cleanup to prevent key replacement on untrusted hosts.
 
@@ -137,11 +137,11 @@ A major feature release introducing database portability, a more resilient boots
 
 ## **[1.3.5] – 2025‑09‑28**
 
-### Added
+### Added — 1.3.5
 
 - Clipboard copy functionality for public keys and deployment views.
 
-### Fixed
+### Fixed — 1.3.5
 
 - Critical SQLite race condition during concurrent deployments.
 - Migration format issues.
@@ -151,16 +151,16 @@ A major feature release introducing database portability, a more resilient boots
 
 ## **[1.3.4] – 2025‑09‑26**
 
-### Added
+### Added — 1.3.4
 
 - Completed German translations for all CLI and TUI views.
 
-### Changed
+### Changed — 1.3.4
 
 - Database migrations reorganized for reliability.
 - CLI initialization improved for consistency.
 
-### Fixed
+### Fixed — 1.3.4
 
 - Internationalization formatting issues.
 
@@ -168,12 +168,12 @@ A major feature release introducing database portability, a more resilient boots
 
 ## **[1.3.3] – 2025‑09‑24**
 
-### Changed
+### Changed — 1.3.3
 
 - Consolidated key generation logic.
 - Enabled WAL mode for SQLite to improve concurrency.
 
-### Fixed
+### Fixed — 1.3.3
 
 - More reliable duplicate‑key detection during import.
 
@@ -181,11 +181,11 @@ A major feature release introducing database portability, a more resilient boots
 
 ## **[1.3.2] – 2025‑09‑24**
 
-### Changed
+### Changed — 1.3.2
 
 - More stable language switching logic.
 
-### Fixed
+### Fixed — 1.3.2
 
 - SSH agent fallback issues.
 - TUI navigation in filtered views.
@@ -194,12 +194,12 @@ A major feature release introducing database portability, a more resilient boots
 
 ## **[1.3.1] – 2025‑09‑24**
 
-### Added
+### Added — 1.3.1
 
 - Standard open‑source governance files.
 - Additional code documentation.
 
-### Fixed
+### Fixed — 1.3.1
 
 - Key assignment parameter bug.
 
@@ -209,20 +209,20 @@ A major feature release introducing database portability, a more resilient boots
 
 A major UI and UX overhaul.
 
-### Added
+### Added — 1.3.0
 
 - Full TUI redesign with modern components.
 - Dashboard view.
 - Live filtering across all major lists.
 - Tag autocompletion.
 
-### Changed
+### Changed — 1.3.0
 
 - Polished UI across all views.
 - Streamlined workflows for key rotation and account editing.
 - Improved confirmation dialogs.
 
-### Fixed
+### Fixed — 1.3.0
 
 - Numerous layout issues.
 - State synchronization bugs.
@@ -232,12 +232,12 @@ A major UI and UX overhaul.
 
 ## **[1.2.1] – 2025‑09‑23**
 
-### Changed
+### Changed — 1.2.1
 
 - Audit command now performs full content comparison.
 - Import command provides clearer feedback.
 
-### Fixed
+### Fixed — 1.2.1
 
 - GoReleaser workflow issues.
 - Config discovery messaging.
@@ -246,30 +246,30 @@ A major UI and UX overhaul.
 - Build failures.
 - `authorized_keys` formatting consistency.
 
-### Security
+### Security — 1.2.1
 
 - Automatic hardening of system keys during deployment.
 
 ---
 
-## **[1.2.0] – 2025‑09‑23**
+## **[1.2.0] – 2024‑09‑23**
 
 A complete TUI overhaul and major usability improvements.
 
-### Added
+### Added — 1.2.0
 
 - Modern TUI built with lipgloss.
 - Dashboard view.
 - Live filtering.
 - Tag autocompletion.
 
-### Changed
+### Changed — 1.2.0
 
 - Modernized UI components.
 - Streamlined workflows.
 - Improved modals and audit log view.
 
-### Fixed
+### Fixed — 1.2.0
 
 - Numerous layout and state issues.
 
@@ -277,7 +277,7 @@ A complete TUI overhaul and major usability improvements.
 
 ## **[1.1.0] – 2025‑09‑22**
 
-### Added
+### Added — 1.1.0
 
 - Tagging system.
 - View by tag.
@@ -290,7 +290,7 @@ A complete TUI overhaul and major usability improvements.
 - Experimental PostgreSQL/MySQL support.
 - SSH agent integration.
 
-### Changed
+### Changed — 1.1.0
 
 - Automatic host trust on account creation.
 - Improved SSH deployment resilience.
@@ -301,7 +301,7 @@ A complete TUI overhaul and major usability improvements.
 
 Initial public release.
 
-### Added
+### Added — 1.0.0
 
 - Account and key management.
 - SQLite backend.
