@@ -44,7 +44,7 @@ jobs:
             exit 1
           fi
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v9
         continue-on-error: true
         with:
           version: v1.59.0
