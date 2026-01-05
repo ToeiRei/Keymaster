@@ -5,7 +5,7 @@
 package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -14,7 +14,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
@@ -96,7 +95,7 @@ func (m auditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case auditStateInProgress:
 		if res, ok := msg.(auditResultMsg); ok {
 			if res.err != nil {
-				if errors.Is(res.err, deploy.ErrPassphraseRequired) {
+				if deployAdapter.IsPassphraseRequired(res.err) {
 					m.state = auditStateEnterPassphrase
 					m.err = nil // We are handling this error
 					m.passphraseInput.Focus()
@@ -125,7 +124,7 @@ func (m auditModel) updateFleetInProgress(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.fleetResults[res.account.ID] = res.err
 
 		// If any audit requires a passphrase, stop and ask for it.
-		if res.err != nil && errors.Is(res.err, deploy.ErrPassphraseRequired) {
+		if res.err != nil && deployAdapter.IsPassphraseRequired(res.err) {
 			m.state = auditStateEnterPassphrase
 			m.err = nil // Clear the error as we are handling it
 			m.passphraseInput.Focus()
@@ -575,10 +574,11 @@ func (m auditModel) View() string {
 func performAuditCmd(account model.Account, mode auditModeType) tea.Cmd {
 	return func() tea.Msg {
 		var err error
+		// Use core facade so TUI doesn't call deploy audit helpers directly.
 		if mode == auditModeSerial {
-			err = deploy.AuditAccountSerial(account)
+			err = core.RunAuditForAccount(context.Background(), deployAdapter, account, "serial", nil)
 		} else {
-			err = deploy.AuditAccountStrict(account)
+			err = core.RunAuditForAccount(context.Background(), deployAdapter, account, "strict", nil)
 		}
 		return auditResultMsg{account: account, err: err}
 	}
