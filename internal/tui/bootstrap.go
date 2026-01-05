@@ -1171,27 +1171,9 @@ func (m *bootstrapModel) loadAvailableKeys() tea.Cmd {
 			systemKeyData = systemKey.PublicKey
 		}
 
-		// Separate keys into user-selectable and global keys
-		var userSelectableKeys []model.PublicKey
-		var globalKeys []model.PublicKey
-
-		for _, key := range allKeys {
-			// Skip if this is a system key (by comparing key data)
-			if systemKeyData != "" && strings.Contains(key.KeyData, systemKeyData) {
-				continue
-			}
-			// Skip if this looks like a system key comment
-			if strings.Contains(key.Comment, "Keymaster System Key") {
-				continue
-			}
-
-			// Separate global and non-global keys
-			if key.IsGlobal {
-				globalKeys = append(globalKeys, key)
-			} else {
-				userSelectableKeys = append(userSelectableKeys, key)
-			}
-		}
+		// Use core helper to separate user-selectable and global keys.
+		// Note: we still fetch systemKeyData from DB here (TUI-only).
+		userSelectableKeys, globalKeys := core.FilterKeysForBootstrap(allKeys, systemKeyData)
 
 		// Store separated keys
 		m.availableKeys = userSelectableKeys

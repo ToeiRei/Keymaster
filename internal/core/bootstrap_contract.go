@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"strings"
 
 	"github.com/toeirei/keymaster/internal/model"
 )
@@ -78,5 +79,43 @@ type BootstrapDeps struct {
 // provided params and side-effecting dependencies. This is a stub in this
 // change: it returns zero values and must be implemented later.
 func PerformBootstrapDeployment(ctx context.Context, params BootstrapParams, deps BootstrapDeps) (BootstrapResult, error) {
+	// High-level orchestration steps (copied from TUI executeDeployment):
+	// 1. Create account in database
+	// 2. Assign selected keys to the account (including global keys)
+	// 3. Generate the authorized_keys content for the account
+	// 4. Deploy the authorized_keys to the remote host using a bootstrap deployer
+	// 5. Update the account with the current system key serial
+	// 6. Log successful bootstrap (audit)
+	// 7. Cleanup bootstrap session
+
+	// Implementation note: this function is the core orchestration entrypoint.
+	// It should call into the provided deps for side effects (DB, deployer,
+	// audit). For this change we only add the orchestration plan and expose a
+	// small, pure helper below. The full implementation will be added later.
+
 	return BootstrapResult{}, nil
+}
+
+// FilterKeysForBootstrap separates all keys into user-selectable and global
+// keys for bootstrap UI flows. It is a pure function and does not perform any
+// DB or network operations. `systemKeyData` may be empty to indicate no
+// active system key is available.
+func FilterKeysForBootstrap(allKeys []model.PublicKey, systemKeyData string) (userSelectable []model.PublicKey, global []model.PublicKey) {
+	for _, key := range allKeys {
+		// Skip if this is a system key by comparing key data when available
+		if systemKeyData != "" && strings.Contains(key.KeyData, systemKeyData) {
+			continue
+		}
+		// Skip if this looks like a system key comment
+		if strings.Contains(key.Comment, "Keymaster System Key") {
+			continue
+		}
+
+		if key.IsGlobal {
+			global = append(global, key)
+		} else {
+			userSelectable = append(userSelectable, key)
+		}
+	}
+	return
 }
