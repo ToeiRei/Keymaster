@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
@@ -122,7 +123,7 @@ func (m *accountsModel) rebuildDisplayedAccounts() {
 			// perform a case-insensitive contains check. This avoids repeated
 			// calls to strings.ToLower in the hot loop.
 			combined := acc.Username + " " + acc.Hostname + " " + acc.Label + " " + acc.Tags
-			if ui.ContainsIgnoreCase(combined, m.filter) {
+			if core.ContainsIgnoreCase(combined, m.filter) {
 				localResults = append(localResults, acc)
 			}
 		}

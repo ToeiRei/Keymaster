@@ -14,10 +14,10 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // Risk-based color styles for audit log actions.
@@ -139,15 +139,15 @@ func (m *auditLogModel) rebuildTableRows() {
 		switch m.filterCol {
 		case 0:
 			combined := entry.Timestamp + " " + entry.Username + " " + entry.Action + " " + entry.Details
-			match = ui.ContainsIgnoreCase(combined, m.filter)
+			match = core.ContainsIgnoreCase(combined, m.filter)
 		case 1:
-			match = ui.ContainsIgnoreCase(entry.Timestamp, m.filter)
+			match = core.ContainsIgnoreCase(entry.Timestamp, m.filter)
 		case 2:
-			match = ui.ContainsIgnoreCase(entry.Username, m.filter)
+			match = core.ContainsIgnoreCase(entry.Username, m.filter)
 		case 3:
-			match = ui.ContainsIgnoreCase(entry.Action, m.filter)
+			match = core.ContainsIgnoreCase(entry.Action, m.filter)
 		case 4:
-			match = ui.ContainsIgnoreCase(entry.Details, m.filter)
+			match = core.ContainsIgnoreCase(entry.Details, m.filter)
 		}
 		if m.filter != "" && !match {
 			continue

@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
@@ -220,7 +221,7 @@ func (m *assignKeysModel) filteredAccounts() []model.Account {
 	}
 	var filtered []model.Account
 	for _, acc := range m.accounts {
-		if ui.ContainsIgnoreCase(acc.String(), m.accountFilter) {
+		if core.ContainsIgnoreCase(acc.String(), m.accountFilter) {
 			filtered = append(filtered, acc)
 		}
 	}
@@ -234,19 +235,14 @@ func (m *assignKeysModel) filteredKeys() []model.PublicKey {
 	}
 	var filtered []model.PublicKey
 	for _, key := range m.keys {
-		if ui.ContainsIgnoreCase(key.Comment, m.keyFilter) || ui.ContainsIgnoreCase(key.Algorithm, m.keyFilter) {
+		if core.ContainsIgnoreCase(key.Comment, m.keyFilter) || core.ContainsIgnoreCase(key.Algorithm, m.keyFilter) {
 			filtered = append(filtered, key)
 		}
 	}
 	return filtered
 }
 
-// containsIgnoreCase is a helper function for case-insensitive string searching.
-// containsIgnoreCase kept for package-level compatibility with tests.
-// It delegates to the shared helper in `internal/ui`.
-func containsIgnoreCase(s, substr string) bool {
-	return ui.ContainsIgnoreCase(s, substr)
-}
+// NOTE: case-insensitive helpers live in `internal/core` now.
 
 func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {

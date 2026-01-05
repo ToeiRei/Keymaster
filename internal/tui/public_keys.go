@@ -17,6 +17,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/internal/core"
 	internalkey "github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
@@ -116,7 +117,7 @@ func (m *publicKeysModel) rebuildDisplayedKeys() {
 		localResults := []model.PublicKey{}
 		for _, key := range m.keys {
 			combined := key.Comment + " " + key.Algorithm + " " + key.KeyData
-			if ui.ContainsIgnoreCase(combined, m.filter) {
+			if core.ContainsIgnoreCase(combined, m.filter) {
 				localResults = append(localResults, key)
 			}
 		}

@@ -12,6 +12,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
@@ -95,7 +96,7 @@ func (m *tagsViewModel) rebuildLines() {
 	var tagsToDisplay []string
 	if m.filter != "" {
 		for _, tag := range m.sortedTags {
-			if ui.ContainsIgnoreCase(tag, m.filter) {
+			if core.ContainsIgnoreCase(tag, m.filter) {
 				tagsToDisplay = append(tagsToDisplay, tag)
 			}
 		}

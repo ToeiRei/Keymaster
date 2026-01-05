@@ -13,12 +13,12 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
-	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // auditModeType represents the comparison mode for the audit.
@@ -304,7 +304,7 @@ func (m auditModel) getFilteredAccounts() []model.Account {
 	}
 	var out []model.Account
 	for _, acc := range m.accounts {
-		if ui.ContainsIgnoreCase(acc.String(), m.accountFilter) {
+		if core.ContainsIgnoreCase(acc.String(), m.accountFilter) {
 			out = append(out, acc)
 		}
 	}
