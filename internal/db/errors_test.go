@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package db
 
 import (
@@ -41,3 +45,4 @@ func TestMapDBError_NonDuplicatePassthrough(t *testing.T) {
 		t.Fatalf("expected original error to be returned unchanged, got: %v", mapped)
 	}
 }
+

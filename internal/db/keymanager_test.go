@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package db
 
 import (
@@ -100,3 +104,4 @@ func TestKeyManager_AssignUnassign_Audit(t *testing.T) {
 		t.Fatalf("expected 1 key after duplicate assign; got %d", len(keysDup))
 	}
 }
+

@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package tui
 
 import (
@@ -48,3 +52,4 @@ func TestAssignKeys_ViewReflectsAssignedState(t *testing.T) {
 		t.Fatalf("expected unassigned key to show unchecked mark; out=%q", out)
 	}
 }
+

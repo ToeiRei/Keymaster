@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package main
 
 import (
@@ -77,3 +81,4 @@ func TestGetConfigPathFromCli_WithValidFile(t *testing.T) {
 		t.Fatalf("expected path %s, got %v", file.Name(), p)
 	}
 }
+

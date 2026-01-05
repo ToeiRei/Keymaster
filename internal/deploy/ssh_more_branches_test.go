@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package deploy
 
 import (
@@ -93,3 +97,4 @@ func TestNewDeployer_HostKeyMismatchClassified(t *testing.T) {
 		t.Fatalf("expected classified host key error, got: %v", err)
 	}
 }
+

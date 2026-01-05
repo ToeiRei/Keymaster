@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package deploy
 
 import (
@@ -76,3 +80,4 @@ func TestDecommissionResult_StringVariants(t *testing.T) {
 type errDummy string
 
 func (e errDummy) Error() string { return string(e) }
+

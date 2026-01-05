@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package db
 
 import (
@@ -106,3 +110,4 @@ func TestAccount_AddDuplicateBehavior(t *testing.T) {
 		t.Fatalf("expected ErrDuplicate on duplicate AddAccount, got: %v", err)
 	}
 }
+

@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 // Package db contains the data-access layer and small DI helpers used by
 // Keymaster.
 //
@@ -53,3 +57,4 @@ package db
 // - Low-level Bun helpers remain in `bun_adapter.go`. They are implementation
 //   details and intended to be called by adapters (e.g., `bunKeyManager`),
 //   not by high-level code.
+

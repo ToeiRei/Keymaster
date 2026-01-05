@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package deploy
 
 import (
@@ -81,3 +85,4 @@ func TestAuditAccountStrict_DriftDetected(t *testing.T) {
 
 // small helpers to avoid importing bytes package directly in test bodies
 func bytesFromString(s string) *bytes.Buffer { return bytes.NewBufferString(s) }
+

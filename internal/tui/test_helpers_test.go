@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package tui
 
 import (
@@ -18,3 +22,4 @@ func initTestDBT(t *testing.T) {
 		// rely on process exit and the in-memory database scoping.
 	})
 }
+

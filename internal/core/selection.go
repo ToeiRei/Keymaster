@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package core
 
 // EnsureCursorInView computes the Y offset for a viewport such that the
@@ -16,3 +20,4 @@ func EnsureCursorInView(cursor, yOffset, height int) int {
 	}
 	return yOffset
 }
+

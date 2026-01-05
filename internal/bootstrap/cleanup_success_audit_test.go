@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package bootstrap
 
 import (
@@ -44,3 +48,4 @@ func TestBootstrapLogAction_UsesWriters(t *testing.T) {
 		t.Fatalf("unexpected action recorded: %s", fake2.Calls[0][0])
 	}
 }
+

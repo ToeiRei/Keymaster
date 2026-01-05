@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package core
 
 import (
@@ -122,3 +126,4 @@ func FilterKeysForBootstrap(allKeys []model.PublicKey, systemKeyData string) (us
 
 // Pure helpers for authorized_keys generation live in internal/keys to avoid
 // import cycles with the deploy package. See internal/keys for builders.
+

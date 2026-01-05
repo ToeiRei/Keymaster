@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package config_test
 
 import (
@@ -74,3 +78,4 @@ func TestSavePersistsViperState(t *testing.T) {
 		t.Fatalf("expected saved config at %s, stat error: %v", path, err)
 	}
 }
+

@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package deploy
 
 import (
@@ -32,3 +36,4 @@ func TestGetAuthorizedKeys_OpenError(t *testing.T) {
 		t.Fatalf("expected GetAuthorizedKeys to fail when file missing")
 	}
 }
+

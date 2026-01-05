@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package tui
 
 import (
@@ -92,3 +96,4 @@ func initTestDB() error {
 	// Use sqlite in-memory for fast test DB with migrations applied.
 	return db.InitDB("sqlite", ":memory:")
 }
+

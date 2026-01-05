@@ -1,3 +1,7 @@
+// Copyright (c) 2025 ToeiRei
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package deploy
 
 import (
@@ -54,3 +58,4 @@ func TestNewDeployer_AgentAuthClassified(t *testing.T) {
 		t.Fatalf("expected classified authentication error, got: %v", err)
 	}
 }
+
