@@ -285,39 +285,37 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if km == nil {
 					m.err = fmt.Errorf("no key manager available")
 					m.status = i18n.T("assign_keys.status.unassign_error", m.err)
-				} else if err := km.UnassignKeyFromAccount(selectedKey.ID, m.selectedAccount.ID); err != nil {
-					m.err = err
-					m.status = i18n.T("assign_keys.status.unassign_error", err)
 				} else {
-					delete(m.assignedKeys, selectedKey.ID)
-					m.status = i18n.T("assign_keys.status.unassign_success", selectedKey.Comment)
+					var err error
+					m.assignedKeys, err = core.UnassignKeyFromAccount(m.assignedKeys, selectedKey.ID, m.selectedAccount.ID, func(kid, aid int) error {
+						return km.UnassignKeyFromAccount(kid, aid)
+					})
+					if err != nil {
+						m.err = err
+						m.status = i18n.T("assign_keys.status.unassign_error", err)
+					} else {
+						m.status = i18n.T("assign_keys.status.unassign_success", selectedKey.Comment)
+					}
 				}
 			} else {
 				// Assign
 				m.status = i18n.T("assign_keys.status.assign_attempt", selectedKey.Comment)
-				// Verify key still exists
-				exists := false
-				for _, k := range m.keys {
-					if k.ID == selectedKey.ID {
-						exists = true
-						break
-					}
-				}
-				if !exists {
-					m.err = fmt.Errorf("key ID %d no longer exists in memory", selectedKey.ID)
-					m.status = i18n.T("assign_keys.status.assign_error_deleted", m.err)
-					return m, nil
-				}
 				km := ui.DefaultKeyManager()
 				if km == nil {
 					m.err = fmt.Errorf("no key manager available")
 					m.status = i18n.T("assign_keys.status.assign_error", m.err)
-				} else if err := km.AssignKeyToAccount(selectedKey.ID, m.selectedAccount.ID); err != nil {
-					m.err = err
-					m.status = i18n.T("assign_keys.status.assign_error", err)
 				} else {
-					m.assignedKeys[selectedKey.ID] = struct{}{}
-					m.status = i18n.T("assign_keys.status.assign_success", selectedKey.Comment)
+					var err error
+					m.assignedKeys, err = core.AssignKeyToAccount(m.keys, m.assignedKeys, selectedKey.ID, m.selectedAccount.ID, func(kid, aid int) error {
+						return km.AssignKeyToAccount(kid, aid)
+					})
+					if err != nil {
+						m.err = err
+						// Treat not-found as deleted error to preserve previous behavior
+						m.status = i18n.T("assign_keys.status.assign_error_deleted", err)
+					} else {
+						m.status = i18n.T("assign_keys.status.assign_success", selectedKey.Comment)
+					}
 				}
 			}
 			m.keyViewport.SetContent(m.keyListViewContent())
