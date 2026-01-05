@@ -32,6 +32,12 @@ data layer) and are being held for a future point release.
   (for example, clearing DB pool env vars in in-memory SQLite tests).
 - CI now runs `gofmt` and `go vet` as part of the standard checks; test
   harnesses were improved to avoid flaky flag/initialization issues.
+ - Optimized TUI filtering and tag autocompletion by caching lowercased
+   strings and reducing repeated `strings.ToLower` calls in hot loops
+   (`internal/tui`): `accounts.go`, `public_keys.go`, `tags_view.go`,
+   `deploy.go`, `audit.go`, `audit_log.go`, and `account_form.go` now
+   compute lowercase representations once per item to reduce allocations
+   and CPU overhead in interactive filtering.
 
 ### Fixed
 
