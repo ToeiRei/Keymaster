@@ -6,7 +6,6 @@ package tui
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/toeirei/keymaster/internal/i18n"
 
@@ -47,38 +46,9 @@ func newTagsViewModelWithSearcher(s ui.AccountSearcher) tagsViewModel {
 		return m
 	}
 
-	accountsByTag := make(map[string][]model.Account)
-	tagSet := make(map[string]struct{})
-
-	// Special tag for untagged accounts
-	untagged := "(no tags)"
-	hasUntagged := false
-
-	for _, acc := range accounts {
-		if acc.Tags == "" {
-			accountsByTag[untagged] = append(accountsByTag[untagged], acc)
-			hasUntagged = true
-			continue
-		}
-		for _, tag := range ui.SplitTags(acc.Tags) {
-			accountsByTag[tag] = append(accountsByTag[tag], acc)
-			tagSet[tag] = struct{}{}
-		}
-	}
-
-	sortedTags := make([]string, 0, len(tagSet))
-	for tag := range tagSet {
-		sortedTags = append(sortedTags, tag)
-	}
-	sort.Strings(sortedTags)
-
-	// Add untagged to the end if it exists
-	if hasUntagged {
-		sortedTags = append(sortedTags, untagged)
-	}
-
-	m.accountsByTag = accountsByTag
-	m.sortedTags = sortedTags
+	// Use core helpers to build tag lists and groupings.
+	m.accountsByTag = core.BuildAccountsByTag(accounts)
+	m.sortedTags = core.UniqueTags(accounts)
 	m.rebuildLines()
 
 	return m

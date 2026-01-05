@@ -10,8 +10,6 @@ import (
 	"os"
 	"strings"
 
-	"sort"
-
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -281,22 +279,8 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.err = err
 					return m, nil
 				}
-				uniqueTags := make(map[string]struct{})
-				for _, acc := range allAccounts {
-					if acc.Tags != "" {
-						for _, tag := range strings.Split(acc.Tags, ",") {
-							trimmedTag := strings.TrimSpace(tag)
-							if trimmedTag != "" {
-								uniqueTags[trimmedTag] = struct{}{}
-							}
-						}
-					}
-				}
-				m.tags = make([]string, 0, len(uniqueTags))
-				for tag := range uniqueTags {
-					m.tags = append(m.tags, tag)
-				}
-				sort.Strings(m.tags)
+				// Build unique, sorted tag list using core helpers
+				m.tags = core.UniqueTags(allAccounts)
 				m.tagCursor = 0
 				m.status = ""
 				return m, nil
@@ -457,16 +441,9 @@ func (m deployModel) updateSelectTag(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			var taggedAccounts []model.Account
-			for _, acc := range allAccounts {
-				accountTags := make(map[string]struct{})
-				for _, t := range strings.Split(acc.Tags, ",") {
-					accountTags[strings.TrimSpace(t)] = struct{}{}
-				}
-				if _, ok := accountTags[selectedTag]; ok {
-					taggedAccounts = append(taggedAccounts, acc)
-				}
-			}
+			// Filter accounts by selected tag using core helper
+			accountsByTag := core.BuildAccountsByTag(allAccounts)
+			taggedAccounts := accountsByTag[selectedTag]
 
 			// Now use the fleet deployment logic with these accounts
 			m.state = deployStateFleetInProgress
