@@ -951,7 +951,36 @@ func (m *accountsModel) loadKeysForSelection() tea.Cmd {
 // performDecommissionWithKeys performs decommission with selected keys to remove
 func (m *accountsModel) performDecommissionWithKeys() tea.Cmd {
 	return func() tea.Msg {
-		result, err := core.PerformDecommissionWithKeys(m.accountToDelete, m.selectedKeysToKeep)
+		// Provide a decommander closure that encapsulates environment-specific
+		// steps (fetching active system key, building options, calling deploy).
+		decommander := func(account model.Account, selectedKeys map[int]bool) (deploy.DecommissionResult, error) {
+			// Fetch active system key via UI adapter
+			sk, err := ui.GetActiveSystemKey()
+			if err != nil || sk == nil {
+				return deploy.DecommissionResult{}, err
+			}
+
+			// Build list of key IDs to remove (inverse of keys to keep)
+			var keysToRemove []int
+			for keyID, shouldKeep := range selectedKeys {
+				if !shouldKeep {
+					keysToRemove = append(keysToRemove, keyID)
+				}
+			}
+
+			options := deploy.DecommissionOptions{
+				SkipRemoteCleanup: false,
+				KeepFile:          true,
+				Force:             false,
+				DryRun:            false,
+				SelectiveKeys:     keysToRemove,
+			}
+
+			res := deploy.DecommissionAccount(account, sk.PrivateKey, options)
+			return res, nil
+		}
+
+		result, err := core.PerformDecommissionWithKeys(m.accountToDelete, m.selectedKeysToKeep, decommander)
 		if err != nil {
 			// Surface the error via DecommissionResult so downstream UI can render it
 			return decommissionCompletedMsg{result: deploy.DecommissionResult{
