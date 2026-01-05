@@ -27,10 +27,14 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/toeirei/keymaster/internal/bootstrap"
+
+	// bootstrap lifecycle is delegated to internal/core facades now
+
 	"github.com/toeirei/keymaster/internal/config"
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
+
+	// DB init/inspection delegated to internal/core facades
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
@@ -132,19 +136,19 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 	i18n.Init(appConfig.Language)
 
 	// Initialize the database if not already initialized by tests or earlier setup.
-	if !db.IsInitialized() {
-		if err := db.InitDB(appConfig.Database.Type, appConfig.Database.Dsn); err != nil {
+	if !core.IsDBInitialized() {
+		if err := core.InitDB(appConfig.Database.Type, appConfig.Database.Dsn); err != nil {
 			return errors.New(i18n.T("config.error_init_db", err))
 		}
 	}
 
 	// Recover from any previous crashes
-	if err := bootstrap.RecoverFromCrash(); err != nil {
+	if err := core.RecoverFromCrash(); err != nil {
 		log.Printf("Bootstrap recovery error: %v", err)
 	}
 
 	// Start background session reaper
-	bootstrap.StartSessionReaper()
+	core.StartSessionReaper()
 
 	return nil
 }
@@ -152,11 +156,11 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 // main is the entry point of the application.
 func main() {
 	// Install signal handler for graceful shutdown of bootstrap sessions
-	bootstrap.InstallSignalHandler()
+	core.InstallSignalHandler()
 
 	// Set up cleanup store for bootstrap operations
 	defer func() {
-		if err := bootstrap.CleanupAllActiveSessions(); err != nil {
+		if err := core.CleanupAllActiveSessions(); err != nil {
 			log.Printf("Error during final cleanup: %v", err)
 		} else {
 			log.Println("Bootstrap cleanup complete.")
