@@ -29,8 +29,6 @@ func TestExpiryToggleEpochZero(t *testing.T) {
 		t.Fatalf("add key: %v", err)
 	}
 
-	t.Logf("key added id=%d via manager=%T", k.ID, km)
-
 	m := newPublicKeysModelWithSearcher(nil)
 
 	// Ensure list has at least one and cursor is at 0
@@ -49,9 +47,7 @@ func TestExpiryToggleEpochZero(t *testing.T) {
 	// Press 'e' to deactivate (set to epoch 0)
 	_, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
 
-	// debug: dump keys after toggle
-	keysAfterToggle, _ := km.GetAllPublicKeys()
-	t.Logf("after toggle: manager=%T keys=%v", km, keysAfterToggle)
+	// (no debug logs) ensure tests remain deterministic
 
 	keys, err := km.GetAllPublicKeys()
 	if err != nil {
