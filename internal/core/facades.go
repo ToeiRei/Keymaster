@@ -143,3 +143,92 @@ func FindAccountByIdentifier(identifier string, accounts []model.Account) (*mode
 func ParallelRun(ctx context.Context, accounts []model.Account, worker func(model.Account) error) []ParallelResult {
 	return nil
 }
+
+// CLI-facing facades (P4-2): one stub per CLI subcommand.
+// These are intentionally unimplemented and only provide signatures
+// so the CLI may be rewired in later phases. Each has a TODO marker.
+
+// RunDeployCmd is the facade for the `deploy` CLI command.
+// TODO: implement orchestration and options handling.
+func RunDeployCmd(ctx context.Context, accounts []model.Account) ([]DeployResult, error) {
+	return nil, nil
+}
+
+// RunRotateKeyCmd is the facade for the `rotate-key` CLI command.
+// TODO: implement passphrase handling and system key rotation.
+func RunRotateKeyCmd(ctx context.Context, passphrase string) (int, error) {
+	return 0, nil
+}
+
+// RunAuditCmd is the facade for the `audit` CLI command.
+// TODO: implement audit modes and reporting.
+func RunAuditCmd(ctx context.Context, accounts []model.Account, mode string) ([]AuditResult, error) {
+	return nil, nil
+}
+
+// RunImportCmd is the facade for the `import` CLI command.
+// TODO: parse input and import keys into core stores.
+func RunImportCmd(ctx context.Context, r io.Reader) (imported int, skipped int, err error) {
+	return 0, 0, nil
+}
+
+// RunTrustHostCmd is the facade for the `trust-host` CLI command.
+// TODO: fetch remote host key and persist.
+func RunTrustHostCmd(ctx context.Context, canonicalHost string) error {
+	return nil
+}
+
+// RunExportSSHConfigCmd is the facade for the `export-ssh-client-config` command.
+// TODO: generate client config for accounts.
+func RunExportSSHConfigCmd(ctx context.Context, accounts []model.Account) (string, error) {
+	return "", nil
+}
+
+// RunDBMaintainCmd is the facade for the `db-maintain` CLI command.
+// TODO: perform database-specific maintenance tasks.
+func RunDBMaintainCmd(ctx context.Context, opts DBMaintenanceOptions) error {
+	return nil
+}
+
+// RunBackupCmd is the facade for the `backup` CLI command.
+// TODO: export DB and related artifacts as backup data.
+func RunBackupCmd(ctx context.Context) (*model.BackupData, error) {
+	return nil, nil
+}
+
+// RunWriteBackupCmd writes backup data to an io.Writer (used by CLI backup piping).
+// TODO: implement compression and streaming.
+func RunWriteBackupCmd(ctx context.Context, data *model.BackupData, w io.Writer) error {
+	return nil
+}
+
+// RunRestoreCmd is the facade for the `restore` CLI command.
+// TODO: perform restore using provided options (full/partial).
+func RunRestoreCmd(ctx context.Context, r io.Reader, opts RestoreOptions) error {
+	return nil
+}
+
+// RunMigrateCmd is the facade for the `migrate` CLI command.
+// TODO: orchestrate migration to the target DB.
+func RunMigrateCmd(ctx context.Context, targetType, targetDsn string) error {
+	return nil
+}
+
+// RunDecommissionCmd is the facade for the `decommission` CLI command.
+// TODO: implement remote cleanup and DB deletion orchestration.
+func RunDecommissionCmd(ctx context.Context, targets []model.Account, opts interface{}) (DecommissionSummary, error) {
+	return DecommissionSummary{}, nil
+}
+
+// GetVersionInfo returns resolved version, commit and build date for the binary.
+// TODO: wire to build metadata resolution used in CLI.
+func GetVersionInfo() (versionOut, commitOut, dateOut string) {
+	return "", "", ""
+}
+
+// RunDebugCmd performs diagnostic checks for `keymaster debug` and returns
+// a textual diagnostic output for the user.
+// TODO: implement config inspection and debug helpers.
+func RunDebugCmd(ctx context.Context) (string, error) {
+	return "", nil
+}
