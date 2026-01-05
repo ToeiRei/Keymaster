@@ -737,8 +737,10 @@ func (m deployModel) View() string {
 
 	case deployStateComplete:
 		title := titleStyle.Render(i18n.T("deploy.complete"))
-		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", m.status))
-		// If it was a fleet deployment, show a detailed summary
+		// Build a consistent result block (primary status, warnings, errors)
+		primary := m.status
+		// Collect any fleet-level failures as an error summary
+		var warnings []string
 		if len(m.fleetResults) > 0 {
 			successCount := 0
 			var failedAccounts []string
@@ -747,15 +749,19 @@ func (m deployModel) View() string {
 					if err == nil {
 						successCount++
 					} else {
-						failedAccounts = append(failedAccounts, fmt.Sprintf("  - %s: %v", acc.String(), err))
+						failedAccounts = append(failedAccounts, fmt.Sprintf("%s: %v", acc.String(), err))
 					}
 				}
 			}
-			mainPane += i18n.T("deploy.summary", successCount, len(failedAccounts))
+			// Add a brief summary to the primary message
+			primary = primary + "\n" + i18n.T("deploy.summary", successCount, len(failedAccounts))
 			if len(failedAccounts) > 0 {
-				mainPane += i18n.T("deploy.failed_accounts", strings.Join(failedAccounts, "\n"))
+				warnings = append(warnings, i18n.T("deploy.failed_accounts", strings.Join(failedAccounts, "\n")))
 			}
 		}
+
+		resultBlock := renderResultBlock(primary, warnings, m.err)
+		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", resultBlock))
 		help := helpFooterStyle.Render(i18n.T("deploy.help_complete"))
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 	}
