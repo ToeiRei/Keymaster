@@ -7,6 +7,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/ui"
 )
 
 func TestDeleteConfirm_NoDecommission_DeletesAccount(t *testing.T) {
@@ -14,7 +15,7 @@ func TestDeleteConfirm_NoDecommission_DeletesAccount(t *testing.T) {
 	_ = initTestDB()
 
 	// Add an account to DB
-	mgr := db.DefaultAccountManager()
+	mgr := ui.DefaultAccountManager()
 	if mgr == nil {
 		t.Fatalf("no account manager available")
 	}

@@ -24,6 +24,7 @@ import (
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/ui"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -1153,7 +1154,7 @@ func (m *bootstrapModel) testConnection() tea.Cmd {
 // System keys are automatically deployed and should not be selectable.
 func (m *bootstrapModel) loadAvailableKeys() tea.Cmd {
 	return func() tea.Msg {
-		km := db.DefaultKeyManager()
+		km := ui.DefaultKeyManager()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}
@@ -1243,7 +1244,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 
 		var accountID int
 		var err error
-		mgr := db.DefaultAccountManager()
+		mgr := ui.DefaultAccountManager()
 		if mgr == nil {
 			err = fmt.Errorf("no account manager configured")
 		} else {
@@ -1272,11 +1273,11 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 		}
 
 		// Assign keys to account in database
-		km := db.DefaultKeyManager()
+		km := ui.DefaultKeyManager()
 		if km == nil {
 			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: no key manager available",
 				accountData.Username, accountData.Hostname))
-			mgr := db.DefaultAccountManager()
+			mgr := ui.DefaultAccountManager()
 			if mgr != nil {
 				_ = mgr.DeleteAccount(accountID)
 			}
@@ -1288,7 +1289,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 				_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to assign key: %v",
 					accountData.Username, accountData.Hostname, err))
 				// Cleanup: delete the account if key assignment fails
-				mgr := db.DefaultAccountManager()
+				mgr := ui.DefaultAccountManager()
 				if mgr != nil {
 					_ = mgr.DeleteAccount(accountID)
 				}
@@ -1303,7 +1304,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to generate keys content: %v",
 				accountData.Username, accountData.Hostname, err))
 			// Cleanup: delete the account if content generation fails
-			mgr := db.DefaultAccountManager()
+			mgr := ui.DefaultAccountManager()
 			if mgr != nil {
 				_ = mgr.DeleteAccount(accountID)
 			}
@@ -1323,7 +1324,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to connect: %v",
 				accountData.Username, accountData.Hostname, err))
 			// Cleanup: delete the account if deployer creation fails
-			mgr := db.DefaultAccountManager()
+			mgr := ui.DefaultAccountManager()
 			if mgr != nil {
 				_ = mgr.DeleteAccount(accountID)
 			}
@@ -1336,7 +1337,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: deployment failed: %v",
 				accountData.Username, accountData.Hostname, err))
 			// Cleanup: delete the account if SSH deployment fails
-			mgr := db.DefaultAccountManager()
+			mgr := ui.DefaultAccountManager()
 			if mgr != nil {
 				_ = mgr.DeleteAccount(accountID)
 			}

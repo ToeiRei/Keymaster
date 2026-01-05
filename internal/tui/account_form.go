@@ -284,7 +284,7 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					} else {
 						// Add new account via injected AccountManager when available.
-						mgr := db.DefaultAccountManager()
+						mgr := ui.DefaultAccountManager()
 						if mgr == nil {
 							m.err = fmt.Errorf("no account manager configured")
 							return m, nil

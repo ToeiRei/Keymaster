@@ -11,3 +11,8 @@ type AccountSearcher interface {
 type KeySearcher interface {
 	SearchPublicKeys(q string) ([]model.PublicKey, error)
 }
+
+// AuditSearcher provides a small abstraction for retrieving audit log entries.
+type AuditSearcher interface {
+	GetAllAuditLogEntries() ([]model.AuditLogEntry, error)
+}

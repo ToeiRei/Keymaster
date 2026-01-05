@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/ui"
 )
 
 func TestRebuildDisplayedKeys_LocalFilter(t *testing.T) {
 	initTestDBT(t)
 
-	km := db.DefaultKeyManager()
+	km := ui.DefaultKeyManager()
 	if km == nil {
 		t.Fatal("no key manager")
 	}

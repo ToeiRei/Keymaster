@@ -220,7 +220,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "y":
 				// Assign the keys
-				km := db.DefaultKeyManager()
+				km := ui.DefaultKeyManager()
 				if km == nil {
 					// No key manager available; skip assignment but record status
 					m.status = i18n.T("accounts.status.import_skipped_assign", len(m.pendingImportKeys))
@@ -377,7 +377,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, m.loadKeysForSelection()
 					} else {
 						// Simple delete without decommission. Prefer AccountManager when available.
-						mgr := db.DefaultAccountManager()
+						mgr := ui.DefaultAccountManager()
 						if mgr == nil {
 							m.err = fmt.Errorf("no account manager configured")
 						} else if err := mgr.DeleteAccount(m.accountToDelete.ID); err != nil {
@@ -914,7 +914,7 @@ func importRemoteKeysCmd(account model.Account) tea.Cmd {
 func (m *accountsModel) loadKeysForSelection() tea.Cmd {
 	return func() tea.Msg {
 		// Get global keys
-		km := db.DefaultKeyManager()
+		km := ui.DefaultKeyManager()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}

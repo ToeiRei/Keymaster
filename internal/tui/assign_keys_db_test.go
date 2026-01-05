@@ -5,8 +5,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
+	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // TestAssignKeys_AssignAndUnassign performs a DB-driven integration-style test
@@ -17,7 +17,7 @@ func TestAssignKeys_AssignAndUnassign(t *testing.T) {
 	_ = initTestDB()
 
 	// Create account and keys
-	mgr := db.DefaultAccountManager()
+	mgr := ui.DefaultAccountManager()
 	if mgr == nil {
 		t.Fatalf("no account manager available")
 	}
@@ -25,7 +25,7 @@ func TestAssignKeys_AssignAndUnassign(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddAccount failed: %v", err)
 	}
-	km := db.DefaultKeyManager()
+	km := ui.DefaultKeyManager()
 	if km == nil {
 		t.Fatalf("no key manager available")
 	}
@@ -82,7 +82,7 @@ func TestAssignKeys_AssignAndUnassign(t *testing.T) {
 	_ = m
 
 	// Verify in DB that the key is assigned
-	km2 := db.DefaultKeyManager()
+	km2 := ui.DefaultKeyManager()
 	if km2 == nil {
 		t.Fatalf("no key manager available")
 	}

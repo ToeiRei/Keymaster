@@ -46,3 +46,24 @@ func DefaultKeySearcher() KeySearcher {
 	}
 	return &dbKeySearcherAdapter{s: s}
 }
+
+type dbAuditSearcherAdapter struct {
+	s db.AuditSearcher
+}
+
+func (d *dbAuditSearcherAdapter) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
+	if d.s == nil {
+		return nil, nil
+	}
+	return d.s.GetAllAuditLogEntries()
+}
+
+// DefaultAuditSearcher returns an AuditSearcher that wraps the package default
+// DB audit searcher. It may return nil if no DB audit searcher is configured.
+func DefaultAuditSearcher() AuditSearcher {
+	s := db.DefaultAuditSearcher()
+	if s == nil {
+		return nil
+	}
+	return &dbAuditSearcherAdapter{s: s}
+}

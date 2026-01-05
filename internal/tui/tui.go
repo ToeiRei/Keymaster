@@ -105,7 +105,7 @@ type languageModel struct {
 // initialModelWithSearchers creates the starting state of the TUI while
 // allowing injection of searchers used by sub-models. Pass nil to use
 // package defaults.
-func initialModelWithSearchers(a db.AccountSearcher, k db.KeySearcher, au db.AuditSearcher) mainModel {
+func initialModelWithSearchers(a ui.AccountSearcher, k ui.KeySearcher, au ui.AuditSearcher) mainModel {
 	return mainModel{
 		state: menuView,
 		menu: menuModel{
@@ -128,7 +128,7 @@ func initialModelWithSearchers(a db.AccountSearcher, k db.KeySearcher, au db.Aud
 }
 
 func initialModel() mainModel {
-	return initialModelWithSearchers(db.DefaultAccountSearcher(), db.DefaultKeySearcher(), db.DefaultAuditSearcher())
+	return initialModelWithSearchers(ui.DefaultAccountSearcher(), ui.DefaultKeySearcher(), ui.DefaultAuditSearcher())
 }
 
 // Init is the first function that will be called by the Bubble Tea runtime.
@@ -666,7 +666,7 @@ func refreshDashboardCmd() tea.Cmd {
 			return dashboardDataMsg{data: dashboardData{err: err}}
 		}
 
-		km := db.DefaultKeyManager()
+		km := ui.DefaultKeyManager()
 		if km == nil {
 			return dashboardDataMsg{data: dashboardData{err: fmt.Errorf("no key manager available")}}
 		}

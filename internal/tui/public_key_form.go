@@ -15,7 +15,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/sshkey"
 	"github.com/toeirei/keymaster/internal/ui"
@@ -122,7 +121,7 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				expiresAt = t
 			}
 
-			mgr := db.DefaultKeyManager()
+			mgr := ui.DefaultKeyManager()
 			if mgr == nil {
 				m.err = fmt.Errorf("no key manager available")
 				return m, nil

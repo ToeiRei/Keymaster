@@ -69,7 +69,7 @@ func newAssignKeysModel() *assignKeysModel {
 		return m
 	}
 	// We also fetch all keys now, so we don't have to do it later.
-	km := db.DefaultKeyManager()
+	km := ui.DefaultKeyManager()
 	if km == nil {
 		m.err = fmt.Errorf("no key manager available")
 		return m
@@ -183,7 +183,7 @@ func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cm
 			m.status = ""
 
 			// Refresh the key list to ensure we have the latest data
-			km := db.DefaultKeyManager()
+			km := ui.DefaultKeyManager()
 			if km == nil {
 				m.err = fmt.Errorf("no key manager available")
 				return m, nil
@@ -303,7 +303,7 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if _, assigned := m.assignedKeys[selectedKey.ID]; assigned {
 				// Unassign
 				m.status = i18n.T("assign_keys.status.unassign_attempt", selectedKey.Comment)
-				km := db.DefaultKeyManager()
+				km := ui.DefaultKeyManager()
 				if km == nil {
 					m.err = fmt.Errorf("no key manager available")
 					m.status = i18n.T("assign_keys.status.unassign_error", m.err)
@@ -330,7 +330,7 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.status = i18n.T("assign_keys.status.assign_error_deleted", m.err)
 					return m, nil
 				}
-				km := db.DefaultKeyManager()
+				km := ui.DefaultKeyManager()
 				if km == nil {
 					m.err = fmt.Errorf("no key manager available")
 					m.status = i18n.T("assign_keys.status.assign_error", m.err)
