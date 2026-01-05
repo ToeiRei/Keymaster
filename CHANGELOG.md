@@ -135,7 +135,7 @@ A major feature release introducing database portability, a more resilient boots
 
 ---
 
-## **[1.3.5] – 2025‑09‑29**
+## **[1.3.5] – 2025‑09‑28**
 
 ### Added
 
@@ -166,7 +166,7 @@ A major feature release introducing database portability, a more resilient boots
 
 ---
 
-## **[1.3.3] – 2025‑09‑26**
+## **[1.3.3] – 2025‑09‑24**
 
 ### Changed
 
@@ -179,7 +179,7 @@ A major feature release introducing database portability, a more resilient boots
 
 ---
 
-## **[1.3.2] – 2025‑09‑25**
+## **[1.3.2] – 2025‑09‑24**
 
 ### Changed
 
@@ -230,7 +230,7 @@ A major UI and UX overhaul.
 
 ---
 
-## **[1.2.1] – 2024‑09‑24**
+## **[1.2.1] – 2025‑09‑23**
 
 ### Changed
 
@@ -252,7 +252,7 @@ A major UI and UX overhaul.
 
 ---
 
-## **[1.2.0] – 2024‑09‑23**
+## **[1.2.0] – 2025‑09‑23**
 
 A complete TUI overhaul and major usability improvements.
 
@@ -275,7 +275,7 @@ A complete TUI overhaul and major usability improvements.
 
 ---
 
-## **[1.1.0] – 2024‑09‑22**
+## **[1.1.0] – 2025‑09‑22**
 
 ### Added
 
@@ -297,7 +297,7 @@ A complete TUI overhaul and major usability improvements.
 
 ---
 
-## **[1.0.0] – 2024‑09‑21**
+## **[1.0.0] – 2025‑09‑21**
 
 Initial public release.
 
