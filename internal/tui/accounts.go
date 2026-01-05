@@ -107,46 +107,22 @@ func (m accountsModel) Init() tea.Cmd {
 }
 
 func (m *accountsModel) rebuildDisplayedAccounts() {
-	if m.filter == "" {
-		m.displayedAccounts = m.accounts
+	// Delegate filtering to core.FilterAccounts which supports an optional
+	// server-side searcher function. Keep UI wiring (searcher selection)
+	// here so core stays independent of UI packages.
+	var searchFunc core.AccountSearcherFunc
+	if m.searcher != nil {
+		searchFunc = func(q string) ([]model.Account, error) { return m.searcher.SearchAccounts(q) }
 	} else {
-		// Prefer server-side search via AccountSearcher when available. This
-		// decouples UI filtering from DB implementation and allows DB engines
-		// to optimize searches. However, some tests expect local in-memory
-		// filtering semantics; prefer server-side results only when they are
-		// successful and return non-empty results, otherwise fall back to
-		// local in-memory filtering to preserve test expectations.
-		// Build local results first so we can compare.
-		localResults := []model.Account{}
-		for _, acc := range m.accounts {
-			// Build a single combined representation and use the ui helper to
-			// perform a case-insensitive contains check. This avoids repeated
-			// calls to strings.ToLower in the hot loop.
-			combined := acc.Username + " " + acc.Hostname + " " + acc.Label + " " + acc.Tags
-			if core.ContainsIgnoreCase(combined, m.filter) {
-				localResults = append(localResults, acc)
-			}
-		}
-
-		// Prefer the injected searcher if present, otherwise use the UI package default.
-		var searcher ui.AccountSearcher
-		if m.searcher != nil {
-			searcher = m.searcher
-		} else {
-			searcher = ui.DefaultAccountSearcher()
-		}
-
-		if searcher != nil {
-			if res, err := searcher.SearchAccounts(m.filter); err == nil && len(res) > 0 {
-				m.displayedAccounts = res
-			} else {
-				// On error or empty server result, fall back to local filtering.
-				m.displayedAccounts = localResults
-			}
-		} else {
-			m.displayedAccounts = localResults
+		// Use UI default searcher when no injected searcher provided.
+		defaultSearcher := ui.DefaultAccountSearcher()
+		if defaultSearcher != nil {
+			searchFunc = func(q string) ([]model.Account, error) { return defaultSearcher.SearchAccounts(q) }
 		}
 	}
+	m.displayedAccounts = core.FilterAccounts(m.accounts, m.filter, searchFunc)
+
+	// If filter is empty, FilterAccounts returns the original slice, so no special-case required.
 
 	// Reset cursor if it's out of bounds
 	if m.cursor >= len(m.displayedAccounts) {

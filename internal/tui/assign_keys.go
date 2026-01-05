@@ -216,30 +216,12 @@ func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cm
 
 // filteredAccounts returns a slice of accounts that match the current filter text.
 func (m *assignKeysModel) filteredAccounts() []model.Account {
-	if m.accountFilter == "" {
-		return m.accounts
-	}
-	var filtered []model.Account
-	for _, acc := range m.accounts {
-		if core.ContainsIgnoreCase(acc.String(), m.accountFilter) {
-			filtered = append(filtered, acc)
-		}
-	}
-	return filtered
+	return core.FilterAccounts(m.accounts, m.accountFilter, nil)
 }
 
 // filteredKeys returns a slice of public keys that match the current filter text.
 func (m *assignKeysModel) filteredKeys() []model.PublicKey {
-	if m.keyFilter == "" {
-		return m.keys
-	}
-	var filtered []model.PublicKey
-	for _, key := range m.keys {
-		if core.ContainsIgnoreCase(key.Comment, m.keyFilter) || core.ContainsIgnoreCase(key.Algorithm, m.keyFilter) {
-			filtered = append(filtered, key)
-		}
-	}
-	return filtered
+	return core.FilterKeys(m.keys, m.keyFilter)
 }
 
 // NOTE: case-insensitive helpers live in `internal/core` now.
