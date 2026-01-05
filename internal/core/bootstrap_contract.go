@@ -50,6 +50,13 @@ type BootstrapAuditEvent struct {
 	Details string
 }
 
+// Auditor is the minimal interface core requires to emit audit log events.
+// Callers should provide an implementation that records audit events in the
+// appropriate environment (DB, test double, etc.).
+type Auditor interface {
+	LogAction(action, details string) error
+}
+
 // BootstrapDeployer is the minimal interface the core requires to deploy
 // authorized_keys to a remote host. The concrete implementation lives in
 // the deploy package; core depends only on this interface to remain UI-agnostic.
@@ -105,6 +112,11 @@ type BootstrapDeps struct {
 
 	// LogAudit records an audit event related to bootstrap.
 	LogAudit func(e BootstrapAuditEvent) error
+
+	// Auditor is an optional interface implementation callers may provide
+	// for simpler audit writes. If provided, core may call Auditor.LogAction
+	// instead of or in addition to LogAudit.
+	Auditor Auditor
 }
 
 // PerformBootstrapDeployment orchestrates the bootstrap deployment using the

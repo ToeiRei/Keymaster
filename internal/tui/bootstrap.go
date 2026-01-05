@@ -1281,6 +1281,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			LogAudit: func(e core.BootstrapAuditEvent) error {
 				return logAction(e.Action, e.Details)
 			},
+			Auditor:      coreAuditor{},
 			AccountStore: ui.DefaultAccountManager(),
 			KeyStore:     ui.DefaultKeyManager(),
 		}

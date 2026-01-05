@@ -29,3 +29,10 @@ type coreAuditReader struct{}
 func (coreAuditReader) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
 	return ui.GetAllAuditLogEntries()
 }
+
+// coreAuditor adapts the TUI package-level audit helper to core.Auditor.
+type coreAuditor struct{}
+
+func (coreAuditor) LogAction(action, details string) error {
+	return logAction(action, details)
+}
