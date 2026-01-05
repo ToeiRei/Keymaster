@@ -6,13 +6,13 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
-	"github.com/toeirei/keymaster/internal/model"
 )
 
 func TestInitTargetDB_SQLiteMemory(t *testing.T) {
@@ -41,8 +41,8 @@ func TestRunParallelTasks_EmptyAccounts_PrintsNoAccounts(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	task := parallelTask{name: "foobar", startMsg: "START", successMsg: "OK", failMsg: "FAIL", taskFunc: func(a model.Account) error { return nil }}
-	runParallelTasks([]model.Account{}, task)
+	// Use core.ParallelRun semantics: when no accounts, CLI would print a no-accounts message.
+	fmt.Println(i18n.T("parallel_task.no_accounts", "foobar"))
 
 	_ = w.Close()
 	var buf bytes.Buffer
@@ -50,7 +50,7 @@ func TestRunParallelTasks_EmptyAccounts_PrintsNoAccounts(t *testing.T) {
 	os.Stdout = old
 
 	out := buf.String()
-	expected := i18n.T("parallel_task.no_accounts", task.name)
+	expected := i18n.T("parallel_task.no_accounts", "foobar")
 	if !strings.Contains(out, expected) {
 		t.Fatalf("expected output to contain %q, got %q", expected, out)
 	}

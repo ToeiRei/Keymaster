@@ -17,7 +17,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"runtime/debug"
@@ -38,8 +37,7 @@ import (
 	"github.com/toeirei/keymaster/internal/tui"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
+	// removed: parallel helper used cases & language; keep imports minimal
 )
 
 var version = "dev"   // this will be set by the linker
@@ -532,15 +530,7 @@ var importCmd = &cobra.Command{
 // parallelTask defines a generic task to be executed in parallel across multiple
 // accounts. It holds configuration for messaging, logging, and the core task
 // function to be executed.
-type parallelTask struct {
-	name       string // e.g., "deployment", "audit"
-	startMsg   string // e.g., "🚀 Starting deployment..."
-	successMsg string // e.g., "✅ Successfully deployed to %s"
-	failMsg    string // e.g., "💥 Failed to deploy to %s: %v"
-	successLog string // e.g., "DEPLOY_SUCCESS"
-	failLog    string // e.g., "DEPLOY_FAIL"
-	taskFunc   func(model.Account) error
-}
+// parallelTask removed: use core.ParallelRun instead.
 
 // trustHostCmd represents the 'trust-host' command.
 // It facilitates the initial trust of a new host by fetching its public SSH key,
@@ -600,46 +590,7 @@ step before Keymaster can manage a new host.`,
 // runParallelTasks executes a given task concurrently for a list of accounts.
 // It uses a wait group to manage goroutines and a channel to collect results,
 // printing status messages as tasks complete.
-func runParallelTasks(accounts []model.Account, task parallelTask) {
-	if len(accounts) == 0 {
-		fmt.Println(i18n.T("parallel_task.no_accounts", task.name))
-		return
-	}
-
-	var wg sync.WaitGroup
-	results := make(chan string, len(accounts)) // This channel will now carry pre-formatted i18n strings
-
-	// task.startMsg is already formatted by i18n.T, so just print it.
-	fmt.Println(task.startMsg)
-
-	for _, acc := range accounts {
-		wg.Add(1)
-		go func(account model.Account) {
-			defer wg.Done()
-			err := task.taskFunc(account)
-			details := fmt.Sprintf("account: %s", account.String())
-			if err != nil {
-				results <- fmt.Sprintf(task.failMsg, account.String(), err.Error())
-				_ = logAction(task.failLog, fmt.Sprintf("%s, error: %v", details, err))
-			} else {
-				results <- fmt.Sprintf(task.successMsg, account.String()) // Pass account string as arg
-				_ = logAction(task.successLog, details)
-			}
-		}(acc)
-	}
-
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	for res := range results {
-		fmt.Println(res)
-	}
-	// Use unicode-aware titlecasing
-	titleCaser := cases.Title(language.Und)
-	fmt.Println("\n" + i18n.T("parallel_task.complete_message", titleCaser.String(task.name)))
-}
+// runParallelTasks removed: use core.ParallelRun from internal/core.
 
 // audit implementations moved to internal/deploy/audit.go
 

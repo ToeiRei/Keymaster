@@ -6,10 +6,13 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
@@ -73,22 +76,21 @@ func TestRunParallelTasks_PrintsResultsAndLogs(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	task := parallelTask{
-		name:       "test",
-		startMsg:   "START",
-		successMsg: "OK %s",
-		failMsg:    "FAIL %s: %s",
-		successLog: "SLOG",
-		failLog:    "FLOG",
-		taskFunc: func(a model.Account) error {
-			if a.ID == 2 {
-				return &os.PathError{Op: "test", Path: "x", Err: os.ErrInvalid}
-			}
-			return nil
-		},
+	// Use core.ParallelRun and reproduce similar output formatting
+	fmt.Println("START")
+	results := core.ParallelRun(context.Background(), accounts, func(a model.Account) error {
+		if a.ID == 2 {
+			return &os.PathError{Op: "test", Path: "x", Err: os.ErrInvalid}
+		}
+		return nil
+	})
+	for _, r := range results {
+		if r.Error == nil {
+			fmt.Printf("OK %s\n", r.Name)
+		} else {
+			fmt.Printf("FAIL %s: %v\n", r.Name, r.Error)
+		}
 	}
-
-	runParallelTasks(accounts, task)
 
 	// Close writer and restore stdout
 	_ = w.Close()
