@@ -926,33 +926,16 @@ func (m *accountsModel) loadKeysForSelection() tea.Cmd {
 // performDecommissionWithKeys performs decommission with selected keys to remove
 func (m *accountsModel) performDecommissionWithKeys() tea.Cmd {
 	return func() tea.Msg {
-		// Get active system key
-		systemKey, err := db.GetActiveSystemKey()
-		if err != nil || systemKey == nil {
-			return fmt.Errorf("no active system key found")
+		result, err := core.PerformDecommissionWithKeys(m.accountToDelete, m.selectedKeysToKeep)
+		if err != nil {
+			// Surface the error via DecommissionResult so downstream UI can render it
+			return decommissionCompletedMsg{result: deploy.DecommissionResult{
+				AccountID:           m.accountToDelete.ID,
+				AccountString:       m.accountToDelete.String(),
+				DatabaseDeleteError: err,
+			}}
 		}
-
-		// Build list of key IDs to remove (inverse of keys to keep)
-		var keysToRemove []int
-		for keyID, shouldKeep := range m.selectedKeysToKeep {
-			if !shouldKeep {
-				keysToRemove = append(keysToRemove, keyID)
-			}
-		}
-
-		// Perform selective decommission
-		options := deploy.DecommissionOptions{
-			SkipRemoteCleanup: false,
-			KeepFile:          true, // Keep file, remove selected keys
-			Force:             false,
-			DryRun:            false,
-			SelectiveKeys:     keysToRemove,
-		}
-		result := deploy.DecommissionAccount(m.accountToDelete, systemKey.PrivateKey, options)
-
-		return decommissionCompletedMsg{
-			result: result,
-		}
+		return decommissionCompletedMsg{result: result}
 	}
 }
 
