@@ -661,7 +661,7 @@ func Run() {
 // refreshDashboardCmd is a tea.Cmd that fetches summary data for the main menu.
 func refreshDashboardCmd() tea.Cmd {
 	return func() tea.Msg {
-		coreData, err := core.BuildDashboardData()
+		coreData, err := core.BuildDashboardData(coreAccountReader{}, coreKeyReader{}, coreAuditReader{})
 		if err != nil {
 			return dashboardDataMsg{data: dashboardData{err: err}}
 		}

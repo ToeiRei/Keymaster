@@ -7,9 +7,7 @@ package core
 import (
 	"sort"
 
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // DashboardData holds aggregated values for the main dashboard.
@@ -27,35 +25,49 @@ type DashboardData struct {
 
 // BuildDashboardData collects accounts, keys, system key and recent audit logs,
 // and computes aggregated metrics for the dashboard.
-func BuildDashboardData() (DashboardData, error) {
+// AccountReader exposes account read operations core needs for dashboard metrics.
+type AccountReader interface {
+	GetAllAccounts() ([]model.Account, error)
+}
+
+// KeyReader exposes key reads required by the dashboard.
+type KeyReader interface {
+	GetAllPublicKeys() ([]model.PublicKey, error)
+	GetActiveSystemKey() (*model.SystemKey, error)
+}
+
+// AuditReader exposes audit log reads required by the dashboard.
+type AuditReader interface {
+	GetAllAuditLogEntries() ([]model.AuditLogEntry, error)
+}
+
+// BuildDashboardData computes metrics using provided readers. Core no longer
+// depends on DB packages directly; callers must supply implementations.
+func BuildDashboardData(accounts AccountReader, keys KeyReader, audits AuditReader) (DashboardData, error) {
 	var out DashboardData
 
-	accounts, err := db.GetAllAccounts()
+	accs, err := accounts.GetAllAccounts()
 	if err != nil {
 		return out, err
 	}
 
-	km := ui.DefaultKeyManager()
-	if km == nil {
-		return out, nil
-	}
-	keys, err := km.GetAllPublicKeys()
+	klist, err := keys.GetAllPublicKeys()
 	if err != nil {
 		return out, err
 	}
 
-	sysKey, err := db.GetActiveSystemKey()
+	sysKey, err := keys.GetActiveSystemKey()
 	if err != nil {
 		return out, err
 	}
 
-	logs, err := db.GetAllAuditLogEntries()
+	logs, err := audits.GetAllAuditLogEntries()
 	if err != nil {
 		return out, err
 	}
 
-	out.AccountCount = len(accounts)
-	for _, acc := range accounts {
+	out.AccountCount = len(accs)
+	for _, acc := range accs {
 		if acc.IsActive {
 			out.ActiveAccountCount++
 			if sysKey != nil && sysKey.Serial > 0 {
@@ -68,9 +80,9 @@ func BuildDashboardData() (DashboardData, error) {
 		}
 	}
 
-	out.PublicKeyCount = len(keys)
+	out.PublicKeyCount = len(klist)
 	out.AlgoCounts = make(map[string]int)
-	for _, k := range keys {
+	for _, k := range klist {
 		if k.IsGlobal {
 			out.GlobalKeyCount++
 		}
