@@ -15,7 +15,9 @@ import (
 	"time"
 
 	"github.com/klauspost/compress/zstd"
+	"github.com/toeirei/keymaster/internal/bootstrap"
 	"github.com/toeirei/keymaster/internal/config"
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
 )
@@ -429,4 +431,32 @@ func RunMigrateCmd(ctx context.Context, factory StoreFactory, st Store, targetTy
 
 func RunDecommissionCmd(ctx context.Context, targets []model.Account, opts interface{}, dm DeployerManager, st Store, a AuditWriter) (DecommissionSummary, error) {
 	return DecommissionAccounts(ctx, targets, opts, dm, st, a)
+}
+
+// Bootstrap lifecycle thin wrappers — delegate to internal/bootstrap.
+// These exist so UI/CLI code can call core facades instead of importing
+// internal/bootstrap directly.
+func RecoverFromCrash() error {
+	return bootstrap.RecoverFromCrash()
+}
+
+func StartSessionReaper() {
+	bootstrap.StartSessionReaper()
+}
+
+func InstallSignalHandler() {
+	bootstrap.InstallSignalHandler()
+}
+
+func CleanupAllActiveSessions() error {
+	return bootstrap.CleanupAllActiveSessions()
+}
+
+// DB init helpers (thin wrappers around internal/db) -----------------------
+func IsDBInitialized() bool {
+	return db.IsInitialized()
+}
+
+func InitDB(dbType, dsn string) error {
+	return db.InitDB(dbType, dsn)
 }
