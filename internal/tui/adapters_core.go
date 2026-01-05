@@ -1,8 +1,12 @@
 package tui
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/deploy"
+	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
 )
@@ -48,6 +52,84 @@ func (coreSystemKeyStore) CreateSystemKey(publicKey, privateKey string) (int, er
 
 func (coreSystemKeyStore) RotateSystemKey(publicKey, privateKey string) (int, error) {
 	return ui.RotateSystemKey(publicKey, privateKey)
+}
+
+// coreAccountStore adapts the UI account manager to core.AccountStore.
+type coreAccountStore struct{}
+
+func (coreAccountStore) AddAccount(username, hostname, label, tags string) (int, error) {
+	mgr := ui.DefaultAccountManager()
+	if mgr == nil {
+		return 0, fmt.Errorf("no account manager configured")
+	}
+	return mgr.AddAccount(username, hostname, label, tags)
+}
+
+func (coreAccountStore) DeleteAccount(accountID int) error {
+	mgr := ui.DefaultAccountManager()
+	if mgr == nil {
+		return fmt.Errorf("no account manager configured")
+	}
+	return mgr.DeleteAccount(accountID)
+}
+
+// coreKeyStore adapts the UI key manager to core.KeyStore.
+type coreKeyStore struct{}
+
+func (coreKeyStore) GetGlobalPublicKeys() ([]model.PublicKey, error) {
+	km := ui.DefaultKeyManager()
+	if km == nil {
+		return nil, fmt.Errorf("no key manager configured")
+	}
+	return km.GetGlobalPublicKeys()
+}
+
+func (coreKeyStore) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
+	km := ui.DefaultKeyManager()
+	if km == nil {
+		return nil, fmt.Errorf("no key manager configured")
+	}
+	return km.GetKeysForAccount(accountID)
+}
+
+func (coreKeyStore) AssignKeyToAccount(keyID, accountID int) error {
+	km := ui.DefaultKeyManager()
+	if km == nil {
+		return fmt.Errorf("no key manager configured")
+	}
+	return km.AssignKeyToAccount(keyID, accountID)
+}
+
+// coreKeysContentBuilder builds authorized_keys content using UI key manager
+// and system key helpers.
+type coreKeysContentBuilder struct{}
+
+func (coreKeysContentBuilder) Generate(accountID int) (string, error) {
+	sk, _ := ui.GetActiveSystemKey()
+	km := ui.DefaultKeyManager()
+	if km == nil {
+		return "", fmt.Errorf("no key manager available")
+	}
+	globalKeys, err := km.GetGlobalPublicKeys()
+	if err != nil {
+		return "", err
+	}
+	accountKeys, err := km.GetKeysForAccount(accountID)
+	if err != nil {
+		return "", err
+	}
+	return keys.BuildAuthorizedKeysContent(sk, globalKeys, accountKeys)
+}
+
+// coreBootstrapDeployerFactory adapts the deploy package to core.NewBootstrapDeployer.
+type coreBootstrapDeployerFactory struct{}
+
+func (coreBootstrapDeployerFactory) New(hostname, username, privateKey, expectedHostKey string) (core.BootstrapDeployer, error) {
+	d, err := deploy.NewBootstrapDeployerWithExpectedKey(hostname, username, privateKey, expectedHostKey)
+	if err != nil {
+		return nil, err
+	}
+	return d, nil
 }
 
 // coreSessionStore adapts UI session helpers to core.SessionStore.

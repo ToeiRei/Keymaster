@@ -19,6 +19,8 @@ func NewSession(store SessionStore, username, hostname, label, tags string) (*bo
 	}
 
 	if store == nil {
+		// Register session for in-memory cleanup registry even when not persisted.
+		bootstrap.RegisterSession(s)
 		return s, nil
 	}
 
@@ -30,5 +32,20 @@ func NewSession(store SessionStore, username, hostname, label, tags string) (*bo
 		return nil, err
 	}
 
+	// Register session for in-memory cleanup registry.
+	bootstrap.RegisterSession(s)
+
 	return s, nil
+}
+
+// CancelBootstrapSession unregisters the in-memory session and removes any
+// persisted session record via the provided store. If store is nil, only the
+// in-memory registry is updated.
+func CancelBootstrapSession(store SessionStore, sessionID string) error {
+	// Unregister from in-memory cleanup registry first.
+	bootstrap.UnregisterSession(sessionID)
+	if store == nil {
+		return nil
+	}
+	return store.DeleteBootstrapSession(sessionID)
 }

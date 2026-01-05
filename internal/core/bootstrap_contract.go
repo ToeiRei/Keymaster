@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/toeirei/keymaster/internal/bootstrap"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -28,6 +29,9 @@ type BootstrapParams struct {
 	// HostKey is the expected host key (authorized_keys format) used for
 	// host key verification during bootstrap deployment.
 	HostKey string
+	// SessionID, if set, links this operation to an existing bootstrap session
+	// so core can update or remove the persisted session record.
+	SessionID string
 }
 
 // BootstrapResult contains the outcome of a bootstrap deployment.
@@ -119,6 +123,11 @@ type BootstrapDeps struct {
 
 	// LogAudit records an audit event related to bootstrap.
 	LogAudit func(e BootstrapAuditEvent) error
+
+	// SessionStore is an optional interface implementation for persisting
+	// bootstrap session state. If provided, core will update/delete session
+	// records as part of lifecycle management.
+	SessionStore SessionStore
 
 	// Auditor is an optional interface implementation callers may provide
 	// for simpler audit writes. If provided, core may call Auditor.LogAction
@@ -249,6 +258,22 @@ func PerformBootstrapDeployment(ctx context.Context, params BootstrapParams, dep
 	res.Account = account
 	res.RemoteDeployed = deployed
 	res.KeysDeployed = params.SelectedKeyIDs
+
+	// Update or remove persisted bootstrap session state if a store was provided.
+	if params.HostKey != "" || params.TempPrivateKey != "" {
+		// noop - params contain keys but session lifecycle is controlled by SessionStore below.
+	}
+
+	if paramsTemp := params; paramsTemp.SessionID != "" {
+		if deps.SessionStore != nil {
+			if deployed {
+				_ = deps.SessionStore.DeleteBootstrapSession(paramsTemp.SessionID)
+			} else {
+				_ = deps.SessionStore.UpdateBootstrapSessionStatus(paramsTemp.SessionID, string(bootstrap.StatusFailed))
+			}
+		}
+		bootstrap.UnregisterSession(paramsTemp.SessionID)
+	}
 
 	return res, nil
 }

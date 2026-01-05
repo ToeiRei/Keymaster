@@ -147,9 +147,6 @@ func (m *bootstrapModel) createBootstrapSession() tea.Cmd {
 			return fmt.Errorf("failed to create bootstrap session: %w", err)
 		}
 
-		// Register session for cleanup
-		bootstrap.RegisterSession(session)
-
 		return sessionCreatedMsg{session: session}
 	}
 }
@@ -194,9 +191,10 @@ func (m *bootstrapModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.step = stepComplete
 		m.isCompleted = true
 
-		// Unregister session from cleanup registry
+		// Session lifecycle is managed by core; ensure we ask core to cancel
 		if m.session != nil {
-			bootstrap.UnregisterSession(m.session.ID)
+			_ = core.CancelBootstrapSession(coreSessionStore{}, m.session.ID)
+			m.session = nil
 		}
 
 		if msg.err == nil {
@@ -234,8 +232,8 @@ func (m *bootstrapModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Log the abort
 			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
 				m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
-			bootstrap.UnregisterSession(m.session.ID)
-			_ = m.session.Delete()
+			_ = core.CancelBootstrapSession(coreSessionStore{}, m.session.ID)
+			m.session = nil
 		}
 		return m, func() tea.Msg { return backToListMsg{} }
 
@@ -311,8 +309,8 @@ func (m *bootstrapModel) handleErrorKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				// Log the abort
 				_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
 					m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
-				bootstrap.UnregisterSession(m.session.ID)
-				_ = m.session.Delete()
+				_ = core.CancelBootstrapSession(coreSessionStore{}, m.session.ID)
+				m.session = nil
 			}
 			return m, func() tea.Msg { return backToListMsg{} }
 		}
@@ -323,8 +321,8 @@ func (m *bootstrapModel) handleErrorKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Log the abort
 			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
 				m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
-			bootstrap.UnregisterSession(m.session.ID)
-			_ = m.session.Delete()
+			_ = core.CancelBootstrapSession(coreSessionStore{}, m.session.ID)
+			m.session = nil
 		}
 		return m, func() tea.Msg { return backToListMsg{} }
 	}
@@ -466,10 +464,7 @@ func (m *bootstrapModel) View() string {
 		return m.viewError()
 	}
 
-	if m.session != nil {
-		bootstrap.UnregisterSession(m.session.ID)
-		_ = m.session.Delete()
-	}
+	// Do not perform lifecycle cleanup in the view; core manages sessions.
 	switch m.step {
 	case stepGenerateKey:
 		return m.viewGenerateKey()
@@ -1177,26 +1172,14 @@ func (m *bootstrapModel) loadAvailableKeys() tea.Cmd {
 // generateNewSession creates a new bootstrap session with fresh keys.
 func (m *bootstrapModel) generateNewSession() tea.Cmd {
 	return func() tea.Msg {
-		// Cleanup old session
+		// Cleanup old session via core and create new session through core.
 		if m.session != nil {
-			bootstrap.UnregisterSession(m.session.ID)
-			_ = m.session.Delete()
+			_ = core.CancelBootstrapSession(coreSessionStore{}, m.session.ID)
+			m.session = nil
 		}
 
-		// Create new session using pending account data
-		session, err := bootstrap.NewBootstrapSession(
-			m.pendingUsername,
-			m.pendingHostname,
-			m.pendingLabel,
-			m.pendingTags,
-		)
+		session, err := core.NewSession(coreSessionStore{}, m.pendingUsername, m.pendingHostname, m.pendingLabel, m.pendingTags)
 		if err != nil {
-			return err
-		}
-
-		bootstrap.RegisterSession(session)
-		if err := session.Save(); err != nil {
-			session.Cleanup()
 			return err
 		}
 
@@ -1235,50 +1218,15 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 		}
 
 		deps := core.BootstrapDeps{
-			AddAccount: func(username, hostname, label, tags string) (int, error) {
-				mgr := ui.DefaultAccountManager()
-				if mgr == nil {
-					return 0, fmt.Errorf("no account manager configured")
-				}
-				return mgr.AddAccount(username, hostname, label, tags)
-			},
-			AssignKey: func(keyID, accountID int) error {
-				km := ui.DefaultKeyManager()
-				if km == nil {
-					return fmt.Errorf("no key manager configured")
-				}
-				return km.AssignKeyToAccount(keyID, accountID)
-			},
-			GenerateKeysContent: func(accountID int) (string, error) {
-				sk, _ := ui.GetActiveSystemKey()
-				km := ui.DefaultKeyManager()
-				if km == nil {
-					return "", fmt.Errorf("no key manager available")
-				}
-				globalKeys, err := km.GetGlobalPublicKeys()
-				if err != nil {
-					return "", err
-				}
-				accountKeys, err := km.GetKeysForAccount(accountID)
-				if err != nil {
-					return "", err
-				}
-				return keys.BuildAuthorizedKeysContent(sk, globalKeys, accountKeys)
-			},
-			NewBootstrapDeployer: func(hostname, username, privateKey, expectedHostKey string) (core.BootstrapDeployer, error) {
-				d, err := deploy.NewBootstrapDeployerWithExpectedKey(hostname, username, privateKey, expectedHostKey)
-				if err != nil {
-					return nil, err
-				}
-				return d, nil
-			},
-			GetActiveSystemKey: ui.GetActiveSystemKey,
+			AccountStore:         coreAccountStore{},
+			KeyStore:             coreKeyStore{},
+			GenerateKeysContent:  coreKeysContentBuilder{}.Generate,
+			NewBootstrapDeployer: coreBootstrapDeployerFactory{}.New,
+			GetActiveSystemKey:   ui.GetActiveSystemKey,
 			LogAudit: func(e core.BootstrapAuditEvent) error {
 				return logAction(e.Action, e.Details)
 			},
-			Auditor:      coreAuditor{},
-			AccountStore: ui.DefaultAccountManager(),
-			KeyStore:     ui.DefaultKeyManager(),
+			Auditor: coreAuditor{},
 		}
 
 		// Run core orchestration. Core will perform validation and (when wired)
@@ -1305,8 +1253,8 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 // retrieveHostKey fetches the host key from the target server for verification.
 func (m *bootstrapModel) retrieveHostKey() tea.Cmd {
 	return func() tea.Msg {
-		if m.session == nil {
-			return hostKeyRetrievedMsg{hostKey: "", err: fmt.Errorf("no session available")}
+		if m.session != nil {
+			_ = core.CancelBootstrapSession(coreSessionStore{}, m.session.ID)
 		}
 
 		// Use the deploy package's GetRemoteHostKey function
