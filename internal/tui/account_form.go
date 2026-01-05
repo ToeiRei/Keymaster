@@ -482,8 +482,13 @@ func (m *accountFormModel) updateSuggestions() {
 		return
 	}
 
-	// Use the shared suggestion helper so logic is centralized and testable.
-	m.suggestions = ui.SuggestTags(m.allTags, currentVal)
+	// Prefer using the injected TagSuggester when available so tests and
+	// alternative UIs can provide custom suggestion behavior.
+	if m.tagSuggester != nil {
+		m.suggestions = m.tagSuggester.Suggest(currentVal)
+	} else {
+		m.suggestions = ui.SuggestTags(m.allTags, currentVal)
+	}
 	m.suggestionCursor = 0
 	m.isSuggesting = len(m.suggestions) > 0
 }
