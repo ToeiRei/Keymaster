@@ -373,12 +373,39 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch m.action {
 			case actionGetKeys:
 				m.state = deployStateShowAuthorizedKeys
-				content, err := deploy.GenerateKeysContent(m.selectedAccount.ID)
+				// Build authorized_keys using core plan builder (pure helper).
+				// Fetch system key and public keys, then build a deterministic plan.
+				sk, err := db.GetActiveSystemKey()
 				if err != nil {
 					m.err = err
 					return m, nil
 				}
-				m.authorizedKeys = content
+				km := ui.DefaultKeyManager()
+				if km == nil {
+					m.err = fmt.Errorf("no key manager available")
+					return m, nil
+				}
+				globalKeys, err := km.GetGlobalPublicKeys()
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+				accountKeys, err := km.GetKeysForAccount(m.selectedAccount.ID)
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+				plan, err := core.BuildBootstrapDeploymentPlan(core.BootstrapParams{
+					Username: m.selectedAccount.Username,
+					Hostname: m.selectedAccount.Hostname,
+					Label:    m.selectedAccount.Label,
+					Tags:     m.selectedAccount.Tags,
+				}, sk, globalKeys, accountKeys)
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+				m.authorizedKeys = plan.AuthorizedKeysBlob
 			case actionDeploySingle:
 				m.state = deployStateInProgress
 				m.status = i18n.T("deploy.deploying_to", m.selectedAccount.String())
