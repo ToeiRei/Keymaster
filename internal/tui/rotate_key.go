@@ -337,7 +337,7 @@ type keyRotatedMsg struct {
 // It sends an initialKeyGeneratedMsg when complete.
 func generateInitialKey(passphrase string) tea.Cmd {
 	return func() tea.Msg {
-		pub, serial, err := core.CreateInitialSystemKey(passphrase)
+		pub, serial, err := core.CreateInitialSystemKey(coreSystemKeyStore{}, passphrase)
 		if err != nil {
 			return initialKeyGeneratedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_save"), err)}
 		}
@@ -349,7 +349,7 @@ func generateInitialKey(passphrase string) tea.Cmd {
 // It sends a keyRotatedMsg when complete.
 func performRotation(passphrase string) tea.Cmd {
 	return func() tea.Msg {
-		serial, err := core.RotateSystemKey(passphrase)
+		serial, err := core.RotateSystemKey(coreSystemKeyStore{}, passphrase)
 		if err != nil {
 			return keyRotatedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_save_rotated"), err)}
 		}

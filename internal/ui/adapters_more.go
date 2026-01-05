@@ -27,6 +27,16 @@ func GetActiveSystemKey() (*model.SystemKey, error) {
 	return db.GetActiveSystemKey()
 }
 
+// CreateSystemKey creates a new system key in the database and returns the assigned serial.
+func CreateSystemKey(publicKey, privateKey string) (int, error) {
+	return db.CreateSystemKey(publicKey, privateKey)
+}
+
+// RotateSystemKey rotates the system key in the database and returns the new serial.
+func RotateSystemKey(publicKey, privateKey string) (int, error) {
+	return db.RotateSystemKey(publicKey, privateKey)
+}
+
 // HasSystemKeys returns whether any system keys exist.
 func HasSystemKeys() (bool, error) {
 	return db.HasSystemKeys()

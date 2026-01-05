@@ -8,18 +8,20 @@ import (
 	"fmt"
 
 	"github.com/toeirei/keymaster/internal/crypto/ssh"
-	"github.com/toeirei/keymaster/internal/db"
 )
 
 // CreateInitialSystemKey generates a new system keypair using the provided
-// passphrase and persists it as the initial system key. Returns the public
-// key string and the assigned serial on success.
-func CreateInitialSystemKey(passphrase string) (string, int, error) {
+// passphrase and persists it using the provided SystemKeyStore. Returns the
+// public key string and the assigned serial on success.
+func CreateInitialSystemKey(store SystemKeyStore, passphrase string) (string, int, error) {
 	pub, priv, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key", passphrase)
 	if err != nil {
 		return "", 0, fmt.Errorf("generate key: %w", err)
 	}
-	serial, err := db.CreateSystemKey(pub, priv)
+	if store == nil {
+		return pub, 0, nil
+	}
+	serial, err := store.CreateSystemKey(pub, priv)
 	if err != nil {
 		return "", 0, fmt.Errorf("save key: %w", err)
 	}
@@ -27,13 +29,17 @@ func CreateInitialSystemKey(passphrase string) (string, int, error) {
 }
 
 // RotateSystemKey generates a new system keypair using the provided
-// passphrase and rotates the existing system key, returning the new serial.
-func RotateSystemKey(passphrase string) (int, error) {
+// passphrase and rotates the existing system key via the provided store,
+// returning the new serial.
+func RotateSystemKey(store SystemKeyStore, passphrase string) (int, error) {
 	pub, priv, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key", passphrase)
 	if err != nil {
 		return 0, fmt.Errorf("generate key: %w", err)
 	}
-	serial, err := db.RotateSystemKey(pub, priv)
+	if store == nil {
+		return 0, nil
+	}
+	serial, err := store.RotateSystemKey(pub, priv)
 	if err != nil {
 		return 0, fmt.Errorf("save rotated key: %w", err)
 	}

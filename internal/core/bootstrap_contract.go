@@ -80,6 +80,12 @@ type KeyStore interface {
 	AssignKeyToAccount(keyID, accountID int) error
 }
 
+// SystemKeyStore provides operations for creating and rotating system keys.
+type SystemKeyStore interface {
+	CreateSystemKey(publicKey, privateKey string) (int, error)
+	RotateSystemKey(publicKey, privateKey string) (int, error)
+}
+
 // BootstrapDeps lists side-effecting functions that core orchestration will
 // call. Callers (UIs or higher-level services) must provide implementations
 // appropriate to the environment (real DB, test doubles, etc.).

@@ -36,3 +36,14 @@ type coreAuditor struct{}
 func (coreAuditor) LogAction(action, details string) error {
 	return logAction(action, details)
 }
+
+// coreSystemKeyStore adapts UI system key helpers to core.SystemKeyStore.
+type coreSystemKeyStore struct{}
+
+func (coreSystemKeyStore) CreateSystemKey(publicKey, privateKey string) (int, error) {
+	return ui.CreateSystemKey(publicKey, privateKey)
+}
+
+func (coreSystemKeyStore) RotateSystemKey(publicKey, privateKey string) (int, error) {
+	return ui.RotateSystemKey(publicKey, privateKey)
+}
