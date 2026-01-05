@@ -17,6 +17,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/internal/config"
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
@@ -661,67 +662,31 @@ func Run() {
 // refreshDashboardCmd is a tea.Cmd that fetches summary data for the main menu.
 func refreshDashboardCmd() tea.Cmd {
 	return func() tea.Msg {
-		accounts, err := db.GetAllAccounts()
+		coreData, err := core.BuildDashboardData()
 		if err != nil {
 			return dashboardDataMsg{data: dashboardData{err: err}}
 		}
 
-		km := ui.DefaultKeyManager()
-		if km == nil {
-			return dashboardDataMsg{data: dashboardData{err: fmt.Errorf("no key manager available")}}
-		}
-		keys, err := km.GetAllPublicKeys()
-		if err != nil {
-			return dashboardDataMsg{data: dashboardData{err: err}}
-		}
-
-		sysKey, err := db.GetActiveSystemKey()
-		if err != nil {
-			return dashboardDataMsg{data: dashboardData{err: err}}
-		}
-
-		logs, err := db.GetAllAuditLogEntries()
-		if err != nil {
-			return dashboardDataMsg{data: dashboardData{err: err}}
-		}
-
-		// Process data
+		// Map core.DashboardData into the tui.dashboardData and apply view-side styling
 		data := dashboardData{}
-		data.accountCount = len(accounts)
-		for _, acc := range accounts {
-			if acc.IsActive {
-				data.activeAccountCount++
-				// Compare account serial with active system key serial
-				if sysKey != nil && sysKey.Serial > 0 {
-					if acc.Serial == sysKey.Serial {
-						data.hostsUpToDate++
-					} else {
-						data.hostsOutdated++
-					}
-				}
-			}
-		}
+		data.accountCount = coreData.AccountCount
+		data.activeAccountCount = coreData.ActiveAccountCount
+		data.publicKeyCount = coreData.PublicKeyCount
+		data.globalKeyCount = coreData.GlobalKeyCount
+		data.hostsUpToDate = coreData.HostsUpToDate
+		data.hostsOutdated = coreData.HostsOutdated
+		data.systemKeySerial = coreData.SystemKeySerial
+		data.recentLogs = coreData.RecentLogs
 
-		data.publicKeyCount = len(keys)
-		algoCounts := make(map[string]int)
-		for _, key := range keys {
-			if key.IsGlobal {
-				data.globalKeyCount++
-			}
-			algoCounts[key.Algorithm]++
-		}
-
-		// Format algorithm breakdown
-		var algoParts []string
-		// Sort for consistent order
+		// Format algorithm breakdown with UI styles
 		var sortedAlgos []string
-		for algo := range algoCounts {
+		for algo := range coreData.AlgoCounts {
 			sortedAlgos = append(sortedAlgos, algo)
 		}
 		sort.Strings(sortedAlgos)
-
+		var algoParts []string
 		for _, algo := range sortedAlgos {
-			count := algoCounts[algo]
+			count := coreData.AlgoCounts[algo]
 			style := successStyle
 			if algo == "ssh-rsa" || algo == "ssh-dss" {
 				style = specialStyle
@@ -729,17 +694,6 @@ func refreshDashboardCmd() tea.Cmd {
 			algoParts = append(algoParts, style.Render(fmt.Sprintf("%s: %d", algo, count)))
 		}
 		data.keyAlgoBreakdown = strings.Join(algoParts, ", ")
-
-		if sysKey != nil {
-			data.systemKeySerial = sysKey.Serial
-		}
-
-		const maxLogs = 5
-		if len(logs) > maxLogs {
-			data.recentLogs = logs[:maxLogs]
-		} else {
-			data.recentLogs = logs
-		}
 
 		return dashboardDataMsg{data: data}
 	}

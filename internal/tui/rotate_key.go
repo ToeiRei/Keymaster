@@ -14,7 +14,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toeirei/keymaster/internal/crypto/ssh"
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 )
@@ -337,16 +337,11 @@ type keyRotatedMsg struct {
 // It sends an initialKeyGeneratedMsg when complete.
 func generateInitialKey(passphrase string) tea.Cmd {
 	return func() tea.Msg {
-		publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key", passphrase)
-		if err != nil {
-			return initialKeyGeneratedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_generate"), err)}
-		}
-		serial, err := db.CreateSystemKey(publicKeyString, privateKeyString)
+		pub, serial, err := core.CreateInitialSystemKey(passphrase)
 		if err != nil {
 			return initialKeyGeneratedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_save"), err)}
 		}
-
-		return initialKeyGeneratedMsg{publicKey: publicKeyString, serial: serial}
+		return initialKeyGeneratedMsg{publicKey: pub, serial: serial}
 	}
 }
 
@@ -354,15 +349,10 @@ func generateInitialKey(passphrase string) tea.Cmd {
 // It sends a keyRotatedMsg when complete.
 func performRotation(passphrase string) tea.Cmd {
 	return func() tea.Msg {
-		publicKeyString, privateKeyString, err := ssh.GenerateAndMarshalEd25519Key("keymaster-system-key", passphrase)
-		if err != nil {
-			return keyRotatedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_generate"), err)}
-		}
-		serial, err := db.RotateSystemKey(publicKeyString, privateKeyString)
+		serial, err := core.RotateSystemKey(passphrase)
 		if err != nil {
 			return keyRotatedMsg{err: fmt.Errorf("%s: %w", i18n.T("rotate_key.error_save_rotated"), err)}
 		}
-
 		return keyRotatedMsg{serial: serial}
 	}
 }
