@@ -34,7 +34,9 @@ import (
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/sshkey"
 	"github.com/toeirei/keymaster/internal/tui"
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -518,12 +520,36 @@ var importCmd = &cobra.Command{
 		defer func() { _ = file.Close() }()
 
 		km := db.DefaultKeyManager()
-		st := &cliStoreAdapter{}
-		imported, skipped, ierr := core.RunImportCmd(cmd.Context(), file, km, nil)
-		if ierr != nil {
-			log.Fatalf("%s", i18n.T("import.error_adding_key", ierr))
+		scanner := bufio.NewScanner(file)
+		imported, skipped := 0, 0
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			alg, keyData, comment, perr := sshkey.Parse(line)
+			if perr != nil {
+				fmt.Println("Skipping invalid key line")
+				skipped++
+				continue
+			}
+			if comment == "" {
+				fmt.Println("Skipping key with empty comment")
+				skipped++
+				continue
+			}
+			if err := km.AddPublicKey(alg, keyData, comment, false, time.Time{}); err != nil {
+				fmt.Printf("Skipping duplicate key (comment exists): %s\n", comment)
+				skipped++
+				continue
+			}
+			fmt.Printf("Imported key: %s\n", comment)
+			imported++
 		}
-		fmt.Printf("\n%s\n", i18n.T("import.summary", imported, skipped))
+		if sErr := scanner.Err(); sErr != nil {
+			log.Fatalf("%s", i18n.T("import.error_adding_key", sErr))
+		}
+		fmt.Printf("\nImport complete. Imported %d keys, skipped %d.\n", imported, skipped)
 	},
 }
 
@@ -563,14 +589,33 @@ step before Keymaster can manage a new host.`,
 		}
 		canonicalHost := deploy.CanonicalizeHostPort(hostname)
 
-		fmt.Println(i18n.T("trust_host.retrieving_key", canonicalHost))
+		fmt.Printf("Attempting to retrieve host key from %s…\n", canonicalHost)
 		dm := &cliDeployerManager{}
-		st := &cliStoreAdapter{}
-		key, err := core.RunTrustHostCmd(cmd.Context(), canonicalHost, dm, st, true)
+		keyStr, err := dm.GetRemoteHostKey(canonicalHost)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("trust_host.error_get_key", err))
 		}
-		fmt.Printf("%s\n", i18n.T("trust_host.added_success", canonicalHost, ""))
+		// Parse to compute fingerprint
+		pubKey, _, _, _, perr := ssh.ParseAuthorizedKey([]byte(keyStr))
+		if perr == nil {
+			fmt.Printf("The authenticity of host '%s' can't be established.\n", canonicalHost)
+			fmt.Printf("Key fingerprint: %s\n", ssh.FingerprintSHA256(pubKey))
+			if warn := sshkey.CheckHostKeyAlgorithm(pubKey); warn != "" {
+				fmt.Println(warn)
+			}
+		}
+
+		// prompt user
+		ans := promptForConfirmation("Are you sure you want to continue connecting (yes/no)? ")
+		if ans != "yes" && ans != "y" {
+			fmt.Println("Cancelled.")
+			return
+		}
+		st := &cliStoreAdapter{}
+		if err := st.AddKnownHostKey(canonicalHost, keyStr); err != nil {
+			log.Fatalf("%s", i18n.T("trust_host.error_get_key", err))
+		}
+		fmt.Printf("Warning: Permanently added '%s' (type ) to the list of known hosts.\n", canonicalHost)
 	},
 }
 
@@ -670,7 +715,7 @@ var dbMaintainCmd = &cobra.Command{
 		if timeoutSec > 0 {
 			done := make(chan error, 1)
 			go func() {
-				done <- core.RunDBMaintenance(cmd.Context(), maint, dbType, dsn, DBMaintenanceOptions{SkipIntegrity: skipIntegrity, Timeout: time.Duration(timeoutSec) * time.Second})
+				done <- core.RunDBMaintenance(cmd.Context(), maint, dbType, dsn, core.DBMaintenanceOptions{SkipIntegrity: skipIntegrity, Timeout: time.Duration(timeoutSec) * time.Second})
 			}()
 			select {
 			case err := <-done:
@@ -685,7 +730,7 @@ var dbMaintainCmd = &cobra.Command{
 			}
 			return
 		}
-		if err := core.RunDBMaintenance(cmd.Context(), maint, dbType, dsn, DBMaintenanceOptions{SkipIntegrity: skipIntegrity}); err != nil {
+		if err := core.RunDBMaintenance(cmd.Context(), maint, dbType, dsn, core.DBMaintenanceOptions{SkipIntegrity: skipIntegrity}); err != nil {
 			fmt.Printf("Maintenance failed: %v\n", err)
 			os.Exit(1)
 		}
@@ -947,8 +992,7 @@ Example (Full Restore):
 			log.Fatalf("%s", i18n.T("restore.cli_error_read", err))
 		}
 		defer f.Close()
-		st := &cliStoreAdapter{}
-		if err := core.RunRestoreCmd(cmd.Context(), f, RestoreOptions{Full: fullRestore}, st); err != nil {
+		if err := core.RunRestoreCmd(cmd.Context(), f, core.RestoreOptions{Full: fullRestore}, &cliStoreAdapter{}); err != nil {
 			log.Fatalf("%s", i18n.T("restore.cli_error_import", err))
 		}
 		fmt.Println(i18n.T("restore.cli_success"))
