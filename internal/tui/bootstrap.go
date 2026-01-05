@@ -24,6 +24,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
+	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
 	"golang.org/x/crypto/ssh"
@@ -1024,24 +1025,8 @@ func (m *bootstrapModel) viewVerifyHostKey() string {
 	content = append(content, i18n.T("bootstrap.verify_hostkey_check_command"))
 	content = append(content, "")
 
-	// Generate specific ssh-keygen command based on key type
-	sshKeygenCmd := "ssh-keygen -lf /etc/ssh/ssh_host_*_key.pub" // fallback
-	if len(parts) >= 1 {
-		keyType := parts[0]
-		// Map SSH key types to their corresponding host key files
-		switch keyType {
-		case "ssh-rsa":
-			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_rsa_key.pub"
-		case "ssh-dss":
-			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_dsa_key.pub"
-		case "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521":
-			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_ecdsa_key.pub"
-		case "ssh-ed25519":
-			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub"
-		default:
-			sshKeygenCmd = "ssh-keygen -lf /etc/ssh/ssh_host_*_key.pub"
-		}
-	}
+	// Generate specific ssh-keygen command based on key type via keys helper
+	sshKeygenCmd := keys.SSHKeyTypeToVerifyCommand(parts[0])
 
 	// Store the command for copying
 	m.currentVerifyCommand = sshKeygenCmd
@@ -1314,7 +1299,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to fetch account keys: %w", err)}
 		}
 
-		content, err := core.BuildAuthorizedKeysContent(sk, globalKeys, accountKeys)
+		content, err := keys.BuildAuthorizedKeysContent(sk, globalKeys, accountKeys)
 		if err != nil {
 			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to build keys content: %v",
 				accountData.Username, accountData.Hostname, err))

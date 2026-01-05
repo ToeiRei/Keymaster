@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -37,9 +38,7 @@ func GenerateKeysContent(accountID int) (string, error) {
 
 // GenerateKeysContentForSerial constructs the authorized_keys file content for a given account using a specific system key serial.
 func GenerateKeysContentForSerial(accountID int, serial int) (string, error) {
-	var content strings.Builder
-
-	// 1. Get the active system key. This is always the first key.
+	// Fetch system key
 	systemKey, err := db.GetSystemKeyBySerial(serial)
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve active system key: %w", err)
@@ -48,14 +47,6 @@ func GenerateKeysContentForSerial(accountID int, serial int) (string, error) {
 		return "", fmt.Errorf("no active system key found. please generate one first")
 	}
 
-	// Add the Keymaster header and the restricted system key.
-	content.WriteString(fmt.Sprintf("# Keymaster Managed Keys (Serial: %d)\n", systemKey.Serial))
-
-	// Prepend restrictions to the system key.
-	restrictedSystemKey := fmt.Sprintf("%s %s", SystemKeyRestrictions, systemKey.PublicKey)
-	content.WriteString(restrictedSystemKey)
-
-	// 2. Get all global public keys.
 	km := db.DefaultKeyManager()
 	if km == nil {
 		return "", fmt.Errorf("no key manager available")
@@ -64,74 +55,13 @@ func GenerateKeysContentForSerial(accountID int, serial int) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve global public keys: %w", err)
 	}
-
-	// 3. Get keys specifically assigned to this account.
 	accountKeys, err := km.GetKeysForAccount(accountID)
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve keys for account ID %d: %w", accountID, err)
 	}
 
-	// Helper: filter out expired keys (ExpiresAt set and <= now)
-	filterExpired := func(keys []model.PublicKey) []model.PublicKey {
-		var out []model.PublicKey
-		now := time.Now().UTC()
-		for _, k := range keys {
-			if k.ExpiresAt.IsZero() || k.ExpiresAt.After(now) {
-				out = append(out, k)
-			}
-		}
-		return out
-	}
-
-	// 4. Combine and de-duplicate keys.
-	// Use a map to de-duplicate by key ID, and a struct to hold key parts for sorting.
-	type keyInfo struct {
-		id      int
-		line    string
-		comment string
-	}
-	allUserKeysMap := make(map[int]keyInfo)
-
-	formatKey := func(key model.PublicKey) string {
-		if key.Comment != "" {
-			return fmt.Sprintf("%s %s %s", key.Algorithm, key.KeyData, key.Comment)
-		}
-		return fmt.Sprintf("%s %s", key.Algorithm, key.KeyData)
-	}
-
-	// Filter expired keys first
-	globalKeys = filterExpired(globalKeys)
-	accountKeys = filterExpired(accountKeys)
-
-	for _, key := range globalKeys {
-		allUserKeysMap[key.ID] = keyInfo{id: key.ID, line: formatKey(key), comment: key.Comment}
-	}
-	for _, key := range accountKeys {
-		allUserKeysMap[key.ID] = keyInfo{id: key.ID, line: formatKey(key), comment: key.Comment}
-	}
-
-	// Convert map to slice for sorting by comment to ensure stable output
-	var sortedKeys []keyInfo
-	for _, ki := range allUserKeysMap {
-		sortedKeys = append(sortedKeys, ki)
-	}
-	sort.Slice(sortedKeys, func(i, j int) bool {
-		return sortedKeys[i].comment < sortedKeys[j].comment
-	})
-
-	// 5. Add user keys to the content.
-	if len(sortedKeys) > 0 {
-		content.WriteString("\n\n# User Keys\n")
-		var keyLines []string
-		for _, key := range sortedKeys {
-			keyLines = append(keyLines, key.line)
-		}
-		content.WriteString(strings.Join(keyLines, "\n"))
-	}
-
-	content.WriteString("\n")
-
-	return content.String(), nil
+	// Delegate pure formatting/sorting/dedup to keys helper
+	return keys.BuildAuthorizedKeysContent(systemKey, globalKeys, accountKeys)
 }
 
 // GenerateSelectiveKeysContent constructs authorized_keys content excluding specific keys.
