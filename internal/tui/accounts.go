@@ -565,7 +565,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.displayedAccounts) > 0 {
 				accToEdit := m.displayedAccounts[m.cursor]
 				m.state = accountsFormView
-				m.form = newAccountFormModel(&accToEdit)
+				m.form = newAccountFormModelWithSuggester(&accToEdit, ui.DefaultTagSuggester())
 				m.status = ""
 				return m, m.form.Init()
 			}
@@ -599,7 +599,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Switch to the form view to add a new account.
 		case "a":
 			m.state = accountsFormView
-			m.form = newAccountFormModel(nil)
+			m.form = newAccountFormModelWithSuggester(nil, ui.DefaultTagSuggester())
 			m.status = "" // Clear status before showing form
 			return m, m.form.Init()
 

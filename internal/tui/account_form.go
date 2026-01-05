@@ -59,14 +59,16 @@ type accountFormModel struct {
 	suggestions      []string
 	suggestionCursor int
 	isSuggesting     bool
+	tagSuggester     ui.TagSuggester
 }
 
-// newAccountFormModel creates a new form model, either for a new account
-// or pre-filled to edit an existing one.
-func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
+// newAccountFormModelWithSuggester creates a new form model with an injected
+// TagSuggester. Pass `nil` to use the package default suggester.
+func newAccountFormModelWithSuggester(accountToEdit *model.Account, ts ui.TagSuggester) accountFormModel {
 	m := accountFormModel{
 		inputs:       make([]textinput.Model, 4),
 		isSuggesting: false,
+		tagSuggester: ts,
 	}
 
 	var t textinput.Model
@@ -112,6 +114,20 @@ func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 	}
 
 	// --- Populate tags for autocompletion ---
+	// Prefer the injected TagSuggester when available.
+	if m.tagSuggester == nil {
+		m.tagSuggester = ui.DefaultTagSuggester()
+	}
+	if m.tagSuggester != nil {
+		if tags, err := m.tagSuggester.AllTags(); err == nil {
+			m.allTags = tags
+			sort.Strings(m.allTags)
+			return m
+		}
+		// Fall through to fallback DB scan on error
+	}
+
+	// Fallback: scan DB for tags (keeps previous behavior if suggester unavailable)
 	allAccounts, err := db.GetAllAccounts()
 	if err != nil {
 		fmt.Printf("Warning: failed to load accounts for tag autocomplete: %v\n", err)
@@ -132,11 +148,15 @@ func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 	for tag := range tagSet {
 		m.allTags = append(m.allTags, tag)
 	}
-	sort.Strings(m.allTags) // Keep them sorted for predictable display
-
-	// allTags is populated; suggestions will be computed on demand via ui.SuggestTags
+	sort.Strings(m.allTags)
 
 	return m
+}
+
+// newAccountFormModel is the original convenience constructor that uses the
+// default `TagSuggester`.
+func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
+	return newAccountFormModelWithSuggester(accountToEdit, ui.DefaultTagSuggester())
 }
 
 // Init initializes the form model, returning a command to start the cursor blinking.
