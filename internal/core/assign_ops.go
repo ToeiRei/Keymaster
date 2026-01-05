@@ -53,3 +53,17 @@ func UnassignKeyFromAccount(assigned map[int]struct{}, keyID, accountID int, una
 	}
 	return assigned, nil
 }
+
+// AssignKeys iterates over the provided key IDs and invokes assignFunc for each.
+// It returns the first non-nil error encountered.
+func AssignKeys(keyIDs []int, accountID int, assignFunc AssignFunc) error {
+	if assignFunc == nil {
+		return fmt.Errorf("no assign function provided")
+	}
+	for _, kid := range keyIDs {
+		if err := assignFunc(kid, accountID); err != nil {
+			return err
+		}
+	}
+	return nil
+}

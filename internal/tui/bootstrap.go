@@ -20,6 +20,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/bootstrap"
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
@@ -1283,18 +1284,18 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			}
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("no key manager available")}
 		}
-		for _, keyID := range selectedKeyIDs {
-			if err := km.AssignKeyToAccount(keyID, accountID); err != nil {
-				// Log the failure
-				_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to assign key: %v",
-					accountData.Username, accountData.Hostname, err))
-				// Cleanup: delete the account if key assignment fails
-				mgr := ui.DefaultAccountManager()
-				if mgr != nil {
-					_ = mgr.DeleteAccount(accountID)
-				}
-				return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to assign key %d to account: %w", keyID, err)}
+		if err := core.AssignKeys(selectedKeyIDs, accountID, func(kid, aid int) error {
+			return km.AssignKeyToAccount(kid, aid)
+		}); err != nil {
+			// Log the failure
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to assign key: %v",
+				accountData.Username, accountData.Hostname, err))
+			// Cleanup: delete the account if key assignment fails
+			mgr := ui.DefaultAccountManager()
+			if mgr != nil {
+				_ = mgr.DeleteAccount(accountID)
 			}
+			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to assign keys to account: %w", err)}
 		}
 
 		// 3. Generate the authorized_keys content using the existing system

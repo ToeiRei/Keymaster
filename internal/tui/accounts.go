@@ -202,9 +202,13 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// No key manager available; skip assignment but record status
 					m.status = i18n.T("accounts.status.import_skipped_assign", len(m.pendingImportKeys))
 				} else {
+					var ids []int
 					for _, key := range m.pendingImportKeys {
-						_ = km.AssignKeyToAccount(key.ID, m.pendingImportAccountID)
+						ids = append(ids, key.ID)
 					}
+					_ = core.AssignKeys(ids, m.pendingImportAccountID, func(kid, aid int) error {
+						return km.AssignKeyToAccount(kid, aid)
+					})
 				}
 				m.status = i18n.T("accounts.status.import_assigned", len(m.pendingImportKeys))
 				m.state = accountsListView
