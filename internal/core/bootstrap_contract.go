@@ -148,71 +148,108 @@ func PerformBootstrapDeployment(ctx context.Context, params BootstrapParams, dep
 		return BootstrapResult{}, err
 	}
 
-	// This function provides a deterministic orchestration skeleton for
-	// bootstrap deployments. It intentionally does not call side-effecting
-	// dependencies in this slice — instead it records placeholders so callers
-	// can wire the real calls later. If a dependency is nil, the placeholder
-	// will be recorded as an error.
+	// This implementation performs the standard bootstrap commit steps using
+	// the provided side-effecting dependencies. Core remains environment-
+	// agnostic by calling only functions on the provided deps and interfaces.
 
 	res := BootstrapResult{}
-	var warnings []string
-	var errors []string
 
-	// Step 1: Create account in database (placeholder)
-	warnings = append(warnings, "TODO: create account in DB (AddAccount)")
-	if deps.AddAccount == nil {
-		errors = append(errors, "AddAccount dependency not provided; account not created")
+	// Step 1: Create account
+	var accountID int
+	var err error
+	if deps.AccountStore != nil {
+		accountID, err = deps.AccountStore.AddAccount(params.Username, params.Hostname, params.Label, params.Tags)
+	} else if deps.AddAccount != nil {
+		accountID, err = deps.AddAccount(params.Username, params.Hostname, params.Label, params.Tags)
 	} else {
-		// Do not call deps.AddAccount here — placeholder only.
-		warnings = append(warnings, "AddAccount available but not invoked in core slice (deferred)")
+		return res, fmt.Errorf("no account creation dependency provided")
+	}
+	if err != nil {
+		return res, fmt.Errorf("failed to create account: %w", err)
 	}
 
-	// Step 2: Assign selected keys to the account (placeholder)
-	if len(params.SelectedKeyIDs) > 0 {
-		warnings = append(warnings, fmt.Sprintf("TODO: assign %d selected keys to account (AssignKey)", len(params.SelectedKeyIDs)))
-		if deps.AssignKey == nil {
-			errors = append(errors, "AssignKey dependency not provided; keys not assigned")
+	account := model.Account{ID: accountID, Username: params.Username, Hostname: params.Hostname, Label: params.Label, Tags: params.Tags, IsActive: true}
+
+	// Ensure we cleanup on failure by deleting the account if possible.
+	cleanupAccount := func() {
+		if deps.DeleteAccount != nil {
+			_ = deps.DeleteAccount(accountID)
+		} else if deps.AccountStore != nil {
+			_ = deps.AccountStore.DeleteAccount(accountID)
 		}
 	}
 
-	// Step 3: Generate the authorized_keys content for the account (placeholder)
-	warnings = append(warnings, "TODO: generate authorized_keys content (GenerateKeysContent)")
+	// Step 2: Assign selected keys
+	if len(params.SelectedKeyIDs) > 0 {
+		for _, kid := range params.SelectedKeyIDs {
+			if deps.KeyStore != nil {
+				if err := deps.KeyStore.AssignKeyToAccount(kid, accountID); err != nil {
+					cleanupAccount()
+					return res, fmt.Errorf("failed to assign key %d: %w", kid, err)
+				}
+			} else if deps.AssignKey != nil {
+				if err := deps.AssignKey(kid, accountID); err != nil {
+					cleanupAccount()
+					return res, fmt.Errorf("failed to assign key %d: %w", kid, err)
+				}
+			} else {
+				// Not fatal: warn and continue
+			}
+		}
+	}
+
+	// Step 3: Build authorized_keys content
 	if deps.GenerateKeysContent == nil {
-		errors = append(errors, "GenerateKeysContent dependency not provided; cannot build keys content")
+		cleanupAccount()
+		return res, fmt.Errorf("GenerateKeysContent dependency not provided")
+	}
+	content, err := deps.GenerateKeysContent(accountID)
+	if err != nil {
+		cleanupAccount()
+		return res, fmt.Errorf("failed to generate authorized_keys content: %w", err)
 	}
 
-	// Step 4: Deploy the authorized_keys to the remote host using a bootstrap deployer (placeholder)
-	warnings = append(warnings, "TODO: deploy authorized_keys to remote host (NewBootstrapDeployer + DeployAuthorizedKeys)")
-	if deps.NewBootstrapDeployer == nil {
-		errors = append(errors, "NewBootstrapDeployer dependency not provided; cannot deploy")
+	// Step 4: Deploy to remote host using bootstrap deployer if provided
+	deployed := false
+	if deps.NewBootstrapDeployer != nil {
+		d, derr := deps.NewBootstrapDeployer(params.Hostname, params.Username, params.TempPrivateKey, params.HostKey)
+		if derr != nil {
+			cleanupAccount()
+			return res, fmt.Errorf("failed to create bootstrap deployer: %w", derr)
+		}
+		if d != nil {
+			if err := d.DeployAuthorizedKeys(content); err != nil {
+				d.Close()
+				cleanupAccount()
+				return res, fmt.Errorf("failed to deploy authorized_keys: %w", err)
+			}
+			d.Close()
+			deployed = true
+		}
 	}
 
-	// Step 5: Update the account with the current system key serial (placeholder)
-	warnings = append(warnings, "TODO: update account with system key serial (DB update)")
-	if deps.GetActiveSystemKey == nil {
-		warnings = append(warnings, "GetActiveSystemKey not provided; skipping system key lookup")
-	} else {
-		// We will not call GetActiveSystemKey in this slice to avoid side-effects.
-		warnings = append(warnings, "GetActiveSystemKey available but not invoked in core slice (deferred)")
+	// Step 5: Optionally record system key serial (best-effort)
+	if deps.GetActiveSystemKey != nil {
+		if sk, _ := deps.GetActiveSystemKey(); sk != nil {
+			// We don't perform DB update here; callers may update account serial
+			// via their own stores. Record in result warnings if needed.
+			res.Warnings = append(res.Warnings, fmt.Sprintf("system key serial available: %d", sk.Serial))
+		}
 	}
 
-	// Step 6: Log successful bootstrap (audit) (placeholder)
-	warnings = append(warnings, "TODO: emit audit event for bootstrap (LogAudit)")
-	if deps.LogAudit == nil {
-		warnings = append(warnings, "LogAudit dependency not provided; audit will not be logged")
+	// Step 6: Audit
+	auditDetails := fmt.Sprintf("bootstrap: account=%s@%s id=%d deployed=%v", params.Username, params.Hostname, accountID, deployed)
+	if deps.Auditor != nil {
+		_ = deps.Auditor.LogAction("BOOTSTRAP_SUCCESS", auditDetails)
+	} else if deps.LogAudit != nil {
+		_ = deps.LogAudit(BootstrapAuditEvent{Action: "BOOTSTRAP_SUCCESS", Details: auditDetails})
 	}
 
-	// Step 7: Cleanup bootstrap session (placeholder)
-	warnings = append(warnings, "TODO: cleanup bootstrap session resources")
+	// Populate result
+	res.Account = account
+	res.RemoteDeployed = deployed
+	res.KeysDeployed = params.SelectedKeyIDs
 
-	// Populate result metadata. Note: Account and KeysDeployed are zeroed as
-	// the real side-effects have been deferred to the deploy/db packages.
-	res.Warnings = warnings
-	res.Errors = errors
-
-	if len(errors) > 0 {
-		return res, fmt.Errorf("bootstrap orchestration incomplete: %v", errors)
-	}
 	return res, nil
 }
 
