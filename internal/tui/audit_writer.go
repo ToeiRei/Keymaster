@@ -4,13 +4,13 @@
 
 package tui
 
-import "github.com/toeirei/keymaster/internal/db"
+import "github.com/toeirei/keymaster/internal/ui"
 
 // package-level audit writer override for tui tests
-var auditWriter db.AuditWriter
+var auditWriter ui.AuditWriter
 
 // SetAuditWriter sets a package-level AuditWriter for tui components.
-func SetAuditWriter(w db.AuditWriter) {
+func SetAuditWriter(w ui.AuditWriter) {
 	auditWriter = w
 }
 
@@ -20,12 +20,12 @@ func ClearAuditWriter() {
 }
 
 // logAction writes an audit entry using the package override when present,
-// otherwise falls back to the global `db.LogAction` helper.
+// otherwise falls back to the global `ui.DefaultAuditWriter` helper.
 func logAction(action, details string) error {
 	if auditWriter != nil {
 		return auditWriter.LogAction(action, details)
 	}
-	if w := db.DefaultAuditWriter(); w != nil {
+	if w := ui.DefaultAuditWriter(); w != nil {
 		return w.LogAction(action, details)
 	}
 	return nil

@@ -51,3 +51,23 @@ func UpdateAccountLabel(id int, label string) error {
 func UpdateAccountTags(id int, tags string) error {
 	return db.UpdateAccountTags(id, tags)
 }
+
+// GetAllAuditLogEntries proxies to db.GetAllAuditLogEntries.
+func GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
+	return db.GetAllAuditLogEntries()
+}
+
+// AuditWriter is a UI-facing abstraction for writing audit entries.
+// It mirrors the db.AuditWriter interface to decouple TUI from internal/db.
+type AuditWriter interface {
+	LogAction(action, details string) error
+}
+
+// DefaultAuditWriter returns the package default AuditWriter from the DB layer,
+// wrapped as the UI AuditWriter interface. It may return nil.
+func DefaultAuditWriter() AuditWriter {
+	if w := db.DefaultAuditWriter(); w != nil {
+		return w
+	}
+	return nil
+}
