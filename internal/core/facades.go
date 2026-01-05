@@ -12,14 +12,8 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
-// Placeholder minimal interfaces used as parameters for facades.
-// These are intentionally empty for P4-2 and will be expanded in P4-3.
-type Store interface{}
-type Deployer interface{}
-type AuditWriter interface{}
-type HostFetcher interface{}
-type KeyGenerator interface{}
-type Reporter interface{}
+// Interfaces used by facades are declared in interfaces.go. Keep that file
+// authoritative for core-facing contracts.
 
 // Option/result types (placeholders) ---------------------------------------
 type DeployResult struct {
