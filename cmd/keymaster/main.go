@@ -11,6 +11,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -685,8 +686,18 @@ func runDeploymentForAccount(account model.Account) error {
 // runDeploymentFunc is a package-level variable so tests can inject a mock
 // implementation. By default it calls into the deploy package with CLI mode.
 var runDeploymentFunc = func(account model.Account) error {
+	st := &cliStoreAdapter{}
 	dm := &cliDeployerManager{}
-	return dm.DeployForAccount(account, false)
+	identifier := fmt.Sprintf("%s@%s", account.Username, account.Hostname)
+	rep := &cliReporter{}
+	results, err := core.RunDeployCmd(context.Background(), st, dm, &identifier, rep)
+	if err != nil {
+		return err
+	}
+	if len(results) == 0 {
+		return nil
+	}
+	return results[0].Error
 }
 
 // decommissionCmd represents the 'decommission' command.
