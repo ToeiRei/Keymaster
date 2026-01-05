@@ -5,7 +5,6 @@
 package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -141,7 +140,7 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.fleetResults[res.account.ID] = res.err
 
 			// If any deployment requires a passphrase, stop and ask for it.
-			if res.err != nil && errors.Is(res.err, deploy.ErrPassphraseRequired) {
+			if res.err != nil && deployAdapter.IsPassphraseRequired(res.err) {
 				m.state = deployStateEnterPassphrase
 				m.err = nil // Clear the error as we are handling it
 				m.passphraseInput.Focus()
@@ -186,7 +185,7 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if res, ok := msg.(deploymentResultMsg); ok {
 			if res.err != nil {
 				// First, check for the specific passphrase error.
-				if errors.Is(res.err, deploy.ErrPassphraseRequired) {
+				if deployAdapter.IsPassphraseRequired(res.err) {
 					// The deployer needs a passphrase. Switch to that state.
 					m.state = deployStateEnterPassphrase
 					m.err = nil // Clear the error as we are handling it

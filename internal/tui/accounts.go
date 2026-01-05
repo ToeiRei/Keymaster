@@ -879,7 +879,7 @@ func (m *accountsModel) View() string {
 // verifyHostKeyCmd is a tea.Cmd that fetches a host's public key and saves it.
 func verifyHostKeyCmd(hostname string) tea.Cmd {
 	return func() tea.Msg {
-		key, err := deploy.GetRemoteHostKey(hostname)
+		key, err := coreDeployAdapter{}.GetRemoteHostKey(hostname)
 		if err != nil {
 			return hostKeyVerifiedMsg{hostname: hostname, err: err, warning: ""}
 		}
@@ -903,7 +903,7 @@ func verifyHostKeyCmd(hostname string) tea.Cmd {
 // importRemoteKeysCmd is a tea.Cmd that fetches keys from a remote host and imports them.
 func importRemoteKeysCmd(account model.Account) tea.Cmd {
 	return func() tea.Msg {
-		imported, skipped, warning, err := deploy.ImportRemoteKeys(account)
+		imported, skipped, warning, err := coreDeployAdapter{}.ImportRemoteKeys(account)
 		return remoteKeysImportedMsg{accountID: account.ID, importedKeys: imported, skippedCount: skipped, warning: warning, err: err}
 	}
 }
@@ -976,8 +976,8 @@ func (m *accountsModel) performDecommissionWithKeys() tea.Cmd {
 				SelectiveKeys:     keysToRemove,
 			}
 
-			res := deploy.DecommissionAccount(account, sk.PrivateKey, options)
-			return res, nil
+			res, err := coreDeployAdapter{}.DecommissionAccount(account, sk.PrivateKey, options)
+			return res, err
 		}
 
 		result, err := core.PerformDecommissionWithKeys(m.accountToDelete, m.selectedKeysToKeep, decommander)

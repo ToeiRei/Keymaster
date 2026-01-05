@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
+	"golang.org/x/crypto/ssh"
 )
 
 // coreAccountReader adapts UI helpers to core.AccountReader.
@@ -131,6 +133,33 @@ func (coreBootstrapDeployerFactory) New(hostname, username, privateKey, expected
 	}
 	return d, nil
 }
+
+// coreDeployAdapter wraps the deploy package for use by the TUI.
+type coreDeployAdapter struct{}
+
+func (coreDeployAdapter) GetRemoteHostKey(hostname string) (ssh.PublicKey, error) {
+	return deploy.GetRemoteHostKey(hostname)
+}
+
+func (coreDeployAdapter) ImportRemoteKeys(account model.Account) ([]model.PublicKey, int, string, error) {
+	return deploy.ImportRemoteKeys(account)
+}
+
+func (coreDeployAdapter) DecommissionAccount(account model.Account, systemKey string, options deploy.DecommissionOptions) (deploy.DecommissionResult, error) {
+	// deploy.DecommissionAccount returns a DecommissionResult; adapt to return (result, nil)
+	res := deploy.DecommissionAccount(account, systemKey, options)
+	return res, nil
+}
+
+func (coreDeployAdapter) RunDeploymentForAccount(account model.Account, isTUI bool) error {
+	return deploy.RunDeploymentForAccount(account, isTUI)
+}
+
+func (coreDeployAdapter) IsPassphraseRequired(err error) bool {
+	return errors.Is(err, deploy.ErrPassphraseRequired)
+}
+
+var deployAdapter = coreDeployAdapter{}
 
 // coreSessionStore adapts UI session helpers to core.SessionStore.
 type coreSessionStore struct{}
