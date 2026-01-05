@@ -16,6 +16,7 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
+	"github.com/toeirei/keymaster/internal/ui"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -75,17 +76,17 @@ type accountsModel struct {
 	keySelectionButtonCursor int          // 0 for Cancel, 1 for Continue
 	keySelectionInButtonMode bool         // True when navigating buttons instead of keys
 	width, height            int
-	searcher                 db.AccountSearcher
+	searcher                 ui.AccountSearcher
 }
 
 func newAccountsModel() accountsModel {
-	return newAccountsModelWithSearcher(db.DefaultAccountSearcher())
+	return newAccountsModelWithSearcher(ui.DefaultAccountSearcher())
 }
 
 // newAccountsModelWithSearcher creates an accountsModel that will use the
 // provided AccountSearcher for server-side searches. Pass nil to rely on the
 // package default searcher.
-func newAccountsModelWithSearcher(s db.AccountSearcher) accountsModel {
+func newAccountsModelWithSearcher(s ui.AccountSearcher) accountsModel {
 	m := accountsModel{
 		viewport: viewport.New(0, 0),
 		searcher: s,
@@ -126,12 +127,12 @@ func (m *accountsModel) rebuildDisplayedAccounts() {
 			}
 		}
 
-		// Prefer the injected searcher if present, otherwise use the package default.
-		var searcher db.AccountSearcher
+		// Prefer the injected searcher if present, otherwise use the UI package default.
+		var searcher ui.AccountSearcher
 		if m.searcher != nil {
 			searcher = m.searcher
 		} else {
-			searcher = db.DefaultAccountSearcher()
+			searcher = ui.DefaultAccountSearcher()
 		}
 
 		if searcher != nil {

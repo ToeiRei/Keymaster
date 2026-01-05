@@ -18,6 +18,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // focusedStyle is a simple style for focused text inputs.
@@ -55,7 +56,6 @@ type accountFormModel struct {
 
 	// For tag autocompletion
 	allTags          []string
-	allTagsLower     []string
 	suggestions      []string
 	suggestionCursor int
 	isSuggesting     bool
@@ -134,11 +134,7 @@ func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 	}
 	sort.Strings(m.allTags) // Keep them sorted for predictable display
 
-	// Precompute lowercase variants for efficient, case-insensitive matching
-	m.allTagsLower = make([]string, len(m.allTags))
-	for i, tag := range m.allTags {
-		m.allTagsLower[i] = strings.ToLower(tag)
-	}
+	// allTags is populated; suggestions will be computed on demand via ui.SuggestTags
 
 	return m
 }
@@ -466,33 +462,10 @@ func (m *accountFormModel) updateSuggestions() {
 		return
 	}
 
-	m.suggestions = []string{}
-	lowerLast := strings.ToLower(lastPart)
-	// Ensure the lowercase cache is initialized and in sync with allTags.
-	if len(m.allTagsLower) != len(m.allTags) {
-		m.allTagsLower = make([]string, len(m.allTags))
-		for i, tag := range m.allTags {
-			m.allTagsLower[i] = strings.ToLower(tag)
-		}
-	}
-	for i, tag := range m.allTags {
-		lowerTag := m.allTagsLower[i]
-		if strings.HasPrefix(lowerTag, lowerLast) {
-			// Also check if the tag is already in the input (case-insensitive)
-			isAlreadyPresent := false
-			for j := 0; j < len(parts)-1; j++ {
-				if strings.ToLower(strings.TrimSpace(parts[j])) == lowerTag {
-					isAlreadyPresent = true
-					break
-				}
-			}
-			if !isAlreadyPresent {
-				m.suggestions = append(m.suggestions, tag)
-			}
-		}
-	}
-
+	// Use the shared suggestion helper so logic is centralized and testable.
+	m.suggestions = ui.SuggestTags(m.allTags, currentVal)
 	m.suggestionCursor = 0
+	m.isSuggesting = len(m.suggestions) > 0
 }
 
 // applySuggestion replaces the last typed tag with the selected suggestion.
