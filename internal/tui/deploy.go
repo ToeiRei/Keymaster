@@ -15,7 +15,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
@@ -206,7 +205,7 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else { // No error, success case for a single deployment.
 				m.state = deployStateComplete
 				if !m.wasFleetDeploy { // Only set this status for single, non-fleet deploys
-					activeKey, err := db.GetActiveSystemKey()
+					activeKey, err := ui.GetActiveSystemKey()
 					if err != nil {
 						m.err = fmt.Errorf(i18n.T("deploy.error_get_serial_for_status"), err)
 					} else {
@@ -244,7 +243,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.wasFleetDeploy = true
 				m.state = deployStateFleetInProgress
 				var err error
-				m.accountsInFleet, err = db.GetAllActiveAccounts()
+				m.accountsInFleet, err = ui.GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -264,7 +263,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.wasFleetDeploy = false
 				m.action = actionDeploySingle
 				var err error
-				m.accounts, err = db.GetAllActiveAccounts()
+				m.accounts, err = ui.GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -276,7 +275,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 2: // Deploy to Tag
 				m.wasFleetDeploy = true // Deploying to a tag is a fleet operation
 				m.state = deployStateSelectTag
-				allAccounts, err := db.GetAllAccounts()
+				allAccounts, err := ui.GetAllAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -291,7 +290,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.action = actionGetKeys
 				var err error
 				// Only allow deploying to or viewing keys for active accounts.
-				m.accounts, err = db.GetAllActiveAccounts()
+				m.accounts, err = ui.GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -375,7 +374,7 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.state = deployStateShowAuthorizedKeys
 				// Build authorized_keys using core plan builder (pure helper).
 				// Fetch system key and public keys, then build a deterministic plan.
-				sk, err := db.GetActiveSystemKey()
+				sk, err := ui.GetActiveSystemKey()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -464,7 +463,7 @@ func (m deployModel) updateSelectTag(msg tea.Msg) (tea.Model, tea.Cmd) {
 			selectedTag := m.tags[m.tagCursor]
 
 			// Filter accounts by this tag
-			allAccounts, err := db.GetAllActiveAccounts()
+			allAccounts, err := ui.GetAllActiveAccounts()
 			if err != nil {
 				m.err = err
 				return m, nil

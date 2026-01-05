@@ -22,7 +22,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/bootstrap"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/keys"
@@ -1162,7 +1161,7 @@ func (m *bootstrapModel) loadAvailableKeys() tea.Cmd {
 		}
 
 		// Get system key to filter it out from selectable keys
-		systemKey, err := db.GetActiveSystemKey()
+		systemKey, err := ui.GetActiveSystemKey()
 		var systemKeyData string
 		if err == nil && systemKey != nil {
 			systemKeyData = systemKey.PublicKey
@@ -1256,7 +1255,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 				return km.AssignKeyToAccount(keyID, accountID)
 			},
 			GenerateKeysContent: func(accountID int) (string, error) {
-				sk, _ := db.GetActiveSystemKey()
+				sk, _ := ui.GetActiveSystemKey()
 				km := ui.DefaultKeyManager()
 				if km == nil {
 					return "", fmt.Errorf("no key manager available")
@@ -1278,7 +1277,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 				}
 				return d, nil
 			},
-			GetActiveSystemKey: db.GetActiveSystemKey,
+			GetActiveSystemKey: ui.GetActiveSystemKey,
 			LogAudit: func(e core.BootstrapAuditEvent) error {
 				return logAction(e.Action, e.Details)
 			},

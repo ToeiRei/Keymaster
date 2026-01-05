@@ -12,7 +12,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
 )
@@ -40,7 +39,13 @@ func newTagsViewModelWithSearcher(s ui.AccountSearcher) tagsViewModel {
 		searcher: s,
 	}
 
-	accounts, err := db.GetAllAccounts()
+	var accounts []model.Account
+	var err error
+	if s != nil {
+		accounts, err = s.SearchAccounts("")
+	} else if def := ui.DefaultAccountSearcher(); def != nil {
+		accounts, err = def.SearchAccounts("")
+	}
 	if err != nil {
 		m.err = err
 		return m

@@ -16,7 +16,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
@@ -126,8 +125,8 @@ func newAccountFormModelWithSuggester(accountToEdit *model.Account, ts ui.TagSug
 		// Fall through to fallback DB scan on error
 	}
 
-	// Fallback: scan DB for tags (keeps previous behavior if suggester unavailable)
-	allAccounts, err := db.GetAllAccounts()
+	// Fallback: scan for tags (keeps previous behavior if suggester unavailable)
+	allAccounts, err := ui.GetAllAccounts()
 	if err != nil {
 		fmt.Printf("Warning: failed to load accounts for tag autocomplete: %v\n", err)
 	}
@@ -249,11 +248,11 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Update existing account
 					label := m.inputs[2].Value()
 					tags := m.inputs[3].Value()
-					if err := db.UpdateAccountLabel(m.editingAccount.ID, label); err != nil {
+					if err := ui.UpdateAccountLabel(m.editingAccount.ID, label); err != nil {
 						m.err = err
 						return m, nil
 					}
-					if err := db.UpdateAccountTags(m.editingAccount.ID, tags); err != nil {
+					if err := ui.UpdateAccountTags(m.editingAccount.ID, tags); err != nil {
 						m.err = err
 						return m, nil
 					}

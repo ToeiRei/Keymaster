@@ -18,7 +18,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/internal/config"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
@@ -84,9 +83,9 @@ type mainModel struct {
 	height     int
 	err        error
 	// Injected searchers to propagate to sub-models for server-side search.
-	accountSearcher db.AccountSearcher
-	keySearcher     db.KeySearcher
-	auditSearcher   db.AuditSearcher
+	accountSearcher ui.AccountSearcher
+	keySearcher     ui.KeySearcher
+	auditSearcher   ui.AuditSearcher
 }
 
 // menuModel holds the state for the main menu.

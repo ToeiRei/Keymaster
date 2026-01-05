@@ -12,7 +12,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
@@ -94,7 +93,12 @@ func newAccountsModelWithSearcher(s ui.AccountSearcher) accountsModel {
 		searcher: s,
 	}
 	var err error
-	m.accounts, err = db.GetAllAccounts()
+	// Load initial account list via the injected searcher (or UI default).
+	if s != nil {
+		m.accounts, err = s.SearchAccounts("")
+	} else if def := ui.DefaultAccountSearcher(); def != nil {
+		m.accounts, err = def.SearchAccounts("")
+	}
 	if err != nil {
 		m.err = err
 	}
@@ -159,7 +163,11 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if am, ok := msg.(accountModifiedMsg); ok {
 			m.state = accountsListView
 			m.status = i18n.T("accounts.status.modified_success")
-			m.accounts, m.err = db.GetAllAccounts()
+			if m.searcher != nil {
+				m.accounts, m.err = m.searcher.SearchAccounts("")
+			} else if def := ui.DefaultAccountSearcher(); def != nil {
+				m.accounts, m.err = def.SearchAccounts("")
+			}
 			m.rebuildDisplayedAccounts()
 			m.viewport.SetContent(m.listContentView()) // Update viewport content
 
@@ -366,7 +374,11 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							m.err = err
 						} else {
 							m.status = i18n.T("accounts.status.delete_success", m.accountToDelete.String())
-							m.accounts, m.err = db.GetAllAccounts()
+							if m.searcher != nil {
+								m.accounts, m.err = m.searcher.SearchAccounts("")
+							} else if def := ui.DefaultAccountSearcher(); def != nil {
+								m.accounts, m.err = def.SearchAccounts("")
+							}
 							m.rebuildDisplayedAccounts()
 							m.viewport.SetContent(m.listContentView())
 						}
@@ -415,12 +427,20 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = i18n.T("accounts.status.decommission_failed", result.DatabaseDeleteError)
 		} else if result.RemoteCleanupError != nil {
 			m.status = i18n.T("accounts.status.decommission_partial", result.AccountString, result.RemoteCleanupError)
-			m.accounts, m.err = db.GetAllAccounts()
+			if m.searcher != nil {
+				m.accounts, m.err = m.searcher.SearchAccounts("")
+			} else if def := ui.DefaultAccountSearcher(); def != nil {
+				m.accounts, m.err = def.SearchAccounts("")
+			}
 			m.rebuildDisplayedAccounts()
 			m.viewport.SetContent(m.listContentView())
 		} else {
 			m.status = i18n.T("accounts.status.decommission_success", result.AccountString)
-			m.accounts, m.err = db.GetAllAccounts()
+			if m.searcher != nil {
+				m.accounts, m.err = m.searcher.SearchAccounts("")
+			} else if def := ui.DefaultAccountSearcher(); def != nil {
+				m.accounts, m.err = def.SearchAccounts("")
+			}
 			m.rebuildDisplayedAccounts()
 			m.viewport.SetContent(m.listContentView())
 		}
@@ -557,12 +577,16 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "t":
 			if len(m.displayedAccounts) > 0 {
 				accToToggle := m.displayedAccounts[m.cursor]
-				if err := db.ToggleAccountStatus(accToToggle.ID); err != nil {
+				if err := ui.ToggleAccountStatus(accToToggle.ID); err != nil {
 					m.err = err
 				} else {
 					// Refresh the list after toggling.
 					m.status = i18n.T("accounts.status.toggle_success", accToToggle.String())
-					m.accounts, m.err = db.GetAllAccounts()
+					if m.searcher != nil {
+						m.accounts, m.err = m.searcher.SearchAccounts("")
+					} else if def := ui.DefaultAccountSearcher(); def != nil {
+						m.accounts, m.err = def.SearchAccounts("")
+					}
 					m.rebuildDisplayedAccounts()
 					m.viewport.SetContent(m.listContentView())
 				}
@@ -866,8 +890,8 @@ func verifyHostKeyCmd(hostname string) tea.Cmd {
 		// Convert to string format for storage.
 		keyStr := string(ssh.MarshalAuthorizedKey(key))
 
-		// Store in DB.
-		err = db.AddKnownHostKey(hostname, keyStr)
+		// Store in DB via UI adapter.
+		err = ui.AddKnownHostKey(hostname, keyStr)
 		if err != nil {
 			return hostKeyVerifiedMsg{hostname: hostname, err: fmt.Errorf("failed to save key to database: %w", err), warning: warning}
 		}
