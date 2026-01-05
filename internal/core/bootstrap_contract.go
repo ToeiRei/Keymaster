@@ -6,6 +6,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/toeirei/keymaster/internal/model"
@@ -36,6 +37,10 @@ type BootstrapResult struct {
 	KeysDeployed []int
 	// RemoteDeployed indicates whether remote deployment to the host succeeded.
 	RemoteDeployed bool
+	// Warnings contains non-fatal notes produced during orchestration.
+	Warnings []string
+	// Errors contains non-fatal errors encountered while executing placeholder steps.
+	Errors []string
 }
 
 // BootstrapAuditEvent represents an audit-log event emitted by bootstrap
@@ -83,21 +88,72 @@ type BootstrapDeps struct {
 // provided params and side-effecting dependencies. This is a stub in this
 // change: it returns zero values and must be implemented later.
 func PerformBootstrapDeployment(ctx context.Context, params BootstrapParams, deps BootstrapDeps) (BootstrapResult, error) {
-	// High-level orchestration steps (copied from TUI executeDeployment):
-	// 1. Create account in database
-	// 2. Assign selected keys to the account (including global keys)
-	// 3. Generate the authorized_keys content for the account
-	// 4. Deploy the authorized_keys to the remote host using a bootstrap deployer
-	// 5. Update the account with the current system key serial
-	// 6. Log successful bootstrap (audit)
-	// 7. Cleanup bootstrap session
+	// This function provides a deterministic orchestration skeleton for
+	// bootstrap deployments. It intentionally does not call side-effecting
+	// dependencies in this slice — instead it records placeholders so callers
+	// can wire the real calls later. If a dependency is nil, the placeholder
+	// will be recorded as an error.
 
-	// Implementation note: this function is the core orchestration entrypoint.
-	// It should call into the provided deps for side effects (DB, deployer,
-	// audit). For this change we only add the orchestration plan and expose a
-	// small, pure helper below. The full implementation will be added later.
+	res := BootstrapResult{}
+	var warnings []string
+	var errors []string
 
-	return BootstrapResult{}, nil
+	// Step 1: Create account in database (placeholder)
+	warnings = append(warnings, "TODO: create account in DB (AddAccount)")
+	if deps.AddAccount == nil {
+		errors = append(errors, "AddAccount dependency not provided; account not created")
+	} else {
+		// Do not call deps.AddAccount here — placeholder only.
+		warnings = append(warnings, "AddAccount available but not invoked in core slice (deferred)")
+	}
+
+	// Step 2: Assign selected keys to the account (placeholder)
+	if len(params.SelectedKeyIDs) > 0 {
+		warnings = append(warnings, fmt.Sprintf("TODO: assign %d selected keys to account (AssignKey)", len(params.SelectedKeyIDs)))
+		if deps.AssignKey == nil {
+			errors = append(errors, "AssignKey dependency not provided; keys not assigned")
+		}
+	}
+
+	// Step 3: Generate the authorized_keys content for the account (placeholder)
+	warnings = append(warnings, "TODO: generate authorized_keys content (GenerateKeysContent)")
+	if deps.GenerateKeysContent == nil {
+		errors = append(errors, "GenerateKeysContent dependency not provided; cannot build keys content")
+	}
+
+	// Step 4: Deploy the authorized_keys to the remote host using a bootstrap deployer (placeholder)
+	warnings = append(warnings, "TODO: deploy authorized_keys to remote host (NewBootstrapDeployer + DeployAuthorizedKeys)")
+	if deps.NewBootstrapDeployer == nil {
+		errors = append(errors, "NewBootstrapDeployer dependency not provided; cannot deploy")
+	}
+
+	// Step 5: Update the account with the current system key serial (placeholder)
+	warnings = append(warnings, "TODO: update account with system key serial (DB update)")
+	if deps.GetActiveSystemKey == nil {
+		warnings = append(warnings, "GetActiveSystemKey not provided; skipping system key lookup")
+	} else {
+		// We will not call GetActiveSystemKey in this slice to avoid side-effects.
+		warnings = append(warnings, "GetActiveSystemKey available but not invoked in core slice (deferred)")
+	}
+
+	// Step 6: Log successful bootstrap (audit) (placeholder)
+	warnings = append(warnings, "TODO: emit audit event for bootstrap (LogAudit)")
+	if deps.LogAudit == nil {
+		warnings = append(warnings, "LogAudit dependency not provided; audit will not be logged")
+	}
+
+	// Step 7: Cleanup bootstrap session (placeholder)
+	warnings = append(warnings, "TODO: cleanup bootstrap session resources")
+
+	// Populate result metadata. Note: Account and KeysDeployed are zeroed as
+	// the real side-effects have been deferred to the deploy/db packages.
+	res.Warnings = warnings
+	res.Errors = errors
+
+	if len(errors) > 0 {
+		return res, fmt.Errorf("bootstrap orchestration incomplete: %v", errors)
+	}
+	return res, nil
 }
 
 // FilterKeysForBootstrap separates all keys into user-selectable and global
