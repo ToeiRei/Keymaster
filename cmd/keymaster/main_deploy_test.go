@@ -19,7 +19,7 @@ func TestRunDeploymentForAccount_NoActiveSystemKey_ReturnsError(t *testing.T) {
 	}
 
 	acct := model.Account{ID: 1, Username: "u", Hostname: "h", Serial: 0}
-	err := runDeploymentForAccount(acct)
+	err := runDeploymentFunc(acct)
 	if err == nil {
 		t.Fatalf("expected error when no active system key exists")
 	}
@@ -32,7 +32,7 @@ func TestRunDeploymentForAccount_MissingSerialKey_ReturnsError(t *testing.T) {
 	}
 
 	acct := model.Account{ID: 1, Username: "u", Hostname: "h", Serial: 999}
-	err := runDeploymentForAccount(acct)
+	err := runDeploymentFunc(acct)
 	if err == nil {
 		t.Fatalf("expected error when specified serial key is missing")
 	}
@@ -53,7 +53,7 @@ func TestRunDeploymentForAccount_Success(t *testing.T) {
 	}
 
 	acct := model.Account{ID: 1, Username: "u", Hostname: "h", Serial: 0}
-	if err := runDeploymentForAccount(acct); err != nil {
+	if err := runDeploymentFunc(acct); err != nil {
 		t.Fatalf("expected nil error, got: %v", err)
 	}
 	if !called {

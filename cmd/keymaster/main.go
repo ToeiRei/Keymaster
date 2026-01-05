@@ -676,15 +676,8 @@ func promptForConfirmation(prompt string) string {
 	return strings.TrimSpace(strings.ToLower(answer))
 }
 
-// runDeploymentForAccount is a simple wrapper for the CLI to match the
-// signature required by runParallelTasks. It calls the centralized
-// deployment logic from the deploy package.
-func runDeploymentForAccount(account model.Account) error {
-	return runDeploymentFunc(account)
-}
-
 // runDeploymentFunc is a package-level variable so tests can inject a mock
-// implementation. By default it calls into the deploy package with CLI mode.
+// implementation. By default it calls into the core deploy facade with CLI mode.
 var runDeploymentFunc = func(account model.Account) error {
 	st := &cliStoreAdapter{}
 	dm := &cliDeployerManager{}
