@@ -10,13 +10,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
 func TestInitTargetDB_SQLiteMemory(t *testing.T) {
 	// Should initialize an in-memory sqlite store without error
-	s, err := initTargetDB("sqlite", ":memory:")
+	s, err := db.NewStoreFromDSN("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("initTargetDB sqlite in-memory failed: %v", err)
 	}
@@ -26,7 +27,7 @@ func TestInitTargetDB_SQLiteMemory(t *testing.T) {
 }
 
 func TestInitTargetDB_InvalidType(t *testing.T) {
-	s, err := initTargetDB("nope", "dsn")
+	s, err := db.NewStoreFromDSN("nope", "dsn")
 	if err == nil {
 		t.Fatalf("expected error for invalid db type, got store=%v", s)
 	}

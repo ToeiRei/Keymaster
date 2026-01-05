@@ -1049,19 +1049,4 @@ Example:
 	},
 }
 
-// initTargetDB is a helper function that initializes a new database connection
-// for the migration target, runs migrations, and returns a Store instance.
-// It is a simplified, one-off version of db.InitDB that does not affect the
-// global `store` variable.
-func initTargetDB(db_type, db_dsn string) (db.Store, error) {
-	// Use the DB package helper to create a store from the DSN. This hides
-	// direct *sql.DB handling and ensures migrations are applied.
-	if db_type == "sqlite" && !strings.Contains(db_dsn, "_busy_timeout") {
-		db_dsn += "?_busy_timeout=5000"
-	}
-	s, err := db.NewStoreFromDSN(db_type, db_dsn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize target store: %w", err)
-	}
-	return s, nil
-}
+// initTargetDB removed: core.RunMigrateCmd and cliStoreFactory handle migration targets.
