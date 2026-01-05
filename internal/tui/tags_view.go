@@ -55,6 +55,8 @@ func newTagsViewModelWithSearcher(s ui.AccountSearcher) tagsViewModel {
 }
 
 // newTagsViewModel is a convenience wrapper that uses the package default searcher.
+//
+//nolint:unused
 func newTagsViewModel() tagsViewModel {
 	return newTagsViewModelWithSearcher(ui.DefaultAccountSearcher())
 }

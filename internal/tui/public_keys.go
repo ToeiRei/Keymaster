@@ -65,6 +65,8 @@ type publicKeysModel struct {
 }
 
 // newPublicKeysModel creates a new model for the public key view, pre-loading keys from the database.
+//
+//nolint:unused
 func newPublicKeysModel() publicKeysModel {
 	return newPublicKeysModelWithSearcher(ui.DefaultKeySearcher())
 }

@@ -94,6 +94,8 @@ func newDeployModelWithSearcher(s ui.AccountSearcher) deployModel {
 }
 
 // newDeployModel is a convenience wrapper that uses the package default searcher.
+//
+//nolint:unused
 func newDeployModel() deployModel {
 	return newDeployModelWithSearcher(ui.DefaultAccountSearcher())
 }

@@ -282,7 +282,7 @@ var closeSSHClient = func(c sshClientIface) error {
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			// swallow panic to keep tests deterministic when using fake clients
+			_ = r
 		}
 	}()
 	return c.Close()

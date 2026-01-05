@@ -2,7 +2,6 @@ package deploy
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/toeirei/keymaster/internal/db"
@@ -82,4 +81,3 @@ func TestAuditAccountStrict_DriftDetected(t *testing.T) {
 
 // small helpers to avoid importing bytes package directly in test bodies
 func bytesFromString(s string) *bytes.Buffer { return bytes.NewBufferString(s) }
-func itoa(i int) string                      { return fmt.Sprintf("%d", i) }

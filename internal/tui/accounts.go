@@ -80,6 +80,7 @@ type accountsModel struct {
 	searcher                 ui.AccountSearcher
 }
 
+//nolint:unused
 func newAccountsModel() accountsModel {
 	return newAccountsModelWithSearcher(ui.DefaultAccountSearcher())
 }

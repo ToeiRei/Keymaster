@@ -14,7 +14,7 @@ func TestRunDBMaintenance_Sqlite_WithMock_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)
 	}
-	defer dbMock.Close()
+	defer func() { _ = dbMock.Close() }()
 
 	// override sqlOpenFunc to return our mock regardless of args
 	orig := sqlOpenFunc
@@ -42,7 +42,7 @@ func TestRunDBMaintenance_Sqlite_WithMock_Failure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)
 	}
-	defer dbMock.Close()
+	defer func() { _ = dbMock.Close() }()
 
 	orig := sqlOpenFunc
 	sqlOpenFunc = func(driverName, dsn string) (*sql.DB, error) { return dbMock, nil }
@@ -61,7 +61,7 @@ func TestRunDBMaintenance_Postgres_WithMock_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)
 	}
-	defer dbMock.Close()
+	defer func() { _ = dbMock.Close() }()
 
 	orig := sqlOpenFunc
 	sqlOpenFunc = func(driverName, dsn string) (*sql.DB, error) { return dbMock, nil }
@@ -83,7 +83,7 @@ func TestRunDBMaintenance_MySQL_WithMock_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)
 	}
-	defer dbMock.Close()
+	defer func() { _ = dbMock.Close() }()
 
 	orig := sqlOpenFunc
 	sqlOpenFunc = func(driverName, dsn string) (*sql.DB, error) { return dbMock, nil }
@@ -108,7 +108,7 @@ func TestRunDBMaintenance_Postgres_WithMock_Failure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)
 	}
-	defer dbMock.Close()
+	defer func() { _ = dbMock.Close() }()
 
 	orig := sqlOpenFunc
 	sqlOpenFunc = func(driverName, dsn string) (*sql.DB, error) { return dbMock, nil }
@@ -126,7 +126,7 @@ func TestRunDBMaintenance_MySQL_WithMock_Failure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sqlmock.New: %v", err)
 	}
-	defer dbMock.Close()
+	defer func() { _ = dbMock.Close() }()
 
 	orig := sqlOpenFunc
 	sqlOpenFunc = func(driverName, dsn string) (*sql.DB, error) { return dbMock, nil }

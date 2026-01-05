@@ -20,10 +20,8 @@ func TestSftpClientAdapter_Delegates(t *testing.T) {
 	}
 	_ = f.Close()
 
-	// Stat (non-existent should return os.ErrNotExist)
-	if _, err := adapter.Stat(".ssh/tmp"); err != nil {
-		// stat may succeed depending on mock behavior; accept nil or error
-	}
+	// Stat (non-existent should return os.ErrNotExist) -- ignore result
+	_, _ = adapter.Stat(".ssh/tmp")
 
 	// Mkdir
 	if err := adapter.Mkdir(".ssh"); err != nil {
