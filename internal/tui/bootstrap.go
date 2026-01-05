@@ -1280,18 +1280,49 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to assign keys to account: %w", err)}
 		}
 
-		// 3. Generate the authorized_keys content using the existing system
-		content, err := deploy.GenerateKeysContent(accountID)
-		if err != nil {
-			// Log the failure
-			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to generate keys content: %v",
-				accountData.Username, accountData.Hostname, err))
-			// Cleanup: delete the account if content generation fails
+		// 3. Generate the authorized_keys content using pure core helper.
+		// Fetch required data (DB-managed) here in the TUI, then call core.
+		sk, _ := db.GetActiveSystemKey()
+		km = ui.DefaultKeyManager()
+		if km == nil {
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: no key manager available",
+				accountData.Username, accountData.Hostname))
 			mgr := ui.DefaultAccountManager()
 			if mgr != nil {
 				_ = mgr.DeleteAccount(accountID)
 			}
-			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to generate keys content: %w", err)}
+			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("no key manager available")}
+		}
+		globalKeys, err := km.GetGlobalPublicKeys()
+		if err != nil {
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to fetch global keys: %v",
+				accountData.Username, accountData.Hostname, err))
+			mgr := ui.DefaultAccountManager()
+			if mgr != nil {
+				_ = mgr.DeleteAccount(accountID)
+			}
+			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to fetch global keys: %w", err)}
+		}
+		accountKeys, err := km.GetKeysForAccount(accountID)
+		if err != nil {
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to fetch account keys: %v",
+				accountData.Username, accountData.Hostname, err))
+			mgr := ui.DefaultAccountManager()
+			if mgr != nil {
+				_ = mgr.DeleteAccount(accountID)
+			}
+			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to fetch account keys: %w", err)}
+		}
+
+		content, err := core.BuildAuthorizedKeysContent(sk, globalKeys, accountKeys)
+		if err != nil {
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to build keys content: %v",
+				accountData.Username, accountData.Hostname, err))
+			mgr := ui.DefaultAccountManager()
+			if mgr != nil {
+				_ = mgr.DeleteAccount(accountID)
+			}
+			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to build keys content: %w", err)}
 		}
 
 		// 4. Deploy to remote host via SSH using the verified host key
