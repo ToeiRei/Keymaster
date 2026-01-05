@@ -9,7 +9,6 @@ package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,6 +16,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // filterStyle was removed as it was unused; styles are created inline where needed.
@@ -220,7 +220,7 @@ func (m *assignKeysModel) filteredAccounts() []model.Account {
 	}
 	var filtered []model.Account
 	for _, acc := range m.accounts {
-		if containsIgnoreCase(acc.String(), m.accountFilter) {
+		if ui.ContainsIgnoreCase(acc.String(), m.accountFilter) {
 			filtered = append(filtered, acc)
 		}
 	}
@@ -234,7 +234,7 @@ func (m *assignKeysModel) filteredKeys() []model.PublicKey {
 	}
 	var filtered []model.PublicKey
 	for _, key := range m.keys {
-		if containsIgnoreCase(key.Comment, m.keyFilter) || containsIgnoreCase(key.Algorithm, m.keyFilter) {
+		if ui.ContainsIgnoreCase(key.Comment, m.keyFilter) || ui.ContainsIgnoreCase(key.Algorithm, m.keyFilter) {
 			filtered = append(filtered, key)
 		}
 	}
@@ -242,11 +242,10 @@ func (m *assignKeysModel) filteredKeys() []model.PublicKey {
 }
 
 // containsIgnoreCase is a helper function for case-insensitive string searching.
+// containsIgnoreCase kept for package-level compatibility with tests.
+// It delegates to the shared helper in `internal/ui`.
 func containsIgnoreCase(s, substr string) bool {
-	if substr == "" {
-		return true
-	}
-	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+	return ui.ContainsIgnoreCase(s, substr)
 }
 
 func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
