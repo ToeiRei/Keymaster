@@ -114,12 +114,10 @@ func newAccountFormModelWithSuggester(accountToEdit *model.Account, ts ui.TagSug
 	}
 
 	// --- Populate tags for autocompletion ---
-	// Prefer the injected TagSuggester when available.
-	if m.tagSuggester == nil {
-		m.tagSuggester = ui.DefaultTagSuggester()
-	}
-	if m.tagSuggester != nil {
-		if tags, err := m.tagSuggester.AllTags(); err == nil {
+	// If an explicit TagSuggester was provided, prefer it.
+	if ts != nil {
+		m.tagSuggester = ts
+		if tags, err := ts.AllTags(); err == nil {
 			m.allTags = tags
 			sort.Strings(m.allTags)
 			return m
@@ -156,7 +154,9 @@ func newAccountFormModelWithSuggester(accountToEdit *model.Account, ts ui.TagSug
 // newAccountFormModel is the original convenience constructor that uses the
 // default `TagSuggester`.
 func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
-	return newAccountFormModelWithSuggester(accountToEdit, ui.DefaultTagSuggester())
+	// Preserve legacy behavior for callers that expect to set `allTags` manually
+	// in tests: do not inject a suggester by default.
+	return newAccountFormModelWithSuggester(accountToEdit, nil)
 }
 
 // Init initializes the form model, returning a command to start the cursor blinking.
