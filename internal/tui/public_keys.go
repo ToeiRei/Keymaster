@@ -116,13 +116,9 @@ func (m *publicKeysModel) rebuildDisplayedKeys() {
 		// Build localResults first so we can fall back if server search is
 		// unavailable or returns no results. This avoids repeated ToLower in
 		// the hot loop by creating a single lowercased representation per key.
-		localResults := []model.PublicKey{}
-		for _, key := range m.keys {
-			combined := key.Comment + " " + key.Algorithm + " " + key.KeyData
-			if core.ContainsIgnoreCase(combined, m.filter) {
-				localResults = append(localResults, key)
-			}
-		}
+		// Prefer core.FilterKeys for local in-memory filtering to centralize
+		// the matching logic and avoid duplication.
+		localResults := core.FilterKeys(m.keys, m.filter)
 
 		// Prefer injected KeySearcher when present, otherwise use UI default.
 		var searcher ui.KeySearcher
