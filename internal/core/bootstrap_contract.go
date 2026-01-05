@@ -88,6 +88,12 @@ type BootstrapDeps struct {
 // provided params and side-effecting dependencies. This is a stub in this
 // change: it returns zero values and must be implemented later.
 func PerformBootstrapDeployment(ctx context.Context, params BootstrapParams, deps BootstrapDeps) (BootstrapResult, error) {
+	// Validate inputs first using pure helpers. Validation is deterministic
+	// and side-effect free; move additional checks here as needed.
+	if err := ValidateBootstrapParams(params.Username, params.Hostname, params.Label, params.Tags); err != nil {
+		return BootstrapResult{}, err
+	}
+
 	// This function provides a deterministic orchestration skeleton for
 	// bootstrap deployments. It intentionally does not call side-effecting
 	// dependencies in this slice — instead it records placeholders so callers
