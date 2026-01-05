@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/toeirei/keymaster/internal/config"
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/keys"
@@ -187,3 +188,13 @@ func (coreSessionStore) GetExpiredBootstrapSessions() ([]*model.BootstrapSession
 func (coreSessionStore) GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error) {
 	return ui.GetOrphanedBootstrapSessions()
 }
+
+// coreConfigSaver adapts package-level config persistence to a small adapter
+// used by the TUI so core and UI code don't directly call the config package.
+type coreConfigSaver struct{}
+
+func (coreConfigSaver) Save() error {
+	return config.Save()
+}
+
+var configSaver = coreConfigSaver{}

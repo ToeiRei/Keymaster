@@ -16,7 +16,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/viper"
-	"github.com/toeirei/keymaster/internal/config"
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
@@ -309,7 +308,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				langCode := m.language.orderedKeys[m.language.cursor]
 				i18n.SetLang(langCode)
 				viper.Set("language", langCode)
-				if err := config.Save(); err != nil {
+				if err := configSaver.Save(); err != nil {
 					m.err = fmt.Errorf("failed to save config: %w", err)
 				}
 
