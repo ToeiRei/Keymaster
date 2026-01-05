@@ -38,7 +38,6 @@ import (
 	"github.com/toeirei/keymaster/internal/tui"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
-	// removed: parallel helper used cases & language; keep imports minimal
 )
 
 var version = "dev"   // this will be set by the linker
@@ -531,7 +530,6 @@ var importCmd = &cobra.Command{
 // parallelTask defines a generic task to be executed in parallel across multiple
 // accounts. It holds configuration for messaging, logging, and the core task
 // function to be executed.
-// parallelTask removed: use core.ParallelRun instead.
 
 // trustHostCmd represents the 'trust-host' command.
 // It facilitates the initial trust of a new host by fetching its public SSH key,
@@ -591,7 +589,6 @@ step before Keymaster can manage a new host.`,
 // runParallelTasks executes a given task concurrently for a list of accounts.
 // It uses a wait group to manage goroutines and a channel to collect results,
 // printing status messages as tasks complete.
-// runParallelTasks removed: use core.ParallelRun from internal/core.
 
 // audit implementations moved to internal/deploy/audit.go
 
@@ -835,7 +832,7 @@ Use --tag to decommission all accounts with specific tags (e.g., --tag env:stagi
 	},
 }
 
-// findAccountByIdentifier removed: use core.FindAccountByIdentifier instead.
+// helper: account identification is delegated to core.FindAccountByIdentifier
 
 // restoreCmd represents the 'restore' command.
 // It restores the database from a compressed JSON backup file.
@@ -1004,4 +1001,4 @@ Example:
 	},
 }
 
-// initTargetDB removed: core.RunMigrateCmd and cliStoreFactory handle migration targets.
+// migration target initialization is handled by `core.RunMigrateCmd` and `cliStoreFactory`.
