@@ -29,14 +29,12 @@ import (
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/internal/bootstrap"
 	"github.com/toeirei/keymaster/internal/config"
-	internalkey "github.com/toeirei/keymaster/internal/crypto/ssh"
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/sshkey"
 	"github.com/toeirei/keymaster/internal/tui"
-	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -415,44 +413,28 @@ If no account is specified, deploys to all active accounts in the database.`,
 	Args:    cobra.MaximumNArgs(1),
 	PreRunE: setupDefaultServices,
 	Run: func(cmd *cobra.Command, args []string) {
-		allAccounts, err := db.GetAllActiveAccounts()
-		if err != nil {
-			log.Fatalf("Error getting accounts: %v", err)
-		}
+		// Build adapters for core facades
+		st := &cliStoreAdapter{}
+		dm := &cliDeployerManager{}
 
-		var targetAccounts []model.Account
+		var identifier *string
 		if len(args) > 0 {
-			target := args[0]
-			found := false
-			// Normalize the target account string for comparison.
-			normalizedTarget := strings.ToLower(target)
-			for _, acc := range allAccounts {
-				// Compare against a similarly normalized account string from the database.
-				accountIdentifier := fmt.Sprintf("%s@%s", acc.Username, acc.Hostname)
-				if strings.ToLower(accountIdentifier) == normalizedTarget {
-					targetAccounts = append(targetAccounts, acc)
-					found = true
-					break
-				}
-			}
-			if !found {
-				log.Fatalf("%s", i18n.T("deploy.cli_account_not_found", target))
-			}
-		} else {
-			targetAccounts = allAccounts
+			s := args[0]
+			identifier = &s
 		}
 
-		deployTask := parallelTask{
-			name:       "deployment",
-			startMsg:   i18n.T("parallel_task.start_message", "deployment", len(targetAccounts)),
-			successMsg: i18n.T("parallel_task.deploy_success_message"),
-			failMsg:    i18n.T("parallel_task.deploy_fail_message"),
-			successLog: "CLI_DEPLOY_SUCCESS",
-			failLog:    "DEPLOY_FAIL",
-			taskFunc:   runDeploymentForAccount,
+		results, err := core.RunDeployCmd(cmd.Context(), st, dm, identifier, nil)
+		if err != nil {
+			log.Fatalf("%v", err)
 		}
-
-		runParallelTasks(targetAccounts, deployTask)
+		// Print results similarly to previous behavior
+		for _, r := range results {
+			if r.Error != nil {
+				fmt.Printf("%s\n", i18n.T("parallel_task.deploy_fail_message", r.Account.String(), r.Error))
+			} else {
+				fmt.Printf("%s\n", i18n.T("parallel_task.deploy_success_message", r.Account.String()))
+			}
+		}
 	},
 }
 
@@ -467,11 +449,8 @@ The previous key is kept for accessing hosts that have not yet been updated.`,
 	PreRunE: setupDefaultServices,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(i18n.T("rotate_key.cli_rotating"))
-
-		// Get passphrase from flag or interactive prompt
 		passphrase := password
 		if passphrase == "" {
-			// Check if stdin is a terminal before prompting
 			if term.IsTerminal(int(os.Stdin.Fd())) {
 				fmt.Print(i18n.T("rotate_key.cli_password_prompt"))
 				bytePassword, err := term.ReadPassword(int(os.Stdin.Fd()))
@@ -479,21 +458,15 @@ The previous key is kept for accessing hosts that have not yet been updated.`,
 					log.Fatalf("%s", i18n.T("rotate_key.cli_error_read_password", err))
 				}
 				passphrase = string(bytePassword)
-				fmt.Println() // Add a newline after password input
+				fmt.Println()
 			}
-			// If not a terminal and no flag, passphrase remains empty (unencrypted key)
 		}
 
-		publicKeyString, privateKeyString, err := internalkey.GenerateAndMarshalEd25519Key("keymaster-system-key", passphrase)
-		if err != nil {
-			log.Fatalf("%s", i18n.T("rotate_key.cli_error_generate", err))
-		}
-
-		serial, err := db.RotateSystemKey(publicKeyString, privateKeyString)
+		st := &cliStoreAdapter{}
+		serial, err := core.RunRotateKeyCmd(cmd.Context(), &cliKeyGenerator{}, st, passphrase)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("rotate_key.cli_error_save", err))
 		}
-
 		fmt.Printf("%s\n", i18n.T("rotate_key.cli_rotated_success", serial))
 		fmt.Printf("%s\n", i18n.T("rotate_key.cli_deploy_reminder"))
 	},
@@ -510,33 +483,19 @@ var auditCmd = &cobra.Command{
 Use --mode=serial to only verify the Keymaster header serial number on the remote host matches the account's last deployed serial (useful during staged rotations).`,
 	PreRunE: setupDefaultServices,
 	Run: func(cmd *cobra.Command, args []string) {
-		accounts, err := db.GetAllActiveAccounts()
+		st := &cliStoreAdapter{}
+		dm := &cliDeployerManager{}
+		results, err := core.RunAuditCmd(cmd.Context(), st, dm, auditMode, nil)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("audit.cli_error_get_accounts", err))
 		}
-
-		// Select audit function based on mode
-		var auditFunc func(model.Account) error
-		switch strings.ToLower(strings.TrimSpace(auditMode)) {
-		case "serial":
-			auditFunc = deploy.AuditAccountSerial
-		case "strict", "":
-			auditFunc = deploy.AuditAccountStrict
-		default:
-			log.Fatalf("invalid audit mode: %s (use 'strict' or 'serial')", auditMode)
+		for _, r := range results {
+			if r.Error != nil {
+				fmt.Printf("%s\n", i18n.T("parallel_task.audit_fail_message", r.Account.String(), r.Error))
+			} else {
+				fmt.Printf("%s\n", i18n.T("parallel_task.audit_success_message", r.Account.String()))
+			}
 		}
-
-		auditTask := parallelTask{
-			name:       "audit",
-			startMsg:   i18n.T("parallel_task.start_message", "audit", len(accounts)),
-			successMsg: i18n.T("parallel_task.audit_success_message"),
-			failMsg:    i18n.T("parallel_task.audit_fail_message"),
-			successLog: "CLI_AUDIT_SUCCESS",
-			failLog:    "CLI_AUDIT_FAIL",
-			taskFunc:   auditFunc,
-		}
-
-		runParallelTasks(accounts, auditTask)
 	},
 }
 
@@ -552,62 +511,19 @@ var importCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
 		fmt.Println(i18n.T("import.start", filePath))
-
 		file, err := os.Open(filePath)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("import.error_opening_file", err))
 		}
 		defer func() { _ = file.Close() }()
 
-		scanner := bufio.NewScanner(file)
-		importedCount := 0
-		skippedCount := 0
-
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-
-			// Skip empty lines or comments
-			if line == "" || strings.HasPrefix(line, "#") {
-				continue
-			}
-
-			alg, keyData, comment, err := sshkey.Parse(line)
-			if err != nil {
-				fmt.Printf("%s\n", i18n.T("import.skip_invalid_line", err))
-				skippedCount++
-				continue
-			}
-
-			if comment == "" {
-				fmt.Printf("%s\n", i18n.T("import.skip_empty_comment", string(keyData)))
-				skippedCount++
-				continue
-			}
-
-			km := db.DefaultKeyManager()
-			if km == nil {
-				fmt.Printf("%s\n", i18n.T("import.error_adding_key", comment, "no key manager available"))
-				skippedCount++
-				continue
-			}
-			if err := km.AddPublicKey(alg, keyData, comment, false, time.Time{}); err != nil {
-				// Check if the error is a unique constraint violation. This makes the CLI
-				// import behave consistently with the TUI remote import.
-				// The exact error string can vary between DB drivers.
-				if err == db.ErrDuplicate || strings.Contains(strings.ToLower(err.Error()), "unique constraint") {
-					fmt.Printf("%s\n", i18n.T("import.skip_duplicate", comment))
-				} else {
-					fmt.Printf("%s\n", i18n.T("import.error_adding_key", comment, err.Error()))
-				}
-				skippedCount++
-				continue
-			}
-
-			fmt.Printf("%s\n", i18n.T("import.imported_key", comment))
-			importedCount++
+		km := db.DefaultKeyManager()
+		st := &cliStoreAdapter{}
+		imported, skipped, ierr := core.RunImportCmd(cmd.Context(), file, km, nil)
+		if ierr != nil {
+			log.Fatalf("%s", i18n.T("import.error_adding_key", ierr))
 		}
-
-		fmt.Printf("\n%s\n", i18n.T("import.summary", importedCount, skippedCount))
+		fmt.Printf("\n%s\n", i18n.T("import.summary", imported, skipped))
 	},
 }
 
@@ -643,38 +559,18 @@ step before Keymaster can manage a new host.`,
 			parts := strings.SplitN(target, "@", 2)
 			hostname = parts[1]
 		} else {
-			hostname = target // Assume the whole string is the hostname if no '@'
+			hostname = target
 		}
-		// Always use host:port form with default :22
 		canonicalHost := deploy.CanonicalizeHostPort(hostname)
 
 		fmt.Println(i18n.T("trust_host.retrieving_key", canonicalHost))
-		key, err := deploy.GetRemoteHostKey(canonicalHost)
+		dm := &cliDeployerManager{}
+		st := &cliStoreAdapter{}
+		key, err := core.RunTrustHostCmd(cmd.Context(), canonicalHost, dm, st, true)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("trust_host.error_get_key", err))
 		}
-
-		fingerprint := ssh.FingerprintSHA256(key) // Use standard ssh package
-		fmt.Printf("\n%s\n", i18n.T("trust_host.authenticity_warning_1", canonicalHost))
-		fmt.Printf("%s\n", i18n.T("trust_host.authenticity_warning_2", key.Type(), fingerprint))
-
-		if warning := sshkey.CheckHostKeyAlgorithm(key); warning != "" {
-			fmt.Printf("\n%s\n", warning)
-		}
-
-		answer := promptForConfirmation(i18n.T("trust_host.confirm_prompt"))
-
-		if answer != "yes" {
-			fmt.Println(i18n.T("trust_host.not_trusted_abort"))
-			os.Exit(1)
-		}
-
-		keyStr := string(ssh.MarshalAuthorizedKey(key)) // Use standard ssh package
-		if err := db.AddKnownHostKey(canonicalHost, keyStr); err != nil {
-			log.Fatalf("%s", i18n.T("trust_host.error_save_key", err))
-		}
-
-		fmt.Printf("%s\n", i18n.T("trust_host.added_success", canonicalHost, key.Type()))
+		fmt.Printf("%s\n", i18n.T("trust_host.added_success", canonicalHost, ""))
 	},
 }
 
@@ -735,53 +631,23 @@ Each account with a label will use the label as the Host alias.`,
 	Args:    cobra.MaximumNArgs(1),
 	PreRunE: setupDefaultServices,
 	Run: func(cmd *cobra.Command, args []string) {
-		accounts, err := db.GetAllActiveAccounts()
+		st := &cliStoreAdapter{}
+		out, err := core.RunExportSSHConfigCmd(cmd.Context(), st)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("export_ssh_config.error_get_accounts", err))
 		}
-
-		if len(accounts) == 0 {
+		if out == "" {
 			fmt.Println(i18n.T("export_ssh_config.no_accounts"))
 			return
 		}
-
-		var output strings.Builder
-		output.WriteString("# " + i18n.T("export_ssh_config.header") + "\n")
-		output.WriteString(fmt.Sprintf("# %s: %s\n\n", i18n.T("export_ssh_config.date"), time.Now().Format("2006-01-02 15:04:05")))
-
-		for _, account := range accounts {
-			// Use label as host alias if available, otherwise use username@hostname
-			hostAlias := account.Label
-			if hostAlias == "" {
-				hostAlias = fmt.Sprintf("%s-%s", account.Username, strings.ReplaceAll(account.Hostname, ".", "-"))
-			}
-
-			output.WriteString(fmt.Sprintf("# %s\n", account.String()))
-			output.WriteString(fmt.Sprintf("Host %s\n", hostAlias))
-			output.WriteString(fmt.Sprintf("    HostName %s\n", account.Hostname))
-			output.WriteString(fmt.Sprintf("    User %s\n", account.Username))
-
-			// Parse hostname for port (supports IPv4/IPv6 and names)
-			_, port, _ := deploy.ParseHostPort(account.Hostname)
-			if port == "" {
-				port = "22"
-			}
-			if port != "22" {
-				output.WriteString(fmt.Sprintf("    Port %s\n", port))
-			}
-
-			output.WriteString("\n")
-		}
-
-		// Output to file or stdout
 		if len(args) > 0 {
 			outputFile := args[0]
-			if err := os.WriteFile(outputFile, []byte(output.String()), 0644); err != nil {
+			if err := os.WriteFile(outputFile, []byte(out), 0644); err != nil {
 				log.Fatalf("%s", i18n.T("export_ssh_config.error_write_file", err))
 			}
 			fmt.Printf("%s\n", i18n.T("export_ssh_config.success", outputFile))
 		} else {
-			fmt.Print(output.String())
+			fmt.Print(out)
 		}
 	},
 }
@@ -793,26 +659,18 @@ var dbMaintainCmd = &cobra.Command{
 	Long:    `Runs engine-specific maintenance tasks (VACUUM, OPTIMIZE TABLE, PRAGMA optimize).`,
 	PreRunE: setupDefaultServices,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Read flags
 		skipIntegrity, _ := cmd.Flags().GetBool("skip-integrity")
 		timeoutSec, _ := cmd.Flags().GetInt("timeout")
-
-		// Read DB config from appConfig (setupDefaultServices ensures appConfig is populated)
 		dsn := appConfig.Database.Dsn
 		dbType := appConfig.Database.Type
-
-		// If skipIntegrity, and sqlite, we temporarily set an env to skip integrity_check in RunDBMaintenance.
-		// For now, we just warn the user.
 		if skipIntegrity {
 			fmt.Println("Skipping integrity_check may speed up maintenance on large databases")
 		}
-
-		// Support overriding the default maintenance timeout via flag
+		maint := &cliDBMaintainer{}
 		if timeoutSec > 0 {
-			// We can't pass timeout into RunDBMaintenance currently; instead, run it in a goroutine with timeout.
 			done := make(chan error, 1)
 			go func() {
-				done <- db.RunDBMaintenance(dbType, dsn)
+				done <- core.RunDBMaintenance(cmd.Context(), maint, dbType, dsn, DBMaintenanceOptions{SkipIntegrity: skipIntegrity, Timeout: time.Duration(timeoutSec) * time.Second})
 			}()
 			select {
 			case err := <-done:
@@ -827,8 +685,7 @@ var dbMaintainCmd = &cobra.Command{
 			}
 			return
 		}
-
-		if err := db.RunDBMaintenance(dbType, dsn); err != nil {
+		if err := core.RunDBMaintenance(cmd.Context(), maint, dbType, dsn, DBMaintenanceOptions{SkipIntegrity: skipIntegrity}); err != nil {
 			fmt.Printf("Maintenance failed: %v\n", err)
 			os.Exit(1)
 		}
@@ -1084,26 +941,16 @@ Example (Full Restore):
 	PreRunE: setupDefaultServices, // This was correct, just confirming.
 	Run: func(cmd *cobra.Command, args []string) {
 		inputFile := args[0]
-
 		fmt.Println(i18n.T("restore.cli_starting", inputFile))
-
-		backupData, err := readCompressedBackup(inputFile)
+		f, err := os.Open(inputFile)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("restore.cli_error_read", err))
 		}
-
-		if fullRestore {
-			// Destructive, full restore path. No confirmation for CLI operations.
-			err = db.ImportDataFromBackup(backupData)
-		} else {
-			// Default, non-destructive integration path
-			err = db.IntegrateDataFromBackup(backupData)
-		}
-
-		if err != nil {
+		defer f.Close()
+		st := &cliStoreAdapter{}
+		if err := core.RunRestoreCmd(cmd.Context(), f, RestoreOptions{Full: fullRestore}, st); err != nil {
 			log.Fatalf("%s", i18n.T("restore.cli_error_import", err))
 		}
-
 		fmt.Println(i18n.T("restore.cli_success"))
 	},
 }
@@ -1161,18 +1008,20 @@ Examples:
 				outputFile += ".zst"
 			}
 		}
-
 		fmt.Println(i18n.T("backup.cli_starting"))
-
-		backupData, err := db.ExportDataForBackup()
+		st := &cliStoreAdapter{}
+		data, err := core.RunBackupCmd(cmd.Context(), st)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("backup.cli_error_export", err))
 		}
-
-		if err := writeCompressedBackup(outputFile, backupData); err != nil {
+		outf, err := os.Create(outputFile)
+		if err != nil {
 			log.Fatalf("%s", i18n.T("backup.cli_error_write", err))
 		}
-
+		defer outf.Close()
+		if err := core.RunWriteBackupCmd(cmd.Context(), data, outf); err != nil {
+			log.Fatalf("%s", i18n.T("backup.cli_error_write", err))
+		}
 		fmt.Println(i18n.T("backup.cli_success", outputFile))
 	},
 }
@@ -1222,37 +1071,17 @@ Example:
 		// Viper has already been configured by PreRunE, so we can directly access the values.
 		targetType := viper.GetString("database.type")
 		targetDsn := viper.GetString("database.dsn")
-
 		if targetType == "" || targetDsn == "" {
 			log.Fatalf("%s", i18n.T("migrate.cli_error_flags"))
 		}
-
-		// --- 1. Backup from source DB ---
 		fmt.Println(i18n.T("migrate.cli_starting_backup"))
-		backupData, err := db.ExportDataForBackup()
-		if err != nil {
+		st := &cliStoreAdapter{}
+		factory := &cliStoreFactory{}
+		if err := core.RunMigrateCmd(cmd.Context(), factory, st, targetType, targetDsn); err != nil {
 			log.Fatalf("%s", i18n.T("migrate.cli_error_backup", err))
 		}
-		fmt.Println(i18n.T("migrate.cli_backup_success"))
-
-		// --- 2. Connect to target DB and run migrations ---
-		fmt.Println(i18n.T("migrate.cli_connecting_target", targetType))
-		targetStore, err := initTargetDB(targetType, targetDsn)
-		if err != nil {
-			log.Fatalf("%s", i18n.T("migrate.cli_error_connect", err))
-		}
-		fmt.Println(i18n.T("migrate.cli_connect_success"))
-
-		// --- 3. Restore to target DB ---
-		fmt.Println(i18n.T("migrate.cli_starting_restore"))
-		// We call the method directly on our temporary store instance.
-		if err := targetStore.ImportDataFromBackup(backupData); err != nil {
-			log.Fatalf("%s", i18n.T("migrate.cli_error_restore", err))
-		}
-
 		fmt.Println(i18n.T("migrate.cli_success"))
 		fmt.Println(i18n.T("migrate.cli_next_steps"))
-
 		return nil
 	},
 }

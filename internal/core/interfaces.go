@@ -6,6 +6,7 @@ package core
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/toeirei/keymaster/internal/model"
 )
@@ -14,14 +15,25 @@ import (
 // Implementations will typically delegate to the DB layer.
 type Store interface {
 	GetAccounts() ([]model.Account, error)
+	GetAllActiveAccounts() ([]model.Account, error)
+	GetAllAccounts() ([]model.Account, error)
 	GetAccount(id int) (*model.Account, error)
 	AddAccount(username, hostname, label, tags string) (int, error)
 	DeleteAccount(accountID int) error
 	AssignKeyToAccount(keyID, accountID int) error
 
+	// System key helpers
+	CreateSystemKey(publicKey, privateKey string) (int, error)
+	RotateSystemKey(publicKey, privateKey string) (int, error)
+	GetActiveSystemKey() (*model.SystemKey, error)
+
+	// Host keys
+	AddKnownHostKey(hostname, key string) error
+
 	// Backup helpers
-	GetBackupData(ctx context.Context) (*model.BackupData, error)
-	ApplyBackup(ctx context.Context, data *model.BackupData) error
+	ExportDataForBackup() (*model.BackupData, error)
+	ImportDataFromBackup(*model.BackupData) error
+	IntegrateDataFromBackup(*model.BackupData) error
 }
 
 // Deployer defines the minimal remote deployment operations.
@@ -43,6 +55,40 @@ type HostFetcher interface {
 // KeyGenerator generates and marshals key material.
 type KeyGenerator interface {
 	GenerateAndMarshalEd25519Key(comment, passphrase string) (publicKey string, privateKey string, err error)
+}
+
+// KeyManager provides higher-level key operations (importing public keys).
+type KeyManager interface {
+	AddPublicKey(alg string, keyData string, comment string, managed bool, expiresAt time.Time) error
+}
+
+// DeployerManager aggregates deploy-related operations used by facades.
+type DeployerManager interface {
+	DeployForAccount(account model.Account, keepFile bool) error
+	AuditSerial(account model.Account) error
+	AuditStrict(account model.Account) error
+	DecommissionAccount(account model.Account, systemPrivateKey string, options interface{}) (DecommissionResult, error)
+	BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey string, options interface{}) ([]DecommissionResult, error)
+	CanonicalizeHostPort(host string) string
+	ParseHostPort(host string) (string, string, error)
+	GetRemoteHostKey(host string) (string, error)
+}
+
+// DecommissionResult mirrors the outcome reported by deploy package for each account.
+type DecommissionResult struct {
+	Account             model.Account
+	Skipped             bool
+	DatabaseDeleteError error
+}
+
+// DBMaintainer runs engine-specific maintenance operations.
+type DBMaintainer interface {
+	RunDBMaintenance(dbType, dsn string) error
+}
+
+// StoreFactory can initialize a new Store from DSN (used by migrate).
+type StoreFactory interface {
+	NewStoreFromDSN(dbType, dsn string) (Store, error)
 }
 
 // Reporter is used by facades to emit progress or human-readable messages.
