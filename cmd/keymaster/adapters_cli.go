@@ -223,3 +223,15 @@ func (r *cliReporter) Reportf(format string, args ...any) {
 }
 
 var _ core.Reporter = (*cliReporter)(nil)
+
+// cliAuditWriter adapts the package-level DB AuditWriter to core.AuditWriter.
+type cliAuditWriter struct{}
+
+func (a *cliAuditWriter) LogAction(action, details string) error {
+	if w := db.DefaultAuditWriter(); w != nil {
+		return w.LogAction(action, details)
+	}
+	return nil
+}
+
+var _ core.AuditWriter = (*cliAuditWriter)(nil)

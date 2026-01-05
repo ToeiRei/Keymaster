@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/klauspost/compress/zstd"
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -19,25 +20,25 @@ func TestFindAccountByIdentifier_ID_UserAtHost_Label_And_NotFound(t *testing.T) 
 	}
 
 	// By ID
-	a, err := findAccountByIdentifier("10", accounts)
+	a, err := core.FindAccountByIdentifier("10", accounts)
 	if err != nil || a == nil || a.ID != 10 {
 		t.Fatalf("expected to find account ID 10, got %v err=%v", a, err)
 	}
 
 	// By user@host (case-insensitive)
-	a, err = findAccountByIdentifier("Bob@Host.Local", accounts)
+	a, err = core.FindAccountByIdentifier("Bob@Host.Local", accounts)
 	if err != nil || a == nil || a.ID != 20 {
 		t.Fatalf("expected to find bob by user@host, got %v err=%v", a, err)
 	}
 
 	// By label (case-insensitive)
-	a, err = findAccountByIdentifier("WEB-1", accounts)
+	a, err = core.FindAccountByIdentifier("WEB-1", accounts)
 	if err != nil || a == nil || a.ID != 10 {
 		t.Fatalf("expected to find web-1 by label, got %v err=%v", a, err)
 	}
 
 	// Not found
-	a, err = findAccountByIdentifier("not-there", accounts)
+	a, err = core.FindAccountByIdentifier("not-there", accounts)
 	if err == nil || a != nil {
 		t.Fatalf("expected not found error, got %v err=%v", a, err)
 	}

@@ -563,10 +563,10 @@ step before Keymaster can manage a new host.`,
 		} else {
 			hostname = target
 		}
-		canonicalHost := deploy.CanonicalizeHostPort(hostname)
+		dm := &cliDeployerManager{}
+		canonicalHost := dm.CanonicalizeHostPort(hostname)
 
 		fmt.Printf("Attempting to retrieve host key from %s…\n", canonicalHost)
-		dm := &cliDeployerManager{}
 		// Fetch key via core facade (do not save yet)
 		keyStr, err := core.RunTrustHostCmd(cmd.Context(), canonicalHost, dm, &cliStoreAdapter{}, false)
 		if err != nil {
@@ -588,8 +588,9 @@ step before Keymaster can manage a new host.`,
 			fmt.Println("Cancelled.")
 			return
 		}
-		// Save via core facade
-		if _, err := core.RunTrustHostCmd(cmd.Context(), canonicalHost, dm, &cliStoreAdapter{}, true); err != nil {
+		// Save the retrieved key into the store
+		st := &cliStoreAdapter{}
+		if err := st.AddKnownHostKey(canonicalHost, keyStr); err != nil {
 			log.Fatalf("%s", i18n.T("trust_host.error_get_key", err))
 		}
 		fmt.Printf("Warning: Permanently added '%s' (type ) to the list of known hosts.\n", canonicalHost)
@@ -733,7 +734,8 @@ func runDeploymentForAccount(account model.Account) error {
 // runDeploymentFunc is a package-level variable so tests can inject a mock
 // implementation. By default it calls into the deploy package with CLI mode.
 var runDeploymentFunc = func(account model.Account) error {
-	return deploy.RunDeploymentForAccount(account, false)
+	dm := &cliDeployerManager{}
+	return dm.DeployForAccount(account, false)
 }
 
 // decommissionCmd represents the 'decommission' command.
@@ -770,8 +772,12 @@ Use --tag to decommission all accounts with specific tags (e.g., --tag env:stagi
 			DryRun:            dryRun,
 		}
 
+		// Prepare store and deployer adapters
+		st := &cliStoreAdapter{}
+		dm := &cliDeployerManager{}
+
 		// Get active system key
-		systemKey, err := db.GetActiveSystemKey()
+		systemKey, err := st.GetActiveSystemKey()
 		if err != nil {
 			log.Fatalf("Error getting active system key: %v", err)
 		}
@@ -780,7 +786,7 @@ Use --tag to decommission all accounts with specific tags (e.g., --tag env:stagi
 		}
 
 		// Get all accounts
-		allAccounts, err := db.GetAllAccounts()
+		allAccounts, err := st.GetAllAccounts()
 		if err != nil {
 			log.Fatalf("Error getting accounts: %v", err)
 		}
@@ -805,7 +811,7 @@ Use --tag to decommission all accounts with specific tags (e.g., --tag env:stagi
 		} else if len(args) > 0 {
 			// Find specific account
 			target := args[0]
-			account, err := findAccountByIdentifier(target, allAccounts)
+			account, err := core.FindAccountByIdentifier(target, allAccounts)
 			if err != nil {
 				log.Fatalf("Error finding account: %v", err)
 			}
@@ -864,81 +870,17 @@ Use --tag to decommission all accounts with specific tags (e.g., --tag env:stagi
 			}
 		}
 
-		// Process accounts
-		if len(targetAccounts) == 1 {
-			// Single account
-			account := targetAccounts[0]
-			fmt.Printf("Decommissioning account: %s\n", account.String())
-			result := deploy.DecommissionAccount(account, systemKey.PrivateKey, options)
-			fmt.Printf("Result: %s\n", result.String())
-		} else {
-			// Multiple accounts - use bulk operation
-			fmt.Printf("Decommissioning %d accounts...\n", len(targetAccounts))
-			results := deploy.BulkDecommissionAccounts(targetAccounts, systemKey.PrivateKey, options)
-
-			// Summary
-			successful := 0
-			failed := 0
-			skipped := 0
-
-			for _, result := range results {
-				if result.Skipped {
-					skipped++
-				} else if result.DatabaseDeleteError != nil {
-					failed++
-				} else {
-					successful++
-				}
-			}
-
-			fmt.Printf("\nSummary: %d successful, %d failed, %d skipped\n", successful, failed, skipped)
-
-			if failed > 0 {
-				fmt.Println("\nFailed operations:")
-				for _, result := range results {
-					if !result.Skipped && result.DatabaseDeleteError != nil {
-						fmt.Printf("  - %s\n", result.String())
-					}
-				}
-			}
+		// Execute decommission via core facade
+		aw := &cliAuditWriter{}
+		summary, derr := core.RunDecommissionCmd(cmd.Context(), targetAccounts, options, dm, st, aw)
+		if derr != nil {
+			log.Fatalf("Decommission failed: %v", derr)
 		}
+		fmt.Printf("\nSummary: %d successful, %d failed, %d skipped\n", summary.Successful, summary.Failed, summary.Skipped)
 	},
 }
 
-// findAccountByIdentifier finds an account by ID, user@host, or label
-func findAccountByIdentifier(identifier string, accounts []model.Account) (*model.Account, error) {
-	// Try to parse as account ID first
-	var id int
-	if n, err := fmt.Sscanf(identifier, "%d", &id); n == 1 && err == nil {
-		for _, acc := range accounts {
-			if acc.ID == id {
-				return &acc, nil
-			}
-		}
-		return nil, fmt.Errorf("no account found with ID: %s", identifier)
-	}
-
-	// Try user@host format
-	if strings.Contains(identifier, "@") {
-		normalizedTarget := strings.ToLower(identifier)
-		for _, acc := range accounts {
-			accountIdentifier := fmt.Sprintf("%s@%s", acc.Username, acc.Hostname)
-			if strings.ToLower(accountIdentifier) == normalizedTarget {
-				return &acc, nil
-			}
-		}
-		return nil, fmt.Errorf("no account found with identifier: %s", identifier)
-	}
-
-	// Try label
-	for _, acc := range accounts {
-		if strings.EqualFold(acc.Label, identifier) {
-			return &acc, nil
-		}
-	}
-
-	return nil, fmt.Errorf("no account found with identifier: %s (try ID, user@host, or label)", identifier)
-}
+// findAccountByIdentifier removed: use core.FindAccountByIdentifier instead.
 
 // restoreCmd represents the 'restore' command.
 // It restores the database from a compressed JSON backup file.

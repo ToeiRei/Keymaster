@@ -140,17 +140,29 @@ func ImportAuthorizedKeys(ctx context.Context, r io.Reader, km KeyManager, rep R
 		alg, keyData, comment, perr := sshkey.Parse(line)
 		if perr != nil {
 			skipped++
+			if rep != nil {
+				rep.Reportf("Skipping invalid key line\n")
+			}
 			continue
 		}
 		if comment == "" {
 			skipped++
+			if rep != nil {
+				rep.Reportf("Skipping key with empty comment\n")
+			}
 			continue
 		}
 		if err := km.AddPublicKey(alg, keyData, comment, false, time.Time{}); err != nil {
 			skipped++
+			if rep != nil {
+				rep.Reportf("Skipping duplicate key (comment exists): %s\n", comment)
+			}
 			continue
 		}
 		imported++
+		if rep != nil {
+			rep.Reportf("Imported key: %s\n", comment)
+		}
 	}
 	if sErr := scanner.Err(); sErr != nil {
 		return imported, skipped, sErr
