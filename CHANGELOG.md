@@ -29,7 +29,8 @@ This release brings major improvements to reliability, performance, and day‑to
   Broader test coverage and more stable test environments.
 - **Cleaner internal architecture**  
   Deterministic logic consolidated into a shared core for long‑term maintainability.
-
+- **Updated dependencies to keep the toolchain current and secure.**
+  
 ### Fixed — Unreleased
 
 - **Global key indicator restored**  
