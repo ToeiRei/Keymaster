@@ -8,6 +8,7 @@
 package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
+	"context"
 	"crypto/md5"
 	"crypto/sha256"
 	"encoding/base64"
@@ -1201,6 +1202,87 @@ func (m *bootstrapModel) generateNewSession() tea.Cmd {
 // executeDeployment performs the final atomic deployment.
 func (m *bootstrapModel) executeDeployment() tea.Cmd {
 	return func() tea.Msg {
+		// Preflight: call core orchestration skeleton with existing deps.
+		// Build selectedKeyIDs from selected and global keys so we can pass them
+		// into the core params. Core's implementation in this slice will not
+		// perform side-effects, but callers may provide real deps.
+		pfSelectedKeyIDs := make([]int, 0, len(m.selectedKeys)+len(m.globalKeys))
+		for k := range m.selectedKeys {
+			pfSelectedKeyIDs = append(pfSelectedKeyIDs, k)
+		}
+		for _, k := range m.globalKeys {
+			pfSelectedKeyIDs = append(pfSelectedKeyIDs, k.ID)
+		}
+
+		pfTempPrivateKey := ""
+		if m.session != nil && m.session.TempKeyPair != nil {
+			pfTempPrivateKey = string(m.session.TempKeyPair.GetPrivateKeyPEM())
+		}
+
+		params := core.BootstrapParams{
+			Username:       m.session.PendingAccount.Username,
+			Hostname:       m.session.PendingAccount.Hostname,
+			Label:          m.session.PendingAccount.Label,
+			Tags:           m.session.PendingAccount.Tags,
+			SelectedKeyIDs: pfSelectedKeyIDs,
+			TempPrivateKey: pfTempPrivateKey,
+			HostKey:        m.hostKey,
+		}
+
+		deps := core.BootstrapDeps{
+			AddAccount: func(username, hostname, label, tags string) (int, error) {
+				mgr := ui.DefaultAccountManager()
+				if mgr == nil {
+					return 0, fmt.Errorf("no account manager configured")
+				}
+				return mgr.AddAccount(username, hostname, label, tags)
+			},
+			AssignKey: func(keyID, accountID int) error {
+				km := ui.DefaultKeyManager()
+				if km == nil {
+					return fmt.Errorf("no key manager configured")
+				}
+				return km.AssignKeyToAccount(keyID, accountID)
+			},
+			GenerateKeysContent: func(accountID int) (string, error) {
+				sk, _ := db.GetActiveSystemKey()
+				km := ui.DefaultKeyManager()
+				if km == nil {
+					return "", fmt.Errorf("no key manager available")
+				}
+				globalKeys, err := km.GetGlobalPublicKeys()
+				if err != nil {
+					return "", err
+				}
+				accountKeys, err := km.GetKeysForAccount(accountID)
+				if err != nil {
+					return "", err
+				}
+				return keys.BuildAuthorizedKeysContent(sk, globalKeys, accountKeys)
+			},
+			NewBootstrapDeployer: func(hostname, username, privateKey, expectedHostKey string) (core.BootstrapDeployer, error) {
+				d, err := deploy.NewBootstrapDeployerWithExpectedKey(hostname, username, privateKey, expectedHostKey)
+				if err != nil {
+					return nil, err
+				}
+				return d, nil
+			},
+			GetActiveSystemKey: db.GetActiveSystemKey,
+			LogAudit: func(e core.BootstrapAuditEvent) error {
+				return logAction(e.Action, e.Details)
+			},
+			AccountStore: ui.DefaultAccountManager(),
+			KeyStore:     ui.DefaultKeyManager(),
+		}
+
+		// Run core preflight orchestration (safe in this slice — core will not
+		// invoke side-effecting deps yet). Capture warnings/errors for UI.
+		if _, err := core.PerformBootstrapDeployment(context.Background(), params, deps); err != nil {
+			// Surface validation/preflight errors to the user and abort early.
+			m.err = fmt.Errorf("bootstrap preflight failed: %w", err)
+			return deploymentCompleteMsg{account: model.Account{Username: params.Username, Hostname: params.Hostname}, err: m.err}
+		}
+
 		// 1. Create account in database
 		accountData := model.Account{
 			Username: m.session.PendingAccount.Username,

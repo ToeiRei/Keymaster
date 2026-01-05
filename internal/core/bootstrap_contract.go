@@ -55,7 +55,22 @@ type BootstrapAuditEvent struct {
 // the deploy package; core depends only on this interface to remain UI-agnostic.
 type BootstrapDeployer interface {
 	DeployAuthorizedKeys(content string) error
-	Close() error
+	Close()
+}
+
+// AccountStore defines the minimal account-related operations core orchestration
+// may request. Implementations live outside core (DB, UI, tests).
+type AccountStore interface {
+	AddAccount(username, hostname, label, tags string) (int, error)
+	DeleteAccount(accountID int) error
+}
+
+// KeyStore defines the minimal key-related operations core orchestration
+// may request. Implementations live outside core (DB, key manager, tests).
+type KeyStore interface {
+	GetGlobalPublicKeys() ([]model.PublicKey, error)
+	GetKeysForAccount(accountID int) ([]model.PublicKey, error)
+	AssignKeyToAccount(keyID, accountID int) error
 }
 
 // BootstrapDeps lists side-effecting functions that core orchestration will
@@ -70,6 +85,14 @@ type BootstrapDeps struct {
 
 	// AssignKey assigns a key to an account.
 	AssignKey func(keyID, accountID int) error
+
+	// AccountStore is an optional interface implementation that callers may
+	// provide instead of function hooks. It is not required but convenient
+	// for callers that already have an Account store implementation.
+	AccountStore AccountStore
+
+	// KeyStore is an optional interface implementation for key operations.
+	KeyStore KeyStore
 
 	// GenerateKeysContent produces the authorized_keys content for an account.
 	GenerateKeysContent func(accountID int) (string, error)
