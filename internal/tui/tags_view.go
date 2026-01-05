@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/ui"
 )
 
 type tagsViewModel struct {
@@ -29,12 +30,12 @@ type tagsViewModel struct {
 	filter      string
 	isFiltering bool
 	err         error
-	searcher    db.AccountSearcher
+	searcher    ui.AccountSearcher
 }
 
 // newTagsViewModelWithSearcher constructs a tags view model and allows an
 // optional AccountSearcher to be provided for server-side operations.
-func newTagsViewModelWithSearcher(s db.AccountSearcher) tagsViewModel {
+func newTagsViewModelWithSearcher(s ui.AccountSearcher) tagsViewModel {
 	m := tagsViewModel{
 		expanded: make(map[string]bool),
 		searcher: s,
@@ -90,7 +91,7 @@ func newTagsViewModelWithSearcher(s db.AccountSearcher) tagsViewModel {
 
 // newTagsViewModel is a convenience wrapper that uses the package default searcher.
 func newTagsViewModel() tagsViewModel {
-	return newTagsViewModelWithSearcher(db.DefaultAccountSearcher())
+	return newTagsViewModelWithSearcher(ui.DefaultAccountSearcher())
 }
 
 // rebuildLines constructs the flattened list of items to display.
@@ -99,10 +100,8 @@ func (m *tagsViewModel) rebuildLines() {
 
 	var tagsToDisplay []string
 	if m.filter != "" {
-		lowerFilter := strings.ToLower(m.filter)
 		for _, tag := range m.sortedTags {
-			lowerTag := strings.ToLower(tag)
-			if strings.Contains(lowerTag, lowerFilter) {
+			if ui.ContainsIgnoreCase(tag, m.filter) {
 				tagsToDisplay = append(tagsToDisplay, tag)
 			}
 		}
