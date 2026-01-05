@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
 )
@@ -46,4 +48,31 @@ func (coreSystemKeyStore) CreateSystemKey(publicKey, privateKey string) (int, er
 
 func (coreSystemKeyStore) RotateSystemKey(publicKey, privateKey string) (int, error) {
 	return ui.RotateSystemKey(publicKey, privateKey)
+}
+
+// coreSessionStore adapts UI session helpers to core.SessionStore.
+type coreSessionStore struct{}
+
+func (coreSessionStore) SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error {
+	return ui.SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey, expiresAt, status)
+}
+
+func (coreSessionStore) GetBootstrapSession(id string) (*model.BootstrapSession, error) {
+	return ui.GetBootstrapSession(id)
+}
+
+func (coreSessionStore) DeleteBootstrapSession(id string) error {
+	return ui.DeleteBootstrapSession(id)
+}
+
+func (coreSessionStore) UpdateBootstrapSessionStatus(id string, status string) error {
+	return ui.UpdateBootstrapSessionStatus(id, status)
+}
+
+func (coreSessionStore) GetExpiredBootstrapSessions() ([]*model.BootstrapSession, error) {
+	return ui.GetExpiredBootstrapSessions()
+}
+
+func (coreSessionStore) GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error) {
+	return ui.GetOrphanedBootstrapSessions()
 }

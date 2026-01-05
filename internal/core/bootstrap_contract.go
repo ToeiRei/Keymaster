@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/toeirei/keymaster/internal/model"
 )
@@ -123,6 +124,18 @@ type BootstrapDeps struct {
 	// for simpler audit writes. If provided, core may call Auditor.LogAction
 	// instead of or in addition to LogAudit.
 	Auditor Auditor
+}
+
+// SessionStore defines persistence operations for bootstrap sessions that
+// core orchestration may request. Implementations live outside core and
+// typically delegate to the DB layer.
+type SessionStore interface {
+	SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error
+	GetBootstrapSession(id string) (*model.BootstrapSession, error)
+	DeleteBootstrapSession(id string) error
+	UpdateBootstrapSessionStatus(id string, status string) error
+	GetExpiredBootstrapSessions() ([]*model.BootstrapSession, error)
+	GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error)
 }
 
 // PerformBootstrapDeployment orchestrates the bootstrap deployment using the

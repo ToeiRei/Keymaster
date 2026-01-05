@@ -5,6 +5,8 @@
 package ui
 
 import (
+	"time"
+
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 )
@@ -35,6 +37,36 @@ func CreateSystemKey(publicKey, privateKey string) (int, error) {
 // RotateSystemKey rotates the system key in the database and returns the new serial.
 func RotateSystemKey(publicKey, privateKey string) (int, error) {
 	return db.RotateSystemKey(publicKey, privateKey)
+}
+
+// SaveBootstrapSession persists a bootstrap session record to the DB.
+func SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error {
+	return db.SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey, expiresAt, status)
+}
+
+// GetBootstrapSession retrieves a bootstrap session by ID.
+func GetBootstrapSession(id string) (*model.BootstrapSession, error) {
+	return db.GetBootstrapSession(id)
+}
+
+// DeleteBootstrapSession removes a bootstrap session from the DB.
+func DeleteBootstrapSession(id string) error {
+	return db.DeleteBootstrapSession(id)
+}
+
+// UpdateBootstrapSessionStatus updates the session status in the DB.
+func UpdateBootstrapSessionStatus(id string, status string) error {
+	return db.UpdateBootstrapSessionStatus(id, status)
+}
+
+// GetExpiredBootstrapSessions returns expired sessions.
+func GetExpiredBootstrapSessions() ([]*model.BootstrapSession, error) {
+	return db.GetExpiredBootstrapSessions()
+}
+
+// GetOrphanedBootstrapSessions returns orphaned sessions.
+func GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error) {
+	return db.GetOrphanedBootstrapSessions()
 }
 
 // HasSystemKeys returns whether any system keys exist.

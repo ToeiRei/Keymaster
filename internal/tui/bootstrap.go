@@ -140,20 +140,15 @@ func (m *bootstrapModel) Init() tea.Cmd {
 // createBootstrapSession creates a new bootstrap session asynchronously.
 func (m *bootstrapModel) createBootstrapSession() tea.Cmd {
 	return func() tea.Msg {
-		// Create session with the actual account data
-		session, err := bootstrap.NewBootstrapSession(m.pendingUsername, m.pendingHostname, m.pendingLabel, m.pendingTags)
+		// Create session with the actual account data via core so persistence
+		// is performed through the injected SessionStore adapter.
+		session, err := core.NewSession(coreSessionStore{}, m.pendingUsername, m.pendingHostname, m.pendingLabel, m.pendingTags)
 		if err != nil {
 			return fmt.Errorf("failed to create bootstrap session: %w", err)
 		}
 
 		// Register session for cleanup
 		bootstrap.RegisterSession(session)
-
-		// Save session to database
-		if err := session.Save(); err != nil {
-			session.Cleanup()
-			return fmt.Errorf("failed to save bootstrap session: %w", err)
-		}
 
 		return sessionCreatedMsg{session: session}
 	}
