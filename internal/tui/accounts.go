@@ -879,16 +879,19 @@ func (m *accountsModel) View() string {
 // verifyHostKeyCmd is a tea.Cmd that fetches a host's public key and saves it.
 func verifyHostKeyCmd(hostname string) tea.Cmd {
 	return func() tea.Msg {
-		key, err := coreDeployAdapter{}.GetRemoteHostKey(hostname)
+		keyStr, err := coreDeployAdapter{}.GetRemoteHostKey(hostname)
 		if err != nil {
 			return hostKeyVerifiedMsg{hostname: hostname, err: err, warning: ""}
 		}
 
-		// Check for weak algorithms.
-		warning := sshkey.CheckHostKeyAlgorithm(key)
+		// Parse the authorized_keys formatted string into ssh.PublicKey
+		pk, _, _, _, perr := ssh.ParseAuthorizedKey([]byte(keyStr))
+		if perr != nil {
+			return hostKeyVerifiedMsg{hostname: hostname, err: perr, warning: ""}
+		}
 
-		// Convert to string format for storage.
-		keyStr := string(ssh.MarshalAuthorizedKey(key))
+		// Check for weak algorithms.
+		warning := sshkey.CheckHostKeyAlgorithm(pk)
 
 		// Store in DB via UI adapter.
 		err = ui.AddKnownHostKey(hostname, keyStr)
@@ -976,8 +979,8 @@ func (m *accountsModel) performDecommissionWithKeys() tea.Cmd {
 				SelectiveKeys:     keysToRemove,
 			}
 
-			res, err := coreDeployAdapter{}.DecommissionAccount(account, sk.PrivateKey, options)
-			return res, err
+			res := deploy.DecommissionAccount(account, sk.PrivateKey, options)
+			return res, nil
 		}
 
 		result, err := core.PerformDecommissionWithKeys(m.accountToDelete, m.selectedKeysToKeep, decommander)

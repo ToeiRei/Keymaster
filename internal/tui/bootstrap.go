@@ -22,7 +22,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/bootstrap"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
@@ -1264,14 +1263,11 @@ func (m *bootstrapModel) retrieveHostKey() tea.Cmd {
 			_ = core.CancelBootstrapSession(coreSessionStore{}, m.session.ID)
 		}
 
-		// Use the deploy package's GetRemoteHostKey function
-		hostKey, err := deploy.GetRemoteHostKey(m.session.PendingAccount.Hostname)
+		// Use the deploy adapter to fetch the host key (as authorized_keys string)
+		hostKeyString, err := deployAdapter.GetRemoteHostKey(m.session.PendingAccount.Hostname)
 		if err != nil {
 			return hostKeyRetrievedMsg{hostKey: "", err: fmt.Errorf("failed to retrieve host key: %w", err)}
 		}
-
-		// Convert to authorized_keys format
-		hostKeyString := string(ssh.MarshalAuthorizedKey(hostKey))
 		return hostKeyRetrievedMsg{hostKey: hostKeyString, err: nil}
 	}
 }

@@ -5,6 +5,7 @@
 package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -14,7 +15,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
@@ -769,7 +769,8 @@ func (m deployModel) View() string {
 // performDeploymentCmd is a tea.Cmd that executes the full deployment logic for a single account.
 func performDeploymentCmd(account model.Account) tea.Cmd {
 	return func() tea.Msg {
-		return deploymentResultMsg{account: account, err: deploy.RunDeploymentForAccount(account, true)}
+		err := core.RunDeployForAccount(context.Background(), deployAdapter, account, nil)
+		return deploymentResultMsg{account: account, err: err}
 	}
 }
 
