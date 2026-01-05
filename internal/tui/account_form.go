@@ -132,14 +132,8 @@ func newAccountFormModelWithSuggester(accountToEdit *model.Account, ts ui.TagSug
 	}
 	tagSet := make(map[string]struct{})
 	for _, acc := range allAccounts {
-		if acc.Tags != "" {
-			tags := strings.Split(acc.Tags, ",")
-			for _, tag := range tags {
-				trimmedTag := strings.TrimSpace(tag)
-				if trimmedTag != "" {
-					tagSet[trimmedTag] = struct{}{}
-				}
-			}
+		for _, tag := range ui.SplitTags(acc.Tags) {
+			tagSet[tag] = struct{}{}
 		}
 	}
 	m.allTags = make([]string, 0, len(tagSet))
@@ -469,13 +463,13 @@ func (m *accountFormModel) updateSuggestions() {
 	}
 
 	currentVal := m.inputs[3].Value()
-	parts := strings.Split(currentVal, ",")
+	parts := ui.SplitTagsPreserveTrailing(currentVal)
 	if len(parts) == 0 {
 		m.suggestions = nil
 		return
 	}
 
-	lastPart := strings.TrimSpace(parts[len(parts)-1])
+	lastPart := parts[len(parts)-1]
 	if lastPart == "" {
 		m.suggestions = nil
 		m.isSuggesting = false
@@ -500,9 +494,9 @@ func (m *accountFormModel) applySuggestion() {
 	}
 	selectedSuggestion := m.suggestions[m.suggestionCursor]
 	currentVal := m.inputs[3].Value()
-	parts := strings.Split(currentVal, ",")
+	parts := ui.SplitTagsPreserveTrailing(currentVal)
 	parts[len(parts)-1] = selectedSuggestion
-	newValue := strings.Join(parts, ", ") + ", "
+	newValue := ui.JoinTags(parts) + ", "
 	m.inputs[3].SetValue(newValue)
 	m.inputs[3].SetCursor(len(newValue))
 }

@@ -7,7 +7,6 @@ package tui
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/toeirei/keymaster/internal/i18n"
 
@@ -60,14 +59,9 @@ func newTagsViewModelWithSearcher(s ui.AccountSearcher) tagsViewModel {
 			hasUntagged = true
 			continue
 		}
-		tags := strings.Split(acc.Tags, ",")
-		for _, tag := range tags {
-			trimmedTag := strings.TrimSpace(tag)
-			if trimmedTag == "" {
-				continue
-			}
-			accountsByTag[trimmedTag] = append(accountsByTag[trimmedTag], acc)
-			tagSet[trimmedTag] = struct{}{}
+		for _, tag := range ui.SplitTags(acc.Tags) {
+			accountsByTag[tag] = append(accountsByTag[tag], acc)
+			tagSet[tag] = struct{}{}
 		}
 	}
 

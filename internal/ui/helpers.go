@@ -42,3 +42,35 @@ func SuggestTags(allTags []string, currentVal string) []string {
 	}
 	return suggestions
 }
+
+// SplitTags splits a comma-separated tag string into trimmed, non-empty tags.
+func SplitTags(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		tp := strings.TrimSpace(p)
+		if tp != "" {
+			out = append(out, tp)
+		}
+	}
+	return out
+}
+
+// SplitTagsPreserveTrailing splits tags like SplitTags but preserves an empty
+// trailing element when the input ends with a comma. Each part is trimmed.
+func SplitTagsPreserveTrailing(s string) []string {
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		out = append(out, strings.TrimSpace(p))
+	}
+	return out
+}
+
+// JoinTags joins tags with ", " producing a normalized tags string.
+func JoinTags(tags []string) string {
+	return strings.Join(tags, ", ")
+}
