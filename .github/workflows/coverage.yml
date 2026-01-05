@@ -53,7 +53,7 @@ jobs:
           sed -i "s/PERCENT/${percent}/g" coverage.svg
 
       - name: Upload coverage artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage
           path: |
