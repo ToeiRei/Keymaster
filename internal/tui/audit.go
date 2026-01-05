@@ -18,6 +18,7 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
+	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // auditModeType represents the comparison mode for the audit.
@@ -302,10 +303,8 @@ func (m auditModel) getFilteredAccounts() []model.Account {
 		return m.accounts
 	}
 	var out []model.Account
-	lowerFilter := strings.ToLower(m.accountFilter)
 	for _, acc := range m.accounts {
-		lowerAcc := strings.ToLower(acc.String())
-		if strings.Contains(lowerAcc, lowerFilter) {
+		if ui.ContainsIgnoreCase(acc.String(), m.accountFilter) {
 			out = append(out, acc)
 		}
 	}

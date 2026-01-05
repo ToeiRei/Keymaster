@@ -115,10 +115,9 @@ func (m *publicKeysModel) rebuildDisplayedKeys() {
 		// unavailable or returns no results. This avoids repeated ToLower in
 		// the hot loop by creating a single lowercased representation per key.
 		localResults := []model.PublicKey{}
-		lowerFilter := strings.ToLower(m.filter)
 		for _, key := range m.keys {
-			lowerKey := strings.ToLower(key.Comment + " " + key.Algorithm + " " + key.KeyData)
-			if strings.Contains(lowerKey, lowerFilter) {
+			combined := key.Comment + " " + key.Algorithm + " " + key.KeyData
+			if ui.ContainsIgnoreCase(combined, m.filter) {
 				localResults = append(localResults, key)
 			}
 		}

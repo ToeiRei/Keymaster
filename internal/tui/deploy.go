@@ -8,8 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
+
+	"sort"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -20,9 +21,9 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
+	"github.com/toeirei/keymaster/internal/ui"
 )
 
-// deployState represents the current view within the deployment workflow.
 type deployState int
 
 const (
@@ -416,10 +417,8 @@ func (m *deployModel) getFilteredAccounts() []model.Account {
 		return m.accounts
 	}
 	var filteredAccounts []model.Account
-	lowerFilter := strings.ToLower(m.accountFilter)
 	for _, acc := range m.accounts {
-		lowerAcc := strings.ToLower(acc.String())
-		if strings.Contains(lowerAcc, lowerFilter) {
+		if ui.ContainsIgnoreCase(acc.String(), m.accountFilter) {
 			filteredAccounts = append(filteredAccounts, acc)
 		}
 	}
