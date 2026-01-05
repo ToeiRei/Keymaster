@@ -17,6 +17,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // Risk-based color styles for audit log actions.
@@ -131,23 +132,22 @@ func newAuditLogModelWithSearcher(searcher db.AuditSearcher) *auditLogModel {
 // applying the current filter.
 func (m *auditLogModel) rebuildTableRows() {
 	var rows []table.Row
-	lowerFilter := strings.ToLower(m.filter)
 	for _, entry := range m.allEntries {
 		match := false
-		// Build a single lowercased representation for the full-entry
-		// search to minimize calls to strings.ToLower in the hot loop.
-		combinedLower := strings.ToLower(entry.Timestamp + " " + entry.Username + " " + entry.Action + " " + entry.Details)
+		// Build combined strings and use ui.ContainsIgnoreCase to avoid
+		// repeated strings.ToLower calls in the hot loop.
 		switch m.filterCol {
 		case 0:
-			match = strings.Contains(combinedLower, lowerFilter)
+			combined := entry.Timestamp + " " + entry.Username + " " + entry.Action + " " + entry.Details
+			match = ui.ContainsIgnoreCase(combined, m.filter)
 		case 1:
-			match = strings.Contains(strings.ToLower(entry.Timestamp), lowerFilter)
+			match = ui.ContainsIgnoreCase(entry.Timestamp, m.filter)
 		case 2:
-			match = strings.Contains(strings.ToLower(entry.Username), lowerFilter)
+			match = ui.ContainsIgnoreCase(entry.Username, m.filter)
 		case 3:
-			match = strings.Contains(strings.ToLower(entry.Action), lowerFilter)
+			match = ui.ContainsIgnoreCase(entry.Action, m.filter)
 		case 4:
-			match = strings.Contains(strings.ToLower(entry.Details), lowerFilter)
+			match = ui.ContainsIgnoreCase(entry.Details, m.filter)
 		}
 		if m.filter != "" && !match {
 			continue

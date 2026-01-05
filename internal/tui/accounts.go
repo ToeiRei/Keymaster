@@ -117,12 +117,12 @@ func (m *accountsModel) rebuildDisplayedAccounts() {
 		// local in-memory filtering to preserve test expectations.
 		// Build local results first so we can compare.
 		localResults := []model.Account{}
-		lowerFilter := strings.ToLower(m.filter)
 		for _, acc := range m.accounts {
-			// Build a single lowercased representation per account to avoid
-			// repeated calls to strings.ToLower in the hot loop.
-			lowerAcc := strings.ToLower(acc.Username + " " + acc.Hostname + " " + acc.Label + " " + acc.Tags)
-			if strings.Contains(lowerAcc, lowerFilter) {
+			// Build a single combined representation and use the ui helper to
+			// perform a case-insensitive contains check. This avoids repeated
+			// calls to strings.ToLower in the hot loop.
+			combined := acc.Username + " " + acc.Hostname + " " + acc.Label + " " + acc.Tags
+			if ui.ContainsIgnoreCase(combined, m.filter) {
 				localResults = append(localResults, acc)
 			}
 		}
