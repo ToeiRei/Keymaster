@@ -21,6 +21,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/ui"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -51,7 +52,7 @@ type publicKeysModel struct {
 	usageReportAccts []model.Account
 	filter           string
 	isFiltering      bool
-	searcher         db.KeySearcher
+	searcher         ui.KeySearcher
 	// For delete confirmation
 	isConfirmingDelete bool
 	keyToDelete        model.PublicKey
@@ -65,12 +66,12 @@ type publicKeysModel struct {
 
 // newPublicKeysModel creates a new model for the public key view, pre-loading keys from the database.
 func newPublicKeysModel() publicKeysModel {
-	return newPublicKeysModelWithSearcher(db.DefaultKeySearcher())
+	return newPublicKeysModelWithSearcher(ui.DefaultKeySearcher())
 }
 
-// newPublicKeysModelWithSearcher creates an accountsModel that will use the
+// newPublicKeysModelWithSearcher creates a publicKeysModel that will use the
 // provided KeySearcher for server-side searches. Pass nil to force local filtering.
-func newPublicKeysModelWithSearcher(s db.KeySearcher) publicKeysModel {
+func newPublicKeysModelWithSearcher(s ui.KeySearcher) publicKeysModel {
 	m := publicKeysModel{
 		viewport: viewport.New(0, 0),
 		searcher: s,
@@ -110,33 +111,35 @@ func (m *publicKeysModel) rebuildDisplayedKeys() {
 	} else {
 		// Prefer server-side searcher when provided. If it returns non-empty
 		// results, use them; otherwise fall back to local filtering.
+		// Build localResults first so we can fall back if server search is
+		// unavailable or returns no results. This avoids repeated ToLower in
+		// the hot loop by creating a single lowercased representation per key.
+		localResults := []model.PublicKey{}
+		lowerFilter := strings.ToLower(m.filter)
+		for _, key := range m.keys {
+			lowerKey := strings.ToLower(key.Comment + " " + key.Algorithm + " " + key.KeyData)
+			if strings.Contains(lowerKey, lowerFilter) {
+				localResults = append(localResults, key)
+			}
+		}
+
+		// Prefer injected KeySearcher when present, otherwise use UI default.
+		var searcher ui.KeySearcher
 		if m.searcher != nil {
-			serverRes, err := m.searcher.SearchPublicKeys(m.filter)
-			if err == nil && len(serverRes) > 0 {
-				m.displayedKeys = serverRes
+			searcher = m.searcher
+		} else {
+			searcher = ui.DefaultKeySearcher()
+		}
+
+		if searcher != nil {
+			if res, err := searcher.SearchPublicKeys(m.filter); err == nil && len(res) > 0 {
+				m.displayedKeys = res
 			} else {
-				// Fallback to local filtering on error or empty results
-				m.displayedKeys = []model.PublicKey{}
-				lowerFilter := strings.ToLower(m.filter)
-				for _, key := range m.keys {
-					lowerComment := strings.ToLower(key.Comment)
-					lowerAlg := strings.ToLower(key.Algorithm)
-					lowerKeyData := strings.ToLower(key.KeyData)
-					if strings.Contains(lowerComment, lowerFilter) || strings.Contains(lowerAlg, lowerFilter) || strings.Contains(lowerKeyData, lowerFilter) {
-						m.displayedKeys = append(m.displayedKeys, key)
-					}
-				}
+				// On error or empty server result, fall back to local filtering.
+				m.displayedKeys = localResults
 			}
 		} else {
-			m.displayedKeys = []model.PublicKey{}
-			lowerFilter := strings.ToLower(m.filter)
-			for _, key := range m.keys {
-				lowerComment := strings.ToLower(key.Comment)
-				lowerAlg := strings.ToLower(key.Algorithm)
-				if strings.Contains(lowerComment, lowerFilter) || strings.Contains(lowerAlg, lowerFilter) {
-					m.displayedKeys = append(m.displayedKeys, key)
-				}
-			}
+			m.displayedKeys = localResults
 		}
 	}
 

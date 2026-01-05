@@ -6,3 +6,8 @@ import "github.com/toeirei/keymaster/internal/model"
 type AccountSearcher interface {
 	SearchAccounts(q string) ([]model.Account, error)
 }
+
+// KeySearcher provides a small abstraction for searching public keys.
+type KeySearcher interface {
+	SearchPublicKeys(q string) ([]model.PublicKey, error)
+}

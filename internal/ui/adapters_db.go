@@ -25,3 +25,24 @@ func DefaultAccountSearcher() AccountSearcher {
 	}
 	return &dbSearcherAdapter{s: s}
 }
+
+type dbKeySearcherAdapter struct {
+	s db.KeySearcher
+}
+
+func (d *dbKeySearcherAdapter) SearchPublicKeys(q string) ([]model.PublicKey, error) {
+	if d.s == nil {
+		return nil, nil
+	}
+	return d.s.SearchPublicKeys(q)
+}
+
+// DefaultKeySearcher returns a KeySearcher that wraps the package default DB key searcher.
+// It may return nil if no DB key searcher is configured.
+func DefaultKeySearcher() KeySearcher {
+	s := db.DefaultKeySearcher()
+	if s == nil {
+		return nil
+	}
+	return &dbKeySearcherAdapter{s: s}
+}
