@@ -520,34 +520,10 @@ var importCmd = &cobra.Command{
 		defer func() { _ = file.Close() }()
 
 		km := db.DefaultKeyManager()
-		scanner := bufio.NewScanner(file)
-		imported, skipped := 0, 0
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if line == "" || strings.HasPrefix(line, "#") {
-				continue
-			}
-			alg, keyData, comment, perr := sshkey.Parse(line)
-			if perr != nil {
-				fmt.Println("Skipping invalid key line")
-				skipped++
-				continue
-			}
-			if comment == "" {
-				fmt.Println("Skipping key with empty comment")
-				skipped++
-				continue
-			}
-			if err := km.AddPublicKey(alg, keyData, comment, false, time.Time{}); err != nil {
-				fmt.Printf("Skipping duplicate key (comment exists): %s\n", comment)
-				skipped++
-				continue
-			}
-			fmt.Printf("Imported key: %s\n", comment)
-			imported++
-		}
-		if sErr := scanner.Err(); sErr != nil {
-			log.Fatalf("%s", i18n.T("import.error_adding_key", sErr))
+		rep := &cliReporter{}
+		imported, skipped, ierr := core.RunImportCmd(cmd.Context(), file, km, rep)
+		if ierr != nil {
+			log.Fatalf("%s", i18n.T("import.error_adding_key", ierr))
 		}
 		fmt.Printf("\nImport complete. Imported %d keys, skipped %d.\n", imported, skipped)
 	},
@@ -591,7 +567,8 @@ step before Keymaster can manage a new host.`,
 
 		fmt.Printf("Attempting to retrieve host key from %s…\n", canonicalHost)
 		dm := &cliDeployerManager{}
-		keyStr, err := dm.GetRemoteHostKey(canonicalHost)
+		// Fetch key via core facade (do not save yet)
+		keyStr, err := core.RunTrustHostCmd(cmd.Context(), canonicalHost, dm, &cliStoreAdapter{}, false)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("trust_host.error_get_key", err))
 		}
@@ -611,8 +588,8 @@ step before Keymaster can manage a new host.`,
 			fmt.Println("Cancelled.")
 			return
 		}
-		st := &cliStoreAdapter{}
-		if err := st.AddKnownHostKey(canonicalHost, keyStr); err != nil {
+		// Save via core facade
+		if _, err := core.RunTrustHostCmd(cmd.Context(), canonicalHost, dm, &cliStoreAdapter{}, true); err != nil {
 			log.Fatalf("%s", i18n.T("trust_host.error_get_key", err))
 		}
 		fmt.Printf("Warning: Permanently added '%s' (type ) to the list of known hosts.\n", canonicalHost)

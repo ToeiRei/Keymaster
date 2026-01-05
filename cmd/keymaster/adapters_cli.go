@@ -214,3 +214,12 @@ var _ core.DeployerManager = (*cliDeployerManager)(nil)
 var _ core.DBMaintainer = (*cliDBMaintainer)(nil)
 var _ core.StoreFactory = (*cliStoreFactory)(nil)
 var _ core.KeyGenerator = (*cliKeyGenerator)(nil)
+
+// cliReporter implements core.Reporter by printing to stdout.
+type cliReporter struct{}
+
+func (r *cliReporter) Reportf(format string, args ...any) {
+	fmt.Printf(format, args...)
+}
+
+var _ core.Reporter = (*cliReporter)(nil)
