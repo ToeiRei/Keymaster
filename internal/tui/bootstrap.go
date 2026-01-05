@@ -70,6 +70,9 @@ type bootstrapModel struct {
 	isCompleted      bool
 	err              error
 
+	// Warnings produced by core orchestration (non-fatal)
+	warnings []string
+
 	// Connection testing
 	connectionTested bool
 	testInProgress   bool
@@ -811,6 +814,14 @@ func (m *bootstrapModel) viewComplete() string {
 		content = append(content, "")
 		content = append(content, successStyle.Render(fmt.Sprintf(i18n.T("bootstrap.success_message"),
 			m.session.PendingAccount.Username, m.session.PendingAccount.Hostname)))
+		// Show any non-fatal warnings produced by orchestration
+		if len(m.warnings) > 0 {
+			content = append(content, "")
+			content = append(content, titleStyle.Render("⚠️ "+i18n.T("bootstrap.warnings_title")))
+			for _, w := range m.warnings {
+				content = append(content, inactiveItemStyle.Render(w))
+			}
+		}
 	} else {
 		content = append(content, titleStyle.Render("❌ "+i18n.T("bootstrap.failed_title")))
 		content = append(content, "")
@@ -1275,174 +1286,24 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			KeyStore:     ui.DefaultKeyManager(),
 		}
 
-		// Run core preflight orchestration (safe in this slice — core will not
-		// invoke side-effecting deps yet). Capture warnings/errors for UI.
-		if _, err := core.PerformBootstrapDeployment(context.Background(), params, deps); err != nil {
-			// Surface validation/preflight errors to the user and abort early.
-			m.err = fmt.Errorf("bootstrap preflight failed: %w", err)
-			return deploymentCompleteMsg{account: model.Account{Username: params.Username, Hostname: params.Hostname}, err: m.err}
-		}
+		// Run core orchestration. Core will perform validation and (when wired)
+		// will invoke side-effecting deps. Here we pass the real deps from the
+		// TUI so core can use them; core may still be a skeleton in this slice.
+		res, err := core.PerformBootstrapDeployment(context.Background(), params, deps)
+		// Store warnings for UI display
+		m.warnings = res.Warnings
 
-		// 1. Create account in database
-		accountData := model.Account{
-			Username: m.session.PendingAccount.Username,
-			Hostname: m.session.PendingAccount.Hostname,
-			Label:    m.session.PendingAccount.Label,
-			Tags:     m.session.PendingAccount.Tags,
-			IsActive: true,
-		}
-
-		var accountID int
-		var err error
-		mgr := ui.DefaultAccountManager()
-		if mgr == nil {
-			err = fmt.Errorf("no account manager configured")
-		} else {
-			accountID, err = mgr.AddAccount(accountData.Username, accountData.Hostname,
-				accountData.Label, accountData.Tags)
-		}
 		if err != nil {
-			// Log the failure
-			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to create account: %v",
-				accountData.Username, accountData.Hostname, err))
-			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to create account: %w", err)}
+			// Surface orchestration errors to the user
+			m.deploymentResult = fmt.Errorf("bootstrap failed: %w", err)
+			m.step = stepComplete
+			return deploymentCompleteMsg{account: model.Account{Username: params.Username, Hostname: params.Hostname}, err: m.deploymentResult}
 		}
 
-		accountData.ID = accountID
-
-		// 2. Assign selected keys to the account
-		selectedKeyIDs := make([]int, 0, len(m.selectedKeys))
-		for keyID := range m.selectedKeys {
-			selectedKeyIDs = append(selectedKeyIDs, keyID)
-		}
-
-		// Add global keys (they will be automatically included by GenerateKeysContent)
-		// but we still need to track them for assignment
-		for _, key := range m.globalKeys {
-			selectedKeyIDs = append(selectedKeyIDs, key.ID)
-		}
-
-		// Assign keys to account in database
-		km := ui.DefaultKeyManager()
-		if km == nil {
-			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: no key manager available",
-				accountData.Username, accountData.Hostname))
-			mgr := ui.DefaultAccountManager()
-			if mgr != nil {
-				_ = mgr.DeleteAccount(accountID)
-			}
-			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("no key manager available")}
-		}
-		if err := core.AssignKeys(selectedKeyIDs, accountID, func(kid, aid int) error {
-			return km.AssignKeyToAccount(kid, aid)
-		}); err != nil {
-			// Log the failure
-			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to assign key: %v",
-				accountData.Username, accountData.Hostname, err))
-			// Cleanup: delete the account if key assignment fails
-			mgr := ui.DefaultAccountManager()
-			if mgr != nil {
-				_ = mgr.DeleteAccount(accountID)
-			}
-			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to assign keys to account: %w", err)}
-		}
-
-		// 3. Generate the authorized_keys content using pure core helper.
-		// Fetch required data (DB-managed) here in the TUI, then call core.
-		sk, _ := db.GetActiveSystemKey()
-		km = ui.DefaultKeyManager()
-		if km == nil {
-			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: no key manager available",
-				accountData.Username, accountData.Hostname))
-			mgr := ui.DefaultAccountManager()
-			if mgr != nil {
-				_ = mgr.DeleteAccount(accountID)
-			}
-			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("no key manager available")}
-		}
-		globalKeys, err := km.GetGlobalPublicKeys()
-		if err != nil {
-			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to fetch global keys: %v",
-				accountData.Username, accountData.Hostname, err))
-			mgr := ui.DefaultAccountManager()
-			if mgr != nil {
-				_ = mgr.DeleteAccount(accountID)
-			}
-			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to fetch global keys: %w", err)}
-		}
-		accountKeys, err := km.GetKeysForAccount(accountID)
-		if err != nil {
-			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to fetch account keys: %v",
-				accountData.Username, accountData.Hostname, err))
-			mgr := ui.DefaultAccountManager()
-			if mgr != nil {
-				_ = mgr.DeleteAccount(accountID)
-			}
-			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to fetch account keys: %w", err)}
-		}
-
-		content, err := keys.BuildAuthorizedKeysContent(sk, globalKeys, accountKeys)
-		if err != nil {
-			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to build keys content: %v",
-				accountData.Username, accountData.Hostname, err))
-			mgr := ui.DefaultAccountManager()
-			if mgr != nil {
-				_ = mgr.DeleteAccount(accountID)
-			}
-			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to build keys content: %w", err)}
-		}
-
-		// 4. Deploy to remote host via SSH using the verified host key
-		tempPrivateKey := string(m.session.TempKeyPair.GetPrivateKeyPEM())
-		deployer, err := deploy.NewBootstrapDeployerWithExpectedKey(
-			accountData.Hostname,
-			accountData.Username,
-			tempPrivateKey,
-			m.hostKey,
-		)
-		if err != nil {
-			// Log the failure
-			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: failed to connect: %v",
-				accountData.Username, accountData.Hostname, err))
-			// Cleanup: delete the account if deployer creation fails
-			mgr := ui.DefaultAccountManager()
-			if mgr != nil {
-				_ = mgr.DeleteAccount(accountID)
-			}
-			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to create bootstrap deployer: %w", err)}
-		}
-		defer deployer.Close()
-
-		if err := deployer.DeployAuthorizedKeys(content); err != nil {
-			// Log the failure
-			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: deployment failed: %v",
-				accountData.Username, accountData.Hostname, err))
-			// Cleanup: delete the account if SSH deployment fails
-			mgr := ui.DefaultAccountManager()
-			if mgr != nil {
-				_ = mgr.DeleteAccount(accountID)
-			}
-			return deploymentCompleteMsg{account: accountData, err: fmt.Errorf("failed to deploy keys to remote host: %w", err)}
-		}
-
-		// 5. Update account with current system key serial
-		systemKey, err := db.GetActiveSystemKey()
-		if err == nil && systemKey != nil {
-			if err := db.UpdateAccountSerial(accountID, systemKey.Serial); err != nil {
-				fmt.Printf("Warning: failed to update account serial for account %d: %v\n", accountID, err)
-			}
-		}
-
-		// 6. Log successful bootstrap
-		keyCount := len(selectedKeyIDs)
-		_ = logAction("BOOTSTRAP_HOST", fmt.Sprintf("account: %s@%s, keys_deployed: %d",
-			accountData.Username, accountData.Hostname, keyCount))
-
-		// 7. Cleanup bootstrap session
-		bootstrap.UnregisterSession(m.session.ID)
-		_ = m.session.Delete()
-
-		return deploymentCompleteMsg{account: accountData, err: nil}
+		// Success — mark completion and surface any non-fatal warnings.
+		m.deploymentResult = nil
+		m.step = stepComplete
+		return deploymentCompleteMsg{account: res.Account, err: nil}
 	}
 }
 
