@@ -468,6 +468,13 @@ func (m *accountFormModel) updateSuggestions() {
 
 	m.suggestions = []string{}
 	lowerLast := strings.ToLower(lastPart)
+	// Ensure the lowercase cache is initialized and in sync with allTags.
+	if len(m.allTagsLower) != len(m.allTags) {
+		m.allTagsLower = make([]string, len(m.allTags))
+		for i, tag := range m.allTags {
+			m.allTagsLower[i] = strings.ToLower(tag)
+		}
+	}
 	for i, tag := range m.allTags {
 		lowerTag := m.allTagsLower[i]
 		if strings.HasPrefix(lowerTag, lowerLast) {
