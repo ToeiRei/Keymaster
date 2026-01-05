@@ -118,10 +118,10 @@ func (m *accountsModel) rebuildDisplayedAccounts() {
 		localResults := []model.Account{}
 		lowerFilter := strings.ToLower(m.filter)
 		for _, acc := range m.accounts {
-			if strings.Contains(strings.ToLower(acc.Username), lowerFilter) ||
-				strings.Contains(strings.ToLower(acc.Hostname), lowerFilter) ||
-				strings.Contains(strings.ToLower(acc.Label), lowerFilter) ||
-				strings.Contains(strings.ToLower(acc.Tags), lowerFilter) {
+			// Build a single lowercased representation per account to avoid
+			// repeated calls to strings.ToLower in the hot loop.
+			lowerAcc := strings.ToLower(acc.Username + " " + acc.Hostname + " " + acc.Label + " " + acc.Tags)
+			if strings.Contains(lowerAcc, lowerFilter) {
 				localResults = append(localResults, acc)
 			}
 		}

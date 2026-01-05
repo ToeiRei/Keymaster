@@ -99,8 +99,10 @@ func (m *tagsViewModel) rebuildLines() {
 
 	var tagsToDisplay []string
 	if m.filter != "" {
+		lowerFilter := strings.ToLower(m.filter)
 		for _, tag := range m.sortedTags {
-			if strings.Contains(strings.ToLower(tag), strings.ToLower(m.filter)) {
+			lowerTag := strings.ToLower(tag)
+			if strings.Contains(lowerTag, lowerFilter) {
 				tagsToDisplay = append(tagsToDisplay, tag)
 			}
 		}

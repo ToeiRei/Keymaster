@@ -302,8 +302,10 @@ func (m auditModel) getFilteredAccounts() []model.Account {
 		return m.accounts
 	}
 	var out []model.Account
+	lowerFilter := strings.ToLower(m.accountFilter)
 	for _, acc := range m.accounts {
-		if strings.Contains(strings.ToLower(acc.String()), strings.ToLower(m.accountFilter)) {
+		lowerAcc := strings.ToLower(acc.String())
+		if strings.Contains(lowerAcc, lowerFilter) {
 			out = append(out, acc)
 		}
 	}

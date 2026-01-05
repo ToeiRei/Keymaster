@@ -416,8 +416,10 @@ func (m *deployModel) getFilteredAccounts() []model.Account {
 		return m.accounts
 	}
 	var filteredAccounts []model.Account
+	lowerFilter := strings.ToLower(m.accountFilter)
 	for _, acc := range m.accounts {
-		if strings.Contains(strings.ToLower(acc.String()), strings.ToLower(m.accountFilter)) {
+		lowerAcc := strings.ToLower(acc.String())
+		if strings.Contains(lowerAcc, lowerFilter) {
 			filteredAccounts = append(filteredAccounts, acc)
 		}
 	}

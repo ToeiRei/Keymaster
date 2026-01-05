@@ -55,6 +55,7 @@ type accountFormModel struct {
 
 	// For tag autocompletion
 	allTags          []string
+	allTagsLower     []string
 	suggestions      []string
 	suggestionCursor int
 	isSuggesting     bool
@@ -132,6 +133,12 @@ func newAccountFormModel(accountToEdit *model.Account) accountFormModel {
 		m.allTags = append(m.allTags, tag)
 	}
 	sort.Strings(m.allTags) // Keep them sorted for predictable display
+
+	// Precompute lowercase variants for efficient, case-insensitive matching
+	m.allTagsLower = make([]string, len(m.allTags))
+	for i, tag := range m.allTags {
+		m.allTagsLower[i] = strings.ToLower(tag)
+	}
 
 	return m
 }
@@ -460,12 +467,14 @@ func (m *accountFormModel) updateSuggestions() {
 	}
 
 	m.suggestions = []string{}
-	for _, tag := range m.allTags {
-		if strings.HasPrefix(strings.ToLower(tag), strings.ToLower(lastPart)) {
-			// Also check if the tag is already in the input
+	lowerLast := strings.ToLower(lastPart)
+	for i, tag := range m.allTags {
+		lowerTag := m.allTagsLower[i]
+		if strings.HasPrefix(lowerTag, lowerLast) {
+			// Also check if the tag is already in the input (case-insensitive)
 			isAlreadyPresent := false
-			for i := 0; i < len(parts)-1; i++ {
-				if strings.TrimSpace(parts[i]) == tag {
+			for j := 0; j < len(parts)-1; j++ {
+				if strings.ToLower(strings.TrimSpace(parts[j])) == lowerTag {
 					isAlreadyPresent = true
 					break
 				}

@@ -134,20 +134,25 @@ func (m *auditLogModel) rebuildTableRows() {
 	lowerFilter := strings.ToLower(m.filter)
 	for _, entry := range m.allEntries {
 		match := false
+		// Precompute lowercased fields once per entry to avoid repeated calls.
+		lowerTimestamp := strings.ToLower(entry.Timestamp)
+		lowerUsername := strings.ToLower(entry.Username)
+		lowerAction := strings.ToLower(entry.Action)
+		lowerDetails := strings.ToLower(entry.Details)
 		switch m.filterCol {
 		case 0:
-			match = strings.Contains(strings.ToLower(entry.Timestamp), lowerFilter) ||
-				strings.Contains(strings.ToLower(entry.Username), lowerFilter) ||
-				strings.Contains(strings.ToLower(entry.Action), lowerFilter) ||
-				strings.Contains(strings.ToLower(entry.Details), lowerFilter)
+			match = strings.Contains(lowerTimestamp, lowerFilter) ||
+				strings.Contains(lowerUsername, lowerFilter) ||
+				strings.Contains(lowerAction, lowerFilter) ||
+				strings.Contains(lowerDetails, lowerFilter)
 		case 1:
-			match = strings.Contains(strings.ToLower(entry.Timestamp), lowerFilter)
+			match = strings.Contains(lowerTimestamp, lowerFilter)
 		case 2:
-			match = strings.Contains(strings.ToLower(entry.Username), lowerFilter)
+			match = strings.Contains(lowerUsername, lowerFilter)
 		case 3:
-			match = strings.Contains(strings.ToLower(entry.Action), lowerFilter)
+			match = strings.Contains(lowerAction, lowerFilter)
 		case 4:
-			match = strings.Contains(strings.ToLower(entry.Details), lowerFilter)
+			match = strings.Contains(lowerDetails, lowerFilter)
 		}
 		if m.filter != "" && !match {
 			continue

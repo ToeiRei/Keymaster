@@ -119,7 +119,10 @@ func (m *publicKeysModel) rebuildDisplayedKeys() {
 				m.displayedKeys = []model.PublicKey{}
 				lowerFilter := strings.ToLower(m.filter)
 				for _, key := range m.keys {
-					if strings.Contains(strings.ToLower(key.Comment), lowerFilter) || strings.Contains(strings.ToLower(key.Algorithm), lowerFilter) || strings.Contains(strings.ToLower(key.KeyData), lowerFilter) {
+					lowerComment := strings.ToLower(key.Comment)
+					lowerAlg := strings.ToLower(key.Algorithm)
+					lowerKeyData := strings.ToLower(key.KeyData)
+					if strings.Contains(lowerComment, lowerFilter) || strings.Contains(lowerAlg, lowerFilter) || strings.Contains(lowerKeyData, lowerFilter) {
 						m.displayedKeys = append(m.displayedKeys, key)
 					}
 				}
@@ -128,7 +131,9 @@ func (m *publicKeysModel) rebuildDisplayedKeys() {
 			m.displayedKeys = []model.PublicKey{}
 			lowerFilter := strings.ToLower(m.filter)
 			for _, key := range m.keys {
-				if strings.Contains(strings.ToLower(key.Comment), lowerFilter) || strings.Contains(strings.ToLower(key.Algorithm), lowerFilter) {
+				lowerComment := strings.ToLower(key.Comment)
+				lowerAlg := strings.ToLower(key.Algorithm)
+				if strings.Contains(lowerComment, lowerFilter) || strings.Contains(lowerAlg, lowerFilter) {
 					m.displayedKeys = append(m.displayedKeys, key)
 				}
 			}
