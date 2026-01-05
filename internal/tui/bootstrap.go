@@ -1215,9 +1215,11 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			SelectedKeyIDs: pfSelectedKeyIDs,
 			TempPrivateKey: pfTempPrivateKey,
 			HostKey:        m.hostKey,
+			SessionID:      "",
 		}
 
 		deps := core.BootstrapDeps{
+			SessionStore:         coreSessionStore{},
 			AccountStore:         coreAccountStore{},
 			KeyStore:             coreKeyStore{},
 			GenerateKeysContent:  coreKeysContentBuilder{}.Generate,
@@ -1229,9 +1231,14 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			Auditor: coreAuditor{},
 		}
 
+		// Attach current session ID so core can update/remove persisted session state.
+		if m.session != nil {
+			params.SessionID = m.session.ID
+		}
+
 		// Run core orchestration. Core will perform validation and (when wired)
 		// will invoke side-effecting deps. Here we pass the real deps from the
-		// TUI so core can use them; core may still be a skeleton in this slice.
+		// TUI so core can use them.
 		res, err := core.PerformBootstrapDeployment(context.Background(), params, deps)
 		// Store warnings for UI display
 		m.warnings = res.Warnings
