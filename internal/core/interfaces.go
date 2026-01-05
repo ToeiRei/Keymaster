@@ -78,9 +78,27 @@ type DeployerManager interface {
 
 // DecommissionResult mirrors the outcome reported by deploy package for each account.
 type DecommissionResult struct {
-	Account             model.Account
-	Skipped             bool
+	// Account contains the account object for which this result applies.
+	Account model.Account
+
+	// Account metadata
+	AccountID     int
+	AccountString string
+
+	// Remote cleanup fields
+	RemoteCleanupDone  bool
+	RemoteCleanupError error
+
+	// Database cleanup fields
+	DatabaseDeleteDone  bool
 	DatabaseDeleteError error
+
+	// Backup path created during decommission (if any)
+	BackupPath string
+
+	// Skip/flags
+	Skipped    bool
+	SkipReason string
 }
 
 // DBMaintainer runs engine-specific maintenance operations.

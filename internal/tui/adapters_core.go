@@ -209,7 +209,18 @@ func (coreDeployAdapter) DecommissionAccount(account model.Account, systemKey st
 		opts = o
 	}
 	r := deploy.DecommissionAccount(account, systemKey, opts)
-	return core.DecommissionResult{Account: account, Skipped: r.Skipped, DatabaseDeleteError: r.DatabaseDeleteError}, nil
+	return core.DecommissionResult{
+		Account:             account,
+		AccountID:           r.AccountID,
+		AccountString:       r.AccountString,
+		RemoteCleanupDone:   r.RemoteCleanupDone,
+		RemoteCleanupError:  r.RemoteCleanupError,
+		DatabaseDeleteDone:  r.DatabaseDeleteDone,
+		DatabaseDeleteError: r.DatabaseDeleteError,
+		BackupPath:          r.BackupPath,
+		Skipped:             r.Skipped,
+		SkipReason:          r.SkipReason,
+	}, nil
 }
 
 func (coreDeployAdapter) DeployForAccount(account model.Account, keepFile bool) error {
@@ -241,7 +252,18 @@ func (coreDeployAdapter) BulkDecommissionAccounts(accounts []model.Account, syst
 		if i < len(accounts) {
 			acc = accounts[i]
 		}
-		out = append(out, core.DecommissionResult{Account: acc, Skipped: r.Skipped, DatabaseDeleteError: r.DatabaseDeleteError})
+		out = append(out, core.DecommissionResult{
+			Account:             acc,
+			AccountID:           r.AccountID,
+			AccountString:       r.AccountString,
+			RemoteCleanupDone:   r.RemoteCleanupDone,
+			RemoteCleanupError:  r.RemoteCleanupError,
+			DatabaseDeleteDone:  r.DatabaseDeleteDone,
+			DatabaseDeleteError: r.DatabaseDeleteError,
+			BackupPath:          r.BackupPath,
+			Skipped:             r.Skipped,
+			SkipReason:          r.SkipReason,
+		})
 	}
 	return out, nil
 }

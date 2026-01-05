@@ -5,7 +5,6 @@
 package core
 
 import (
-	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -14,9 +13,12 @@ import (
 // Key IDs should be preserved. The actual deployment/decommission work is
 // delegated to the provided decommander function so that core remains
 // side-effect free and callers can inject the environment-specific logic.
-func PerformDecommissionWithKeys(account model.Account, selectedKeysToKeep map[int]bool, decommander func(model.Account, map[int]bool) (deploy.DecommissionResult, error)) (deploy.DecommissionResult, error) {
+//
+// The function works with core.DecommissionResult to avoid leaking the
+// lower-level deploy package into UI code.
+func PerformDecommissionWithKeys(account model.Account, selectedKeysToKeep map[int]bool, decommander func(model.Account, map[int]bool) (DecommissionResult, error)) (DecommissionResult, error) {
 	if decommander == nil {
-		return deploy.DecommissionResult{}, nil
+		return DecommissionResult{}, nil
 	}
 	return decommander(account, selectedKeysToKeep)
 }

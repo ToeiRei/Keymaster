@@ -955,12 +955,12 @@ func (m *accountsModel) loadKeysForSelection() tea.Cmd {
 func (m *accountsModel) performDecommissionWithKeys() tea.Cmd {
 	return func() tea.Msg {
 		// Provide a decommander closure that encapsulates environment-specific
-		// steps (fetching active system key, building options, calling deploy).
-		decommander := func(account model.Account, selectedKeys map[int]bool) (deploy.DecommissionResult, error) {
+		// steps (fetching active system key, building options, delegating to adapter).
+		decommander := func(account model.Account, selectedKeys map[int]bool) (core.DecommissionResult, error) {
 			// Fetch active system key via UI adapter
 			sk, err := ui.GetActiveSystemKey()
 			if err != nil || sk == nil {
-				return deploy.DecommissionResult{}, err
+				return core.DecommissionResult{}, err
 			}
 
 			// Build list of key IDs to remove (inverse of keys to keep)
@@ -979,15 +979,19 @@ func (m *accountsModel) performDecommissionWithKeys() tea.Cmd {
 				SelectiveKeys:     keysToRemove,
 			}
 
-			res := deploy.DecommissionAccount(account, sk.PrivateKey, options)
+			// Use the TUI adapter which implements core.DeployerManager to perform decommission.
+			res, err := deployAdapter.DecommissionAccount(account, sk.PrivateKey, options)
+			if err != nil {
+				return core.DecommissionResult{}, err
+			}
 			return res, nil
 		}
 
 		result, err := core.PerformDecommissionWithKeys(m.accountToDelete, m.selectedKeysToKeep, decommander)
 		if err != nil {
-			// Surface the error via DecommissionResult so downstream UI can render it
-			return decommissionCompletedMsg{result: deploy.DecommissionResult{
-				AccountID:           m.accountToDelete.ID,
+			// Surface the error via core.DecommissionResult so downstream UI can render it
+			return decommissionCompletedMsg{result: core.DecommissionResult{
+				Account:             m.accountToDelete,
 				AccountString:       m.accountToDelete.String(),
 				DatabaseDeleteError: err,
 			}}
@@ -1002,5 +1006,5 @@ type keySelectionLoadedMsg struct {
 }
 
 type decommissionCompletedMsg struct {
-	result deploy.DecommissionResult
+	result core.DecommissionResult
 }
