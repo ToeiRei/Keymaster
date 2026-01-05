@@ -9,6 +9,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/ui"
 )
 
@@ -16,6 +17,7 @@ import (
 // between cleared (zero time) and Unix epoch 1970-01-01 (deactivated sentinel).
 func TestExpiryToggleEpochZero(t *testing.T) {
 	initTestDBT(t)
+	i18n.Init("en")
 
 	km := ui.DefaultKeyManager()
 	if km == nil {
@@ -27,6 +29,8 @@ func TestExpiryToggleEpochZero(t *testing.T) {
 		t.Fatalf("add key: %v", err)
 	}
 
+	t.Logf("key added id=%d via manager=%T", k.ID, km)
+
 	m := newPublicKeysModelWithSearcher(nil)
 
 	// Ensure list has at least one and cursor is at 0
@@ -34,8 +38,20 @@ func TestExpiryToggleEpochZero(t *testing.T) {
 		t.Fatal("expected displayed keys")
 	}
 
+	// Move cursor to the added key so toggle targets it even when other keys exist
+	for i, dk := range m.displayedKeys {
+		if dk.ID == k.ID {
+			m.cursor = i
+			break
+		}
+	}
+
 	// Press 'e' to deactivate (set to epoch 0)
 	_, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+
+	// debug: dump keys after toggle
+	keysAfterToggle, _ := km.GetAllPublicKeys()
+	t.Logf("after toggle: manager=%T keys=%v", km, keysAfterToggle)
 
 	keys, err := km.GetAllPublicKeys()
 	if err != nil {
@@ -77,6 +93,7 @@ func TestExpiryToggleEpochZero(t *testing.T) {
 // valid date, and pressing Enter updates the key's expiration in the DB.
 func TestExpiryModalFlow(t *testing.T) {
 	initTestDBT(t)
+	i18n.Init("en")
 
 	km := ui.DefaultKeyManager()
 	if km == nil {
