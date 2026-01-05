@@ -380,23 +380,11 @@ func (m *assignKeysModel) keyListViewContent() string {
 }
 
 func (m *assignKeysModel) ensureAccountCursorInView() {
-	top := m.accountViewport.YOffset
-	bottom := top + m.accountViewport.Height - 1
-	if m.accountCursor < top {
-		m.accountViewport.YOffset = m.accountCursor
-	} else if m.accountCursor > bottom {
-		m.accountViewport.YOffset = m.accountCursor - m.accountViewport.Height + 1
-	}
+	m.accountViewport.YOffset = core.EnsureCursorInView(m.accountCursor, m.accountViewport.YOffset, m.accountViewport.Height)
 }
 
 func (m *assignKeysModel) ensureKeyCursorInView() {
-	top := m.keyViewport.YOffset
-	bottom := top + m.keyViewport.Height - 1
-	if m.keyCursor < top {
-		m.keyViewport.YOffset = m.keyCursor
-	} else if m.keyCursor > bottom {
-		m.keyViewport.YOffset = m.keyCursor - m.keyViewport.Height + 1
-	}
+	m.keyViewport.YOffset = core.EnsureCursorInView(m.keyCursor, m.keyViewport.YOffset, m.keyViewport.Height)
 }
 
 func (m *assignKeysModel) headerView() string {

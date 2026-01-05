@@ -456,16 +456,7 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // ensureCursorInView adjusts the viewport's Y offset to ensure the cursor is visible.
 func (m *publicKeysModel) ensureCursorInView() {
-	top := m.viewport.YOffset
-	bottom := top + m.viewport.Height - 1
-
-	if m.cursor < top {
-		// Cursor is above the viewport, so scroll up to bring it into view.
-		m.viewport.YOffset = m.cursor
-	} else if m.cursor > bottom {
-		// Cursor is below the viewport, so scroll down.
-		m.viewport.YOffset = m.cursor - m.viewport.Height + 1
-	}
+	m.viewport.YOffset = core.EnsureCursorInView(m.cursor, m.viewport.YOffset, m.viewport.Height)
 }
 
 // headerView renders the main title of the page.
