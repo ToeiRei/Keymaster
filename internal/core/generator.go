@@ -1,0 +1,154 @@
+package core
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/keys"
+	"github.com/toeirei/keymaster/internal/model"
+)
+
+// SystemKeyRestrictions defines the SSH options applied to the Keymaster system key.
+const SystemKeyRestrictions = `command="internal-sftp",no-port-forwarding,no-x11-forwarding,no-agent-forwarding,no-pty`
+
+// GenerateKeysContent constructs the authorized_keys file content for a given account.
+func GenerateKeysContent(accountID int) (string, error) {
+	activeKey, err := db.GetActiveSystemKey()
+	if err != nil {
+		return "", fmt.Errorf("could not retrieve active system key: %w", err)
+	}
+	if activeKey == nil {
+		return "", fmt.Errorf("no active system key found. please generate one first")
+	}
+	return GenerateKeysContentForSerial(accountID, activeKey.Serial)
+}
+
+// GenerateKeysContentForSerial constructs the authorized_keys file content for a given account using a specific system key serial.
+func GenerateKeysContentForSerial(accountID int, serial int) (string, error) {
+	systemKey, err := db.GetSystemKeyBySerial(serial)
+	if err != nil {
+		return "", fmt.Errorf("could not retrieve active system key: %w", err)
+	}
+	if systemKey == nil {
+		return "", fmt.Errorf("no active system key found. please generate one first")
+	}
+
+	km := db.DefaultKeyManager()
+	if km == nil {
+		return "", fmt.Errorf("no key manager available")
+	}
+	globalKeys, err := km.GetGlobalPublicKeys()
+	if err != nil {
+		return "", fmt.Errorf("could not retrieve global public keys: %w", err)
+	}
+	accountKeys, err := km.GetKeysForAccount(accountID)
+	if err != nil {
+		return "", fmt.Errorf("could not retrieve keys for account ID %d: %w", accountID, err)
+	}
+
+	return keys.BuildAuthorizedKeysContent(systemKey, globalKeys, accountKeys)
+}
+
+// GenerateSelectiveKeysContent constructs authorized_keys content excluding specific keys.
+func GenerateSelectiveKeysContent(accountID int, serial int, excludeKeyIDs []int, removeSystemKey bool) (string, error) {
+	var content strings.Builder
+
+	if !removeSystemKey {
+		if serial == 0 {
+			activeKey, err := db.GetActiveSystemKey()
+			if err != nil {
+				return "", fmt.Errorf("could not retrieve active system key: %w", err)
+			}
+			if activeKey == nil {
+				return "", fmt.Errorf("no active system key found. please generate one first")
+			}
+			serial = activeKey.Serial
+		}
+
+		systemKey, err := db.GetSystemKeyBySerial(serial)
+		if err != nil {
+			return "", fmt.Errorf("could not retrieve system key: %w", err)
+		}
+		if systemKey == nil {
+			return "", fmt.Errorf("no system key found for serial %d", serial)
+		}
+
+		content.WriteString(fmt.Sprintf("# Keymaster Managed Keys (Serial: %d)\n", systemKey.Serial))
+		restrictedSystemKey := fmt.Sprintf("%s %s", SystemKeyRestrictions, systemKey.PublicKey)
+		content.WriteString(restrictedSystemKey)
+	}
+
+	km := db.DefaultKeyManager()
+	if km == nil {
+		return "", fmt.Errorf("no key manager available")
+	}
+	globalKeys, err := km.GetGlobalPublicKeys()
+	if err != nil {
+		return "", fmt.Errorf("could not retrieve global public keys: %w", err)
+	}
+
+	accountKeys, err := km.GetKeysForAccount(accountID)
+	if err != nil {
+		return "", fmt.Errorf("could not retrieve keys for account ID %d: %w", accountID, err)
+	}
+
+	type keyInfo struct {
+		id      int
+		line    string
+		comment string
+	}
+	allUserKeysMap := make(map[int]keyInfo)
+	excludeSet := make(map[int]bool)
+	for _, keyID := range excludeKeyIDs {
+		excludeSet[keyID] = true
+	}
+
+	formatKey := func(key model.PublicKey) string {
+		if key.Comment != "" {
+			return fmt.Sprintf("%s %s %s", key.Algorithm, key.KeyData, key.Comment)
+		}
+		return fmt.Sprintf("%s %s", key.Algorithm, key.KeyData)
+	}
+
+	filterExpired := func(keys []model.PublicKey) []model.PublicKey {
+		var out []model.PublicKey
+		now := time.Now().UTC()
+		for _, k := range keys {
+			if k.ExpiresAt.IsZero() || k.ExpiresAt.After(now) {
+				out = append(out, k)
+			}
+		}
+		return out
+	}
+	globalKeys = filterExpired(globalKeys)
+	accountKeys = filterExpired(accountKeys)
+
+	for _, key := range globalKeys {
+		if !excludeSet[key.ID] {
+			allUserKeysMap[key.ID] = keyInfo{id: key.ID, line: formatKey(key), comment: key.Comment}
+		}
+	}
+	for _, key := range accountKeys {
+		if !excludeSet[key.ID] {
+			allUserKeysMap[key.ID] = keyInfo{id: key.ID, line: formatKey(key), comment: key.Comment}
+		}
+	}
+
+	var sortedKeys []keyInfo
+	for _, ki := range allUserKeysMap {
+		sortedKeys = append(sortedKeys, ki)
+	}
+	sort.Slice(sortedKeys, func(i, j int) bool { return sortedKeys[i].comment < sortedKeys[j].comment })
+
+	for _, ki := range sortedKeys {
+		content.WriteString("\n")
+		content.WriteString(ki.line)
+	}
+	if len(sortedKeys) > 0 {
+		content.WriteString("\n")
+	}
+	return content.String(), nil
+}

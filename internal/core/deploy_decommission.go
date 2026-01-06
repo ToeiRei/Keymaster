@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/toeirei/keymaster/internal/db"
-	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
 )
@@ -180,7 +179,7 @@ func removeSelectiveKeymasterContent(deployer RemoteDeployer, result *Decommissi
 
 	var finalContent string
 	if removeSystemKey && len(excludeKeyIDs) == 0 {
-		keymasterContent, err := deploy.GenerateSelectiveKeysContent(accountID, 0, nil, true)
+		keymasterContent, err := GenerateSelectiveKeysContent(accountID, 0, nil, true)
 		if err != nil {
 			return fmt.Errorf("failed to generate keys content: %w", err)
 		}
@@ -197,7 +196,7 @@ func removeSelectiveKeymasterContent(deployer RemoteDeployer, result *Decommissi
 			finalContent = nonKeymasterContent
 		}
 	} else if len(excludeKeyIDs) > 0 || removeSystemKey {
-		keymasterContent, err := deploy.GenerateSelectiveKeysContent(accountID, 0, excludeKeyIDs, removeSystemKey)
+		keymasterContent, err := GenerateSelectiveKeysContent(accountID, 0, excludeKeyIDs, removeSystemKey)
 		if err != nil {
 			return fmt.Errorf("failed to generate selective keys content: %w", err)
 		}

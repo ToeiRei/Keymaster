@@ -1,17 +1,14 @@
 package core
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/toeirei/keymaster/internal/db"
-	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
-	"golang.org/x/crypto/ssh"
 )
 
-type builtinBootstrapDeployer struct{ d *deploy.Deployer }
+type builtinBootstrapDeployer struct{ d BootstrapDeployer }
 
 func (b *builtinBootstrapDeployer) DeployAuthorizedKeys(content string) error {
 	return b.d.DeployAuthorizedKeys(content)
@@ -19,15 +16,9 @@ func (b *builtinBootstrapDeployer) DeployAuthorizedKeys(content string) error {
 
 func (b *builtinBootstrapDeployer) Close() { b.d.Close() }
 
-// NewBootstrapDeployer creates a BootstrapDeployer using the deploy package.
+// NewBootstrapDeployer creates a BootstrapDeployer via the registered hook.
 func NewBootstrapDeployer(hostname, username, privateKey, expectedHostKey string) (BootstrapDeployer, error) {
-	var d *deploy.Deployer
-	var err error
-	if expectedHostKey != "" {
-		d, err = deploy.NewBootstrapDeployerWithExpectedKey(hostname, username, privateKey, expectedHostKey)
-	} else {
-		d, err = deploy.NewBootstrapDeployer(hostname, username, privateKey)
-	}
+	d, err := NewBootstrapDeployerFunc(hostname, username, privateKey, expectedHostKey)
 	if err != nil {
 		return nil, err
 	}
@@ -69,21 +60,17 @@ func (builtinDeployerManager) BulkDecommissionAccounts(accounts []model.Account,
 }
 
 func (builtinDeployerManager) CanonicalizeHostPort(host string) string {
-	return deploy.CanonicalizeHostPort(host)
+	return CanonicalizeHostPort(host)
 }
 func (builtinDeployerManager) ParseHostPort(host string) (string, string, error) {
-	return deploy.ParseHostPort(host)
+	return ParseHostPort(host)
 }
 func (builtinDeployerManager) GetRemoteHostKey(host string) (string, error) {
-	pk, err := deploy.GetRemoteHostKey(host)
-	if err != nil {
-		return "", err
-	}
-	return string(ssh.MarshalAuthorizedKey(pk)), nil
+	return GetRemoteHostKey(host)
 }
 
 func (builtinDeployerManager) FetchAuthorizedKeys(account model.Account) ([]byte, error) {
-	// Use deploy.NewDeployerFunc which handles agent/passphrase.
+	// Use NewDeployerFactory hook which handles agent/passphrase.
 	var privateKey string
 	if account.Serial == 0 {
 		sk, err := db.GetActiveSystemKey()
@@ -126,11 +113,11 @@ func (builtinDeployerManager) FetchAuthorizedKeys(account model.Account) ([]byte
 }
 
 func (builtinDeployerManager) ImportRemoteKeys(account model.Account) ([]model.PublicKey, int, string, error) {
-	return deploy.ImportRemoteKeys(account)
+	return ImportRemoteKeys(account)
 }
 
 func (builtinDeployerManager) IsPassphraseRequired(err error) bool {
-	return errors.Is(err, deploy.ErrPassphraseRequired)
+	return IsPassphraseRequired(err)
 }
 
 // DefaultDeployerManager is the production implementation used by UIs.

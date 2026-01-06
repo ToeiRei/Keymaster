@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/internal/db"
-	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
@@ -43,7 +42,7 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 		}
 	}
 
-	content, err := deploy.GenerateKeysContent(account.ID)
+	content, err := GenerateKeysContent(account.ID)
 	if err != nil {
 		return err
 	}

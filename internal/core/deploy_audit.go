@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/toeirei/keymaster/internal/db"
-	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
@@ -37,11 +36,6 @@ func AuditAccountStrict(account model.Account) error {
 
 	deployer, err := NewDeployerFactory(account.Hostname, account.Username, connectKey.PrivateKey, passphrase)
 	if err != nil {
-		// If the underlying deploy.NewDeployerFunc returned a passphrase-required
-		// sentinel, propagate it so callers (TUI) can prompt. We can't reference
-		// deploy.ErrPassphraseRequired here because this path may be triggered by
-		// different factory implementations in tests; check by string match is
-		// unreliable — so simply return the error and let callers decide.
 		return fmt.Errorf(i18n.T("audit.error_connection_failed"), account.Serial, err)
 	}
 	defer deployer.Close()
@@ -52,7 +46,7 @@ func AuditAccountStrict(account model.Account) error {
 		return errors.New(i18n.T("audit.error_read_remote_file", err))
 	}
 
-	expectedContent, err := deploy.GenerateKeysContent(account.ID)
+	expectedContent, err := GenerateKeysContent(account.ID)
 	if err != nil {
 		return errors.New(i18n.T("audit.error_generate_expected", err))
 	}
@@ -91,11 +85,8 @@ func AuditAccountSerial(account model.Account) error {
 		}
 	}()
 
-	deployer, err := deploy.NewDeployerFunc(account.Hostname, account.Username, connectKey.PrivateKey, passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, connectKey.PrivateKey, passphrase)
 	if err != nil {
-		if errors.Is(err, deploy.ErrPassphraseRequired) {
-			return err
-		}
 		return fmt.Errorf(i18n.T("audit.error_connection_failed"), account.Serial, err)
 	}
 	defer deployer.Close()
