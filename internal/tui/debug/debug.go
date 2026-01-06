@@ -147,12 +147,12 @@ func (m testModel) renderHeader() string {
 		Width(m.width)
 
 	subtitleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("255")).
+		Foreground(lipgloss.Color("250")).
 		Background(lipgloss.Color("60")).
 		Width(m.width)
 
-	title := titleStyle.Render("🔑 Keymaster — Layout Test")
-	subtitle := subtitleStyle.Render("An agentless SSH key manager that just does the job.")
+	title := titleStyle.Render(" 🔑 Keymaster — Layout Test")
+	subtitle := subtitleStyle.Render(" An agentless SSH key manager that just does the job.")
 
 	return lipgloss.JoinVertical(lipgloss.Left, title, subtitle)
 }
@@ -186,11 +186,14 @@ func (m testModel) renderSeparator(height int) string {
 		Width(3).
 		Height(height)
 
-	// Pad separator to match height, but skip first line to align with nav header.
+	// Pad separator to match height, skip first and last lines for spacing (matching horizontal separators).
 	lines := make([]string, height)
-	lines[0] = "" // empty line at top
-	for i := 1; i < height; i++ {
+	lines[0] = "" // empty line at top (aligns with nav header)
+	for i := 1; i < height-1; i++ {
 		lines[i] = " │ "
+	}
+	if height > 1 {
+		lines[height-1] = "" // empty line at bottom for spacing
 	}
 
 	return style.Render(lipgloss.JoinVertical(lipgloss.Center, lines...))
@@ -239,15 +242,17 @@ func (m testModel) renderFooter() string {
 	return footerStyle.Render(text)
 }
 
-// renderHorizontalSeparator produces a horizontal line for box framing.
+// renderHorizontalSeparator produces a shortened horizontal line for box framing.
 func (m testModel) renderHorizontalSeparator() string {
 	style := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("8")).
-		Width(m.width)
+		Foreground(lipgloss.Color("8"))
 
-	line := ""
-	for i := 0; i < m.width; i++ {
+	// Shorter line with 1 char margin on each side for spacing
+	sepWidth := m.width - 2
+	line := " "
+	for i := 0; i < sepWidth; i++ {
 		line += "─"
 	}
+	line += " "
 	return style.Render(line)
 }
