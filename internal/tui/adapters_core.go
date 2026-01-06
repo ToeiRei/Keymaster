@@ -1,18 +1,14 @@
 package tui
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/toeirei/keymaster/internal/config"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/state"
 	"github.com/toeirei/keymaster/internal/ui"
-	"golang.org/x/crypto/ssh"
 )
 
 // coreAccountReader adapts UI helpers to core.AccountReader.
@@ -125,158 +121,63 @@ func (coreKeysContentBuilder) Generate(accountID int) (string, error) {
 	return keys.BuildAuthorizedKeysContent(sk, globalKeys, accountKeys)
 }
 
-// coreBootstrapDeployerFactory adapts the deploy package to core.NewBootstrapDeployer.
+// coreBootstrapDeployerFactory adapts core bootstrap factory to a simple type used by TUI.
 type coreBootstrapDeployerFactory struct{}
 
 func (coreBootstrapDeployerFactory) New(hostname, username, privateKey, expectedHostKey string) (core.BootstrapDeployer, error) {
-	d, err := deploy.NewBootstrapDeployerWithExpectedKey(hostname, username, privateKey, expectedHostKey)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
+	return core.NewBootstrapDeployer(hostname, username, privateKey, expectedHostKey)
 }
 
-// coreDeployAdapter wraps the deploy package for use by the TUI.
+// coreDeployAdapter delegates deploy-related operations to core.DefaultDeployerManager.
 type coreDeployAdapter struct{}
 
 func (coreDeployAdapter) GetRemoteHostKey(hostname string) (string, error) {
-	pk, err := deploy.GetRemoteHostKey(hostname)
-	if err != nil {
-		return "", err
-	}
-	return string(ssh.MarshalAuthorizedKey(pk)), nil
+	return core.DefaultDeployerManager.GetRemoteHostKey(hostname)
 }
 
 func (coreDeployAdapter) CanonicalizeHostPort(host string) string {
-	return deploy.CanonicalizeHostPort(host)
+	return core.DefaultDeployerManager.CanonicalizeHostPort(host)
 }
 
 func (coreDeployAdapter) ParseHostPort(host string) (string, string, error) {
-	return deploy.ParseHostPort(host)
+	return core.DefaultDeployerManager.ParseHostPort(host)
 }
 
 // FetchAuthorizedKeys returns the raw authorized_keys content from the remote host.
 func (coreDeployAdapter) FetchAuthorizedKeys(account model.Account) ([]byte, error) {
-	var privateKey string
-	if account.Serial == 0 {
-		sk, err := ui.GetActiveSystemKey()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get active system key: %w", err)
-		}
-		if sk != nil {
-			privateKey = sk.PrivateKey
-		}
-	} else {
-		sk, err := ui.GetSystemKeyBySerial(account.Serial)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get system key for serial %d: %w", account.Serial, err)
-		}
-		if sk == nil {
-			return nil, fmt.Errorf("no system key for serial %d", account.Serial)
-		}
-		privateKey = sk.PrivateKey
-	}
-
-	passphrase := state.PasswordCache.Get()
-	defer func() {
-		for i := range passphrase {
-			passphrase[i] = 0
-		}
-	}()
-
-	deployer, err := deploy.NewDeployerFunc(account.Hostname, account.Username, privateKey, passphrase)
-	if err != nil {
-		return nil, err
-	}
-	defer deployer.Close()
-	state.PasswordCache.Clear()
-
-	content, err := deployer.GetAuthorizedKeys()
-	if err != nil {
-		return nil, err
-	}
-	return content, nil
+	return core.DefaultDeployerManager.FetchAuthorizedKeys(account)
 }
 
 func (coreDeployAdapter) ImportRemoteKeys(account model.Account) ([]model.PublicKey, int, string, error) {
-	return deploy.ImportRemoteKeys(account)
+	return core.DefaultDeployerManager.ImportRemoteKeys(account)
 }
 
 func (coreDeployAdapter) DecommissionAccount(account model.Account, systemKey string, options interface{}) (core.DecommissionResult, error) {
-	var opts deploy.DecommissionOptions
-	if o, ok := options.(deploy.DecommissionOptions); ok {
-		opts = o
-	} else if o2, ok := options.(core.DecommissionOptions); ok {
-		opts = deploy.DecommissionOptions{
-			SkipRemoteCleanup: o2.SkipRemoteCleanup,
-			KeepFile:          o2.KeepFile,
-			Force:             o2.Force,
-			DryRun:            o2.DryRun,
-			SelectiveKeys:     o2.SelectiveKeys,
-		}
-	}
-	r := deploy.DecommissionAccount(account, systemKey, opts)
-	return core.DecommissionResult{
-		Account:             account,
-		AccountID:           r.AccountID,
-		AccountString:       r.AccountString,
-		RemoteCleanupDone:   r.RemoteCleanupDone,
-		RemoteCleanupError:  r.RemoteCleanupError,
-		DatabaseDeleteDone:  r.DatabaseDeleteDone,
-		DatabaseDeleteError: r.DatabaseDeleteError,
-		BackupPath:          r.BackupPath,
-		Skipped:             r.Skipped,
-		SkipReason:          r.SkipReason,
-	}, nil
+	return core.DefaultDeployerManager.DecommissionAccount(account, systemKey, options)
 }
 
 func (coreDeployAdapter) DeployForAccount(account model.Account, keepFile bool) error {
-	// TUI always runs in interactive/TUI mode
-	return deploy.RunDeploymentForAccount(account, true)
+	return core.DefaultDeployerManager.DeployForAccount(account, keepFile)
 }
 
 func (coreDeployAdapter) RunDeploymentForAccount(account model.Account, isTUI bool) error {
-	return deploy.RunDeploymentForAccount(account, isTUI)
+	// Keep the same semantic: TUI uses interactive mode.
+	return core.DefaultDeployerManager.DeployForAccount(account, isTUI)
 }
 
 func (coreDeployAdapter) AuditSerial(account model.Account) error {
-	return deploy.AuditAccountSerial(account)
+	return core.DefaultDeployerManager.AuditSerial(account)
 }
-
 func (coreDeployAdapter) AuditStrict(account model.Account) error {
-	return deploy.AuditAccountStrict(account)
+	return core.DefaultDeployerManager.AuditStrict(account)
 }
 
 func (coreDeployAdapter) BulkDecommissionAccounts(accounts []model.Account, systemKey string, options interface{}) ([]core.DecommissionResult, error) {
-	var opts deploy.DecommissionOptions
-	if o, ok := options.(deploy.DecommissionOptions); ok {
-		opts = o
-	}
-	res := deploy.BulkDecommissionAccounts(accounts, systemKey, opts)
-	out := make([]core.DecommissionResult, 0, len(res))
-	for i, r := range res {
-		var acc model.Account
-		if i < len(accounts) {
-			acc = accounts[i]
-		}
-		out = append(out, core.DecommissionResult{
-			Account:             acc,
-			AccountID:           r.AccountID,
-			AccountString:       r.AccountString,
-			RemoteCleanupDone:   r.RemoteCleanupDone,
-			RemoteCleanupError:  r.RemoteCleanupError,
-			DatabaseDeleteDone:  r.DatabaseDeleteDone,
-			DatabaseDeleteError: r.DatabaseDeleteError,
-			BackupPath:          r.BackupPath,
-			Skipped:             r.Skipped,
-			SkipReason:          r.SkipReason,
-		})
-	}
-	return out, nil
+	return core.DefaultDeployerManager.BulkDecommissionAccounts(accounts, systemKey, options)
 }
 
 func (coreDeployAdapter) IsPassphraseRequired(err error) bool {
-	return errors.Is(err, deploy.ErrPassphraseRequired)
+	return core.DefaultDeployerManager.IsPassphraseRequired(err)
 }
 
 var deployAdapter = coreDeployAdapter{}

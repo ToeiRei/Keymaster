@@ -74,6 +74,13 @@ type DeployerManager interface {
 	GetRemoteHostKey(host string) (string, error)
 	// FetchAuthorizedKeys should return the raw authorized_keys content from the remote host for the given account.
 	FetchAuthorizedKeys(account model.Account) ([]byte, error)
+	// ImportRemoteKeys fetches authorized_keys from the remote host and parses
+	// them into public key models. It returns imported keys, skipped count,
+	// an optional warning, and an error.
+	ImportRemoteKeys(account model.Account) ([]model.PublicKey, int, string, error)
+	// IsPassphraseRequired reports whether the given error indicates a missing
+	// passphrase for a protected private key during SSH auth attempts.
+	IsPassphraseRequired(err error) bool
 }
 
 // DecommissionResult mirrors the outcome reported by deploy package for each account.
