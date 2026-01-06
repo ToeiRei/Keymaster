@@ -5,7 +5,6 @@
 package deploy_test
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/toeirei/keymaster/internal/core"
@@ -13,16 +12,6 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 )
-
-// fakeDeployer implements core.RemoteDeployer for tests.
-type fakeDeployer struct {
-	content []byte
-	seen    string
-}
-
-func (f *fakeDeployer) DeployAuthorizedKeys(content string) error { f.seen = content; return nil }
-func (f *fakeDeployer) GetAuthorizedKeys() ([]byte, error)        { return f.content, nil }
-func (f *fakeDeployer) Close()                                    {}
 
 func TestAuditAccountSerial_Errors(t *testing.T) {
 	if err := db.InitDB("sqlite", ":memory:"); err != nil {
@@ -91,7 +80,4 @@ func TestAuditAccountStrict_DriftDetected(t *testing.T) {
 	}
 }
 
-// small helpers to avoid importing bytes package directly in test bodies
-// small helpers to avoid importing bytes package directly in test bodies
-// small helpers to avoid importing bytes package directly in test bodies
-func bytesFromString(s string) *bytes.Buffer { return bytes.NewBufferString(s) }
+// bytesFromString is provided by testhelpers_test.go
