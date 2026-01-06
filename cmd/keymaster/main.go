@@ -594,7 +594,7 @@ step before Keymaster can manage a new host.`,
 // It uses a wait group to manage goroutines and a channel to collect results,
 // printing status messages as tasks complete.
 
-// audit implementations moved to internal/deploy/audit.go
+// audit implementations moved to internal/core
 
 // exportSSHConfigCmd represents the 'export-ssh-client-config' command.
 // It generates an SSH config file from all active accounts in the database.
