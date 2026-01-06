@@ -102,9 +102,11 @@ func (m testModel) View() string {
 	bodyWidth := frameW - navWidth - sepWidth
 
 	// Calculate available height.
+	// Account for: header (2) + footer (1) + 2 horizontal separators
 	headerHeight := 2
 	footerHeight := 1
-	mainHeight := frameH - headerHeight - footerHeight
+	separatorLines := 2 // top and bottom box lines
+	mainHeight := frameH - headerHeight - footerHeight - separatorLines
 	if mainHeight < 3 {
 		mainHeight = 3
 	}
@@ -124,11 +126,14 @@ func (m testModel) View() string {
 	// Step 5: Compose main area (horizontal join of nav, sep, body).
 	main := lipgloss.JoinHorizontal(lipgloss.Top, navPane, sepPane, bodyPane)
 
+	// Step 5b: Create horizontal separators for box effect.
+	hSep := m.renderHorizontalSeparator()
+
 	// Step 6: Render footer.
 	footer := m.renderFooter()
 
-	// Step 7: Compose final layout (vertical join of header, main, footer).
-	final := lipgloss.JoinVertical(lipgloss.Left, headerBlock, main, footer)
+	// Step 7: Compose final layout (vertical join of header, main, footer with separators).
+	final := lipgloss.JoinVertical(lipgloss.Left, headerBlock, hSep, main, hSep, footer)
 
 	return final
 }
@@ -137,23 +142,19 @@ func (m testModel) View() string {
 func (m testModel) renderHeader() string {
 	titleStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("255")).
-		Background(lipgloss.Color("4")).
-		Bold(true)
+		Background(lipgloss.Color("60")).
+		Bold(true).
+		Width(m.width)
 
 	subtitleStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("255")).
-		Background(lipgloss.Color("4"))
+		Background(lipgloss.Color("60")).
+		Width(m.width)
 
 	title := titleStyle.Render("🔑 Keymaster — Layout Test")
 	subtitle := subtitleStyle.Render("An agentless SSH key manager that just does the job.")
 
-	// Pad both rows to full width with background
-	headerWrapper := lipgloss.NewStyle().
-		Background(lipgloss.Color("4")).
-		Width(m.width)
-
-	headerBlock := lipgloss.JoinVertical(lipgloss.Left, title, subtitle)
-	return headerWrapper.Render(headerBlock)
+	return lipgloss.JoinVertical(lipgloss.Left, title, subtitle)
 }
 
 // renderNav produces the left navigation pane.
@@ -231,9 +232,22 @@ func (m testModel) renderBody(width, height int) string {
 func (m testModel) renderFooter() string {
 	footerStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("255")).
-		Background(lipgloss.Color("4")).
+		Background(lipgloss.Color("60")).
 		Width(m.width)
 
 	text := " j/k body scroll  J/K menu  q quit"
 	return footerStyle.Render(text)
+}
+
+// renderHorizontalSeparator produces a horizontal line for box framing.
+func (m testModel) renderHorizontalSeparator() string {
+	style := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("8")).
+		Width(m.width)
+
+	line := ""
+	for i := 0; i < m.width; i++ {
+		line += "─"
+	}
+	return style.Render(line)
 }
