@@ -5,7 +5,9 @@
 package tui
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -40,6 +42,12 @@ type remoteKeysImportedMsg struct {
 	skippedCount int
 	warning      string
 	err          error
+}
+
+type transferAcceptedMsg struct {
+	account model.Account
+	err     error
+	file    string
 }
 
 type accountsViewState int
@@ -479,6 +487,21 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status += "\n" + msg.warning
 		}
 		return m, nil
+	case transferAcceptedMsg:
+		if msg.err != nil {
+			m.status = fmt.Sprintf("transfer import failed: %v", msg.err)
+			return m, nil
+		}
+		m.status = fmt.Sprintf("transfer accepted: %s@%s (file: %s)", msg.account.Username, msg.account.Hostname, msg.file)
+		// Refresh list
+		if m.searcher != nil {
+			m.accounts, m.err = m.searcher.SearchAccounts("")
+		} else if def := ui.DefaultAccountSearcher(); def != nil {
+			m.accounts, m.err = def.SearchAccounts("")
+		}
+		m.rebuildDisplayedAccounts()
+		m.viewport.SetContent(m.listContentView())
+		return m, nil
 	}
 
 	// --- This is the list view update logic ---
@@ -617,6 +640,33 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, importRemoteKeysCmd(accToImportFrom)
 			}
 			return m, nil
+
+		// Export transfer package for selected account.
+		case "x":
+			if len(m.displayedAccounts) > 0 {
+				acc := m.displayedAccounts[m.cursor]
+				pkg, err := core.BuildTransferPackage(acc.Username, acc.Hostname, "", "")
+				if err != nil {
+					m.status = fmt.Sprintf("failed to build transfer package: %v", err)
+					return m, nil
+				}
+				fname := fmt.Sprintf("transfer-%s@%s.json", acc.Username, acc.Hostname)
+				if err := os.WriteFile(fname, pkg, 0o600); err != nil {
+					m.status = fmt.Sprintf("failed to write package: %v", err)
+					return m, nil
+				}
+				m.status = fmt.Sprintf("wrote transfer package to %s", fname)
+			}
+			return m, nil
+
+		// Import transfer package and accept it as a bootstrap.
+		case "T":
+			if len(m.displayedAccounts) > 0 {
+				acc := m.displayedAccounts[m.cursor]
+				m.status = fmt.Sprintf("importing transfer for %s@%s", acc.Username, acc.Hostname)
+				return m, importTransferCmd(acc)
+			}
+			return m, nil
 		}
 	}
 
@@ -696,7 +746,11 @@ func (m *accountsModel) footerView() string {
 	} else {
 		filterStatus = i18n.T("accounts.filter_hint")
 	}
-	return footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T("accounts.footer"), filterStatus))
+	// Append transfer help keys to footer using i18n for unified formatting
+	exportLabel := i18n.T("accounts.footer.export_transfer")
+	importLabel := i18n.T("accounts.footer.import_transfer")
+	help := fmt.Sprintf("%s  %s  [x] %s  [T] %s", i18n.T("accounts.footer"), filterStatus, exportLabel, importLabel)
+	return footerStyle.Render(help)
 }
 
 func (m *accountsModel) viewConfirmation() string {
@@ -908,6 +962,56 @@ func importRemoteKeysCmd(account model.Account) tea.Cmd {
 	return func() tea.Msg {
 		imported, skipped, warning, err := coreDeployAdapter{}.ImportRemoteKeys(account)
 		return remoteKeysImportedMsg{accountID: account.ID, importedKeys: imported, skippedCount: skipped, warning: warning, err: err}
+	}
+}
+
+// importTransferCmd reads a transfer package file and runs AcceptTransferPackage.
+func importTransferCmd(account model.Account) tea.Cmd {
+	return func() tea.Msg {
+		// Try default transfer.json first, then account-specific file
+		var in []byte
+		var err error
+		in, err = os.ReadFile("transfer.json")
+		if err != nil {
+			// try account-specific filename
+			fname := fmt.Sprintf("transfer-%s@%s.json", account.Username, account.Hostname)
+			in, err = os.ReadFile(fname)
+			if err != nil {
+				return transferAcceptedMsg{err: fmt.Errorf("failed to read transfer package: %w", err)}
+			}
+			// process
+			deps := core.BootstrapDeps{
+				SessionStore:         coreSessionStore{},
+				AccountStore:         coreAccountStore{},
+				KeyStore:             coreKeyStore{},
+				GenerateKeysContent:  coreKeysContentBuilder{}.Generate,
+				NewBootstrapDeployer: coreBootstrapDeployerFactory{}.New,
+				GetActiveSystemKey:   ui.GetActiveSystemKey,
+				LogAudit:             func(e core.BootstrapAuditEvent) error { return logAction(e.Action, e.Details) },
+				Auditor:              coreAuditor{},
+			}
+			res, err := core.AcceptTransferPackage(context.Background(), in, deps)
+			if err != nil {
+				return transferAcceptedMsg{err: fmt.Errorf("accept transfer failed: %w", err)}
+			}
+			return transferAcceptedMsg{account: res.Account, err: nil, file: fname}
+		}
+		// If we read transfer.json successfully
+		deps := core.BootstrapDeps{
+			SessionStore:         coreSessionStore{},
+			AccountStore:         coreAccountStore{},
+			KeyStore:             coreKeyStore{},
+			GenerateKeysContent:  coreKeysContentBuilder{}.Generate,
+			NewBootstrapDeployer: coreBootstrapDeployerFactory{}.New,
+			GetActiveSystemKey:   ui.GetActiveSystemKey,
+			LogAudit:             func(e core.BootstrapAuditEvent) error { return logAction(e.Action, e.Details) },
+			Auditor:              coreAuditor{},
+		}
+		res, err := core.AcceptTransferPackage(context.Background(), in, deps)
+		if err != nil {
+			return transferAcceptedMsg{err: fmt.Errorf("accept transfer failed: %w", err)}
+		}
+		return transferAcceptedMsg{account: res.Account, err: nil, file: "transfer.json"}
 	}
 }
 

@@ -66,6 +66,8 @@ accounts.filter_active: "Sīfe: %s (cnuc 'esc' tō clǣnsiġenne)"
 accounts.filter_hint: "Cnuc / tō sīfenne…"
 accounts.footer: "(a)eċan (e)rihtan (d)ādilgian (t)ƿendan (v)ġetrēoƿian (i)inbringan
   (q)forlǣtan"
+accounts.footer.export_transfer: "Export transfer"
+accounts.footer.import_transfer: "Import transfer"
 accounts.list_title: "Rǣdmenn"
 accounts.status.modified_success: "Ġesundfullīċe ġerihted rǣdmann."
 accounts.status.trust_attempt: "Fandian tō ġetrēoƿiġenne ƿeard %s…"

@@ -67,6 +67,8 @@ accounts.filter_active: "Filter: %s (mit 'esc' löschen)"
 accounts.filter_hint: "Mit / filtern…"
 accounts.footer: "a: hinzufügen e: bearbeiten d: löschen t: umschalten v: verifizieren
   i: importieren q: beenden"
+accounts.footer.export_transfer: "Transfer exportieren"
+accounts.footer.import_transfer: "Transfer importieren"
 accounts.list_title: "Konten"
 accounts.status.modified_success: "Konto erfolgreich geändert."
 accounts.status.trust_attempt: "Versuche, Host %s zu vertrauen…"
