@@ -9,6 +9,8 @@ package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -400,7 +402,28 @@ func (m *assignKeysModel) footerView() string {
 		} else {
 			filterStatus = i18n.T("assign_keys.search_hint")
 		}
-		helpText = fmt.Sprintf("%s  %s", i18n.T("assign_keys.help_bar_keys"), filterStatus)
+		left := i18n.T("assign_keys.footer_keys")
+		right := filterStatus
+		pad := m.accountViewport.Width + m.keyViewport.Width + 8 // fallback estimate
+		// Prefer explicit model width when available
+		if m.keyViewport.Width > 0 {
+			pad = m.keyViewport.Width
+		}
+		totalPad := m.keyViewport.Width + m.accountViewport.Width
+		if m.state == assignStateSelectKeys {
+			// Use model width if set
+			if m.keyViewport.Width > 0 {
+				pad = m.keyViewport.Width
+			} else if m.accountViewport.Width > 0 {
+				pad = totalPad
+			}
+		}
+		// Compute spaces using rune counts; fall back to 2 if negative
+		spaces := pad - utf8.RuneCountInString(left) - utf8.RuneCountInString(right)
+		if spaces < 2 {
+			spaces = 2
+		}
+		helpText = left + strings.Repeat(" ", spaces) + right
 		if m.status != "" {
 			return statusMessageStyle.Render(m.status)
 		}
@@ -414,7 +437,13 @@ func (m *assignKeysModel) footerView() string {
 		} else {
 			filterStatus = i18n.T("assign_keys.search_hint")
 		}
-		helpText = fmt.Sprintf("%s  %s", i18n.T("assign_keys.help_bar_accounts"), filterStatus)
+		left := i18n.T("assign_keys.footer_accounts")
+		right := filterStatus
+		spaces := m.accountViewport.Width - utf8.RuneCountInString(left) - utf8.RuneCountInString(right)
+		if spaces < 2 {
+			spaces = 2
+		}
+		helpText = left + strings.Repeat(" ", spaces) + right
 	}
 	return footerStyle.Render(helpText)
 }

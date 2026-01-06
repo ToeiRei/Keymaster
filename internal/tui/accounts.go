@@ -770,16 +770,16 @@ func (m *accountsModel) footerView() string {
 	// Footer format per spec: <key>:<action> <key>:<action> …   <mode tokens>
 	// No selection
 	if len(m.displayedAccounts) == 0 {
-		return footerStyle.Render("a:add i:import q:quit")
+		return footerStyle.Render(i18n.T("accounts.footer_empty"))
 	}
 
 	// Transfer mode
 	if m.transferMode {
-		return footerStyle.Render("x:export I:import q:quit")
+		return footerStyle.Render(i18n.T("accounts.footer_transfer_mode"))
 	}
 
 	// Account selected
-	return footerStyle.Render("e:edit d:delete t:toggle v:verify q:quit")
+	return footerStyle.Render(i18n.T("accounts.footer_selected"))
 }
 
 func (m *accountsModel) viewConfirmation() string {

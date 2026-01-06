@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -651,7 +652,15 @@ func (m *publicKeysModel) footerView() string {
 	} else {
 		filterStatus = i18n.T("public_keys.filter_hint")
 	}
-	return footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T("public_keys.footer"), filterStatus))
+
+	left := i18n.T("public_keys.footer_actions")
+	right := filterStatus
+	// Pad so the right-hand token aligns to the right edge of the footer (use rune counts).
+	pad := m.width - utf8.RuneCountInString(left) - utf8.RuneCountInString(right)
+	if pad < 2 {
+		pad = 2
+	}
+	return footerStyle.Render(left + strings.Repeat(" ", pad) + right)
 }
 
 // boolToYesNo is a helper function to convert a boolean to a localized "Yes" or "No".
