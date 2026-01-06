@@ -8,13 +8,14 @@ import (
 	"testing"
 
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/testutil"
 )
 
 // Test that the bootstrap package's audit wrapper records a BOOTSTRAP_HOST action
 // when used with the package override and when falling back to DefaultAuditWriter.
 func TestBootstrapLogAction_UsesWriters(t *testing.T) {
 	// Package override path
-	fake := &db.FakeAuditWriter{}
+	fake := &testutil.FakeAuditWriter{}
 	SetAuditWriter(fake)
 	defer ClearAuditWriter()
 
@@ -31,7 +32,7 @@ func TestBootstrapLogAction_UsesWriters(t *testing.T) {
 	}
 
 	// Default writer fallback path
-	fake2 := &db.FakeAuditWriter{}
+	fake2 := &testutil.FakeAuditWriter{}
 	db.SetDefaultAuditWriter(fake2)
 	defer db.ClearDefaultAuditWriter()
 

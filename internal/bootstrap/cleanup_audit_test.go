@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/testutil"
 )
 
 // TestCleanupOrphanedSession_LogsAudit verifies that cleaning up an orphaned
@@ -25,7 +26,7 @@ func TestCleanupOrphanedSession_LogsAudit(t *testing.T) {
 		t.Fatalf("SaveBootstrapSession failed: %v", err)
 	}
 
-	fake := &db.FakeAuditWriter{}
+	fake := &testutil.FakeAuditWriter{}
 	db.SetDefaultAuditWriter(fake)
 	defer db.ClearDefaultAuditWriter()
 

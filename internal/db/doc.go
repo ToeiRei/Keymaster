@@ -39,8 +39,9 @@
 // Testing notes
 //   - Prefer `db.InitDB("sqlite", ":memory:")` in tests that need real DB
 //     semantics and migrations.
-//   - For fast unit tests that don't need a DB, inject `FakeKeyManager` or
-//     `FakeAccountManager` via `SetDefaultKeyManager` / `SetDefaultAccountManager`.
+//   - For fast unit tests that don't need a DB, inject `testutil.FakeKeyManager` or
+//     `testutil.FakeAccountManager` (from `internal/testutil`) via
+//     `SetDefaultKeyManager` / `SetDefaultAccountManager`.
 package db
 
 // DI contract (concise)
@@ -50,7 +51,7 @@ package db
 //   the global `store` when available, or inject a fake via `SetDefault*`
 //   in tests.
 // - `SetDefault*` / `ClearDefault*` are primarily for tests. They allow a
-//   test to install a deterministic fake (see `searcher_fake.go`) without
+//   test to install a deterministic fake (see `internal/testutil`) without
 //   initializing a real DB.
 // - `KeyManager` centralizes public-key CRUD and assignment behavior. It
 //   should be the primary surface used by UI/CLI code for key operations.

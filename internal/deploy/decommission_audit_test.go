@@ -10,6 +10,7 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/testutil"
 )
 
 // TestDecommissionAccount_LogsAuditActions verifies that DecommissionAccount
@@ -29,7 +30,7 @@ func TestDecommissionAccount_LogsAuditActions(t *testing.T) {
 		t.Fatalf("AddAccount failed: %v", err)
 	}
 
-	fake := &db.FakeAuditWriter{}
+	fake := &testutil.FakeAuditWriter{}
 	db.SetDefaultAuditWriter(fake)
 	defer db.ClearDefaultAuditWriter()
 

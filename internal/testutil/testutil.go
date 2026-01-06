@@ -20,4 +20,4 @@ func (f *FakeRemoteDeployer) Close()                                    {}
 // BytesFromString returns a buffer containing the provided string.
 func BytesFromString(s string) *bytes.Buffer { return bytes.NewBufferString(s) }
 
-// (No audit writer here — use db.FakeAuditWriter or db.WithAuditWriter helpers.)
+// (No audit writer here — use testutil.FakeAuditWriter or db.WithAuditWriter helpers.)

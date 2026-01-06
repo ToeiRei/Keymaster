@@ -8,10 +8,11 @@ import (
 	"testing"
 
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/testutil"
 )
 
 func TestDeployLogAction_UsesDefaultWriter(t *testing.T) {
-	fake := &db.FakeAuditWriter{}
+	fake := &testutil.FakeAuditWriter{}
 	db.SetDefaultAuditWriter(fake)
 	defer db.ClearDefaultAuditWriter()
 
@@ -30,7 +31,7 @@ func TestDeployLogAction_UsesDefaultWriter(t *testing.T) {
 }
 
 func TestDeployLogAction_UsesPackageOverride(t *testing.T) {
-	fake := &db.FakeAuditWriter{}
+	fake := &testutil.FakeAuditWriter{}
 	SetAuditWriter(fake)
 	defer ClearAuditWriter()
 

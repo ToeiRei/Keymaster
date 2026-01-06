@@ -10,6 +10,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/testutil"
 )
 
 func TestContainsIgnoreCase(t *testing.T) {
@@ -49,7 +50,7 @@ func TestFilteredKeys(t *testing.T) {
 func TestRebuildDisplayedAccounts(t *testing.T) {
 	// Ensure deterministic server-side search during this test.
 	defer db.ClearDefaultAccountSearcher()
-	db.SetDefaultAccountSearcher(&db.FakeAccountSearcher{})
+	db.SetDefaultAccountSearcher(&testutil.FakeAccountSearcher{})
 
 	m := &accountsModel{
 		accounts: []model.Account{

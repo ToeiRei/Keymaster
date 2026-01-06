@@ -10,12 +10,13 @@ import (
 
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/testutil"
 )
 
 func TestRebuildDisplayedAccounts_FilteringAndListContent(t *testing.T) {
 	// Inject fake searcher so server-side search behavior is deterministic.
 	defer db.ClearDefaultAccountSearcher()
-	db.SetDefaultAccountSearcher(&db.FakeAccountSearcher{})
+	db.SetDefaultAccountSearcher(&testutil.FakeAccountSearcher{})
 
 	m := accountsModel{}
 	m.accounts = []model.Account{
