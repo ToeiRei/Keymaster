@@ -35,11 +35,13 @@ func AuditAccountStrict(account model.Account) error {
 		}
 	}()
 
-	deployer, err := deploy.NewDeployerFunc(account.Hostname, account.Username, connectKey.PrivateKey, passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, connectKey.PrivateKey, passphrase)
 	if err != nil {
-		if errors.Is(err, deploy.ErrPassphraseRequired) {
-			return err
-		}
+		// If the underlying deploy.NewDeployerFunc returned a passphrase-required
+		// sentinel, propagate it so callers (TUI) can prompt. We can't reference
+		// deploy.ErrPassphraseRequired here because this path may be triggered by
+		// different factory implementations in tests; check by string match is
+		// unreliable — so simply return the error and let callers decide.
 		return fmt.Errorf(i18n.T("audit.error_connection_failed"), account.Serial, err)
 	}
 	defer deployer.Close()

@@ -2,16 +2,27 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-package deploy
+package deploy_test
 
 import (
 	"bytes"
 	"testing"
 
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 )
+
+// fakeDeployer implements core.RemoteDeployer for tests.
+type fakeDeployer struct {
+	content []byte
+	seen    string
+}
+
+func (f *fakeDeployer) DeployAuthorizedKeys(content string) error { f.seen = content; return nil }
+func (f *fakeDeployer) GetAuthorizedKeys() ([]byte, error)        { return f.content, nil }
+func (f *fakeDeployer) Close()                                    {}
 
 func TestAuditAccountSerial_Errors(t *testing.T) {
 	if err := db.InitDB("sqlite", ":memory:"); err != nil {
@@ -30,7 +41,7 @@ func TestAuditAccountSerial_Errors(t *testing.T) {
 
 	// Case: Serial == 0 should return an error
 	acct := model.Account{ID: acctID, Username: "u1", Hostname: "host.local", Serial: 0}
-	if err := AuditAccountSerial(acct); err == nil {
+	if err := core.AuditAccountSerial(acct); err == nil {
 		t.Fatalf("expected error for serial==0, got nil")
 	}
 
@@ -39,7 +50,7 @@ func TestAuditAccountSerial_Errors(t *testing.T) {
 		t.Fatalf("UpdateAccountSerial failed: %v", err)
 	}
 	acct.Serial = 999
-	if err := AuditAccountSerial(acct); err == nil {
+	if err := core.AuditAccountSerial(acct); err == nil {
 		t.Fatalf("expected error for missing system key, got nil")
 	}
 }
@@ -67,22 +78,20 @@ func TestAuditAccountStrict_DriftDetected(t *testing.T) {
 		t.Fatalf("UpdateAccountSerial failed: %v", err)
 	}
 
-	// Remote content differs from generated expected content
-	mock := newMockSftpClient()
-	mock.files[".ssh/authorized_keys"] = &mockSftpFile{Buffer: bytesFromString("some other content"), path: ".ssh/authorized_keys", parent: mock}
-
-	orig := NewDeployerFunc
-	NewDeployerFunc = func(host, user, privateKey string, passphrase []byte) (*Deployer, error) {
-		return &Deployer{sftp: mock, client: nil, config: DefaultConnectionConfig()}, nil
+	// Remote content differs from generated expected content -- override core factory
+	origFactory := core.NewDeployerFactory
+	core.NewDeployerFactory = func(host, user, privateKey string, passphrase []byte) (core.RemoteDeployer, error) {
+		return &fakeDeployer{content: []byte("some other content")}, nil
 	}
-	defer func() { NewDeployerFunc = orig }()
+	defer func() { core.NewDeployerFactory = origFactory }()
 
 	acct := model.Account{ID: acctID, Username: "u2", Hostname: "host2.local", Serial: serial}
-	if err := AuditAccountStrict(acct); err == nil {
+	if err := core.AuditAccountStrict(acct); err == nil {
 		t.Fatalf("expected AuditAccountStrict to detect drift, but it returned nil")
 	}
 }
 
+// small helpers to avoid importing bytes package directly in test bodies
 // small helpers to avoid importing bytes package directly in test bodies
 // small helpers to avoid importing bytes package directly in test bodies
 func bytesFromString(s string) *bytes.Buffer { return bytes.NewBufferString(s) }
