@@ -472,15 +472,7 @@ func (m *assignKeysModel) View() string {
 
 	// Left Pane
 	accountListTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("assign_keys.accounts_title"))
-	var accountFilterBar string
-	if m.isFilteringAcct {
-		accountFilterBar = i18n.T("assign_keys.filtering", m.accountFilter)
-	} else if m.accountFilter != "" {
-		accountFilterBar = i18n.T("assign_keys.filter_active", m.accountFilter)
-	} else {
-		accountFilterBar = i18n.T("assign_keys.search_hint")
-	}
-	leftPaneContent := lipgloss.JoinVertical(lipgloss.Left, accountListTitle, "", m.accountViewport.View(), "", accountFilterBar)
+	leftPaneContent := lipgloss.JoinVertical(lipgloss.Left, accountListTitle, "", m.accountViewport.View())
 	paneHeight := m.accountViewport.Height + 6
 	leftPane := paneStyle.Width(m.accountViewport.Width + 4).Height(paneHeight).Render(leftPaneContent)
 
@@ -488,15 +480,7 @@ func (m *assignKeysModel) View() string {
 	var rightPane string
 	if m.state == assignStateSelectKeys {
 		keyPaneTitle := lipgloss.NewStyle().Bold(true).Render(i18n.T("assign_keys.keys_title", m.selectedAccount.String()))
-		var keyFilterBar string
-		if m.isFilteringKey {
-			keyFilterBar = i18n.T("assign_keys.filtering", m.keyFilter)
-		} else if m.keyFilter != "" {
-			keyFilterBar = i18n.T("assign_keys.filter_active", m.keyFilter)
-		} else {
-			keyFilterBar = i18n.T("assign_keys.search_hint")
-		}
-		rightPaneContent := lipgloss.JoinVertical(lipgloss.Left, keyPaneTitle, "", m.keyViewport.View(), "", keyFilterBar)
+		rightPaneContent := lipgloss.JoinVertical(lipgloss.Left, keyPaneTitle, "", m.keyViewport.View())
 		rightPane = paneStyle.Width(m.keyViewport.Width + 4).Height(paneHeight).Render(rightPaneContent)
 	} else {
 		// Render an empty placeholder pane
