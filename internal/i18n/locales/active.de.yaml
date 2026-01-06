@@ -304,20 +304,20 @@ deploy.failed_accounts: "\n\nFehlgeschlagene Ausrollungen:\n%s"
 deploy.pending: "ausstehend…"
 deploy.failed_short: "fehlgeschlagen"
 deploy.success_short: "erfolgreich"
-deploy.help_menu: "j/k oder hoch/runter: navigieren   enter: auswählen   q: beenden"
+deploy.help_menu: "enter: auswählen   q: beenden"
 deploy.help_select: "enter: auswählen   esc: zurück"
 deploy.help_keys: "c: kopieren   s: in Datei speichern   esc: zurück"
 deploy.help_wait: "(Bitte warten…)"
 deploy.help_complete: "(enter oder esc zum Fortfahren)"
 deploy.help_failed: "esc: zurück"
-deploy.footer_empty: "j/k:up/down enter:select q:back"
+deploy.footer_empty: "enter:select q:back"
 deploy.filtering: "Filter: %s█"
 deploy.filter_active: "Filter: %s (mit 'esc' löschen)"
 deploy.filter_hint: "Mit / filtern…"
 deploy.status.copy_success: "Inhalt von authorized_keys in die Zwischenablage kopiert."
 deploy.status.copy_failed: "Fehler beim Kopieren in die Zwischenablage: %s"
 # Canonical footer (key:action) for TUI footer standardization
-deploy.footer: "j/k:up/down enter:select q:back"
+deploy.footer: "enter:select q:back"
 
 # Passphrase-Eingabe für Deployment
 deploy.passphrase_title: "🔐 Passwort für Systemschlüssel erforderlich"
@@ -351,8 +351,7 @@ audit.tui.menu.audit_tag: "Nach Tag auditieren"
 audit.tui.menu.toggle_mode: "Modus"
 audit.tui.mode_strict: "Strict (vollständiger Vergleich)"
 audit.tui.mode_serial: "Serial (nur Header)"
-audit.tui.help_menu: "j/k oder hoch/runter: navigieren   enter: auswählen   m: Modus
-  umschalten   q: beenden"
+audit.tui.help_menu: "enter: auswählen   m: Modus umschalten   q: beenden"
 audit.tui.select_account: "🔎 Audit: Konto auswählen"
 audit.tui.select_tag: "🔎 Audit: Tag auswählen"
 audit.tui.auditing_fleet: "🔎 Flotte wird auditiert…"
@@ -378,7 +377,7 @@ audit.tui.filtering: "Filter: %s█"
 audit.tui.filter_active: "Filter: %s (mit 'esc' löschen)"
 audit.tui.filter_hint: "Mit / filtern…"
 # Canonical footer (key:action) for TUI footer standardization
-audit.tui.footer: "j/k:up/down enter:select m:toggle q:back"
+audit.tui.footer: "enter:select m:toggle q:back"
 
 # CLI specific translations
 
