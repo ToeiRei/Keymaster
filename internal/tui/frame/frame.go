@@ -48,3 +48,15 @@ func trimToWidth(s string, w int) string {
 	}
 	return string(runes[:w])
 }
+
+// StatusBar renders a single-line status bar with a background (reverse
+// video) style. It aligns left/right tokens like Footer and wraps the line in
+// ANSI reverse-video so it appears as a background-colored bar in terminals
+// that support ANSI sequences.
+func StatusBar(left, right string, width int) string {
+	line := Footer(left, right, width)
+	// reverse video on/off
+	const revOn = "\x1b[7m"
+	const revOff = "\x1b[0m"
+	return revOn + line + revOff
+}
