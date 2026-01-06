@@ -3,21 +3,19 @@ set -euo pipefail
 
 echo "Running go test to produce a unified coverage profile..."
 go test -coverpkg=./... ./... -coverprofile=coverage.out || true
-
-# Exclude test utility packages from coverage metrics (not part of product surface).
-if [[ -f coverage.out ]]; then
-  head -n1 coverage.out > coverage.filtered.out || true
-  tail -n +2 coverage.out | grep -v '^github.com/toeirei/keymaster/internal/testutil' >> coverage.filtered.out || true
-  mv coverage.filtered.out coverage.out || true
-fi
-
-# Some platforms (PowerShell) may produce a file named 'coverage'
+# Some platforms (PowerShell or other shells) may produce a file named 'coverage'.
+# Normalize that to 'coverage.out' before processing so filtering works uniformly.
 if [[ -f coverage && ! -f coverage.out ]]; then
   echo "Normalizing coverage -> coverage.out"
   mv coverage coverage.out || true
 fi
 
-if [[ ! -f coverage.out ]]; then
+# Exclude test utility packages from coverage metrics (not part of product surface).
+if [[ -f coverage.out ]]; then
+  head -n1 coverage.out > coverage.filtered.out || true
+  tail -n +2 coverage.out | grep -v -E '(^github.com/toeirei/keymaster/internal/testutil|testdata)' >> coverage.filtered.out || true
+  mv coverage.filtered.out coverage.out || true
+else
   echo "coverage.out not found" >&2
   exit 1
 fi

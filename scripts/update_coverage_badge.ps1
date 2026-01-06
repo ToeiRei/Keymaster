@@ -4,19 +4,28 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Write-Output "Running go test to produce coverage profile (this may take a while)..."
-& go test -coverpkg=./... ./... -coverprofile=coverage
+& go test -coverpkg=./... ./... -coverprofile=coverage.out
 
-if ((Test-Path -Path './coverage' -PathType Leaf) -and -not (Test-Path -Path './coverage')) {
-    Write-Output "Normalizing 'coverage' -> 'coverage'"
-    Move-Item -Path './coverage' -Destination './coverage' -Force
+if ((Test-Path -Path './coverage' -PathType Leaf) -and -not (Test-Path -Path './coverage.out' -PathType Leaf)) {
+    Write-Output "Normalizing 'coverage' -> 'coverage.out'"
+    Move-Item -Path './coverage' -Destination './coverage.out' -Force
 }
 
-if (-not (Test-Path -Path './coverage')) {
-    Write-Error "coverage file not found; aborting"
+if (-not (Test-Path -Path './coverage.out')) {
+    Write-Error "coverage.out file not found; aborting"
     exit 1
 }
 
-$func = & go tool cover -func coverage
+# Exclude test utility packages from coverage metrics (not part of product surface).
+$first = Get-Content -Path './coverage.out' -TotalCount 1
+$rest = Get-Content -Path './coverage.out' | Select-Object -Skip 1
+# Exclude internal test helper packages and any testdata paths from coverage
+$filtered = $rest | Where-Object { ($_ -notmatch '^github.com/toeirei/keymaster/internal/testutil') -and ($_ -notmatch 'testdata') }
+$first | Out-File -FilePath './coverage.filtered.out' -Encoding utf8
+$filtered | Out-File -FilePath './coverage.filtered.out' -Append -Encoding utf8
+Move-Item -Path './coverage.filtered.out' -Destination './coverage.out' -Force
+
+$func = & go tool cover -func ./coverage.out
 $line = $func | Select-String 'total:' | Select-Object -First 1
 if (-not $line) {
     Write-Error "failed to parse coverage output"
@@ -26,21 +35,6 @@ if (-not $line) {
 $percent = ($line -split '\s+')[-1]
 $percentNum = [double]($percent.TrimEnd('%'))
 $width = [int](200 * $percentNum / 100)
-
-# Exclude test utility packages from coverage metrics (not part of product surface).
-if (Test-Path -Path './coverage.out') {
-    $first = Get-Content -Path './coverage.out' -TotalCount 1
-    $rest = Get-Content -Path './coverage.out' | Select-Object -Skip 1
-    $filtered = $rest | Where-Object { $_ -notmatch '^github.com/toeirei/keymaster/internal/testutil' }
-    $first | Out-File -FilePath './coverage.filtered.out' -Encoding utf8
-    $filtered | Out-File -FilePath './coverage.filtered.out' -Append -Encoding utf8
-    Move-Item -Path './coverage.filtered.out' -Destination './coverage' -Force
-    $func = & go tool cover -func ./coverage
-    $line = $func | Select-String 'total:' | Select-Object -First 1
-    $percent = ($line -split '\s+')[-1]
-    $percentNum = [double]($percent.TrimEnd('%'))
-    $width = [int](200 * $percentNum / 100)
-}
 
 $svg = @"
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="20">
