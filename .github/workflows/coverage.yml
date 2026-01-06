@@ -31,6 +31,11 @@ jobs:
             mv coverage coverage.out || true
           fi
           if [ -f coverage.out ]; then
+            # Exclude test utility packages from coverage metrics (not part of product surface).
+            # Keep the first 'mode:' line, filter out entries for internal/testutil, then regenerate coverage report.
+            head -n1 coverage.out > coverage.filtered.out || true
+            tail -n +2 coverage.out | grep -v '^github.com/toeirei/keymaster/internal/testutil' >> coverage.filtered.out || true
+            mv coverage.filtered.out coverage.out || true
             go tool cover -func=coverage.out > coverage.txt || true
           else
             echo "no coverage file produced" > coverage.txt

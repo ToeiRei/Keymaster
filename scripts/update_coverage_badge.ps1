@@ -27,6 +27,21 @@ $percent = ($line -split '\s+')[-1]
 $percentNum = [double]($percent.TrimEnd('%'))
 $width = [int](200 * $percentNum / 100)
 
+# Exclude test utility packages from coverage metrics (not part of product surface).
+if (Test-Path -Path './coverage.out') {
+    $first = Get-Content -Path './coverage.out' -TotalCount 1
+    $rest = Get-Content -Path './coverage.out' | Select-Object -Skip 1
+    $filtered = $rest | Where-Object { $_ -notmatch '^github.com/toeirei/keymaster/internal/testutil' }
+    $first | Out-File -FilePath './coverage.filtered.out' -Encoding utf8
+    $filtered | Out-File -FilePath './coverage.filtered.out' -Append -Encoding utf8
+    Move-Item -Path './coverage.filtered.out' -Destination './coverage' -Force
+    $func = & go tool cover -func ./coverage
+    $line = $func | Select-String 'total:' | Select-Object -First 1
+    $percent = ($line -split '\s+')[-1]
+    $percentNum = [double]($percent.TrimEnd('%'))
+    $width = [int](200 * $percentNum / 100)
+}
+
 $svg = @"
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="20">
   <rect width="200" height="20" fill="#555"/>
