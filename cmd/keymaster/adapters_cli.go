@@ -1,15 +1,12 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/toeirei/keymaster/internal/core"
 	crypto_ssh "github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
-	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/state"
 )
 
 // cliStoreAdapter adapts package-level db helpers to core.Store.
@@ -83,138 +80,41 @@ func (c *cliStoreAdapter) IntegrateDataFromBackup(d *model.BackupData) error {
 type cliDeployerManager struct{}
 
 func (c *cliDeployerManager) DeployForAccount(account model.Account, keepFile bool) error {
-	// deploy.RunDeploymentForAccount expects (account, isTUI)
-	return deploy.RunDeploymentForAccount(account, false)
+	return core.DefaultDeployerManager.DeployForAccount(account, keepFile)
 }
 func (c *cliDeployerManager) AuditSerial(account model.Account) error {
-	return deploy.AuditAccountSerial(account)
+	return core.DefaultDeployerManager.AuditSerial(account)
 }
 func (c *cliDeployerManager) AuditStrict(account model.Account) error {
-	return deploy.AuditAccountStrict(account)
+	return core.DefaultDeployerManager.AuditStrict(account)
 }
 func (c *cliDeployerManager) DecommissionAccount(account model.Account, systemPrivateKey string, options interface{}) (core.DecommissionResult, error) {
-	// options may be either deploy.DecommissionOptions or core.DecommissionOptions; accept both
-	var opts deploy.DecommissionOptions
-	if o, ok := options.(deploy.DecommissionOptions); ok {
-		opts = o
-	} else if o2, ok := options.(core.DecommissionOptions); ok {
-		opts = deploy.DecommissionOptions{
-			SkipRemoteCleanup: o2.SkipRemoteCleanup,
-			KeepFile:          o2.KeepFile,
-			Force:             o2.Force,
-			DryRun:            o2.DryRun,
-			SelectiveKeys:     o2.SelectiveKeys,
-		}
-	}
-	res := deploy.DecommissionAccount(account, systemPrivateKey, opts)
-	// map deploy.DecommissionResult -> core.DecommissionResult
-	cr := core.DecommissionResult{
-		Account:             account,
-		AccountID:           res.AccountID,
-		AccountString:       res.AccountString,
-		RemoteCleanupDone:   res.RemoteCleanupDone,
-		RemoteCleanupError:  res.RemoteCleanupError,
-		DatabaseDeleteDone:  res.DatabaseDeleteDone,
-		DatabaseDeleteError: res.DatabaseDeleteError,
-		BackupPath:          res.BackupPath,
-		Skipped:             res.Skipped,
-		SkipReason:          res.SkipReason,
-	}
-	return cr, nil
+	return core.DefaultDeployerManager.DecommissionAccount(account, systemPrivateKey, options)
 }
 func (c *cliDeployerManager) BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey string, options interface{}) ([]core.DecommissionResult, error) {
-	var opts deploy.DecommissionOptions
-	if o, ok := options.(deploy.DecommissionOptions); ok {
-		opts = o
-	}
-	res := deploy.BulkDecommissionAccounts(accounts, systemPrivateKey, opts)
-	out := make([]core.DecommissionResult, 0, len(res))
-	for i, r := range res {
-		var acc model.Account
-		if i < len(accounts) {
-			acc = accounts[i]
-		}
-		cr := core.DecommissionResult{
-			Account:             acc,
-			AccountID:           r.AccountID,
-			AccountString:       r.AccountString,
-			RemoteCleanupDone:   r.RemoteCleanupDone,
-			RemoteCleanupError:  r.RemoteCleanupError,
-			DatabaseDeleteDone:  r.DatabaseDeleteDone,
-			DatabaseDeleteError: r.DatabaseDeleteError,
-			BackupPath:          r.BackupPath,
-			Skipped:             r.Skipped,
-			SkipReason:          r.SkipReason,
-		}
-		out = append(out, cr)
-	}
-	return out, nil
+	return core.DefaultDeployerManager.BulkDecommissionAccounts(accounts, systemPrivateKey, options)
 }
 func (c *cliDeployerManager) CanonicalizeHostPort(host string) string {
-	return deploy.CanonicalizeHostPort(host)
+	return core.DefaultDeployerManager.CanonicalizeHostPort(host)
 }
 func (c *cliDeployerManager) ParseHostPort(host string) (string, string, error) {
-	return deploy.ParseHostPort(host)
+	return core.DefaultDeployerManager.ParseHostPort(host)
 }
 func (c *cliDeployerManager) GetRemoteHostKey(host string) (string, error) {
-	pk, err := deploy.GetRemoteHostKey(host)
-	if err != nil {
-		return "", err
-	}
-	return string(crypto_ssh.MarshalAuthorizedKey(pk)), nil
+	return core.DefaultDeployerManager.GetRemoteHostKey(host)
 }
 
 // FetchAuthorizedKeys fetches the raw authorized_keys content bytes for the account.
 func (c *cliDeployerManager) FetchAuthorizedKeys(account model.Account) ([]byte, error) {
-	var privateKey string
-	if account.Serial == 0 {
-		sk, err := db.GetActiveSystemKey()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get active system key: %w", err)
-		}
-		if sk != nil {
-			privateKey = sk.PrivateKey
-		} else {
-			privateKey = ""
-		}
-	} else {
-		sk, err := db.GetSystemKeyBySerial(account.Serial)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get system key for serial %d: %w", account.Serial, err)
-		}
-		if sk == nil {
-			return nil, fmt.Errorf("no system key for serial %d", account.Serial)
-		}
-		privateKey = sk.PrivateKey
-	}
-
-	passphrase := state.PasswordCache.Get()
-	defer func() {
-		for i := range passphrase {
-			passphrase[i] = 0
-		}
-	}()
-
-	deployer, err := deploy.NewDeployerFunc(account.Hostname, account.Username, privateKey, passphrase)
-	if err != nil {
-		return nil, err
-	}
-	defer deployer.Close()
-	state.PasswordCache.Clear()
-
-	content, err := deployer.GetAuthorizedKeys()
-	if err != nil {
-		return nil, err
-	}
-	return content, nil
+	return core.DefaultDeployerManager.FetchAuthorizedKeys(account)
 }
 
 func (c *cliDeployerManager) ImportRemoteKeys(account model.Account) ([]model.PublicKey, int, string, error) {
-	return deploy.ImportRemoteKeys(account)
+	return core.DefaultDeployerManager.ImportRemoteKeys(account)
 }
 
 func (c *cliDeployerManager) IsPassphraseRequired(err error) bool {
-	return errors.Is(err, deploy.ErrPassphraseRequired)
+	return core.DefaultDeployerManager.IsPassphraseRequired(err)
 }
 
 // cliDBMaintainer adapts db.RunDBMaintenance to core.DBMaintainer.
