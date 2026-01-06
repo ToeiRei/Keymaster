@@ -19,6 +19,7 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	tuidbg "github.com/toeirei/keymaster/internal/tui/debug"
 	"github.com/toeirei/keymaster/internal/ui"
 )
 
@@ -654,6 +655,14 @@ func (m languageModel) View() string {
 
 // Run is the main entrypoint for the TUI. It initializes and runs the Bubble Tea program.
 func Run() {
+	// If the developer sets KEYMASTER_TUI_TEST=1, launch the dedicated
+	// framework test screen instead of the real TUI. This is strictly a
+	// development aid and is gated behind the environment variable.
+	if os.Getenv("KEYMASTER_TUI_TEST") == "1" {
+		tuidbg.Launch()
+		return
+	}
+
 	if _, err := tea.NewProgram(initialModel()).Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
