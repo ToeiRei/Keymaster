@@ -1,3 +1,5 @@
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 // Package core contains small, deterministic interface definitions used by
 // facade functions. Keep these interfaces minimal — they describe side‑effect
 // boundaries that UIs and higher-level services will implement.

@@ -1,3 +1,5 @@
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 // Package core defines high-level facades used by UI layers (CLI/TUI).
 // This file contains Phase-4 P4-4: migrated business logic from the CLI
 // into deterministic core functions. Functions operate via small interfaces
