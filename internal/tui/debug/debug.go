@@ -29,12 +29,14 @@ func Launch() {
 }
 
 type testModel struct {
-	vp         viewport.Model
-	width      int
-	height     int
-	menu       *frame.ListView
-	dialog     *frame.Dialog
-	showDialog bool
+	vp             viewport.Model
+	width          int
+	height         int
+	menu           *frame.ListView
+	dialog         *frame.Dialog
+	showDialog     bool
+	filePicker     *frame.FilePicker
+	showFilePicker bool
 }
 
 func newTestModel() testModel {
@@ -61,6 +63,12 @@ func newTestModel() testModel {
 		"Ok",
 	)
 	m.showDialog = false
+
+	// Create a file picker starting from home directory
+	home, _ := os.UserHomeDir()
+	m.filePicker = frame.NewFilePicker(home)
+	m.showFilePicker = false
+
 	return m
 }
 
@@ -74,13 +82,78 @@ func (m testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "d":
 			m.showDialog = !m.showDialog
+		case "f":
+			m.showFilePicker = !m.showFilePicker
+			// Toggle between load and save mode for testing
+			if m.showFilePicker {
+				m.filePicker.SetSaveMode(false) // Load mode by default, press 's' for save
+			}
+		case "s":
+			if m.showFilePicker {
+				// Toggle save mode
+				m.filePicker.SetSaveMode(!m.filePicker.IsSaveMode())
+			}
 		case "tab", "right":
 			if m.showDialog {
 				m.dialog.FocusRight()
+			} else if m.showFilePicker {
+				// Tab cycles through: file list -> [filename input] -> OK -> Cancel -> file list
+				if m.filePicker.IsSaveMode() {
+					if m.filePicker.Focused == 0 {
+						m.filePicker.FocusFilename()
+					} else if m.filePicker.Focused == 1 {
+						m.filePicker.FocusOk()
+					} else if m.filePicker.Focused == 2 {
+						m.filePicker.FocusCancel()
+					} else {
+						m.filePicker.FocusFileList()
+					}
+				} else {
+					if m.filePicker.Focused == 0 {
+						m.filePicker.FocusOk()
+					} else if m.filePicker.Focused == 1 {
+						m.filePicker.FocusCancel()
+					} else {
+						m.filePicker.FocusFileList()
+					}
+				}
 			}
 		case "shift+tab", "left":
 			if m.showDialog {
 				m.dialog.FocusLeft()
+			} else if m.showFilePicker {
+				// Shift+Tab cycles backward
+				if m.filePicker.IsSaveMode() {
+					if m.filePicker.Focused == 0 {
+						m.filePicker.FocusCancel()
+					} else if m.filePicker.Focused == 1 {
+						m.filePicker.FocusFileList()
+					} else if m.filePicker.Focused == 2 {
+						m.filePicker.FocusFilename()
+					} else {
+						m.filePicker.FocusOk()
+					}
+				} else {
+					if m.filePicker.Focused == 0 {
+						m.filePicker.FocusCancel()
+					} else if m.filePicker.Focused == 1 {
+						m.filePicker.FocusFileList()
+					} else {
+						m.filePicker.FocusOk()
+					}
+				}
+			}
+			if m.showDialog {
+				m.dialog.FocusLeft()
+			} else if m.showFilePicker {
+				// Shift+Tab moves through file picker buttons backward
+				if m.filePicker.Focused == 0 {
+					m.filePicker.FocusCancel()
+				} else if m.filePicker.Focused == 1 {
+					m.filePicker.FocusFileList()
+				} else {
+					m.filePicker.FocusOk()
+				}
 			}
 		case "enter", " ":
 			if m.showDialog {
@@ -91,22 +164,46 @@ func (m testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Left button (Cancel) pressed
 					m.showDialog = false
 				}
+			} else if m.showFilePicker && m.filePicker.Focused == 0 {
+				// Enter on file list: enter directory or select file
+				selected := m.filePicker.SelectCurrent()
+				if selected != "" {
+					// File selected - close picker
+					m.showFilePicker = false
+				}
 			}
 		case "j", "down":
-			if !m.showDialog {
+			if !m.showDialog && !m.showFilePicker {
 				m.vp.LineDown(1)
+			} else if m.showFilePicker {
+				m.filePicker.MoveDown()
 			}
 		case "k", "up":
-			if !m.showDialog {
+			if !m.showDialog && !m.showFilePicker {
 				m.vp.LineUp(1)
+			} else if m.showFilePicker {
+				m.filePicker.MoveUp()
+			}
+		case "u":
+			if m.showFilePicker {
+				m.filePicker.GoUp()
 			}
 		case "J":
-			if !m.showDialog {
+			if !m.showDialog && !m.showFilePicker {
 				m.menu.MoveDown()
 			}
 		case "K":
-			if !m.showDialog {
+			if !m.showDialog && !m.showFilePicker {
 				m.menu.MoveUp()
+			}
+		case "backspace":
+			if m.showFilePicker && m.filePicker.Focused == 1 {
+				m.filePicker.Backspace()
+			}
+		default:
+			// Handle typing in filename input
+			if m.showFilePicker && m.filePicker.Focused == 1 && len(msg.String()) == 1 {
+				m.filePicker.TypeChar(rune(msg.String()[0]))
 			}
 		}
 	case tea.WindowSizeMsg:
@@ -179,6 +276,14 @@ func (m testModel) View() string {
 		m.dialog.SetSize(60, 0) // width only, height auto-calculated
 		dialogOutput := m.dialog.Render()
 		return m.overlayDialog(dialogOutput, final)
+	}
+
+	// Step 9: Render file picker if shown (overlay on top of background).
+	if m.showFilePicker {
+		m.filePicker.Width = 70
+		m.filePicker.Height = frameH - 4
+		pickerOutput := m.filePicker.Render()
+		return m.overlayDialog(pickerOutput, final)
 	}
 
 	return final
