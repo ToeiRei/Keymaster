@@ -40,78 +40,32 @@ func NewBootstrapDeployer(hostname, username, privateKey, expectedHostKey string
 type builtinDeployerManager struct{}
 
 func (builtinDeployerManager) DeployForAccount(account model.Account, keepFile bool) error {
-	return deploy.RunDeploymentForAccount(account, keepFile)
+	return RunDeploymentForAccount(account, keepFile)
 }
 
 func (builtinDeployerManager) AuditSerial(account model.Account) error {
-	return deploy.AuditAccountSerial(account)
+	return AuditAccountSerial(account)
 }
 func (builtinDeployerManager) AuditStrict(account model.Account) error {
-	return deploy.AuditAccountStrict(account)
+	return AuditAccountStrict(account)
 }
 
 func (builtinDeployerManager) DecommissionAccount(account model.Account, systemPrivateKey string, options interface{}) (DecommissionResult, error) {
-	var opts deploy.DecommissionOptions
-	if o, ok := options.(deploy.DecommissionOptions); ok {
+	var opts DecommissionOptions
+	if o, ok := options.(DecommissionOptions); ok {
 		opts = o
-	} else if o2, ok := options.(DecommissionOptions); ok {
-		opts = deploy.DecommissionOptions{
-			SkipRemoteCleanup: o2.SkipRemoteCleanup,
-			KeepFile:          o2.KeepFile,
-			Force:             o2.Force,
-			DryRun:            o2.DryRun,
-			SelectiveKeys:     o2.SelectiveKeys,
-		}
 	}
-	r := deploy.DecommissionAccount(account, systemPrivateKey, opts)
-	return DecommissionResult{
-		Account:             account,
-		AccountID:           r.AccountID,
-		AccountString:       r.AccountString,
-		RemoteCleanupDone:   r.RemoteCleanupDone,
-		RemoteCleanupError:  r.RemoteCleanupError,
-		DatabaseDeleteDone:  r.DatabaseDeleteDone,
-		DatabaseDeleteError: r.DatabaseDeleteError,
-		BackupPath:          r.BackupPath,
-		Skipped:             r.Skipped,
-		SkipReason:          r.SkipReason,
-	}, nil
+	r := DecommissionAccount(account, systemPrivateKey, opts)
+	return r, nil
 }
 
 func (builtinDeployerManager) BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey string, options interface{}) ([]DecommissionResult, error) {
-	var opts deploy.DecommissionOptions
-	if o, ok := options.(deploy.DecommissionOptions); ok {
+	var opts DecommissionOptions
+	if o, ok := options.(DecommissionOptions); ok {
 		opts = o
-	} else if o2, ok := options.(DecommissionOptions); ok {
-		opts = deploy.DecommissionOptions{
-			SkipRemoteCleanup: o2.SkipRemoteCleanup,
-			KeepFile:          o2.KeepFile,
-			Force:             o2.Force,
-			DryRun:            o2.DryRun,
-			SelectiveKeys:     o2.SelectiveKeys,
-		}
 	}
-	res := deploy.BulkDecommissionAccounts(accounts, systemPrivateKey, opts)
-	out := make([]DecommissionResult, 0, len(res))
-	for i, r := range res {
-		var acc model.Account
-		if i < len(accounts) {
-			acc = accounts[i]
-		}
-		out = append(out, DecommissionResult{
-			Account:             acc,
-			AccountID:           r.AccountID,
-			AccountString:       r.AccountString,
-			RemoteCleanupDone:   r.RemoteCleanupDone,
-			RemoteCleanupError:  r.RemoteCleanupError,
-			DatabaseDeleteDone:  r.DatabaseDeleteDone,
-			DatabaseDeleteError: r.DatabaseDeleteError,
-			BackupPath:          r.BackupPath,
-			Skipped:             r.Skipped,
-			SkipReason:          r.SkipReason,
-		})
-	}
-	return out, nil
+	res := BulkDecommissionAccounts(accounts, systemPrivateKey, opts)
+	return res, nil
 }
 
 func (builtinDeployerManager) CanonicalizeHostPort(host string) string {
@@ -157,7 +111,7 @@ func (builtinDeployerManager) FetchAuthorizedKeys(account model.Account) ([]byte
 		}
 	}()
 
-	deployer, err := deploy.NewDeployerFunc(account.Hostname, account.Username, privateKey, passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, privateKey, passphrase)
 	if err != nil {
 		return nil, err
 	}
