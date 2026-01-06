@@ -21,9 +21,12 @@ $first = Get-Content -Path './coverage.out' -TotalCount 1
 $rest = Get-Content -Path './coverage.out' | Select-Object -Skip 1
 # Exclude internal test helper packages and any testdata paths from coverage
 $filtered = $rest | Where-Object { ($_ -notmatch '^github.com/toeirei/keymaster/internal/testutil') -and ($_ -notmatch 'testdata') }
-$first | Out-File -FilePath './coverage.filtered.out' -Encoding utf8
-$filtered | Out-File -FilePath './coverage.filtered.out' -Append -Encoding utf8
-Move-Item -Path './coverage.filtered.out' -Destination './coverage.out' -Force
+# Write filtered coverage without a UTF-8 BOM so go tool cover can read it.
+$outLines = @()
+$outLines += $first
+if ($filtered) { $outLines += $filtered }
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllLines((Join-Path (Get-Location) 'coverage.out'), $outLines, $utf8NoBom)
 
 $func = & go tool cover -func ./coverage.out
 $line = $func | Select-String 'total:' | Select-Object -First 1
@@ -44,7 +47,9 @@ $svg = @"
 </svg>
 "@
 
-$svg | Out-File -FilePath ./coverage.svg -Encoding utf8
+# Write SVG without BOM
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText((Join-Path (Get-Location) 'coverage.svg'), $svg, $utf8NoBom)
 Write-Output "Wrote ./coverage.svg with $percent coverage"
 
 if ($Commit) {
