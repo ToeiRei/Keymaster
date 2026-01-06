@@ -489,10 +489,10 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case transferAcceptedMsg:
 		if msg.err != nil {
-			m.status = fmt.Sprintf("transfer import failed: %v", msg.err)
+			m.status = i18n.T("accounts.status.transfer_import_failed", msg.err)
 			return m, nil
 		}
-		m.status = fmt.Sprintf("transfer accepted: %s@%s (file: %s)", msg.account.Username, msg.account.Hostname, msg.file)
+		m.status = i18n.T("accounts.status.transfer_accepted", msg.account.Username, msg.account.Hostname, msg.file)
 		// Refresh list
 		if m.searcher != nil {
 			m.accounts, m.err = m.searcher.SearchAccounts("")
@@ -647,15 +647,15 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				acc := m.displayedAccounts[m.cursor]
 				pkg, err := core.BuildTransferPackage(acc.Username, acc.Hostname, "", "")
 				if err != nil {
-					m.status = fmt.Sprintf("failed to build transfer package: %v", err)
+					m.status = i18n.T("accounts.status.transfer_build_failed", err)
 					return m, nil
 				}
 				fname := fmt.Sprintf("transfer-%s@%s.json", acc.Username, acc.Hostname)
 				if err := os.WriteFile(fname, pkg, 0o600); err != nil {
-					m.status = fmt.Sprintf("failed to write package: %v", err)
+					m.status = i18n.T("accounts.status.transfer_write_failed", err)
 					return m, nil
 				}
-				m.status = fmt.Sprintf("wrote transfer package to %s", fname)
+				m.status = i18n.T("accounts.status.transfer_written", fname)
 			}
 			return m, nil
 
@@ -663,7 +663,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "T":
 			if len(m.displayedAccounts) > 0 {
 				acc := m.displayedAccounts[m.cursor]
-				m.status = fmt.Sprintf("importing transfer for %s@%s", acc.Username, acc.Hostname)
+				m.status = i18n.T("accounts.status.transfer_importing", acc.Username, acc.Hostname)
 				return m, importTransferCmd(acc)
 			}
 			return m, nil
