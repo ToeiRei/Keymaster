@@ -2,16 +2,21 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-package deploy
+package deploy_test
 
 import (
+	"strings"
+	"testing"
+
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
-	"testing"
 )
 
+// reuse fakeDeployer defined in other tests (same package)
+
 // TestRunDeploymentWithInjectedDeployer verifies we can inject a fake deployer
-// via NewDeployerFunc to avoid real network connections during deployment.
+// via core.NewDeployerFactory to avoid real network connections during deployment.
 func TestRunDeploymentWithInjectedDeployer(t *testing.T) {
 	// Init DB and create account via DefaultAccountManager
 	if err := db.InitDB("sqlite", ":memory:"); err != nil {
@@ -32,25 +37,20 @@ func TestRunDeploymentWithInjectedDeployer(t *testing.T) {
 		t.Fatalf("CreateSystemKey failed: %v", err)
 	}
 
-	// Prepare mock sftp client and inject via NewDeployerFunc
-	mock := newMockSftpClient()
-	origFactory := NewDeployerFunc
-	NewDeployerFunc = func(host, user, privateKey string, passphrase []byte) (*Deployer, error) {
-		return &Deployer{sftp: mock, client: nil, config: DefaultConnectionConfig()}, nil
+	// Override core factory
+	orig := core.NewDeployerFactory
+	fake := &fakeDeployer{}
+	core.NewDeployerFactory = func(host, user, privateKey string, passphrase []byte) (core.RemoteDeployer, error) {
+		return fake, nil
 	}
-	defer func() { NewDeployerFunc = origFactory }()
+	defer func() { core.NewDeployerFactory = orig }()
 
 	acct := model.Account{ID: accID, Username: "deployer", Hostname: "example.local", Serial: 0}
-	if err := RunDeploymentForAccount(acct, false); err != nil {
+	if err := core.RunDeploymentForAccount(acct, false); err != nil {
 		t.Fatalf("RunDeploymentForAccount failed: %v", err)
 	}
 
-	// Verify authorized_keys was written
-	f, ok := mock.files[".ssh/authorized_keys"]
-	if !ok {
-		t.Fatalf("expected authorized_keys to be created")
-	}
-	if !contains(f.Buffer.String(), "sys-pub-inject") {
-		t.Fatalf("authorized_keys did not include system key: %q", f.Buffer.String())
+	if !strings.Contains(fake.seen, "sys-pub-inject") {
+		t.Fatalf("authorized_keys did not include system key: %q", fake.seen)
 	}
 }
