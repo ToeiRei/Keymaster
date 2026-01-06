@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/toeirei/keymaster/internal/core"
@@ -198,6 +199,14 @@ func (c *cliDeployerManager) FetchAuthorizedKeys(account model.Account) ([]byte,
 		return nil, err
 	}
 	return content, nil
+}
+
+func (c *cliDeployerManager) ImportRemoteKeys(account model.Account) ([]model.PublicKey, int, string, error) {
+	return deploy.ImportRemoteKeys(account)
+}
+
+func (c *cliDeployerManager) IsPassphraseRequired(err error) bool {
+	return errors.Is(err, deploy.ErrPassphraseRequired)
 }
 
 // cliDBMaintainer adapts db.RunDBMaintenance to core.DBMaintainer.
