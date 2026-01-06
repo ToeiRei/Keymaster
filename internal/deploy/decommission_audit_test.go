@@ -2,19 +2,18 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-package deploy
+package deploy_test
 
 import (
 	"testing"
 
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
 // TestDecommissionAccount_LogsAuditActions verifies that DecommissionAccount
-// writes audit log entries via the package-level AuditWriter when one is
-// injected. This ensures audit events like DECOMMISSION_START and
-// DECOMMISSION_SUCCESS are emitted.
+// writes audit log entries via the DB AuditWriter when one is injected.
 func TestDecommissionAccount_LogsAuditActions(t *testing.T) {
 	if err := db.InitDB("sqlite", ":memory:"); err != nil {
 		t.Fatalf("InitDB failed: %v", err)
@@ -36,7 +35,8 @@ func TestDecommissionAccount_LogsAuditActions(t *testing.T) {
 
 	acc := model.Account{ID: id, Username: "decom", Hostname: "example.com", Label: "label", IsActive: true}
 
-	res := DecommissionAccount(acc, "dummy-system-key", DecommissionOptions{SkipRemoteCleanup: true})
+	// Use core DecommissionAccount facade which orchestrates and delegates to deploy.
+	res := core.DecommissionAccount(acc, "dummy-system-key", core.DecommissionOptions{SkipRemoteCleanup: true})
 
 	if res.DatabaseDeleteError != nil {
 		t.Fatalf("expected no database delete error, got: %v", res.DatabaseDeleteError)
