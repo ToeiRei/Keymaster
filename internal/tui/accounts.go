@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -86,6 +87,7 @@ type accountsModel struct {
 	width, height            int
 	searcher                 ui.AccountSearcher
 	transferMode             bool
+	hasInteracted            bool // True once user navigates or performs an action
 }
 
 //nolint:unused
@@ -562,6 +564,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
+				m.hasInteracted = true
 				// SetContent must be called to redraw the cursor.
 				// This resets the viewport's YOffset, so ensureCursorInView must be called *after*.
 				m.viewport.SetContent(m.listContentView())
@@ -572,6 +575,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "j":
 			if m.cursor < len(m.displayedAccounts)-1 {
 				m.cursor++
+				m.hasInteracted = true
 				m.viewport.SetContent(m.listContentView())
 				m.ensureCursorInView()
 			}
@@ -733,30 +737,13 @@ func (m *accountsModel) detailContentView() string {
 	} else if m.status != "" {
 		detailsItems = append(detailsItems, statusMessageStyle.Render(m.status))
 	}
-	// Show tags for the selected account in the detail pane
+	// Show tags in the right pane header (filter hint is shown in footer).
 	if len(m.displayedAccounts) > 0 && m.cursor < len(m.displayedAccounts) {
 		acc := m.displayedAccounts[m.cursor]
 		if acc.Tags != "" {
-			detailsItems = append(detailsItems, "", helpStyle.Render(i18n.T("accounts.tags", acc.Tags)))
-		}
-	}
-	// Show filter hint in the right pane header next to tags per spec
-	if len(m.displayedAccounts) > 0 && m.cursor < len(m.displayedAccounts) {
-		acc := m.displayedAccounts[m.cursor]
-		var tagsLine string
-		if acc.Tags != "" {
-			if m.isFiltering {
-				tagsLine = fmt.Sprintf(i18n.T("accounts.tags"), acc.Tags) + "   " + fmt.Sprintf("(filter: %s)", m.filter)
-			} else {
-				tagsLine = fmt.Sprintf(i18n.T("accounts.tags"), acc.Tags) + "   " + "(/ to filter)"
-			}
+			tagsLine := fmt.Sprintf(i18n.T("accounts.tags"), acc.Tags)
 			detailsItems = append(detailsItems, "", helpStyle.Render(tagsLine))
-		} else if m.isFiltering {
-			// No tags but still show filter state
-			detailsItems = append(detailsItems, "", helpStyle.Render(fmt.Sprintf("(/ to filter)   (filter: %s)", m.filter)))
 		}
-	} else if m.isFiltering {
-		detailsItems = append(detailsItems, "", helpStyle.Render(i18n.T("accounts.filtering", m.filter)))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, detailsItems...)
 }
@@ -766,20 +753,36 @@ func (m *accountsModel) footerView() string {
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
 	_ = m.isFiltering
 	_ = m.filter
-	// Append transfer help keys to footer using i18n for unified formatting
-	// Footer format per spec: <key>:<action> <key>:<action> …   <mode tokens>
-	// No selection
-	if len(m.displayedAccounts) == 0 {
-		return footerStyle.Render(i18n.T("accounts.footer_empty"))
+	// Build left and right tokens. Right token shows filter hint/state and will be
+	// right-aligned to the model width so it appears at the far right.
+	var left string
+	if !m.hasInteracted {
+		// Initial view: show no-selection help until the user navigates or acts.
+		left = i18n.T("accounts.footer_empty")
+	} else if len(m.displayedAccounts) == 0 {
+		left = i18n.T("accounts.footer_empty")
+	} else if m.transferMode {
+		left = i18n.T("accounts.footer_transfer_mode")
+	} else {
+		left = i18n.T("accounts.footer_selected")
 	}
 
-	// Transfer mode
-	if m.transferMode {
-		return footerStyle.Render(i18n.T("accounts.footer_transfer_mode"))
+	var right string
+	if m.isFiltering {
+		right = i18n.T("accounts.filtering", m.filter)
+	} else {
+		right = i18n.T("accounts.filter_hint")
 	}
 
-	// Account selected
-	return footerStyle.Render(i18n.T("accounts.footer_selected"))
+	width := m.width
+	if width <= 0 {
+		width = 80
+	}
+	spaces := width - utf8.RuneCountInString(left) - utf8.RuneCountInString(right)
+	if spaces < 2 {
+		spaces = 2
+	}
+	return footerStyle.Render(left + strings.Repeat(" ", spaces) + right)
 }
 
 func (m *accountsModel) viewConfirmation() string {
