@@ -106,6 +106,18 @@ type DBMaintainer interface {
 	RunDBMaintenance(dbType, dsn string) error
 }
 
+// DecommissionOptions configures how a decommission should behave. This is a
+// UI-facing, core-level representation so UIs can construct options without
+// importing the lower-level deploy package. Adapters will convert this into
+// the deploy package's DecommissionOptions when delegating.
+type DecommissionOptions struct {
+	SkipRemoteCleanup bool
+	KeepFile          bool
+	Force             bool
+	DryRun            bool
+	SelectiveKeys     []int
+}
+
 // StoreFactory can initialize a new Store from DSN (used by migrate).
 type StoreFactory interface {
 	NewStoreFromDSN(dbType, dsn string) (Store, error)

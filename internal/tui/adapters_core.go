@@ -206,6 +206,14 @@ func (coreDeployAdapter) DecommissionAccount(account model.Account, systemKey st
 	var opts deploy.DecommissionOptions
 	if o, ok := options.(deploy.DecommissionOptions); ok {
 		opts = o
+	} else if o2, ok := options.(core.DecommissionOptions); ok {
+		opts = deploy.DecommissionOptions{
+			SkipRemoteCleanup: o2.SkipRemoteCleanup,
+			KeepFile:          o2.KeepFile,
+			Force:             o2.Force,
+			DryRun:            o2.DryRun,
+			SelectiveKeys:     o2.SelectiveKeys,
+		}
 	}
 	r := deploy.DecommissionAccount(account, systemKey, opts)
 	return core.DecommissionResult{

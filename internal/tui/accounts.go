@@ -12,7 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/deploy"
+
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
@@ -971,7 +971,7 @@ func (m *accountsModel) performDecommissionWithKeys() tea.Cmd {
 				}
 			}
 
-			options := deploy.DecommissionOptions{
+			options := core.DecommissionOptions{
 				SkipRemoteCleanup: false,
 				KeepFile:          true,
 				Force:             false,
