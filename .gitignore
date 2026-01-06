@@ -20,6 +20,7 @@ vendor/
 keymaster.db-wal
 keymaster.db-shm
 keymaster-backup*.json.zst
+transfer-*.json
 internal_db_coverage
 coverage
 coverage.out
