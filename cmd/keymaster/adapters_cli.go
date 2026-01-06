@@ -93,10 +93,18 @@ func (c *cliDeployerManager) AuditStrict(account model.Account) error {
 	return deploy.AuditAccountStrict(account)
 }
 func (c *cliDeployerManager) DecommissionAccount(account model.Account, systemPrivateKey string, options interface{}) (core.DecommissionResult, error) {
-	// options come from deploy.DecommissionOptions in CLI path; try to assert
+	// options may be either deploy.DecommissionOptions or core.DecommissionOptions; accept both
 	var opts deploy.DecommissionOptions
 	if o, ok := options.(deploy.DecommissionOptions); ok {
 		opts = o
+	} else if o2, ok := options.(core.DecommissionOptions); ok {
+		opts = deploy.DecommissionOptions{
+			SkipRemoteCleanup: o2.SkipRemoteCleanup,
+			KeepFile:          o2.KeepFile,
+			Force:             o2.Force,
+			DryRun:            o2.DryRun,
+			SelectiveKeys:     o2.SelectiveKeys,
+		}
 	}
 	res := deploy.DecommissionAccount(account, systemPrivateKey, opts)
 	// map deploy.DecommissionResult -> core.DecommissionResult

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
-	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -101,7 +101,7 @@ func TestCliDeployerManager_DeployAndAudit_Decommission(t *testing.T) {
 	db.SetDefaultAccountManager(&fakeAccountManager{})
 	defer db.SetDefaultAccountManager(prevAcct)
 	// Skip remote cleanup to avoid network operations
-	res, err := dm.DecommissionAccount(acct, "syskey", deploy.DecommissionOptions{SkipRemoteCleanup: true})
+	res, err := dm.DecommissionAccount(acct, "syskey", core.DecommissionOptions{SkipRemoteCleanup: true})
 	if err != nil {
 		t.Fatalf("DecommissionAccount adapter returned error: %v", err)
 	}
