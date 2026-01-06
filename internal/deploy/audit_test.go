@@ -2,12 +2,13 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-package deploy
+package core
 
 import (
 	"bytes"
 	"testing"
 
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
@@ -30,7 +31,7 @@ func TestAuditAccountSerial_Errors(t *testing.T) {
 
 	// Case: Serial == 0 should return an error
 	acct := model.Account{ID: acctID, Username: "u1", Hostname: "host.local", Serial: 0}
-	if err := AuditAccountSerial(acct); err == nil {
+	if err := core.AuditAccountSerial(acct); err == nil {
 		t.Fatalf("expected error for serial==0, got nil")
 	}
 
@@ -39,7 +40,7 @@ func TestAuditAccountSerial_Errors(t *testing.T) {
 		t.Fatalf("UpdateAccountSerial failed: %v", err)
 	}
 	acct.Serial = 999
-	if err := AuditAccountSerial(acct); err == nil {
+	if err := core.AuditAccountSerial(acct); err == nil {
 		t.Fatalf("expected error for missing system key, got nil")
 	}
 }
@@ -78,7 +79,7 @@ func TestAuditAccountStrict_DriftDetected(t *testing.T) {
 	defer func() { NewDeployerFunc = orig }()
 
 	acct := model.Account{ID: acctID, Username: "u2", Hostname: "host2.local", Serial: serial}
-	if err := AuditAccountStrict(acct); err == nil {
+	if err := core.AuditAccountStrict(acct); err == nil {
 		t.Fatalf("expected AuditAccountStrict to detect drift, but it returned nil")
 	}
 }
