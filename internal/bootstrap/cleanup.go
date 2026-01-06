@@ -201,8 +201,8 @@ func markActiveSessionsAsOrphaned() error {
 // the session as failed in the database. This is a best-effort cleanup used
 // during signal handling and shutdown.
 func cleanupSession(session *BootstrapSession) error {
-	_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: interrupted by signal",
-		session.PendingAccount.Username, session.PendingAccount.Hostname))
+	_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("session=%s account=%s@%s reason=interrupted_by_signal",
+		session.ID, session.PendingAccount.Username, session.PendingAccount.Hostname))
 
 	// Best-effort remote cleanup; ignore error
 	_ = removeTempKeyFromRemoteHost(session)
@@ -366,8 +366,8 @@ func removeLine(content, lineToRemove string) string {
 // This is a simplified version that just removes the session from the database.
 func cleanupOrphanedSessionModel(session *model.BootstrapSession) error {
 	// Log the orphaned session cleanup
-	_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: session orphaned",
-		session.Username, session.Hostname))
+	_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("session=%s account=%s@%s reason=session_orphaned",
+		session.ID, session.Username, session.Hostname))
 
 	// For now, just remove from database - remote cleanup would require
 	// reconstructing the temporary key, which is complex
@@ -382,8 +382,8 @@ func cleanupOrphanedSessionModel(session *model.BootstrapSession) error {
 // This is a simplified version that just removes the session from the database.
 func cleanupExpiredSessionModel(session *model.BootstrapSession) error {
 	// Log the expired session cleanup
-	_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: session expired",
-		session.Username, session.Hostname))
+	_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("session=%s account=%s@%s reason=session_expired",
+		session.ID, session.Username, session.Hostname))
 
 	// For now, just remove from database - remote cleanup would require
 	// reconstructing the temporary key, which is complex

@@ -14,6 +14,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -84,6 +85,10 @@ type bootstrapModel struct {
 	commandCopied        bool   // For bootstrap command
 	verifyCommandCopied  bool   // For ssh-keygen verify command
 	currentVerifyCommand string // Current verify command for copying
+	// Transfer package UI status
+	transferCopied    bool
+	transferErr       error
+	transferImporting bool
 }
 
 // Bootstrap workflow messages
@@ -159,6 +164,8 @@ func (m *bootstrapModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case sessionCreatedMsg:
 		m.session = msg.session
 		m.commandCopied = false // Reset copied flag for new session
+		m.transferCopied = false
+		m.transferErr = nil
 		return m, nil
 
 	case error:
@@ -207,7 +214,7 @@ func (m *bootstrapModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-
+		// If the message came from an import flow, surface success text
 		return m, nil
 
 	case stepCompleteMsg:
@@ -228,9 +235,9 @@ func (m *bootstrapModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		// Cancel bootstrap and go back
 		if m.session != nil {
-			// Log the abort
-			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
-				m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
+			// Log the abort with session id
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("session=%s account=%s@%s reason=aborted_by_user",
+				m.session.ID, m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
 			_ = core.CancelBootstrapSession(coreSessionStore{}, m.session.ID)
 			m.session = nil
 		}
@@ -305,9 +312,9 @@ func (m *bootstrapModel) handleErrorKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		case 2: // Cancel - go back to accounts list
 			if m.session != nil {
-				// Log the abort
-				_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
-					m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
+				// Log the abort with session id
+				_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("session=%s account=%s@%s reason=aborted_by_user",
+					m.session.ID, m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
 				_ = core.CancelBootstrapSession(coreSessionStore{}, m.session.ID)
 				m.session = nil
 			}
@@ -317,9 +324,9 @@ func (m *bootstrapModel) handleErrorKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		// Same as cancel
 		if m.session != nil {
-			// Log the abort
-			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("%s@%s, reason: aborted by user",
-				m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
+			// Log the abort with session id
+			_ = logAction("BOOTSTRAP_FAILED", fmt.Sprintf("session=%s account=%s@%s reason=aborted_by_user",
+				m.session.ID, m.session.PendingAccount.Username, m.session.PendingAccount.Hostname))
 			_ = core.CancelBootstrapSession(coreSessionStore{}, m.session.ID)
 			m.session = nil
 		}
@@ -346,6 +353,63 @@ func (m *bootstrapModel) handleGenerateKeyKeys(msg tea.KeyMsg) (tea.Model, tea.C
 		// Advance to next step (wait for confirmation)
 		m.step = stepWaitConfirm
 		return m, nil
+
+	case "x", "X":
+		// Export transfer package to a file in the current directory (async)
+		return m, func() tea.Msg {
+			pkg, err := core.BuildTransferPackage(m.pendingUsername, m.pendingHostname, m.pendingLabel, m.pendingTags)
+			if err != nil {
+				return fmt.Errorf("failed to build transfer package: %w", err)
+			}
+			// Build filename using session ID if available
+			filename := "transfer.json"
+			if m.session != nil && m.session.ID != "" {
+				filename = fmt.Sprintf("transfer-%s@%s-%s.json", m.pendingUsername, m.pendingHostname, m.session.ID)
+			}
+			if err := os.WriteFile(filename, pkg, 0o600); err != nil {
+				return fmt.Errorf("failed to write transfer package to %s: %w", filename, err)
+			}
+			// No message needed; UI can show the file was written via side-effect (errors handled)
+			return nil
+		}
+
+	case "i", "I":
+		// Import transfer package from a file (async)
+		return m, func() tea.Msg {
+			// Try default transfer.json first, then try session-specific filename
+			var in []byte
+			var err error
+			in, err = os.ReadFile("transfer.json")
+			if err != nil {
+				// try session-specific filename
+				if m.session != nil && m.session.ID != "" {
+					fname := fmt.Sprintf("transfer-%s@%s-%s.json", m.pendingUsername, m.pendingHostname, m.session.ID)
+					in, err = os.ReadFile(fname)
+				}
+			}
+			if err != nil {
+				return fmt.Errorf("failed to read transfer package: %w", err)
+			}
+
+			deps := core.BootstrapDeps{
+				SessionStore:         coreSessionStore{},
+				AccountStore:         coreAccountStore{},
+				KeyStore:             coreKeyStore{},
+				GenerateKeysContent:  coreKeysContentBuilder{}.Generate,
+				NewBootstrapDeployer: coreBootstrapDeployerFactory{}.New,
+				GetActiveSystemKey:   ui.GetActiveSystemKey,
+				LogAudit: func(e core.BootstrapAuditEvent) error {
+					return logAction(e.Action, e.Details)
+				},
+				Auditor: coreAuditor{},
+			}
+
+			res, err := core.AcceptTransferPackage(context.Background(), in, deps)
+			if err != nil {
+				return fmt.Errorf("accept transfer failed: %w", err)
+			}
+			return deploymentCompleteMsg{account: res.Account, err: nil}
+		}
 	}
 
 	return m, nil

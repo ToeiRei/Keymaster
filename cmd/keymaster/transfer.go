@@ -1,14 +1,22 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
+	"github.com/toeirei/keymaster/internal/keys"
+	"github.com/toeirei/keymaster/internal/model"
 )
 
 // transferCmd is the root `transfer` command.
@@ -44,27 +52,182 @@ var transferCreateCmd = &cobra.Command{
 			log.Fatalf("%v", err)
 		}
 
+		// Fetch host key (best-effort)
+		var hostKey string
+		dm := &cliDeployerManager{}
+		if hk, herr := dm.GetRemoteHostKey(host); herr == nil {
+			hostKey = hk
+		}
+
+		// Build transfer package payload (excluding crc)
+		payload := map[string]string{
+			"magic":                "keymaster-transfer-v1",
+			"user":                 user,
+			"host":                 host,
+			"host_key":             hostKey,
+			"transfer_private_key": base64.StdEncoding.EncodeToString([]byte(priv)),
+		}
+		compact, cerr := json.Marshal(payload)
+		if cerr != nil {
+			log.Fatalf("failed to marshal transfer payload: %v", cerr)
+		}
+		// Compute CRC (sha256 hex) over compact payload
+		sum := sha256.Sum256(compact)
+		crc := hex.EncodeToString(sum[:])
+
+		pkg := map[string]string{
+			"magic":                payload["magic"],
+			"user":                 payload["user"],
+			"host":                 payload["host"],
+			"host_key":             payload["host_key"],
+			"transfer_private_key": payload["transfer_private_key"],
+			"crc":                  crc,
+		}
+		data, jerr := json.MarshalIndent(pkg, "", "  ")
+		if jerr != nil {
+			log.Fatalf("failed to marshal transfer package: %v", jerr)
+		}
+
+		// Attempt to deactivate the account if it exists and is active
+		st := &cliStoreAdapter{}
+		accts, aerr := st.GetAllAccounts()
+		if aerr == nil {
+			if acc, ferr := core.FindAccountByIdentifier(fmt.Sprintf("%s@%s", user, host), accts); ferr == nil {
+				if acc.IsActive {
+					if derr := db.ToggleAccountStatus(acc.ID); derr != nil {
+						if verbose {
+							log.Printf("warning: failed to deactivate account %s: %v", acc.String(), derr)
+						}
+					} else {
+						fmt.Printf("Deactivated account on this instance: %s\n", acc.String())
+					}
+				}
+			}
+		}
+
 		if outFile != "" {
 			// Ensure directory exists
 			if err := os.MkdirAll(filepath.Dir(outFile), 0o700); err != nil {
 				log.Fatalf("%v", err)
 			}
-			if err := os.WriteFile(outFile, []byte(priv), 0o600); err != nil {
+			if err := os.WriteFile(outFile, data, 0o600); err != nil {
 				log.Fatalf("%v", err)
 			}
-			fmt.Printf("Wrote transfer private key to %s (session: %s)\n", outFile, sid)
+			fmt.Printf("Wrote transfer package to %s (session: %s)\n", outFile, sid)
 		} else {
 			fmt.Printf("# transfer session: %s\n", sid)
-			fmt.Print(priv)
+			fmt.Println(string(data))
 		}
 	},
 }
 
 func init() {
-	transferCreateCmd.Flags().StringP("out", "o", "", "Write private key PEM to file (0600)")
+	transferCreateCmd.Flags().StringP("out", "o", "", "Write transfer package JSON to file (0600)")
 	transferCreateCmd.Flags().String("label", "", "Optional label for the transferred account")
 	transferCreateCmd.Flags().String("tags", "", "Optional tags for the transferred account")
 	transferCmd.AddCommand(transferCreateCmd)
+	// transfer accept: accept a transfer by reading a transfer package (JSON)
+	var transferAcceptCmd = &cobra.Command{
+		Use:     "accept <package.json>",
+		Short:   "Accept a transfer by importing a transfer package and bootstrapping the account",
+		Args:    cobra.ExactArgs(1),
+		PreRunE: setupDefaultServices,
+		Run: func(cmd *cobra.Command, args []string) {
+			pkgPath := args[0]
+			var in []byte
+			var err error
+			if pkgPath == "-" {
+				in, err = io.ReadAll(os.Stdin)
+			} else {
+				in, err = os.ReadFile(pkgPath)
+			}
+			if err != nil {
+				log.Fatalf("failed to read transfer package: %v", err)
+			}
+			var pkg map[string]string
+			if err := json.Unmarshal(in, &pkg); err != nil {
+				log.Fatalf("invalid transfer package: %v", err)
+			}
+
+			// Optional overrides
+			labelFlag, _ := cmd.Flags().GetString("label")
+			tagsFlag, _ := cmd.Flags().GetString("tags")
+
+			// Validate magic
+			if pkg["magic"] != "keymaster-transfer-v1" {
+				log.Fatalf("unsupported transfer package: magic=%s", pkg["magic"])
+			}
+			// Recompute CRC and verify
+			payload := map[string]string{
+				"magic":                pkg["magic"],
+				"user":                 pkg["user"],
+				"host":                 pkg["host"],
+				"host_key":             pkg["host_key"],
+				"transfer_private_key": pkg["transfer_private_key"],
+			}
+			compact, cerr := json.Marshal(payload)
+			if cerr != nil {
+				log.Fatalf("internal crc error: %v", cerr)
+			}
+			sum := sha256.Sum256(compact)
+			expect := hex.EncodeToString(sum[:])
+			if pkg["crc"] != expect {
+				log.Fatalf("transfer package CRC mismatch")
+			}
+
+			// Decode the base64 private key
+			privBytes, derr := base64.StdEncoding.DecodeString(pkg["transfer_private_key"])
+			if derr != nil {
+				log.Fatalf("invalid base64 private key: %v", derr)
+			}
+
+			params := core.BootstrapParams{
+				Username:       pkg["user"],
+				Hostname:       pkg["host"],
+				Label:          labelFlag,
+				Tags:           tagsFlag,
+				TempPrivateKey: string(privBytes),
+				HostKey:        pkg["host_key"],
+				SessionID:      pkg["session_id"],
+			}
+
+			// Prepare deps using CLI adapters (reuse existing helpers)
+			deps := core.BootstrapDeps{
+				AddAccount:    func(u, h, l, t string) (int, error) { return (&cliStoreAdapter{}).AddAccount(u, h, l, t) },
+				DeleteAccount: func(id int) error { return (&cliStoreAdapter{}).DeleteAccount(id) },
+				AssignKey:     func(kid, aid int) error { return (&cliStoreAdapter{}).AssignKeyToAccount(kid, aid) },
+				GenerateKeysContent: func(accountID int) (string, error) {
+					sk, _ := db.GetActiveSystemKey()
+					km := db.DefaultKeyManager()
+					if km == nil {
+						return "", fmt.Errorf("no key manager")
+					}
+					gks, _ := km.GetGlobalPublicKeys()
+					aks, _ := km.GetKeysForAccount(accountID)
+					return keys.BuildAuthorizedKeysContent(sk, gks, aks)
+				},
+				NewBootstrapDeployer: func(hostname, username, privateKey, expectedHostKey string) (core.BootstrapDeployer, error) {
+					return core.NewBootstrapDeployer(hostname, username, privateKey, expectedHostKey)
+				},
+				GetActiveSystemKey: func() (*model.SystemKey, error) { return db.GetActiveSystemKey() },
+				LogAudit: func(e core.BootstrapAuditEvent) error {
+					if w := db.DefaultAuditWriter(); w != nil {
+						return w.LogAction(e.Action, e.Details)
+					}
+					return nil
+				},
+			}
+
+			res, err := core.PerformBootstrapDeployment(cmd.Context(), params, deps)
+			if err != nil {
+				log.Fatalf("accept transfer failed: %v", err)
+			}
+			fmt.Printf("Accepted transfer: account id=%d %s@%s deployed=%v\n", res.Account.ID, res.Account.Username, res.Account.Hostname, res.RemoteDeployed)
+		},
+	}
+	transferAcceptCmd.Flags().String("label", "", "Optional label for the new account")
+	transferAcceptCmd.Flags().String("tags", "", "Optional tags for the new account")
+	transferCmd.AddCommand(transferAcceptCmd)
 }
 
 // splitUserHost splits a user@host identifier into components.
