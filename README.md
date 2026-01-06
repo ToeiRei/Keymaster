@@ -196,6 +196,17 @@ keymaster decommission user@hostname --skip-remote
 keymaster decommission user@hostname --force
 ```
 
+### Verbose logging
+
+Keymaster provides a persistent `-v` / `--verbose` flag to enable internal
+verbose debug logging (including database debug messages). This is useful when
+diagnosing deployments or database operations. Examples:
+
+```sh
+keymaster -v deploy
+keymaster --verbose audit
+```
+
 ### A Note on Security & The System Key
 
 Keymaster is designed for simplicity, and part of that design involves storing its own "system" private key in the database. This is what allows Keymaster to be truly agentless—it can connect to your hosts from any machine that has access to the database, without needing a separate `~/.ssh` directory or SSH agent setup.
