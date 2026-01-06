@@ -7,6 +7,7 @@ package debug
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -28,10 +29,12 @@ func Launch() {
 }
 
 type testModel struct {
-	vp     viewport.Model
-	width  int
-	height int
-	menu   *frame.ListView
+	vp         viewport.Model
+	width      int
+	height     int
+	menu       *frame.ListView
+	dialog     *frame.Dialog
+	showDialog bool
 }
 
 func newTestModel() testModel {
@@ -50,6 +53,14 @@ func newTestModel() testModel {
 	menuItems := []string{"Overview", "Accounts", "Public Keys", "Deploy", "Audit", "Tags"}
 	ml := frame.NewList(menuItems)
 	m.menu = ml
+	// Create a test dialog
+	m.dialog = frame.NewDialog(
+		"⚠️  Confirm Action",
+		"Are you sure you want to proceed with this operation?",
+		"Cancel",
+		"Ok",
+	)
+	m.showDialog = false
 	return m
 }
 
@@ -61,14 +72,26 @@ func (m testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "esc", "ctrl+c":
 			return m, tea.Quit
+		case "d":
+			m.showDialog = !m.showDialog
 		case "j", "down":
-			m.vp.LineDown(1)
+			if m.showDialog {
+				// Dialog navigation would go here
+			} else {
+				m.vp.LineDown(1)
+			}
 		case "k", "up":
-			m.vp.LineUp(1)
+			if !m.showDialog {
+				m.vp.LineUp(1)
+			}
 		case "J":
-			m.menu.MoveDown()
+			if !m.showDialog {
+				m.menu.MoveDown()
+			}
 		case "K":
-			m.menu.MoveUp()
+			if !m.showDialog {
+				m.menu.MoveUp()
+			}
 		}
 	case tea.WindowSizeMsg:
 		// Reserve 3 lines for header/footer and padding
@@ -135,7 +158,69 @@ func (m testModel) View() string {
 	// Step 7: Compose final layout (vertical join of header, main, footer with separators).
 	final := lipgloss.JoinVertical(lipgloss.Left, headerBlock, hSep, main, hSep, footer)
 
+	// Step 8: Render dialog if shown (overlay on top of background).
+	if m.showDialog {
+		m.dialog.SetSize(60, 0) // width only, height auto-calculated
+		dialogOutput := m.dialog.Render()
+		return m.overlayDialog(dialogOutput, final)
+	}
+
 	return final
+}
+
+// overlayDialog places the dialog box centered (both horizontally and vertically) with the background visible around it.
+func (m testModel) overlayDialog(dialog, background string) string {
+	bgLines := strings.Split(strings.TrimRight(background, "\n"), "\n")
+	dialogLines := strings.Split(strings.TrimRight(dialog, "\n"), "\n")
+
+	if len(bgLines) == 0 || len(dialogLines) == 0 {
+		return dialog
+	}
+
+	dialogHeight := len(dialogLines)
+	bgHeight := len(bgLines)
+	bgWidth := len(bgLines[0])
+	dialogWidth := 0
+
+	// Find the widest dialog line
+	for _, line := range dialogLines {
+		if len(line) > dialogWidth {
+			dialogWidth = len(line)
+		}
+	}
+
+	// Calculate vertical centering
+	topSpacing := (bgHeight - dialogHeight) / 2
+	if topSpacing < 0 {
+		topSpacing = 0
+	}
+
+	// Calculate horizontal centering
+	leftPadding := (bgWidth - dialogWidth) / 2
+	if leftPadding < 0 {
+		leftPadding = 0
+	}
+
+	// Build the output
+	var result []string
+
+	// Add background lines before dialog
+	for i := 0; i < topSpacing && i < len(bgLines); i++ {
+		result = append(result, bgLines[i])
+	}
+
+	// Add dialog lines, centered horizontally
+	for _, line := range dialogLines {
+		paddingStr := strings.Repeat(" ", leftPadding)
+		result = append(result, paddingStr+line)
+	}
+
+	// Add background lines after dialog
+	for i := topSpacing + dialogHeight; i < len(bgLines); i++ {
+		result = append(result, bgLines[i])
+	}
+
+	return strings.Join(result, "\n")
 }
 
 // renderHeader produces the 2-row header block with background.
