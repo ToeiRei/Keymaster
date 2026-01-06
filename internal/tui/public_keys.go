@@ -52,6 +52,7 @@ type publicKeysModel struct {
 	usageReportAccts []model.Account
 	filter           string
 	isFiltering      bool
+	hasInteracted    bool
 	searcher         ui.KeySearcher
 	// For delete confirmation
 	isConfirmingDelete bool
@@ -313,7 +314,8 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Not in filtering mode, handle commands.
-		switch msg.String() {
+		s := msg.String()
+		switch s {
 		case "/":
 			m.isFiltering = true
 			m.filter = "" // Start with a fresh filter
@@ -330,12 +332,14 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
+				m.hasInteracted = true
 				m.viewport.SetContent(m.listContentView())
 				m.ensureCursorInView()
 			}
 		case "down", "j":
 			if m.cursor < len(m.displayedKeys)-1 {
 				m.cursor++
+				m.hasInteracted = true
 				m.viewport.SetContent(m.listContentView())
 				m.ensureCursorInView()
 			}
@@ -625,10 +629,7 @@ func (m *publicKeysModel) viewKeyList() string {
 		}
 	}
 
-	// Only show filter status if filtering
-	if m.isFiltering {
-		detailsItems = append(detailsItems, "", helpStyle.Render(i18n.T("public_keys.filtering", m.filter)))
-	}
+	// Filter status shown in footer (right aligned); do not duplicate in details pane.
 
 	rightPane := paneStyle.Width(detailWidth).Height(paneHeight).Render(lipgloss.JoinVertical(lipgloss.Left, detailsItems...))
 
@@ -652,7 +653,12 @@ func (m *publicKeysModel) footerView() string {
 		filterStatus = i18n.T("public_keys.filter_hint")
 	}
 
-	left := i18n.T("public_keys.footer_actions")
+	var left string
+	if !m.hasInteracted || len(m.displayedKeys) == 0 {
+		left = i18n.T("public_keys.footer_empty")
+	} else {
+		left = i18n.T("public_keys.footer_actions")
+	}
 	right := filterStatus
 	width := m.width
 	if width <= 0 {

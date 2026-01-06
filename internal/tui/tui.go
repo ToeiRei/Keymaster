@@ -592,7 +592,9 @@ func (m menuModel) View(data dashboardData, width, height int) string {
 
 	// Styled footer/help line
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
-	footer := footerStyle.Render(i18n.T("dashboard.footer"))
+	left := i18n.T("dashboard.footer")
+	// Use AlignFooter to keep any right-side token consistently right-aligned.
+	footer := footerStyle.Render(AlignFooter(left, "", width))
 
 	return lipgloss.JoinVertical(lipgloss.Top, header, mainArea, footer)
 }
@@ -644,7 +646,8 @@ func (m languageModel) View() string {
 	listPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, listItems...))
 
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
-	helpLine := footerStyle.Render(i18n.T("language.help"))
+	// Render the language help line using AlignFooter for consistent layout.
+	helpLine := footerStyle.Render(AlignFooter(i18n.T("language.help"), "", 60))
 
 	return lipgloss.JoinVertical(lipgloss.Left, title, "", listPane, "", helpLine)
 }
