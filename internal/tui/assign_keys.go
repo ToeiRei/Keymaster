@@ -400,22 +400,31 @@ func (m *assignKeysModel) footerView() string {
 	var filterStatus string
 	var helpText string
 	if !m.hasInteracted {
-		// Initial hint until the user interacts
+		// Initial hint until the user interacts: show 'back' on the left and filter status on the right
 		left := i18n.T("assign_keys.footer_empty")
-		width := m.width
+		var filterStatus string
+		if m.isFilteringAcct {
+			filterStatus = i18n.T("assign_keys.filtering", m.accountFilter)
+		} else if m.accountFilter != "" {
+			filterStatus = i18n.T("assign_keys.filter_active", m.accountFilter)
+		} else {
+			filterStatus = i18n.T("assign_keys.search_hint")
+		}
+		// Prefer pane-derived width so footer matches the two-pane layout
+		width := m.accountViewport.Width + m.keyViewport.Width + 8
 		if width <= 0 {
-			width = m.accountViewport.Width + m.keyViewport.Width + 8
+			width = m.width
 		}
 		if width <= 0 {
 			width = 80
 		}
-		return footerStyle.Render(AlignFooter(left, "", width))
+		return footerStyle.Render(AlignFooter(left, filterStatus, width))
 	}
 
-	// Use the overall UI width for footer alignment to avoid jumping widths
-	uiWidth := m.width
+	// Use the combined pane widths for footer alignment to avoid jumping widths
+	uiWidth := m.accountViewport.Width + m.keyViewport.Width + 8
 	if uiWidth <= 0 {
-		uiWidth = m.accountViewport.Width + m.keyViewport.Width + 8
+		uiWidth = m.width
 	}
 	if uiWidth <= 0 {
 		uiWidth = 80

@@ -202,7 +202,7 @@ assign_keys.help_bar_accounts: "j/k hoch/runter: navigieren   enter: auswählen 
 assign_keys.footer_accounts: "j/k:up/down enter:select /:search q:back"
 assign_keys.help_bar_keys: "j/k hoch/runter: navigieren   leertaste: umschalten   /: suchen   esc: zurück   q: zurück"
 assign_keys.footer_keys: "j/k:up/down space:toggle /:search q:back"
-assign_keys.footer_empty: "a:add q:back"
+assign_keys.footer_empty: "q:back"
 assign_keys.accounts_title: "Konten"
 assign_keys.no_accounts: "Keine Konten gefunden. Mit 'a' hinzufügen."
 assign_keys.search_hint: "Mit / suchen…"
