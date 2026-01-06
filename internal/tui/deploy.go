@@ -74,6 +74,7 @@ type deployModel struct {
 	wasFleetDeploy     bool    // Flag to remember if the last operation was a fleet deployment
 	width, height      int
 	searcher           ui.AccountSearcher
+	hasInteracted      bool
 }
 
 // newDeployModel creates a new model for the deployment view.
@@ -231,12 +232,15 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.menuCursor > 0 {
 				m.menuCursor--
+				m.hasInteracted = true
 			}
 		case "down", "j":
 			if m.menuCursor < 3 { // There are 4 menu items (0-3)
 				m.menuCursor++
+				m.hasInteracted = true
 			}
 		case "enter":
+			m.hasInteracted = true
 			switch m.menuCursor {
 			case 0: // Deploy to Fleet (fully automatic)
 				m.wasFleetDeploy = true
@@ -450,12 +454,15 @@ func (m deployModel) updateSelectTag(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.tagCursor > 0 {
 				m.tagCursor--
+				m.hasInteracted = true
 			}
 		case "down", "j":
 			if m.tagCursor < len(m.tags)-1 {
 				m.tagCursor++
+				m.hasInteracted = true
 			}
 		case "enter":
+			m.hasInteracted = true
 			if len(m.tags) == 0 {
 				return m, nil
 			}
@@ -508,9 +515,11 @@ func (m deployModel) updateShowAuthorizedKeys(msg tea.Msg) (tea.Model, tea.Cmd) 
 				m.status = i18n.T("deploy.status.copy_failed", err.Error())
 			} else {
 				m.status = i18n.T("deploy.status.copy_success")
+				m.hasInteracted = true
 			}
 			return m, nil
 		case "s":
+			m.hasInteracted = true
 			m.state = deployStateEnterFilename
 			m.filenameInput.Focus()
 			m.status = ""
@@ -604,7 +613,13 @@ func (m deployModel) View() string {
 			}
 		}
 		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, listItems...)))
-		help := helpFooterStyle.Render(i18n.T("deploy.help_menu"))
+		// Use AlignFooter for consistent right-aligned layout and honor initial hint
+		var help string
+		if !m.hasInteracted {
+			help = helpFooterStyle.Render(AlignFooter(i18n.T("deploy.footer_empty"), "", m.width))
+		} else {
+			help = helpFooterStyle.Render(AlignFooter(i18n.T("deploy.help_menu"), "", m.width))
+		}
 		if m.status != "" {
 			mainPane += "\n" + helpFooterStyle.Render(m.status)
 		}
@@ -640,6 +655,11 @@ func (m deployModel) View() string {
 		}
 		left := i18n.T("deploy.help_select")
 		help := helpFooterStyle.Render(AlignFooter(left, filterStatus, m.width))
+
+		// If the user has not interacted yet, show a compact initial hint instead
+		if !m.hasInteracted {
+			return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", helpFooterStyle.Render(AlignFooter(i18n.T("deploy.footer_empty"), "", m.width)))
+		}
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 
 	case deployStateSelectTag:
@@ -657,8 +677,14 @@ func (m deployModel) View() string {
 			}
 		}
 		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, listItems...)))
-		help := helpFooterStyle.Render(i18n.T("deploy.help_select"))
-		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+		// Show compact initial hint until user interacts
+		var h string
+		if !m.hasInteracted {
+			h = helpFooterStyle.Render(AlignFooter(i18n.T("deploy.footer_empty"), "", m.width))
+		} else {
+			h = helpFooterStyle.Render(AlignFooter(i18n.T("deploy.help_select"), "", m.width))
+		}
+		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", h)
 
 	case deployStateShowAuthorizedKeys:
 		// Render just the keys for easy copy-pasting, with a title and help outside the main content.
@@ -668,8 +694,13 @@ func (m deployModel) View() string {
 			content = append(content, statusMessageStyle.Render(m.status), "")
 		}
 		mainPane := lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, content...), m.authorizedKeys)
-		help := helpFooterStyle.Render(i18n.T("deploy.help_keys"))
-		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+		var h string
+		if !m.hasInteracted {
+			h = helpFooterStyle.Render(AlignFooter(i18n.T("deploy.footer_empty"), "", m.width))
+		} else {
+			h = helpFooterStyle.Render(AlignFooter(i18n.T("deploy.help_keys"), "", m.width))
+		}
+		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", h)
 
 	case deployStateEnterFilename:
 		var b strings.Builder
@@ -705,7 +736,7 @@ func (m deployModel) View() string {
 			statusLines = append(statusLines, fmt.Sprintf("  %s %s", acc.String(), status))
 		}
 		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", lipgloss.JoinVertical(lipgloss.Left, statusLines...)))
-		help := helpFooterStyle.Render(i18n.T("deploy.help_wait"))
+		help := helpFooterStyle.Render(AlignFooter(i18n.T("deploy.help_wait"), "", m.width))
 		if m.status != "" {
 			mainPane += "\n" + helpFooterStyle.Render(m.status)
 		}
@@ -761,8 +792,13 @@ func (m deployModel) View() string {
 
 		resultBlock := renderResultBlock(primary, warnings, m.err)
 		mainPane := paneStyle.Width(60).Render(lipgloss.JoinVertical(lipgloss.Left, title, "", resultBlock))
-		help := helpFooterStyle.Render(i18n.T("deploy.help_complete"))
-		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
+		var h string
+		if !m.hasInteracted {
+			h = helpFooterStyle.Render(AlignFooter(i18n.T("deploy.footer_empty"), "", m.width))
+		} else {
+			h = helpFooterStyle.Render(AlignFooter(i18n.T("deploy.help_complete"), "", m.width))
+		}
+		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", h)
 	}
 	return ""
 }

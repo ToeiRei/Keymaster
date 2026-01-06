@@ -50,6 +50,7 @@ type assignKeysModel struct {
 	keyFilter       string
 	isFilteringKey  bool
 	width, height   int
+	hasInteracted   bool // True once user navigates or performs an action
 }
 
 // newAssignKeysModel creates a new model for the key assignment view, pre-loading accounts and keys.
@@ -158,12 +159,14 @@ func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cm
 				m.accountCursor--
 				m.accountViewport.SetContent(m.accountListViewContent())
 				m.ensureAccountCursorInView()
+				m.hasInteracted = true
 			}
 		case "down", "j":
 			if m.accountCursor < len(m.filteredAccounts())-1 {
 				m.accountCursor++
 				m.accountViewport.SetContent(m.accountListViewContent())
 				m.ensureAccountCursorInView()
+				m.hasInteracted = true
 			}
 		case "enter":
 			filteredAccounts := m.filteredAccounts()
@@ -181,6 +184,7 @@ func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cm
 			m.state = assignStateSelectKeys
 			m.keyCursor = 0
 			m.status = ""
+			m.hasInteracted = true
 
 			// Refresh the key list to ensure we have the latest data
 			km := ui.DefaultKeyManager()
@@ -263,6 +267,7 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.keyCursor--
 				m.keyViewport.SetContent(m.keyListViewContent())
 				m.ensureKeyCursorInView()
+				m.hasInteracted = true
 			}
 		case "down", "j":
 			// Use filtered list for bounds checking
@@ -270,6 +275,7 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.keyCursor++
 				m.keyViewport.SetContent(m.keyListViewContent())
 				m.ensureKeyCursorInView()
+				m.hasInteracted = true
 			}
 		case " ": // Only use space for toggling assignment
 			filteredKeys := m.filteredKeys()
@@ -318,6 +324,7 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.keyViewport.SetContent(m.keyListViewContent())
+			m.hasInteracted = true
 			return m, nil
 		}
 	}
@@ -392,6 +399,28 @@ func (m *assignKeysModel) footerView() string {
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
 	var filterStatus string
 	var helpText string
+	if !m.hasInteracted {
+		// Initial hint until the user interacts
+		left := i18n.T("assign_keys.footer_empty")
+		width := m.width
+		if width <= 0 {
+			width = m.accountViewport.Width + m.keyViewport.Width + 8
+		}
+		if width <= 0 {
+			width = 80
+		}
+		return footerStyle.Render(AlignFooter(left, "", width))
+	}
+
+	// Use the overall UI width for footer alignment to avoid jumping widths
+	uiWidth := m.width
+	if uiWidth <= 0 {
+		uiWidth = m.accountViewport.Width + m.keyViewport.Width + 8
+	}
+	if uiWidth <= 0 {
+		uiWidth = 80
+	}
+
 	if m.state == assignStateSelectKeys {
 		if m.isFilteringKey {
 			filterStatus = i18n.T("assign_keys.filtering", m.keyFilter)
@@ -402,15 +431,7 @@ func (m *assignKeysModel) footerView() string {
 		}
 		left := i18n.T("assign_keys.footer_keys")
 		right := filterStatus
-		// Derive a width from viewports when possible, otherwise fall back
-		width := m.keyViewport.Width
-		if width <= 0 {
-			width = m.accountViewport.Width + m.keyViewport.Width + 8
-		}
-		if width <= 0 {
-			width = 80
-		}
-		helpText = AlignFooter(left, right, width)
+		helpText = AlignFooter(left, right, uiWidth)
 		if m.status != "" {
 			return statusMessageStyle.Render(m.status)
 		}
@@ -426,11 +447,7 @@ func (m *assignKeysModel) footerView() string {
 		}
 		left := i18n.T("assign_keys.footer_accounts")
 		right := filterStatus
-		width := m.accountViewport.Width
-		if width <= 0 {
-			width = 80
-		}
-		helpText = AlignFooter(left, right, width)
+		helpText = AlignFooter(left, right, uiWidth)
 	}
 	return footerStyle.Render(helpText)
 }
