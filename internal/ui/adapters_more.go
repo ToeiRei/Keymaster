@@ -29,6 +29,11 @@ func GetActiveSystemKey() (*model.SystemKey, error) {
 	return db.GetActiveSystemKey()
 }
 
+// GetSystemKeyBySerial retrieves a system key by its serial number.
+func GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
+	return db.GetSystemKeyBySerial(serial)
+}
+
 // CreateSystemKey creates a new system key in the database and returns the assigned serial.
 func CreateSystemKey(publicKey, privateKey string) (int, error) {
 	return db.CreateSystemKey(publicKey, privateKey)

@@ -7,7 +7,6 @@ import (
 
 	"github.com/toeirei/keymaster/internal/config"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
@@ -160,7 +159,7 @@ func (coreDeployAdapter) ParseHostPort(host string) (string, string, error) {
 func (coreDeployAdapter) FetchAuthorizedKeys(account model.Account) ([]byte, error) {
 	var privateKey string
 	if account.Serial == 0 {
-		sk, err := db.GetActiveSystemKey()
+		sk, err := ui.GetActiveSystemKey()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get active system key: %w", err)
 		}
@@ -168,7 +167,7 @@ func (coreDeployAdapter) FetchAuthorizedKeys(account model.Account) ([]byte, err
 			privateKey = sk.PrivateKey
 		}
 	} else {
-		sk, err := db.GetSystemKeyBySerial(account.Serial)
+		sk, err := ui.GetSystemKeyBySerial(account.Serial)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get system key for serial %d: %w", account.Serial, err)
 		}
