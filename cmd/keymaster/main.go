@@ -52,6 +52,8 @@ var auditMode string // audit mode flag: "strict" (default) or "serial"
 var fullRestore bool // Flag for the restore command
 
 var password string // Flag for rotate-key password
+var verbose bool
+
 // TODO should be moved to project root
 var appConfig config.Config
 
@@ -224,7 +226,12 @@ system key per account and uses it as a foothold to rewrite and
 version-control access. A database becomes the source of truth.
 
 Running without a subcommand will launch the interactive TUI.`,
-		PersistentPreRunE: setupDefaultServices,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if verbose {
+				db.SetDebug(true)
+			}
+			return setupDefaultServices(cmd, args)
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			// The database is already initialized by PersistentPreRunE.
 			// i18n is also initialized, so we can just run the TUI.
@@ -246,6 +253,7 @@ Running without a subcommand will launch the interactive TUI.`,
 	cmd.AddCommand(debugCmd)
 
 	// Define flags
+	cmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output (sets -v for DB logs)")
 	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
 	cmd.PersistentFlags().String("language", "en", `TUI language ("en", "de")`)
 	applyDefaultFlags(cmd)

@@ -14,7 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log"
+
 	"os"
 	"path"
 	"sort"
@@ -87,7 +87,7 @@ func RunDBMaintenance(dbType, dsn string) error {
 		// PRAGMA optimize may not be supported or useful in some environments
 		// (e.g., in-memory filesystems); treat optimize errors as non-fatal.
 		if _, err := sqlDB.ExecContext(ctx, "PRAGMA optimize;"); err != nil {
-			log.Printf("db: sqlite optimize failed (ignored): %v", err)
+			dbLogf("db: sqlite optimize failed (ignored): %v", err)
 		}
 		if _, err := sqlDB.ExecContext(ctx, "VACUUM;"); err != nil {
 			return fmt.Errorf("sqlite vacuum failed: %w", err)
@@ -121,8 +121,8 @@ func RunDBMaintenance(dbType, dsn string) error {
 				return fmt.Errorf("mysql read table name failed: %w", err)
 			}
 			if _, err := sqlDB.ExecContext(ctx, fmt.Sprintf("OPTIMIZE TABLE %s", table)); err != nil {
-				// Non-fatal per-table: log and continue, but remember last error
-				log.Printf("db: mysql optimize table %s failed: %v", table, err)
+				// Non-fatal per-table: remember last error and continue
+				dbLogf("db: mysql optimize table %s failed: %v", table, err)
 				lastErr = err
 			}
 		}
@@ -200,14 +200,13 @@ func NewStoreFromDSN(dbType, dsn string) (Store, error) {
 	sqlDB.SetConnMaxIdleTime(time.Duration(connIdle) * time.Second)
 
 	openDur := time.Since(start)
-	log.Printf("db: opened %s driver in %s (conn max open=%d, idle=%ds, maxLifetime=%s)", driverName, openDur, maxOpen, connIdle, connMax)
+	dbLogf("db: opened %s driver in %s (conn max open=%d, idle=%ds, maxLifetime=%s)", driverName, openDur, maxOpen, connIdle, connMax)
 
 	migStart := time.Now()
 	if err := RunMigrations(sqlDB, dbType); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
-	log.Printf("db: migrations for %s completed in %s", dbType, time.Since(migStart))
-
+	dbLogf("db: migrations for %s completed in %s", dbType, time.Since(migStart))
 	// Create a Bun DB wrapper for the sql.DB based on dialect
 	bunDB := createBunDB(sqlDB, dbType)
 	switch dbType {
@@ -244,13 +243,14 @@ func createBunDB(sqlDB *sql.DB, dbType string) *bun.DB {
 // RunMigrations applies the necessary database migrations for a given database connection.
 func RunMigrations(db *sql.DB, dbType string) error {
 	start := time.Now()
-	log.Printf("db: starting migrations for %s", dbType)
+	dbLogf("db: starting migrations for %s", dbType)
 	migrationsPath := fmt.Sprintf("migrations/%s", dbType)
 
 	entries, err := fs.ReadDir(embeddedMigrations, migrationsPath)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			// No migrations embedded for this DB type.
+			dbLogf("db: applied migrations for %s in %s", dbType, time.Since(start))
 			return nil
 		}
 		return fmt.Errorf("failed to read embedded migrations (%s): %w", migrationsPath, err)
@@ -325,7 +325,7 @@ func RunMigrations(db *sql.DB, dbType string) error {
 			return fmt.Errorf("failed to commit migration %s: %w", version, err)
 		}
 	}
-	log.Printf("db: applied migrations for %s in %s", dbType, time.Since(start))
+
 	return nil
 }
 
