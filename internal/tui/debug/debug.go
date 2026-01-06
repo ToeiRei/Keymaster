@@ -7,10 +7,10 @@ package debug
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/tui/frame"
 )
 
@@ -63,9 +63,11 @@ func (m testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "j", "down":
 			m.vp.LineDown(1)
-			m.menu.MoveDown()
 		case "k", "up":
 			m.vp.LineUp(1)
+		case "J":
+			m.menu.MoveDown()
+		case "K":
 			m.menu.MoveUp()
 		}
 	case tea.WindowSizeMsg:
@@ -83,97 +85,114 @@ func (m testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m testModel) View() string {
-	// Global header (emoji + app + view)
-	title := "🔑 Keymaster — TUI Framework Test Screen"
-	subtitle := "An agentless SSH key manager that just does the job."
-
-	// center the title and subtitle within the total width
-	center := func(s string) string {
-		w := m.width
-		if w <= 0 {
-			return s + "\n"
-		}
-		rs := []rune(s)
-		pad := (w - len(rs)) / 2
-		if pad < 0 {
-			pad = 0
-		}
-		return strings.Repeat(" ", pad) + s + "\n"
+	if m.width < 10 || m.height < 5 {
+		return "Terminal too small"
 	}
 
-	// Build the column body (left + separator + right)
-	leftWidth := 24
+	// Calculate layout measurements following the canonical contract.
+	navWidth := 24
 	if m.width < 60 {
-		leftWidth = m.width / 3
+		navWidth = m.width / 3
 	}
-	sep := " │ "
-	// Reserve 2 chars for the outer box borders so combined columns fit the
-	// inner width (m.width - 2).
-	rightWidth := m.width - leftWidth - len(sep) - 2
+	sepWidth := 3 // " │ "
+	bodyWidth := m.width - navWidth - sepWidth
 
-	// Left column: menu
-	m.menu.SetSize(leftWidth, m.height-2)
-	left := m.menu.Render()
-
-	// Right column: pane with viewport content using structured Pane layout
-	right := frame.NewPane()
-	right.SetHeader("🔑 Dashboard Overview")
-	// compact navigation row for the pane (small contextual actions)
-	right.SetNav("[r] refresh | [s] search | [o] options")
-	right.SetBodyMargin(2)
-	right.SetFooterTokens("h Help     q Quit", "")
-	right.SetViewport(&m.vp)
-	right.SetSize(rightWidth, m.height)
-
-	// Combine columns with a separator into b
-	var b strings.Builder
-	leftLines := strings.Split(strings.TrimRight(left, "\n"), "\n")
-	rightLines := strings.Split(strings.TrimRight(right.View(), "\n"), "\n")
-	maxLines := len(leftLines)
-	if len(rightLines) > maxLines {
-		maxLines = len(rightLines)
-	}
-	for i := 0; i < maxLines; i++ {
-		l := ""
-		if i < len(leftLines) {
-			l = leftLines[i]
-		}
-		r := ""
-		if i < len(rightLines) {
-			r = rightLines[i]
-		}
-		// pad left to fixed width
-		pad := leftWidth - len([]rune(l))
-		if pad < 0 {
-			pad = 0
-		}
-		// vertical separator between columns
-		b.WriteString(l + strings.Repeat(" ", pad) + sep + r + "\n")
-	}
-	// body content ready
-	body := b.String()
-
-	// If width is too small, fall back to plain output
-	// If width is too small, fall back to plain output
-	if m.width < 10 {
-		return center(title) + center(subtitle) + "\n" + body
+	// Calculate available height.
+	headerHeight := 2
+	footerHeight := 1
+	mainHeight := m.height - headerHeight - footerHeight
+	if mainHeight < 3 {
+		mainHeight = 3
 	}
 
-	// Wrap the combined columns inside a top-level Pane so header/nav/footer
-	// and separators are produced by the Pane primitive. This keeps layout
-	// consistent and avoids mixing lipgloss-style joins.
-	outer := frame.NewPane()
-	// Use a left-aligned single-line header: icon + app + view
-	outer.SetHeader("🔑 Keymaster – TUI Framework")
-	outer.SetNav("[r] refresh | [s] search | [o] options")
-	outer.SetBodyMargin(2)
-	// Create a viewport for the outer pane containing the combined body
-	vp := viewport.New(10, 3)
-	vp.SetContent(body)
-	outer.SetViewport(&vp)
-	outer.SetSize(m.width, m.height)
-	// Pane no longer renders a footer; render a background-colored status
-	// bar below the pane for help/quit information.
-	return outer.View() + "\n" + frame.StatusBar("h Help", "q Quit", m.width)
+	// Step 1: Render header block (title + subtitle).
+	headerBlock := m.renderHeader()
 
+	// Step 2: Render nav pane.
+	navPane := m.renderNav(navWidth, mainHeight)
+
+	// Step 3: Render separator pane.
+	sepPane := m.renderSeparator(mainHeight)
+
+	// Step 4: Render body pane.
+	bodyPane := m.renderBody(bodyWidth, mainHeight)
+
+	// Step 5: Compose main area (horizontal join of nav, sep, body).
+	main := lipgloss.JoinHorizontal(lipgloss.Top, navPane, sepPane, bodyPane)
+
+	// Step 6: Render footer.
+	footer := m.renderFooter()
+
+	// Step 7: Compose final layout (vertical join of header, main, footer).
+	final := lipgloss.JoinVertical(lipgloss.Left, headerBlock, main, footer)
+
+	return final
+}
+
+// renderHeader produces the 2-row header block.
+func (m testModel) renderHeader() string {
+	titleStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("12")).
+		Bold(true)
+
+	subtitleStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("8"))
+
+	title := titleStyle.Render("🔑 Keymaster — Layout Test")
+	subtitle := subtitleStyle.Render("An agentless SSH key manager that just does the job.")
+
+	return lipgloss.JoinVertical(lipgloss.Left, title, subtitle)
+}
+
+// renderNav produces the left navigation pane.
+func (m testModel) renderNav(width, height int) string {
+	style := lipgloss.NewStyle().
+		Width(width).
+		Height(height)
+
+	m.menu.SetSize(width, height)
+	rendered := m.menu.Render()
+
+	return style.Render(rendered)
+}
+
+// renderSeparator produces the vertical separator pane.
+func (m testModel) renderSeparator(height int) string {
+	style := lipgloss.NewStyle().
+		Width(3).
+		Height(height)
+
+	// Pad separator to match height.
+	lines := make([]string, height)
+	lines[0] = " │ "
+	for i := 1; i < height; i++ {
+		lines[i] = " │ "
+	}
+
+	return style.Render(lipgloss.JoinVertical(lipgloss.Center, lines...))
+}
+
+// renderBody produces the right body pane with viewport.
+func (m testModel) renderBody(width, height int) string {
+	// Update viewport dimensions.
+	m.vp.Width = width
+	m.vp.Height = height
+
+	style := lipgloss.NewStyle().
+		Width(width).
+		Height(height)
+
+	// For now, render viewport directly.
+	return style.Render(m.vp.View())
+}
+
+// renderFooter produces the bottom footer.
+func (m testModel) renderFooter() string {
+	footerStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("255")).
+		Background(lipgloss.Color("4")).
+		Width(m.width)
+
+	text := " j/k body scroll  J/K menu  q quit"
+	return footerStyle.Render(text)
 }
