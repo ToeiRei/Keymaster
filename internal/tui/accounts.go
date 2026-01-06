@@ -85,6 +85,7 @@ type accountsModel struct {
 	keySelectionInButtonMode bool         // True when navigating buttons instead of keys
 	width, height            int
 	searcher                 ui.AccountSearcher
+	transferMode             bool
 }
 
 //nolint:unused
@@ -634,16 +635,28 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Import keys from remote host.
 		case "i":
-			if len(m.displayedAccounts) > 0 {
+			if len(m.displayedAccounts) > 0 && !m.transferMode {
 				accToImportFrom := m.displayedAccounts[m.cursor]
 				m.status = i18n.T("accounts.status.import_start", accToImportFrom.String())
 				return m, importRemoteKeysCmd(accToImportFrom)
 			}
 			return m, nil
 
-		// Export transfer package for selected account.
+		// Toggle Transfer Mode
+		case "T":
+			// Enter/exit transfer mode
+			if !m.transferMode {
+				m.transferMode = true
+				m.status = i18n.T("accounts.status.enter_transfer_mode")
+			} else {
+				m.transferMode = false
+				m.status = i18n.T("accounts.status.exit_transfer_mode")
+			}
+			return m, nil
+
+		// Transfer mode commands: x (export) and I (import uppercase)
 		case "x":
-			if len(m.displayedAccounts) > 0 {
+			if m.transferMode && len(m.displayedAccounts) > 0 {
 				acc := m.displayedAccounts[m.cursor]
 				pkg, err := core.BuildTransferPackage(acc.Username, acc.Hostname, "", "")
 				if err != nil {
@@ -659,9 +672,8 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
-		// Import transfer package and accept it as a bootstrap.
-		case "T":
-			if len(m.displayedAccounts) > 0 {
+		case "I":
+			if m.transferMode && len(m.displayedAccounts) > 0 {
 				acc := m.displayedAccounts[m.cursor]
 				m.status = i18n.T("accounts.status.transfer_importing", acc.Username, acc.Hostname)
 				return m, importTransferCmd(acc)
@@ -728,8 +740,22 @@ func (m *accountsModel) detailContentView() string {
 			detailsItems = append(detailsItems, "", helpStyle.Render(i18n.T("accounts.tags", acc.Tags)))
 		}
 	}
-	// Only show filter status if filtering
-	if m.isFiltering {
+	// Show filter hint in the right pane header next to tags per spec
+	if len(m.displayedAccounts) > 0 && m.cursor < len(m.displayedAccounts) {
+		acc := m.displayedAccounts[m.cursor]
+		var tagsLine string
+		if acc.Tags != "" {
+			if m.isFiltering {
+				tagsLine = fmt.Sprintf(i18n.T("accounts.tags"), acc.Tags) + "   " + fmt.Sprintf("(filter: %s)", m.filter)
+			} else {
+				tagsLine = fmt.Sprintf(i18n.T("accounts.tags"), acc.Tags) + "   " + "(/ to filter)"
+			}
+			detailsItems = append(detailsItems, "", helpStyle.Render(tagsLine))
+		} else if m.isFiltering {
+			// No tags but still show filter state
+			detailsItems = append(detailsItems, "", helpStyle.Render(fmt.Sprintf("(/ to filter)   (filter: %s)", m.filter)))
+		}
+	} else if m.isFiltering {
 		detailsItems = append(detailsItems, "", helpStyle.Render(i18n.T("accounts.filtering", m.filter)))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, detailsItems...)
@@ -738,19 +764,22 @@ func (m *accountsModel) detailContentView() string {
 // footerView renders the help text at the bottom of the page.
 func (m *accountsModel) footerView() string {
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Background(lipgloss.Color("236")).Padding(0, 1).Italic(true)
-	var filterStatus string
-	if m.isFiltering {
-		filterStatus = i18n.T("accounts.filtering", m.filter)
-	} else if m.filter != "" {
-		filterStatus = i18n.T("accounts.filter_active", m.filter)
-	} else {
-		filterStatus = i18n.T("accounts.filter_hint")
-	}
+	_ = m.isFiltering
+	_ = m.filter
 	// Append transfer help keys to footer using i18n for unified formatting
-	exportLabel := i18n.T("accounts.footer.export_transfer")
-	importLabel := i18n.T("accounts.footer.import_transfer")
-	help := fmt.Sprintf("%s  %s  [x] %s  [T] %s", i18n.T("accounts.footer"), filterStatus, exportLabel, importLabel)
-	return footerStyle.Render(help)
+	// Footer format per spec: <key>:<action> <key>:<action> …   <mode tokens>
+	// No selection
+	if len(m.displayedAccounts) == 0 {
+		return footerStyle.Render("a:add i:import q:quit")
+	}
+
+	// Transfer mode
+	if m.transferMode {
+		return footerStyle.Render("x:export I:import q:quit")
+	}
+
+	// Account selected
+	return footerStyle.Render("e:edit d:delete t:toggle v:verify q:quit")
 }
 
 func (m *accountsModel) viewConfirmation() string {
