@@ -74,10 +74,26 @@ func (m testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "d":
 			m.showDialog = !m.showDialog
-		case "j", "down":
+		case "tab", "right":
 			if m.showDialog {
-				// Dialog navigation would go here
-			} else {
+				m.dialog.FocusRight()
+			}
+		case "shift+tab", "left":
+			if m.showDialog {
+				m.dialog.FocusLeft()
+			}
+		case "enter", " ":
+			if m.showDialog {
+				if m.dialog.IsFocusedRight() {
+					// Right button (Ok) pressed
+					m.showDialog = false
+				} else {
+					// Left button (Cancel) pressed
+					m.showDialog = false
+				}
+			}
+		case "j", "down":
+			if !m.showDialog {
 				m.vp.LineDown(1)
 			}
 		case "k", "up":
