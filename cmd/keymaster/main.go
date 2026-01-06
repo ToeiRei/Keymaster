@@ -27,6 +27,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	_ "github.com/toeirei/keymaster/internal/deploy" // ensure deploy init registers core hooks
 
 	// bootstrap lifecycle is delegated to internal/core facades now
 
