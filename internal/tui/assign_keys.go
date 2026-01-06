@@ -9,8 +9,6 @@ package tui // import "github.com/toeirei/keymaster/internal/tui"
 
 import (
 	"fmt"
-	"strings"
-	"unicode/utf8"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -404,26 +402,15 @@ func (m *assignKeysModel) footerView() string {
 		}
 		left := i18n.T("assign_keys.footer_keys")
 		right := filterStatus
-		pad := m.accountViewport.Width + m.keyViewport.Width + 8 // fallback estimate
-		// Prefer explicit model width when available
-		if m.keyViewport.Width > 0 {
-			pad = m.keyViewport.Width
+		// Derive a width from viewports when possible, otherwise fall back
+		width := m.keyViewport.Width
+		if width <= 0 {
+			width = m.accountViewport.Width + m.keyViewport.Width + 8
 		}
-		totalPad := m.keyViewport.Width + m.accountViewport.Width
-		if m.state == assignStateSelectKeys {
-			// Use model width if set
-			if m.keyViewport.Width > 0 {
-				pad = m.keyViewport.Width
-			} else if m.accountViewport.Width > 0 {
-				pad = totalPad
-			}
+		if width <= 0 {
+			width = 80
 		}
-		// Compute spaces using rune counts; fall back to 2 if negative
-		spaces := pad - utf8.RuneCountInString(left) - utf8.RuneCountInString(right)
-		if spaces < 2 {
-			spaces = 2
-		}
-		helpText = left + strings.Repeat(" ", spaces) + right
+		helpText = AlignFooter(left, right, width)
 		if m.status != "" {
 			return statusMessageStyle.Render(m.status)
 		}
@@ -439,11 +426,11 @@ func (m *assignKeysModel) footerView() string {
 		}
 		left := i18n.T("assign_keys.footer_accounts")
 		right := filterStatus
-		spaces := m.accountViewport.Width - utf8.RuneCountInString(left) - utf8.RuneCountInString(right)
-		if spaces < 2 {
-			spaces = 2
+		width := m.accountViewport.Width
+		if width <= 0 {
+			width = 80
 		}
-		helpText = left + strings.Repeat(" ", spaces) + right
+		helpText = AlignFooter(left, right, width)
 	}
 	return footerStyle.Render(helpText)
 }

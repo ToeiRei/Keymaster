@@ -313,6 +313,8 @@ deploy.filter_active: "Filter: %s (mit 'esc' löschen)"
 deploy.filter_hint: "Mit / filtern…"
 deploy.status.copy_success: "Inhalt von authorized_keys in die Zwischenablage kopiert."
 deploy.status.copy_failed: "Fehler beim Kopieren in die Zwischenablage: %s"
+# Canonical footer (key:action) for TUI footer standardization
+deploy.footer: "j/k:up/down enter:select q:back"
 
 # Passphrase-Eingabe für Deployment
 deploy.passphrase_title: "🔐 Passwort für Systemschlüssel erforderlich"
@@ -372,6 +374,8 @@ audit.tui.help_failed: "esc: zurück"
 audit.tui.filtering: "Filter: %s█"
 audit.tui.filter_active: "Filter: %s (mit 'esc' löschen)"
 audit.tui.filter_hint: "Mit / filtern…"
+# Canonical footer (key:action) for TUI footer standardization
+audit.tui.footer: "j/k:up/down enter:select m:toggle q:back"
 
 # CLI specific translations
 
@@ -490,7 +494,9 @@ bootstrap.success_title: "Bootstrap abgeschlossen"
 bootstrap.success_message: "%s@%s erfolgreich gebootstrappt"
 bootstrap.failed_title: "Bootstrap fehlgeschlagen"
 bootstrap.failed_message: "Bootstrap fehlgeschlagen: %s"
+# Canonical footer for bootstrap flows
 bootstrap.complete_help: "(Enter oder q drücken zum Fortfahren)"
+bootstrap.footer: "enter:next esc:back q:back"
 bootstrap.error_prefix: "Fehler: "
 bootstrap.testing_failed_prefix: "Verbindungstest fehlgeschlagen: "
 

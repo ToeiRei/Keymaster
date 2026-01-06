@@ -255,8 +255,10 @@ func (m *auditLogModel) footerLine() string {
 	} else {
 		filterStatus = i18n.T("audit_log.filter_hint")
 	}
-	// Single line: help and filter status
-	return fmt.Sprintf("%s  %s", i18n.T("audit_log.footer"), filterStatus)
+	// Single line: help and filter status - align to table width
+	left := i18n.T("audit_log.footer")
+	totalWidth := m.table.Width() + 4 // account for padding and borders
+	return AlignFooter(left, filterStatus, totalWidth)
 }
 
 // renderAuditLogTable provides a custom rendering implementation for the table.

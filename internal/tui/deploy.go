@@ -638,7 +638,8 @@ func (m deployModel) View() string {
 		} else {
 			filterStatus = i18n.T("deploy.filter_hint")
 		}
-		help := helpFooterStyle.Render(fmt.Sprintf("%s  %s", i18n.T("deploy.help_select"), filterStatus))
+		left := i18n.T("deploy.help_select")
+		help := helpFooterStyle.Render(AlignFooter(left, filterStatus, m.width))
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 
 	case deployStateSelectTag:

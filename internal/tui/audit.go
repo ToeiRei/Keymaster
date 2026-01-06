@@ -478,7 +478,8 @@ func (m auditModel) View() string {
 		} else {
 			filterStatus = i18n.T("audit.tui.filter_hint")
 		}
-		help := helpFooterStyle.Render(fmt.Sprintf("%s  %s", i18n.T("audit.tui.help_select"), filterStatus))
+		left := i18n.T("audit.tui.help_select")
+		help := helpFooterStyle.Render(AlignFooter(left, filterStatus, m.width))
 		return lipgloss.JoinVertical(lipgloss.Left, mainPane, "", help)
 
 	case auditStateSelectTag:

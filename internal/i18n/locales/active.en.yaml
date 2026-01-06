@@ -277,6 +277,8 @@ deploy.filter_active: "Filter: %s (press 'esc' to clear)"
 deploy.filter_hint: "Press / to filter…"
 deploy.status.copy_success: "Copied authorized_keys content to clipboard."
 deploy.status.copy_failed: "Failed to copy to clipboard: %s"
+# Canonical footer (key:action) for TUI footer standardization
+deploy.footer: "j/k:up/down enter:select q:back"
 
 deploy.passphrase_title: "🔐 System Key Passphrase Required"
 deploy.passphrase_prompt: "The system key is encrypted. Please enter the passphrase to unlock it."
@@ -332,6 +334,8 @@ audit.tui.help_failed: "esc: back"
 audit.tui.filtering: "Filter: %s█"
 audit.tui.filter_active: "Filter: %s (press 'esc' to clear)"
 audit.tui.filter_hint: "Press / to filter…"
+# Canonical footer (key:action) for TUI footer standardization
+audit.tui.footer: "j/k:up/down enter:select m:toggle q:back"
 audit.tui.fleet_complete: "Fleet audit complete."
 # CLI specific translations
 
@@ -404,6 +408,8 @@ bootstrap.success_message: "Successfully bootstrapped %s@%s"
 bootstrap.failed_title: "Bootstrap Failed"
 bootstrap.failed_message: "Bootstrap failed: %s"
 bootstrap.complete_help: "(press enter or q to continue)"
+# Canonical footer for bootstrap flows
+bootstrap.footer: "enter:next esc:back q:back"
 bootstrap.error_prefix: "Error: "
 bootstrap.testing_failed_prefix: "Connection test failed: "
 

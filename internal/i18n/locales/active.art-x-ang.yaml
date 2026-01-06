@@ -283,6 +283,8 @@ deploy.filter_active: "Sīfe: %s (cnuc 'esc' tō clǣnsiġenne)"
 deploy.filter_hint: "Cnuc / tō sīfenne…"
 deploy.status.copy_success: "Ġeċīeġed authorized_keys innung tō clipbordum."
 deploy.status.copy_failed: "Mislāmp tō ġeċīeġenne tō clipbordum: %s"
+# Canonical footer (key:action) for TUI footer standardization
+deploy.footer: "j/k:up/down enter:select q:back"
 
 # Passphrase input for deployment
 deploy.passphrase_title: "🔐 Systemcǣġes Ġewritrǣden Nēodbeþearf"
@@ -341,6 +343,8 @@ audit.tui.help_failed: "esc: eftfaran"
 audit.tui.filtering: "Sīfe: %s▮"
 audit.tui.filter_active: "Sīfe: %s (cnuc 'esc' tō clǣnsiġenne)"
 audit.tui.filter_hint: "Cnuc / tō sīfenne…"
+# Canonical footer (key:action) for TUI footer standardization
+audit.tui.footer: "j/k:up/down enter:select m:toggle q:back"
 
 # CLI specific translations - keeping technical error messages closer to modern for debugging
 # Audit CLI command
@@ -419,6 +423,7 @@ bootstrap.success_message: "Ġesundfullīċe grundlecgod %s@%s"
 bootstrap.failed_title: "Grundlecging Mislāmp"
 bootstrap.failed_message: "Grundlecging mislāmp: %s"
 bootstrap.complete_help: "(cnuc enter oþþe q tō forþfarenne)"
+bootstrap.footer: "enter:next esc:back q:back"
 bootstrap.error_prefix: "Gedƿola: "
 bootstrap.testing_failed_prefix: "Ġebindunges fandung mislāmp: "
 

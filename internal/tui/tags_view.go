@@ -203,7 +203,9 @@ func (m tagsViewModel) View() string {
 	} else {
 		filterStatus = i18n.T("tags_view.filter_hint")
 	}
-	helpLine := footerStyle.Render(fmt.Sprintf("%s  %s", i18n.T("tags_view.footer"), filterStatus))
+	left := i18n.T("tags_view.footer")
+	// tags view does not track full terminal width; use a reasonable default
+	helpLine := footerStyle.Render(AlignFooter(left, filterStatus, 80))
 
 	return lipgloss.JoinVertical(lipgloss.Left, title, "", listPane, "", helpLine)
 }

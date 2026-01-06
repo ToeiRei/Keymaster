@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -778,11 +777,7 @@ func (m *accountsModel) footerView() string {
 	if width <= 0 {
 		width = 80
 	}
-	spaces := width - utf8.RuneCountInString(left) - utf8.RuneCountInString(right)
-	if spaces < 2 {
-		spaces = 2
-	}
-	return footerStyle.Render(left + strings.Repeat(" ", spaces) + right)
+	return footerStyle.Render(AlignFooter(left, right, width))
 }
 
 func (m *accountsModel) viewConfirmation() string {
