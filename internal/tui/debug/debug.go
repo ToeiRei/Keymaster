@@ -168,14 +168,14 @@ func (m testModel) renderNav(width, height int) string {
 	style := lipgloss.NewStyle().
 		Width(width).
 		Height(height).
-		Padding(1, 0, 0, 0)
+		Padding(1, 1, 0, 1) // top, right, bottom, left
 
-	m.menu.SetSize(width, height-3) // account for header and margins
+	m.menu.SetSize(width-2, height-4) // account for header, margins, padding, and empty line
 	rendered := m.menu.Render()
 
-	// Compose: header + empty line + menu
+	// Compose: empty line + header + empty line + menu
 	emptyLine := lipgloss.NewStyle().Width(width).Render("")
-	nav := lipgloss.JoinVertical(lipgloss.Left, header, emptyLine, rendered)
+	nav := lipgloss.JoinVertical(lipgloss.Left, emptyLine, header, emptyLine, rendered)
 
 	return style.Render(nav)
 }
@@ -212,21 +212,24 @@ func (m testModel) renderBody(width, height int) string {
 	headerHeight := 1
 	topMargin := 1
 	bottomMargin := 1
-	contentHeight := height - headerHeight - topMargin - bottomMargin
+	paddingWidth := 2  // left + right padding
+	paddingHeight := 2 // top + bottom padding
+	contentHeight := height - headerHeight - topMargin - bottomMargin - paddingHeight
 	if contentHeight < 3 {
 		contentHeight = 3
 	}
 
-	m.vp.Width = width
+	m.vp.Width = width - paddingWidth
 	m.vp.Height = contentHeight
 
 	// Compose: empty line + header + empty line + content
-	emptyLine := lipgloss.NewStyle().Width(width).Render("")
+	emptyLine := lipgloss.NewStyle().Width(width - paddingWidth).Render("")
 	body := lipgloss.JoinVertical(lipgloss.Left, emptyLine, header, emptyLine, m.vp.View())
 
 	style := lipgloss.NewStyle().
 		Width(width).
-		Height(height)
+		Height(height).
+		Padding(1, 1, 1, 1) // top, right, bottom, left
 
 	return style.Render(body)
 }
