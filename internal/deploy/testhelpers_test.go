@@ -4,7 +4,11 @@
 
 package deploy_test
 
-import "bytes"
+import (
+	"bytes"
+
+	"github.com/toeirei/keymaster/internal/testutil"
+)
 
 // fakeDeployer implements core.RemoteDeployer for tests and is shared
 // so multiple test files can override `core.NewDeployerFactory` without
@@ -19,4 +23,4 @@ func (f *fakeDeployer) GetAuthorizedKeys() ([]byte, error)        { return f.con
 func (f *fakeDeployer) Close()                                    {}
 
 // bytesFromString is a small helper used by tests to create buffers.
-func bytesFromString(s string) *bytes.Buffer { return bytes.NewBufferString(s) }
+func bytesFromString(s string) *bytes.Buffer { return testutil.BytesFromString(s) }
