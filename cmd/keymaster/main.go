@@ -35,7 +35,6 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 
 	// DB init/inspection delegated to internal/core facades
-	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
@@ -721,7 +720,7 @@ Use --tag to decommission all accounts with specific tags (e.g., --tag env:stagi
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		tagFilter, _ := cmd.Flags().GetString("tag")
 
-		options := deploy.DecommissionOptions{
+		options := core.DecommissionOptions{
 			SkipRemoteCleanup: skipRemote,
 			KeepFile:          keepFile,
 			Force:             force,
