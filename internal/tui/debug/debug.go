@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -37,6 +38,8 @@ type testModel struct {
 	showDialog     bool
 	filePicker     *frame.FilePicker
 	showFilePicker bool
+	datePicker     *frame.DatePicker
+	showDatePicker bool
 }
 
 func newTestModel() testModel {
@@ -69,6 +72,11 @@ func newTestModel() testModel {
 	m.filePicker = frame.NewFilePicker(home)
 	m.showFilePicker = false
 
+	// Create a date picker (default to 30 days from now, with time)
+	futureDate := time.Now().AddDate(0, 0, 30)
+	m.datePicker = frame.NewDatePicker(futureDate, true)
+	m.showDatePicker = false
+
 	return m
 }
 
@@ -82,6 +90,8 @@ func (m testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "d":
 			m.showDialog = !m.showDialog
+		case "t":
+			m.showDatePicker = !m.showDatePicker
 		case "f":
 			m.showFilePicker = !m.showFilePicker
 			// Toggle between load and save mode for testing
@@ -96,6 +106,8 @@ func (m testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "tab", "right":
 			if m.showDialog {
 				m.dialog.FocusRight()
+			} else if m.showDatePicker {
+				m.datePicker.FocusNext()
 			} else if m.showFilePicker {
 				// Tab cycles through: file list -> [filename input] -> OK -> Cancel -> file list
 				if m.filePicker.IsSaveMode() {
@@ -121,6 +133,8 @@ func (m testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "shift+tab", "left":
 			if m.showDialog {
 				m.dialog.FocusLeft()
+			} else if m.showDatePicker {
+				m.datePicker.FocusPrev()
 			} else if m.showFilePicker {
 				// Shift+Tab cycles backward
 				if m.filePicker.IsSaveMode() {
@@ -164,6 +178,14 @@ func (m testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Left button (Cancel) pressed
 					m.showDialog = false
 				}
+			} else if m.showDatePicker {
+				if m.datePicker.IsFocusedOk() {
+					// OK pressed - close date picker
+					m.showDatePicker = false
+				} else if m.datePicker.IsFocusedCancel() {
+					// Cancel pressed
+					m.showDatePicker = false
+				}
 			} else if m.showFilePicker && m.filePicker.Focused == 0 {
 				// Enter on file list: enter directory or select file
 				selected := m.filePicker.SelectCurrent()
@@ -173,27 +195,31 @@ func (m testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "j", "down":
-			if !m.showDialog && !m.showFilePicker {
+			if !m.showDialog && !m.showFilePicker && !m.showDatePicker {
 				m.vp.LineDown(1)
 			} else if m.showFilePicker {
 				m.filePicker.MoveDown()
+			} else if m.showDatePicker {
+				m.datePicker.DecrementField()
 			}
 		case "k", "up":
-			if !m.showDialog && !m.showFilePicker {
+			if !m.showDialog && !m.showFilePicker && !m.showDatePicker {
 				m.vp.LineUp(1)
 			} else if m.showFilePicker {
 				m.filePicker.MoveUp()
+			} else if m.showDatePicker {
+				m.datePicker.IncrementField()
 			}
 		case "u":
 			if m.showFilePicker {
 				m.filePicker.GoUp()
 			}
 		case "J":
-			if !m.showDialog && !m.showFilePicker {
+			if !m.showDialog && !m.showFilePicker && !m.showDatePicker {
 				m.menu.MoveDown()
 			}
 		case "K":
-			if !m.showDialog && !m.showFilePicker {
+			if !m.showDialog && !m.showFilePicker && !m.showDatePicker {
 				m.menu.MoveUp()
 			}
 		case "backspace":
@@ -284,6 +310,14 @@ func (m testModel) View() string {
 		m.filePicker.Height = frameH - 4
 		pickerOutput := m.filePicker.Render()
 		return m.overlayDialog(pickerOutput, final)
+	}
+
+	// Step 10: Render date picker if shown (overlay on top of background).
+	if m.showDatePicker {
+		m.datePicker.Width = 60
+		m.datePicker.Height = frameH - 4
+		dateOutput := m.datePicker.Render()
+		return m.overlayDialog(dateOutput, final)
 	}
 
 	return final
