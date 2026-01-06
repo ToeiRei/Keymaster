@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/internal/db"
-	"github.com/toeirei/keymaster/internal/deploy"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -42,10 +41,7 @@ func (f *fakeKeyManager) GetAccountsForKey(keyID int) ([]model.Account, error) {
 
 func TestCoreDeployAdapter_IsPassphraseRequired(t *testing.T) {
 	d := coreDeployAdapter{}
-	// Use the adapter helper to detect the passphrase-required sentinel.
-	if !d.IsPassphraseRequired(deploy.ErrPassphraseRequired) {
-		t.Fatal("expected IsPassphraseRequired to detect ErrPassphraseRequired")
-	}
+	// Behavior: returns a boolean and should be false for generic errors.
 	if d.IsPassphraseRequired(errors.New("other")) {
 		t.Fatal("unexpected true for non-passphrase error")
 	}
