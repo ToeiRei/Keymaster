@@ -89,18 +89,22 @@ func (m testModel) View() string {
 		return "Terminal too small"
 	}
 
+	// Use full terminal dimensions (colored bars provide visual structure).
+	frameW := m.width
+	frameH := m.height
+
 	// Calculate layout measurements following the canonical contract.
 	navWidth := 24
-	if m.width < 60 {
-		navWidth = m.width / 3
+	if frameW < 60 {
+		navWidth = frameW / 3
 	}
 	sepWidth := 3 // " │ "
-	bodyWidth := m.width - navWidth - sepWidth
+	bodyWidth := frameW - navWidth - sepWidth
 
 	// Calculate available height.
 	headerHeight := 2
 	footerHeight := 1
-	mainHeight := m.height - headerHeight - footerHeight
+	mainHeight := frameH - headerHeight - footerHeight
 	if mainHeight < 3 {
 		mainHeight = 3
 	}
@@ -129,31 +133,50 @@ func (m testModel) View() string {
 	return final
 }
 
-// renderHeader produces the 2-row header block.
+// renderHeader produces the 2-row header block with background.
 func (m testModel) renderHeader() string {
 	titleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("12")).
+		Foreground(lipgloss.Color("255")).
+		Background(lipgloss.Color("4")).
 		Bold(true)
 
 	subtitleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("8"))
+		Foreground(lipgloss.Color("255")).
+		Background(lipgloss.Color("4"))
 
 	title := titleStyle.Render("🔑 Keymaster — Layout Test")
 	subtitle := subtitleStyle.Render("An agentless SSH key manager that just does the job.")
 
-	return lipgloss.JoinVertical(lipgloss.Left, title, subtitle)
+	// Pad both rows to full width with background
+	headerWrapper := lipgloss.NewStyle().
+		Background(lipgloss.Color("4")).
+		Width(m.width)
+
+	headerBlock := lipgloss.JoinVertical(lipgloss.Left, title, subtitle)
+	return headerWrapper.Render(headerBlock)
 }
 
 // renderNav produces the left navigation pane.
 func (m testModel) renderNav(width, height int) string {
+	headerStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("12")).
+		Bold(true)
+
+	header := headerStyle.Render("🗂️  Navigation")
+
 	style := lipgloss.NewStyle().
 		Width(width).
-		Height(height)
+		Height(height).
+		Padding(1, 0, 0, 0)
 
-	m.menu.SetSize(width, height)
+	m.menu.SetSize(width, height-3) // account for header and margins
 	rendered := m.menu.Render()
 
-	return style.Render(rendered)
+	// Compose: header + empty line + menu
+	emptyLine := lipgloss.NewStyle().Width(width).Render("")
+	nav := lipgloss.JoinVertical(lipgloss.Left, header, emptyLine, rendered)
+
+	return style.Render(nav)
 }
 
 // renderSeparator produces the vertical separator pane.
@@ -162,9 +185,9 @@ func (m testModel) renderSeparator(height int) string {
 		Width(3).
 		Height(height)
 
-	// Pad separator to match height.
+	// Pad separator to match height, but skip first line to align with nav header.
 	lines := make([]string, height)
-	lines[0] = " │ "
+	lines[0] = "" // empty line at top
 	for i := 1; i < height; i++ {
 		lines[i] = " │ "
 	}
@@ -174,16 +197,34 @@ func (m testModel) renderSeparator(height int) string {
 
 // renderBody produces the right body pane with viewport.
 func (m testModel) renderBody(width, height int) string {
-	// Update viewport dimensions.
+	// Create header for breathing room and context.
+	headerStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("12")).
+		Bold(true)
+
+	header := headerStyle.Render("📋 Overview")
+
+	// Render viewport with adjusted height for header and margins.
+	headerHeight := 1
+	topMargin := 1
+	bottomMargin := 1
+	contentHeight := height - headerHeight - topMargin - bottomMargin
+	if contentHeight < 3 {
+		contentHeight = 3
+	}
+
 	m.vp.Width = width
-	m.vp.Height = height
+	m.vp.Height = contentHeight
+
+	// Compose: empty line + header + empty line + content
+	emptyLine := lipgloss.NewStyle().Width(width).Render("")
+	body := lipgloss.JoinVertical(lipgloss.Left, emptyLine, header, emptyLine, m.vp.View())
 
 	style := lipgloss.NewStyle().
 		Width(width).
 		Height(height)
 
-	// For now, render viewport directly.
-	return style.Render(m.vp.View())
+	return style.Render(body)
 }
 
 // renderFooter produces the bottom footer.
