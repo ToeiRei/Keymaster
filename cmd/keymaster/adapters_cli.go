@@ -58,6 +58,9 @@ func (c *cliStoreAdapter) AssignKeyToAccount(keyID, accountID int) error {
 	}
 	return km.AssignKeyToAccount(keyID, accountID)
 }
+func (c *cliStoreAdapter) UpdateAccountIsDirty(id int, dirty bool) error {
+	return db.UpdateAccountIsDirty(id, dirty)
+}
 func (c *cliStoreAdapter) CreateSystemKey(publicKey, privateKey string) (int, error) {
 	return db.CreateSystemKey(publicKey, privateKey)
 }
@@ -193,8 +196,17 @@ func (w *dbStoreWrapper) GetAccount(id int) (*model.Account, error) {
 func (w *dbStoreWrapper) AddAccount(username, hostname, label, tags string) (int, error) {
 	return w.inner.AddAccount(username, hostname, label, tags)
 }
-func (w *dbStoreWrapper) DeleteAccount(accountID int) error             { return w.inner.DeleteAccount(accountID) }
-func (w *dbStoreWrapper) AssignKeyToAccount(keyID, accountID int) error { return nil }
+func (w *dbStoreWrapper) DeleteAccount(accountID int) error { return w.inner.DeleteAccount(accountID) }
+func (w *dbStoreWrapper) AssignKeyToAccount(keyID, accountID int) error {
+	km := db.DefaultKeyManager()
+	if km == nil {
+		return fmt.Errorf("no key manager available")
+	}
+	return km.AssignKeyToAccount(keyID, accountID)
+}
+func (w *dbStoreWrapper) UpdateAccountIsDirty(id int, dirty bool) error {
+	return w.inner.UpdateAccountIsDirty(id, dirty)
+}
 func (w *dbStoreWrapper) CreateSystemKey(publicKey, privateKey string) (int, error) {
 	return w.inner.CreateSystemKey(publicKey, privateKey)
 }
