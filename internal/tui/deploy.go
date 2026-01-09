@@ -172,6 +172,11 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, textinput.Blink
 			}
 
+			// If this individual deployment succeeded, clear the dirty flag.
+			if res.err == nil {
+				_ = ui.UpdateAccountIsDirty(res.account.ID, false)
+			}
+
 			if len(m.fleetResults) == len(m.accountsInFleet) {
 				m.state = deployStateComplete
 				m.status = i18n.T("deploy.fleet_complete")
@@ -230,6 +235,8 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.status = i18n.T("deploy.success", m.selectedAccount.String(), activeKey.Serial)
 					}
 				}
+				// Clear is_dirty for the account on successful deploy
+				_ = ui.UpdateAccountIsDirty(m.selectedAccount.ID, false)
 			}
 		}
 		// Don't process other input while deployment is running
@@ -542,6 +549,14 @@ func (m deployModel) updateShowAuthorizedKeys(msg tea.Msg) (tea.Model, tea.Cmd) 
 			m.filenameInput.Focus()
 			m.status = ""
 			return m, textinput.Blink
+		case "x":
+			// Clear the is_dirty flag for this account (user-confirmed).
+			if err := ui.UpdateAccountIsDirty(m.selectedAccount.ID, false); err != nil {
+				m.status = fmt.Sprintf("clear failed: %v", err)
+			} else {
+				m.status = i18n.T("deploy.status.cleared")
+			}
+			return m, nil
 		}
 	}
 	return m, nil
@@ -596,6 +611,14 @@ func (m deployModel) updateComplete(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = ""
 			m.state = deployStateSelectAccount
 			m.err = nil
+			return m, nil
+		case "x":
+			// Allow user to clear the is_dirty flag from the completion screen.
+			if err := ui.UpdateAccountIsDirty(m.selectedAccount.ID, false); err != nil {
+				m.status = fmt.Sprintf("clear failed: %v", err)
+			} else {
+				m.status = i18n.T("deploy.status.cleared")
+			}
 			return m, nil
 		}
 	}
@@ -858,6 +881,8 @@ func (m deployModel) footerFor(width int) string {
 		left = i18n.T("deploy.help_select")
 	case deployStateShowAuthorizedKeys:
 		left = i18n.T("deploy.help_keys")
+		// Allow user to mark account as deployed from the keys view
+		right = i18n.T("deploy.help_mark_deployed")
 	case deployStateFleetInProgress:
 		left = i18n.T("deploy.help_wait")
 	case deployStateEnterPassphrase:
@@ -868,6 +893,8 @@ func (m deployModel) footerFor(width int) string {
 		left = ""
 	case deployStateComplete:
 		left = i18n.T("deploy.help_complete")
+		// Allow quick mark as deployed from the completion screen
+		right = i18n.T("deploy.help_mark_deployed")
 	default:
 		left = i18n.T("deploy.help_menu")
 	}
