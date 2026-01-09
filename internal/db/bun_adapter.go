@@ -100,6 +100,7 @@ type AccountModel struct {
 	Tags          sql.NullString `bun:"tags"`
 	Serial        int            `bun:"serial"`
 	IsActive      bool           `bun:"is_active"`
+	IsDirty       bool           `bun:"is_dirty"`
 }
 
 // PublicKeyModel maps the subset of public_keys used in joins.
@@ -152,6 +153,7 @@ func accountModelToModel(a AccountModel) model.Account {
 		Hostname: a.Hostname,
 		Serial:   a.Serial,
 		IsActive: a.IsActive,
+		IsDirty:  a.IsDirty,
 	}
 	if a.Label.Valid {
 		acc.Label = a.Label.String
@@ -463,7 +465,7 @@ func ImportDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 
 		// Insert accounts
 		for _, acc := range backup.Accounts {
-			if _, err := ExecRaw(ctx, tx, "INSERT INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
+			if _, err := ExecRaw(ctx, tx, "INSERT INTO accounts (id, username, hostname, label, tags, serial, is_active, is_dirty) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive, acc.IsDirty); err != nil {
 				return MapDBError(err)
 			}
 		}
@@ -524,7 +526,7 @@ func IntegrateDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 	ctx := context.Background()
 	return WithTx(ctx, bdb, func(ctx context.Context, tx bun.Tx) error {
 		for _, acc := range backup.Accounts {
-			if _, err := ExecRaw(ctx, tx, "INSERT OR IGNORE INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
+			if _, err := ExecRaw(ctx, tx, "INSERT OR IGNORE INTO accounts (id, username, hostname, label, tags, serial, is_active, is_dirty) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive, acc.IsDirty); err != nil {
 				return err
 			}
 		}

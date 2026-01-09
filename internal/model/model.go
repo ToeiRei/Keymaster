@@ -25,6 +25,9 @@ type Account struct {
 	Serial int
 	// IsActive determines if the account is included in bulk operations like 'deploy' and 'audit'.
 	IsActive bool
+	// IsDirty marks the account as having local changes that are not yet committed.
+	// This is used by the UI/CLI to surface accounts needing attention.
+	IsDirty bool
 }
 
 // String returns a user-friendly representation of the account.
