@@ -836,6 +836,13 @@ func UpdateAccountTagsBun(bdb *bun.DB, id int, tags string) error {
 	return err
 }
 
+// UpdateAccountIsDirtyBun sets or clears the is_dirty flag for an account.
+func UpdateAccountIsDirtyBun(bdb *bun.DB, id int, dirty bool) error {
+	ctx := context.Background()
+	_, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_dirty = ? WHERE id = ?", dirty, id)
+	return err
+}
+
 // --- System key helpers ---
 func GetSystemKeyBySerialBun(bdb *bun.DB, serial int) (*model.SystemKey, error) {
 	ctx := context.Background()
