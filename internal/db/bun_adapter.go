@@ -82,6 +82,11 @@ func RotateSystemKeyBun(bdb *bun.DB, publicKey, privateKey string) (int, error) 
 		return 0, fmt.Errorf("failed to insert new system key: %w", err)
 	}
 
+	// Mark all accounts dirty because system key rotation changes authorized_keys
+	if _, err := ExecRaw(ctx, tx, "UPDATE accounts SET is_dirty = ?", true); err != nil {
+		return 0, fmt.Errorf("failed to mark accounts dirty after rotation: %w", err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
