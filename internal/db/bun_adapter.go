@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bobg/go-generics/v4/slices"
+	"github.com/toeirei/keymaster/internal/db/tags"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/uptrace/bun"
 )
@@ -192,6 +194,28 @@ func publicKeyModelToModel(p PublicKeyModel) model.PublicKey {
 
 func systemKeyModelToModel(skm SystemKeyModel) model.SystemKey {
 	return model.SystemKey{ID: skm.ID, Serial: skm.Serial, PublicKey: skm.PublicKey, PrivateKey: skm.PrivateKey, IsActive: skm.IsActive}
+}
+
+func getMultipleAccountsBun(ctx context.Context, bdb *bun.DB, opts ...func(*bun.SelectQuery) *bun.SelectQuery) ([]model.Account, error) {
+	// create select
+	var data []AccountModel
+	// retrieve data
+	if err := bdb.NewSelect().Model(&data).Apply(opts...).OrderExpr("label, hostname, username").Scan(ctx); err != nil {
+		return nil, err
+	}
+	// map data to model
+	return slices.Map(data, accountModelToModel), nil
+}
+
+func GetAccountsByTagBun(ctx context.Context, bdb *bun.DB, tag string) ([]model.Account, error) {
+	tag_qb, err := tags.GetTagQueryBuilder(tag)
+	if err != nil {
+		return nil, err
+	}
+
+	return getMultipleAccountsBun(ctx, bdb, func(sq *bun.SelectQuery) *bun.SelectQuery {
+		return sq.ApplyQueryBuilder(tag_qb)
+	})
 }
 
 // GetAllAccountsBun returns all accounts ordered by label, hostname, username.
