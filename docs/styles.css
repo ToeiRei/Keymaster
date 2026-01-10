@@ -459,12 +459,20 @@ body {
   font-family: 'Fira Code', 'JetBrains Mono', monospace;
 }
 
+[data-theme="light"] .step-visual {
+  background: rgba(96, 165, 250, 0.08);
+}
+
 .step-substeps {
   background: rgba(0, 0, 0, 0.2);
   border-left: 3px solid var(--accent);
   border-radius: var(--radius-sm);
   padding: var(--spacing-md);
   margin: var(--spacing-md) 0;
+}
+
+[data-theme="light"] .step-substeps {
+  background: rgba(96, 165, 250, 0.08);
 }
 
 .substep {
