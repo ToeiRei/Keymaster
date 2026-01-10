@@ -260,6 +260,17 @@ body {
   opacity: 0.8;
 }
 
+.hero-badges a {
+  display: inline-block;
+  transition: transform 0.2s, opacity 0.2s;
+  text-decoration: none;
+}
+
+.hero-badges a:hover {
+  transform: translateY(-2px);
+  opacity: 1;
+}
+
 .hero-badges img {
   height: 20px;
 }
