@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Keymaster Documentation - Complete guide to SSH key management" />
+  <title>Keymaster — Documentation</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    .docs-layout {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      gap: var(--spacing-lg);
+      margin: var(--spacing-2xl) 0;
+      max-width: 1400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 80px;
+      height: fit-content;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-md);
+      font-size: 0.875rem;
+    }
+
+    .sidebar h3 {
+      margin: 0 0 var(--spacing-md) 0;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+    }
+
+    .sidebar-section {
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .sidebar-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .sidebar a {
+      display: block;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: var(--spacing-xs) var(--spacing-sm);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s;
+    }
+
+    .sidebar a:hover {
+      color: var(--accent-bright);
+      background: var(--surface-hover);
+    }
+
+    .sidebar a.active {
+      color: var(--accent-bright);
+      background: rgba(96, 165, 250, 0.1);
+      font-weight: 600;
+    }
+
+    .content {
+      min-width: 0;
+    }
+
+    .doc-section {
+      margin-bottom: var(--spacing-3xl);
+    }
+
+    .doc-section h2 {
+      font-size: 2rem;
+      margin-bottom: var(--spacing-lg);
+      padding-bottom: var(--spacing-md);
+      border-bottom: 2px solid var(--border);
+    }
+
+    .doc-section h3 {
+      font-size: 1.25rem;
+      margin-top: var(--spacing-2xl);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .doc-section h4 {
+      font-size: 1rem;
+      margin-top: var(--spacing-lg);
+      margin-bottom: var(--spacing-sm);
+      color: var(--text-secondary);
+    }
+
+    .doc-section p {
+      margin-bottom: var(--spacing-md);
+      line-height: 1.7;
+    }
+
+    .doc-section ul,
+    .doc-section ol {
+      margin-bottom: var(--spacing-md);
+      margin-left: var(--spacing-lg);
+    }
+
+    .doc-section li {
+      margin-bottom: var(--spacing-sm);
+      line-height: 1.6;
+    }
+
+    .info-box {
+      background: rgba(96, 165, 250, 0.05);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius-sm);
+      padding: var(--spacing-md) var(--spacing-lg);
+      margin: var(--spacing-lg) 0;
+    }
+
+    .warning-box {
+      background: rgba(251, 191, 36, 0.05);
+      border-left: 4px solid var(--warning);
+      border-radius: var(--radius-sm);
+      padding: var(--spacing-md) var(--spacing-lg);
+      margin: var(--spacing-lg) 0;
+    }
+
+    .command-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-md);
+      margin: var(--spacing-lg) 0;
+      overflow-x: auto;
+    }
+
+    .command-block code {
+      display: block;
+      white-space: pre;
+      color: var(--text-primary);
+      font-size: 0.9em;
+    }
+
+    @media (max-width: 1024px) {
+      .docs-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--spacing-md);
+      }
+
+      .sidebar-section {
+        margin-bottom: 0;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .sidebar {
+        grid-template-columns: 1fr;
+      }
+
+      .doc-section h2 {
+        font-size: 1.5rem;
+      }
+
+      .doc-section h3 {
+        font-size: 1.125rem;
+      }
+    }
+  </style>
+  <base href="./" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="./index.html" class="nav-brand">🔑 Keymaster</a>
+      <div class="nav-links">
+        <a href="./index.html">Home</a>
+        <a href="./documentation.html" style="color: var(--accent-bright);">Docs</a>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+          <svg class="sun-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="moon-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+        <a href="https://github.com/ToeiRei/Keymaster" class="btn-github-nav">
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
+            <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path>
+          </svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="docs-layout">
+      <aside class="sidebar">
+        <div class="sidebar-section">
+          <h3>Getting Started</h3>
+          <a href="#installation">Installation</a>
+          <a href="#quickstart">Quick Start</a>
+          <a href="#configuration">Configuration</a>
+        </div>
+        <div class="sidebar-section">
+          <h3>Usage</h3>
+          <a href="#bootstrap">Bootstrap Hosts</a>
+          <a href="#manage-keys">Manage Keys</a>
+          <a href="#deploy">Deploy Updates</a>
+          <a href="#audit">Audit Fleet</a>
+        </div>
+        <div class="sidebar-section">
+          <h3>Advanced</h3>
+          <a href="#database">Database Migration</a>
+          <a href="#backup-restore">Backup & Restore</a>
+          <a href="#security">Security</a>
+          <a href="#troubleshooting">Troubleshooting</a>
+        </div>
+      </aside>
+
+      <article class="content">
+        <div class="doc-section" id="installation">
+          <h2>Installation</h2>
+          <p>Keymaster requires Go 1.20 or later. Install it using go install:</p>
+          <div class="command-block">
+            <code>go install github.com/toeirei/keymaster/cmd/keymaster@latest</code>
+          </div>
+          <p>The binary will be available at <code>$GOPATH/bin/keymaster</code>. Make sure this directory is in your <code>$PATH</code>.</p>
+          <p>Verify the installation:</p>
+          <div class="command-block">
+            <code>keymaster --version</code>
+          </div>
+        </div>
+
+        <div class="doc-section" id="quickstart">
+          <h2>Quick Start</h2>
+          <p>Getting up and running with Keymaster is straightforward:</p>
+          <h3>1. Initialize the Database</h3>
+          <p>Run Keymaster for the first time to create the database and configuration:</p>
+          <div class="command-block">
+            <code>keymaster</code>
+          </div>
+          <p>Keymaster will create a SQLite database and configuration file in your user's standard config directory:</p>
+          <ul>
+            <li><strong>Linux:</strong> <code>~/.config/keymaster/</code></li>
+            <li><strong>macOS:</strong> <code>~/Library/Application Support/keymaster/</code></li>
+            <li><strong>Windows:</strong> <code>%APPDATA%\keymaster\</code></li>
+          </ul>
+
+          <h3>2. Generate Your System Key</h3>
+          <p>In the TUI, navigate to <strong>Rotate System Keys</strong> and generate a new key. This is the master key Keymaster uses to manage all your hosts.</p>
+          <div class="warning-box">
+            <strong>⚠️ Important:</strong> Treat this system key like a private SSH key. Keep your Keymaster database secure with proper file permissions (<code>chmod 600</code>).
+          </div>
+
+          <h3>3. Add Your First Host</h3>
+          <p>To bring a host under Keymaster management:</p>
+          <ol>
+            <li>In the TUI: <strong>Manage Accounts → Add Account</strong></li>
+            <li>Enter the account details (e.g., <code>root@192.168.1.100</code>)</li>
+            <li>Copy the bootstrap command and run it on the remote host</li>
+            <li>Confirm in Keymaster to complete the deployment</li>
+          </ol>
+        </div>
+
+        <div class="doc-section" id="configuration">
+          <h2>Configuration</h2>
+          <p>Keymaster uses YAML for configuration. The default config location is:</p>
+          <ul>
+            <li><strong>Linux:</strong> <code>~/.config/keymaster/keymaster.yaml</code></li>
+            <li><strong>macOS:</strong> <code>~/Library/Application Support/keymaster/keymaster.yaml</code></li>
+            <li><strong>Windows:</strong> <code>%APPDATA%\keymaster\keymaster.yaml</code></li>
+          </ul>
+
+          <h3>Configuration Options</h3>
+          <p>The configuration file includes settings for:</p>
+          <ul>
+            <li><strong>Database:</strong> Connection details (SQLite, PostgreSQL, MySQL)</li>
+            <li><strong>SSH:</strong> Connection timeouts, retry logic</li>
+            <li><strong>Logging:</strong> Log level and output format</li>
+            <li><strong>Audit:</strong> Audit log settings</li>
+          </ul>
+
+          <div class="info-box">
+            <strong>💡 Tip:</strong> For detailed configuration examples, check the generated config file after first run.
+          </div>
+        </div>
+
+        <div class="doc-section" id="bootstrap">
+          <h2>Bootstrap Hosts</h2>
+          <p>Bootstrapping is the process of bringing a new host under Keymaster management. It's a two-step process:</p>
+
+          <h3>Step 1: Generate Bootstrap Command</h3>
+          <p>In the TUI, select <strong>Manage Accounts → Add Account</strong>. Keymaster will generate a one-line shell command that installs a temporary SSH key.</p>
+
+          <h3>Step 2: Run Bootstrap on Remote Host</h3>
+          <p>SSH into the remote host and paste the bootstrap command. This command:</p>
+          <ul>
+            <li>Creates a temporary key file</li>
+            <li>Appends it to <code>authorized_keys</code></li>
+            <li>Outputs confirmation text</li>
+          </ul>
+
+          <h3>Step 3: Confirm in Keymaster</h3>
+          <p>Return to Keymaster and confirm the account. Keymaster will:</p>
+          <ol>
+            <li>Connect using the temporary key</li>
+            <li>Deploy the hardened system key</li>
+            <li>Clean up the temporary key</li>
+          </ol>
+
+          <div class="info-box">
+            <strong>✨ Why it's safe:</strong> The temporary key is automatically cleaned up. Even if the bootstrap fails, Keymaster handles cleanup during the next retry.
+          </div>
+        </div>
+
+        <div class="doc-section" id="manage-keys">
+          <h2>Manage Keys</h2>
+          <p>Managing SSH keys is at the heart of Keymaster's functionality.</p>
+
+          <h3>Add Public Keys</h3>
+          <p>Import SSH public keys into Keymaster:</p>
+          <div class="command-block">
+            <code>keymaster import /path/to/authorized_keys</code>
+          </div>
+
+          <h3>Assign Keys to Accounts</h3>
+          <p>In the TUI, navigate to <strong>Assign Keys to Accounts</strong> to associate users with specific hosts.</p>
+
+          <h3>Create Tags</h3>
+          <p>Organize accounts using tags (e.g., <code>env:production</code>, <code>team:backend</code>) for bulk operations.</p>
+        </div>
+
+        <div class="doc-section" id="deploy">
+          <h2>Deploy Updates</h2>
+          <p>Deploy key changes to your entire fleet or specific hosts.</p>
+
+          <h3>Deploy All Hosts</h3>
+          <div class="command-block">
+            <code>keymaster deploy</code>
+          </div>
+
+          <h3>Deploy with Filters</h3>
+          <p>Deploy to specific tags or accounts for targeted updates:</p>
+          <div class="command-block">
+            <code>keymaster deploy --tag env:staging</code>
+          </div>
+
+          <h3>Verbose Output</h3>
+          <p>Enable verbose logging to see deployment details:</p>
+          <div class="command-block">
+            <code>keymaster -v deploy</code>
+          </div>
+        </div>
+
+        <div class="doc-section" id="audit">
+          <h2>Audit Fleet</h2>
+          <p>Audit your infrastructure to detect configuration drift and verify that Keymaster-managed keys are properly deployed.</p>
+
+          <h3>Full Fleet Audit</h3>
+          <div class="command-block">
+            <code>keymaster audit</code>
+          </div>
+
+          <h3>What Audit Checks</h3>
+          <ul>
+            <li>Verifies all Keymaster-managed keys are present</li>
+            <li>Detects unauthorized key additions</li>
+            <li>Identifies missing or stale keys</li>
+            <li>Reports on offline hosts</li>
+          </ul>
+        </div>
+
+        <div class="doc-section" id="database">
+          <h2>Database Migration</h2>
+          <p>Start with SQLite for simplicity, migrate to PostgreSQL or MySQL as your fleet grows.</p>
+
+          <h3>Supported Backends</h3>
+          <ul>
+            <li><strong>SQLite:</strong> Zero-config, perfect for small to medium deployments</li>
+            <li><strong>PostgreSQL:</strong> Enterprise-grade, highly scalable</li>
+            <li><strong>MySQL:</strong> Alternative relational database option</li>
+          </ul>
+
+          <h3>Migrate to PostgreSQL</h3>
+          <div class="command-block">
+            <code>keymaster migrate --type postgres --dsn "host=localhost user=keymaster dbname=keymaster password=secret"</code>
+          </div>
+
+          <div class="info-box">
+            <strong>💡 Tip:</strong> Test the migration in a non-production environment first.
+          </div>
+        </div>
+
+        <div class="doc-section" id="backup-restore">
+          <h2>Backup & Restore</h2>
+          <p>Keymaster provides portable backups that can be restored on any machine or migrated between backends.</p>
+
+          <h3>Create a Backup</h3>
+          <div class="command-block">
+            <code>keymaster backup</code>
+          </div>
+          <p>This creates a compressed JSON file (<code>keymaster-backup-*.json.zst</code>) containing your entire database.</p>
+
+          <h3>Restore from Backup</h3>
+          <div class="command-block">
+            <code>keymaster restore ./keymaster-backup-*.json.zst</code>
+          </div>
+          <p>By default, restore is non-destructive (it merges data). Use <code>--force</code> to overwrite.</p>
+
+          <div class="warning-box">
+            <strong>⚠️ Important:</strong> Backup files contain your system private key. Store them securely with proper encryption.
+          </div>
+        </div>
+
+        <div class="doc-section" id="security">
+          <h2>Security</h2>
+          <h3>System Key Storage</h3>
+          <p>Keymaster stores the system private key in the database. This is intentional—it allows Keymaster to manage access from any machine without requiring SSH agent setup.</p>
+          <p>However, this means your database is a sensitive asset:</p>
+          <ul>
+            <li>Use file permissions <code>chmod 600</code> on the database file</li>
+            <li>Store the database in a secure location</li>
+            <li>Encrypt backups before transferring them</li>
+            <li>Use database authentication and encryption for PostgreSQL/MySQL backends</li>
+          </ul>
+
+          <h3>Automatic Key Hardening</h3>
+          <p>Every time Keymaster deploys, it automatically applies strict restrictions to the system key:</p>
+          <div class="command-block">
+            <code>command="internal-sftp",no-port-forwarding,no-x11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAA... keymaster-system-key</code>
+          </div>
+          <p><strong>These restrictions mean:</strong></p>
+          <ul>
+            <li><strong>command="internal-sftp":</strong> Only SFTP is allowed, no shell access</li>
+            <li><strong>no-port-forwarding:</strong> Prevents SSH tunneling attacks</li>
+            <li><strong>no-x11-forwarding:</strong> Disables X11 forwarding</li>
+            <li><strong>no-agent-forwarding:</strong> Prevents agent hijacking</li>
+            <li><strong>no-pty:</strong> No interactive terminal allocation</li>
+          </ul>
+
+          <h3>User Private Keys</h3>
+          <p>Keymaster <strong>never</strong> handles user private keys. Only public keys are imported and deployed.</p>
+        </div>
+
+        <div class="doc-section" id="troubleshooting">
+          <h2>Troubleshooting</h2>
+          <h3>Enable Verbose Logging</h3>
+          <p>For debugging, use the <code>-v</code> or <code>--verbose</code> flag:</p>
+          <div class="command-block">
+            <code>keymaster -v deploy</code>
+          </div>
+
+          <h3>Common Issues</h3>
+          <h4>Connection Timeouts</h4>
+          <p>If bootstrap or deployment times out:</p>
+          <ul>
+            <li>Verify SSH connectivity from your machine to the target</li>
+            <li>Check firewall rules allowing SSH (port 22)</li>
+            <li>Verify the account credentials are correct</li>
+          </ul>
+
+          <h4>Permission Denied</h4>
+          <p>If you see "Permission denied" errors:</p>
+          <ul>
+            <li>Ensure the bootstrap command was run with correct privileges (usually root)</li>
+            <li>Check that the account can access <code>authorized_keys</code> file</li>
+            <li>Verify file permissions on <code>authorized_keys</code> (~/.ssh/authorized_keys should be 600)</li>
+          </ul>
+
+          <h4>Database Errors</h4>
+          <p>If you see database-related errors, check the configuration and ensure the database is accessible.</p>
+
+          <div class="info-box">
+            <strong>📖 Need more help?</strong> Check the GitHub repository issues or the project's documentation for additional support.
+          </div>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Licensed under MIT • <a href="https://github.com/ToeiRei/Keymaster">GitHub</a> • <a href="https://weblate.stargazer.at/engage/keymaster/">Contribute Translations</a></p>
+    </div>
+  </footer>
+
+  <script>
+    // Theme management
+    const html = document.documentElement;
+    const themeToggle = document.getElementById('theme-toggle');
+    
+    const getTheme = () => {
+      const stored = localStorage.getItem('theme');
+      if (stored) return stored;
+      return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    };
+    
+    const setTheme = (theme) => {
+      html.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+    };
+    
+    setTheme(getTheme());
+    
+    themeToggle.addEventListener('click', () => {
+      const current = html.getAttribute('data-theme');
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    });
+    
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!localStorage.getItem('theme')) {
+        setTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+  </script>
+</body>
+</html>
