@@ -87,6 +87,11 @@ body {
   padding: 0 var(--spacing-lg);
 }
 
+/* Ensure anchored sections appear below the sticky header */
+[id] {
+  scroll-margin-top: 88px;
+}
+
 /* Navbar */
 .navbar {
   position: sticky;
