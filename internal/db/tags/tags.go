@@ -1,6 +1,7 @@
 package tags
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -8,7 +9,12 @@ import (
 	"github.com/uptrace/bun"
 )
 
-var tagPattern = regexp.MustCompile(`^[a-zA-Z0-9_\-+*/\\.:~=<>]+$`)
+const tagDelimiterChar string = "|"
+const tagPatternExp string = `^[a-zA-Z0-9_\-+*/.:~=]+$`
+const tagEscapeChar string = "!"
+const tagEscapedChars string = `%_[]^-{}`
+
+var tagPattern = regexp.MustCompile(tagPatternExp)
 
 // TODO vendor out to seperate package
 func reducex[T any, S ~[]T, U any](s S, f func(T, U) (U, error)) (U, error) {
@@ -102,9 +108,17 @@ func parseTag(expr string, qb bun.QueryBuilder, mode bool, negate bool) (bun.Que
 			return nil, fmt.Errorf("invalid tag: %s", expr)
 		}
 
+		// escape special chars just to be sure
+		for _, c := range tagEscapedChars {
+			expr = strings.ReplaceAll(expr, string(c), tagEscapeChar+string(c))
+		}
+		// enable wildcards
+		expr = strings.ReplaceAll(expr, "**", "%")
+		expr = strings.ReplaceAll(expr, "*", "_")
+
 		query := map[bool]string{
-			true:  "tag <> ?",
-			false: "tag = ?",
+			true:  "tag NOT LIKE ? ESCAPE '" + tagEscapeChar + "'",
+			false: "tag     LIKE ? ESCAPE '" + tagEscapeChar + "'",
 		}[negated != negate]
 
 		if mode {
@@ -152,4 +166,23 @@ func GetTagQueryBuilder(tag string) (func(bun.QueryBuilder) bun.QueryBuilder, er
 		qb, _ = parseTag(tag, qb, true, false)
 		return qb
 	}, nil
+}
+
+func SplitTags(tag string) ([]string, error) {
+	tag, exists_prefix := strings.CutPrefix(tag, tagDelimiterChar)
+	tag, exists_suffix := strings.CutSuffix(tag, tagDelimiterChar)
+	if !exists_prefix || !exists_suffix {
+		return nil, errors.New("Prefix or suffix is missing")
+	}
+
+	return strings.Split(tag, tagDelimiterChar), nil
+}
+
+func SplitTagsSafe(tag string) []string {
+	tags, _ := SplitTags(tag)
+	return tags
+}
+
+func JoinTags(tags []string) string {
+	return tagDelimiterChar + strings.Join(tags, tagDelimiterChar) + tagDelimiterChar
 }
