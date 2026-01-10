@@ -68,6 +68,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-y: scroll;
 }
 
 body {
@@ -147,6 +148,7 @@ body {
   font-weight: 600;
   font-size: 0.875rem;
   transition: all 0.2s;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .btn-github-nav:hover {
