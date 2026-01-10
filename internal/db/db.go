@@ -435,6 +435,11 @@ func UpdateAccountLabel(id int, label string) error {
 	return store.UpdateAccountLabel(id, label)
 }
 
+// UpdateAccountIsDirty sets or clears the is_dirty flag for the account.
+func UpdateAccountIsDirty(id int, dirty bool) error {
+	return store.UpdateAccountIsDirty(id, dirty)
+}
+
 // UpdateAccountHostname updates the hostname for a given account.
 func UpdateAccountHostname(id int, hostname string) error {
 	return store.UpdateAccountHostname(id, hostname)

@@ -48,6 +48,18 @@ func TestAccountHelpers(t *testing.T) {
 		if acc2.Serial != 42 {
 			t.Fatalf("expected serial 42, got %d", acc2.Serial)
 		}
+
+		// Mark dirty and verify
+		if err := UpdateAccountIsDirtyBun(bdb, id, true); err != nil {
+			t.Fatalf("UpdateAccountIsDirtyBun failed: %v", err)
+		}
+		acc3, err := GetAccountByIDBun(bdb, id)
+		if err != nil {
+			t.Fatalf("GetAccountByIDBun failed: %v", err)
+		}
+		if !acc3.IsDirty {
+			t.Fatalf("expected account to be dirty")
+		}
 	})
 }
 

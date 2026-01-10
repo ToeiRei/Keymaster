@@ -103,6 +103,14 @@ func (s *PostgresStore) UpdateAccountTags(id int, tags string) error {
 	return err
 }
 
+func (s *PostgresStore) UpdateAccountIsDirty(id int, dirty bool) error {
+	err := UpdateAccountIsDirtyBun(s.bun, id, dirty)
+	if err == nil {
+		_ = s.LogAction("UPDATE_ACCOUNT_DIRTY", fmt.Sprintf("account_id: %d, is_dirty: %t", id, dirty))
+	}
+	return err
+}
+
 func (s *PostgresStore) GetAllActiveAccounts() ([]model.Account, error) {
 	return GetAllActiveAccountsBun(s.bun)
 }

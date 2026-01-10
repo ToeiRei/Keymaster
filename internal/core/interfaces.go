@@ -26,6 +26,9 @@ type Store interface {
 	DeleteAccount(accountID int) error
 	AssignKeyToAccount(keyID, accountID int) error
 
+	// UpdateAccountIsDirty sets or clears the is_dirty flag for an account.
+	UpdateAccountIsDirty(id int, dirty bool) error
+
 	// System key helpers
 	CreateSystemKey(publicKey, privateKey string) (int, error)
 	RotateSystemKey(publicKey, privateKey string) (int, error)

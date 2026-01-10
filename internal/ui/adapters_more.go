@@ -84,6 +84,11 @@ func ToggleAccountStatus(id int) error {
 	return db.ToggleAccountStatus(id)
 }
 
+// UpdateAccountIsDirty sets or clears the is_dirty flag for an account.
+func UpdateAccountIsDirty(id int, dirty bool) error {
+	return db.UpdateAccountIsDirty(id, dirty)
+}
+
 // AddKnownHostKey proxies to db.AddKnownHostKey.
 func AddKnownHostKey(hostname, key string) error {
 	return db.AddKnownHostKey(hostname, key)

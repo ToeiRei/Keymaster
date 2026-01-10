@@ -156,6 +156,7 @@ func (f *fakeStore) ToggleAccountStatus(id int) error                           
 func (f *fakeStore) UpdateAccountLabel(id int, label string) error                  { return nil }
 func (f *fakeStore) UpdateAccountHostname(id int, hostname string) error            { return nil }
 func (f *fakeStore) UpdateAccountTags(id int, tags string) error                    { return nil }
+func (f *fakeStore) UpdateAccountIsDirty(id int, dirty bool) error                  { return nil }
 func (f *fakeStore) GetAllActiveAccounts() ([]model.Account, error)                 { return nil, nil }
 func (f *fakeStore) GetKnownHostKey(hostname string) (string, error)                { return "", nil }
 func (f *fakeStore) AddKnownHostKey(hostname, key string) error                     { return nil }

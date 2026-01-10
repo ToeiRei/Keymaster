@@ -22,7 +22,8 @@ func Launch() {
 	if os.Getenv("KEYMASTER_TUI_TEST") != "1" {
 		return
 	}
-	if _, err := tea.NewProgram(newTestModel()).Run(); err != nil {
+	m := newTestModel()
+	if _, err := tea.NewProgram(&m).Run(); err != nil {
 		// On failure, print to stderr and exit non-zero to aid debugging.
 		os.Stderr.WriteString("test screen error: " + err.Error() + "\n")
 		os.Exit(1)
@@ -82,7 +83,7 @@ func newTestModel() testModel {
 
 func (m testModel) Init() tea.Cmd { return nil }
 
-func (m testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {

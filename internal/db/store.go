@@ -24,6 +24,8 @@ type Store interface {
 	UpdateAccountHostname(id int, hostname string) error
 	UpdateAccountTags(id int, tags string) error
 	GetAllActiveAccounts() ([]model.Account, error)
+	// UpdateAccountIsDirty sets or clears the is_dirty flag for an account.
+	UpdateAccountIsDirty(id int, dirty bool) error
 
 	// Public Key methods
 	// Public Key methods have been moved to the KeyManager abstraction. Store

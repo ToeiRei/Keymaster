@@ -84,6 +84,11 @@ func RotateSystemKeyBun(bdb *bun.DB, publicKey, privateKey string) (int, error) 
 		return 0, fmt.Errorf("failed to insert new system key: %w", err)
 	}
 
+	// Mark all accounts dirty because system key rotation changes authorized_keys
+	if _, err := ExecRaw(ctx, tx, "UPDATE accounts SET is_dirty = ?", true); err != nil {
+		return 0, fmt.Errorf("failed to mark accounts dirty after rotation: %w", err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
@@ -102,6 +107,7 @@ type AccountModel struct {
 	Tags          sql.NullString `bun:"tags"`
 	Serial        int            `bun:"serial"`
 	IsActive      bool           `bun:"is_active"`
+	IsDirty       bool           `bun:"is_dirty"`
 }
 
 // PublicKeyModel maps the subset of public_keys used in joins.
@@ -154,6 +160,7 @@ func accountModelToModel(a AccountModel) model.Account {
 		Hostname: a.Hostname,
 		Serial:   a.Serial,
 		IsActive: a.IsActive,
+		IsDirty:  a.IsDirty,
 	}
 	if a.Label.Valid {
 		acc.Label = a.Label.String
@@ -263,6 +270,10 @@ func AddAccountBun(bdb *bun.DB, username, hostname, label, tags string) (int, er
 	if _, err := bdb.NewInsert().Model(am).Column("username", "hostname", "label", "tags").Returning("id").Exec(ctx); err != nil {
 		return 0, MapDBError(err)
 	}
+	// New accounts should be marked dirty so admins know to deploy keys to them
+	if err := UpdateAccountIsDirtyBun(bdb, am.ID, true); err != nil {
+		return 0, MapDBError(err)
+	}
 	return am.ID, nil
 }
 
@@ -277,15 +288,27 @@ func DeleteAccountBun(bdb *bun.DB, id int) error {
 func AssignKeyToAccountBun(bdb *bun.DB, keyID, accountID int) error {
 	ctx := context.Background()
 	// Use raw insert since account_keys likely has no PK model in codebase.
-	_, err := ExecRaw(ctx, bdb, "INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, accountID)
-	return MapDBError(err)
+	if _, err := ExecRaw(ctx, bdb, "INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, accountID); err != nil {
+		return MapDBError(err)
+	}
+	// Mark the affected account dirty so authorized_keys needs redeploy
+	if err := UpdateAccountIsDirtyBun(bdb, accountID, true); err != nil {
+		return MapDBError(err)
+	}
+	return nil
 }
 
 // UnassignKeyFromAccountBun removes an association from account_keys.
 func UnassignKeyFromAccountBun(bdb *bun.DB, keyID, accountID int) error {
 	ctx := context.Background()
-	_, err := ExecRaw(ctx, bdb, "DELETE FROM account_keys WHERE key_id = ? AND account_id = ?", keyID, accountID)
-	return err
+	if _, err := ExecRaw(ctx, bdb, "DELETE FROM account_keys WHERE key_id = ? AND account_id = ?", keyID, accountID); err != nil {
+		return MapDBError(err)
+	}
+	// Mark the affected account dirty so authorized_keys needs redeploy
+	if err := UpdateAccountIsDirtyBun(bdb, accountID, true); err != nil {
+		return MapDBError(err)
+	}
+	return nil
 }
 
 // GetKeysForAccountBun returns public keys for a given account.
@@ -487,7 +510,7 @@ func ImportDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 
 		// Insert accounts
 		for _, acc := range backup.Accounts {
-			if _, err := ExecRaw(ctx, tx, "INSERT INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
+			if _, err := ExecRaw(ctx, tx, "INSERT INTO accounts (id, username, hostname, label, tags, serial, is_active, is_dirty) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive, acc.IsDirty); err != nil {
 				return MapDBError(err)
 			}
 		}
@@ -548,7 +571,7 @@ func IntegrateDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 	ctx := context.Background()
 	return WithTx(ctx, bdb, func(ctx context.Context, tx bun.Tx) error {
 		for _, acc := range backup.Accounts {
-			if _, err := ExecRaw(ctx, tx, "INSERT OR IGNORE INTO accounts (id, username, hostname, label, tags, serial, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive); err != nil {
+			if _, err := ExecRaw(ctx, tx, "INSERT OR IGNORE INTO accounts (id, username, hostname, label, tags, serial, is_active, is_dirty) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, acc.Serial, acc.IsActive, acc.IsDirty); err != nil {
 				return err
 			}
 		}
@@ -605,8 +628,16 @@ func AddPublicKeyBun(bdb *bun.DB, algorithm, keyData, comment string, isGlobal b
 	} else {
 		exp = nil
 	}
-	_, err := ExecRaw(ctx, bdb, "INSERT INTO public_keys(algorithm, key_data, comment, is_global, expires_at) VALUES(?, ?, ?, ?, ?)", algorithm, keyData, comment, isGlobal, exp)
-	return MapDBError(err)
+	if _, err := ExecRaw(ctx, bdb, "INSERT INTO public_keys(algorithm, key_data, comment, is_global, expires_at) VALUES(?, ?, ?, ?, ?)", algorithm, keyData, comment, isGlobal, exp); err != nil {
+		return MapDBError(err)
+	}
+	// If the key is global, mark all accounts dirty
+	if isGlobal {
+		if _, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_dirty = ?", true); err != nil {
+			return MapDBError(err)
+		}
+	}
+	return nil
 }
 
 // AddPublicKeyAndGetModelBun inserts a public key if not exists and returns the model.
@@ -635,14 +666,26 @@ func AddPublicKeyAndGetModelBun(bdb *bun.DB, algorithm, keyData, comment string,
 	if err != nil {
 		return nil, err
 	}
+	// If the key is global, mark all accounts dirty
+	if isGlobal {
+		if _, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_dirty = ?", true); err != nil {
+			return nil, MapDBError(err)
+		}
+	}
 	return &model.PublicKey{ID: int(id), Algorithm: algorithm, KeyData: keyData, Comment: comment, IsGlobal: isGlobal}, nil
 }
 
 // TogglePublicKeyGlobalBun flips is_global for a key by id.
 func TogglePublicKeyGlobalBun(bdb *bun.DB, id int) error {
 	ctx := context.Background()
-	_, err := ExecRaw(ctx, bdb, "UPDATE public_keys SET is_global = NOT is_global WHERE id = ?", id)
-	return err
+	if _, err := ExecRaw(ctx, bdb, "UPDATE public_keys SET is_global = NOT is_global WHERE id = ?", id); err != nil {
+		return MapDBError(err)
+	}
+	// Toggling global status affects authorized_keys for many accounts; mark all dirty
+	if _, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_dirty = ?", true); err != nil {
+		return MapDBError(err)
+	}
+	return nil
 }
 
 // SetPublicKeyExpiryBun sets or clears the expires_at column for a public key.
@@ -655,8 +698,34 @@ func SetPublicKeyExpiryBun(bdb *bun.DB, id int, expiresAt time.Time) error {
 	} else {
 		exp = nil
 	}
-	_, err := ExecRaw(ctx, bdb, "UPDATE public_keys SET expires_at = ? WHERE id = ?", exp, id)
-	return err
+	if _, err := ExecRaw(ctx, bdb, "UPDATE public_keys SET expires_at = ? WHERE id = ?", exp, id); err != nil {
+		return MapDBError(err)
+	}
+	// Find affected accounts: if key is global, all accounts; otherwise, accounts assigned the key
+	pk, err := GetPublicKeyByIDBun(bdb, id)
+	if err != nil {
+		return err
+	}
+	if pk == nil {
+		return nil
+	}
+	if pk.IsGlobal {
+		if _, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_dirty = ?", true); err != nil {
+			return MapDBError(err)
+		}
+		return nil
+	}
+	// Non-global: mark accounts that have this key
+	accs, err := GetAccountsForKeyBun(bdb, id)
+	if err != nil {
+		return err
+	}
+	for _, a := range accs {
+		if err := UpdateAccountIsDirtyBun(bdb, a.ID, true); err != nil {
+			return MapDBError(err)
+		}
+	}
+	return nil
 }
 
 // GetGlobalPublicKeysBun returns public keys where is_global = 1.
@@ -676,8 +745,20 @@ func GetGlobalPublicKeysBun(bdb *bun.DB) ([]model.PublicKey, error) {
 // DeletePublicKeyBun deletes a public key by id.
 func DeletePublicKeyBun(bdb *bun.DB, id int) error {
 	ctx := context.Background()
-	_, err := ExecRaw(ctx, bdb, "DELETE FROM public_keys WHERE id = ?", id)
-	return err
+	// Find accounts that had this key assigned so we can mark them dirty
+	accs, err := GetAccountsForKeyBun(bdb, id)
+	if err != nil {
+		return err
+	}
+	if _, err := ExecRaw(ctx, bdb, "DELETE FROM public_keys WHERE id = ?", id); err != nil {
+		return MapDBError(err)
+	}
+	for _, a := range accs {
+		if err := UpdateAccountIsDirtyBun(bdb, a.ID, true); err != nil {
+			return MapDBError(err)
+		}
+	}
+	return nil
 }
 
 // GetPublicKeyByIDBun retrieves a public key by its numeric ID.
@@ -855,6 +936,13 @@ func UpdateAccountHostnameBun(bdb *bun.DB, id int, hostname string) error {
 func UpdateAccountTagsBun(bdb *bun.DB, id int, tags string) error {
 	ctx := context.Background()
 	_, err := ExecRaw(ctx, bdb, "UPDATE accounts SET tags = ? WHERE id = ?", tags, id)
+	return err
+}
+
+// UpdateAccountIsDirtyBun sets or clears the is_dirty flag for an account.
+func UpdateAccountIsDirtyBun(bdb *bun.DB, id int, dirty bool) error {
+	ctx := context.Background()
+	_, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_dirty = ? WHERE id = ?", dirty, id)
 	return err
 }
 
