@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Keymaster - agentless SSH key manager that simplifies access control across your infrastructure" />
+  <title>Keymaster — Agentless SSH Key Manager</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <div class="nav-brand">🔑 Keymaster</div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#quickstart">Quick Start</a>
+        <a href="./documentation.html">Docs</a>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+          <svg class="sun-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="moon-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+        <a href="https://github.com/ToeiRei/Keymaster" class="btn-github-nav">
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
+            <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path>
+          </svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <h1 class="hero-title">SSH Key Management<br/><span class="gradient-text">Made Simple</span></h1>
+        <p class="hero-subtitle">A lightweight, agentless solution that centralizes control of your <code>authorized_keys</code> files. No complex setup, no agents, just straightforward SSH key management.</p>
+        <div class="hero-actions">
+          <a href="#quickstart" class="btn-large btn-primary">Get Started</a>
+          <a href="https://github.com/ToeiRei/Keymaster" class="btn-large btn-github">
+            <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true">
+              <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path>
+            </svg>
+            View on GitHub
+          </a>
+        </div>
+        <div class="hero-badges">
+          <a href="https://github.com/ToeiRei/Keymaster/actions/workflows/ci.yml" title="CI Status">
+            <img src="https://github.com/ToeiRei/Keymaster/actions/workflows/ci.yml/badge.svg" alt="CI" />
+          </a>
+          <a href="https://github.com/ToeiRei/Keymaster/releases" title="Latest Release">
+            <img src="https://img.shields.io/github/v/tag/ToeiRei/Keymaster?label=release" alt="Release" />
+          </a>
+          <a href="https://golang.org" title="Go 1.25.5">
+            <img src="https://img.shields.io/badge/go-1.25.5-blue.svg" alt="Go" />
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="features" class="features-section">
+      <div class="container">
+        <h2 class="section-title">Why Keymaster?</h2>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">🎨</div>
+            <h3>Beautiful TUI</h3>
+            <p>Modern interactive terminal interface that makes key management intuitive and efficient</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🚀</div>
+            <h3>Agentless</h3>
+            <p>Uses standard SSH/SFTP. No remote agents or complex server setup required</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🔒</div>
+            <h3>Auto-Hardening</h3>
+            <p>Automatically applies strict SFTP-only restrictions to system keys on every deployment</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🔄</div>
+            <h3>Safe Rotation</h3>
+            <p>Rotate system keys without losing access to offline hosts</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">💾</div>
+            <h3>Portable Database</h3>
+            <p>Backup to JSON, restore, or migrate from SQLite to PostgreSQL/MySQL</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🌍</div>
+            <h3>Multi-Language</h3>
+            <p>Fully internationalized TUI with community translations</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="quickstart" class="quickstart-section">
+      <div class="container">
+        <h2 class="section-title">Get Started in Minutes</h2>
+        <p class="section-subtitle">From zero to managing your first host in just a few steps</p>
+        
+        <div class="steps-container">
+          <div class="step-card">
+            <div class="step-header">
+              <div class="step-number">1</div>
+              <h3>Install Keymaster</h3>
+            </div>
+            <p class="step-description">Install the CLI using Go (requires Go 1.20 or later)</p>
+            <pre><code>go install github.com/toeirei/keymaster/cmd/keymaster@latest</code></pre>
+            <p class="step-note">💡 The binary will be available at <code>$GOPATH/bin/keymaster</code></p>
+          </div>
+
+          <div class="step-connector"></div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <div class="step-number">2</div>
+              <h3>Initialize Database</h3>
+            </div>
+            <p class="step-description">Launch the interactive TUI to create your database and configuration</p>
+            <pre><code>keymaster</code></pre>
+            <p class="step-note">📁 Database and config are created automatically in your user config directory</p>
+          </div>
+
+          <div class="step-connector"></div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <div class="step-number">3</div>
+              <h3>Generate System Key</h3>
+            </div>
+            <p class="step-description">In the TUI, navigate to <strong>Rotate System Keys</strong> to create your initial system key</p>
+            <div class="step-visual">
+              <code>▸ Rotate System Keys → Generate New Key</code>
+            </div>
+            <p class="step-note">🔑 This key allows Keymaster to manage all your hosts securely</p>
+          </div>
+
+          <div class="step-connector"></div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <div class="step-number">4</div>
+              <h3>Add Your First Host</h3>
+            </div>
+            <p class="step-description">Bootstrap a remote host to bring it under Keymaster management</p>
+            <div class="step-substeps">
+              <div class="substep">
+                <span class="substep-label">a</span>
+                <span>In TUI: <strong>Manage Accounts → Add Account</strong></span>
+              </div>
+              <div class="substep">
+                <span class="substep-label">b</span>
+                <span>Copy the bootstrap command and run it on your remote host</span>
+              </div>
+              <div class="substep">
+                <span class="substep-label">c</span>
+                <span>Confirm in Keymaster and watch it deploy!</span>
+              </div>
+            </div>
+            <p class="step-note">✨ The host is now fully managed—Keymaster handles the rest</p>
+          </div>
+        </div>
+
+        <div class="command-examples">
+          <h3>Common Commands</h3>
+          <div class="command-grid">
+            <div class="command-item">
+              <code>keymaster deploy</code>
+              <span>Deploy to all hosts</span>
+            </div>
+            <div class="command-item">
+              <code>keymaster audit</code>
+              <span>Check for configuration drift</span>
+            </div>
+            <div class="command-item">
+              <code>keymaster backup</code>
+              <span>Create compressed backup</span>
+            </div>
+            <div class="command-item">
+              <code>keymaster trust-host user@host</code>
+              <span>Add new managed host</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-section">
+      <div class="container">
+        <h2>Ready to simplify your SSH key management?</h2>
+        <p>Join developers and sysadmins who chose simplicity over complexity</p>
+        <div class="cta-actions">
+          <a href="https://github.com/ToeiRei/Keymaster" class="btn-large btn-github">
+            <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true">
+              <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path>
+            </svg>
+            Get Keymaster
+          </a>
+          <a href="./documentation.html" class="btn-large btn-secondary">Read the Docs</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Licensed under MIT • <a href="https://github.com/ToeiRei/Keymaster">GitHub</a> • <a href="https://weblate.stargazer.at/engage/keymaster/">Contribute Translations</a></p>
+    </div>
+  </footer>
+
+  <script>
+    // Theme management
+    const html = document.documentElement;
+    const themeToggle = document.getElementById('theme-toggle');
+    
+    // Get theme from localStorage or system preference
+    const getTheme = () => {
+      const stored = localStorage.getItem('theme');
+      if (stored) return stored;
+      return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    };
+    
+    // Set theme
+    const setTheme = (theme) => {
+      html.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+    };
+    
+    // Initialize theme
+    setTheme(getTheme());
+    
+    // Toggle theme on button click
+    themeToggle.addEventListener('click', () => {
+      const current = html.getAttribute('data-theme');
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    });
+    
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!localStorage.getItem('theme')) {
+        setTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+  </script>
+</body>
+</html>
