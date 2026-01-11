@@ -215,7 +215,7 @@ func getMultipleAccountsBun(ctx context.Context, bdb *bun.DB, opts ...func(*bun.
 }
 
 func GetAccountsByTagBun(ctx context.Context, bdb *bun.DB, tag string) ([]model.Account, error) {
-	tag_qb, err := tags.GetTagQueryBuilder(tag)
+	tag_qb, err := tags.QueryBuilderFromTagMatcher(tag)
 	if err != nil {
 		return nil, err
 	}
