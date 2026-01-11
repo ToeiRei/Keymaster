@@ -10,11 +10,11 @@ import (
 )
 
 const tagDelimiterChar string = "|"
-const tagPatternExp string = `^[a-zA-Z0-9_\-+*/.:~=]+$`
-const tagEscapeChar string = "!"
-const tagEscapedChars string = `%_[]^-{}`
+const tagMatcherPatternExp string = `^[a-zA-Z0-9_\-+*/.:~=]+$`
+const sqlEscapeChar string = "!"
+const sqlEscapedChars string = `%_[]^-{}`
 
-var tagPattern = regexp.MustCompile(tagPatternExp)
+var tagMatcherPattern = regexp.MustCompile(tagMatcherPatternExp)
 
 // TODO vendor out to seperate package
 func reducex[T any, S ~[]T, U any](s S, f func(T, U) (U, error)) (U, error) {
@@ -30,41 +30,25 @@ func reducex[T any, S ~[]T, U any](s S, f func(T, U) (U, error)) (U, error) {
 	return result, nil
 }
 
-func parseTag(expr string, qb bun.QueryBuilder, mode bool, negate bool) (bun.QueryBuilder, error) {
+func parseTagMatcher(expr string, qb bun.QueryBuilder, mode bool, negate bool) (bun.QueryBuilder, error) {
 	var err error
 
 	expr = strings.TrimSpace(expr)
 
 	// and
 	if exprs := splitOnTopLevelChar(expr, '&'); len(exprs) > 1 {
-		// TODO test
+		// TODO test & comment
 		return reducex(exprs, func(expr string, qb bun.QueryBuilder) (bun.QueryBuilder, error) {
-			return parseTag(expr, qb, true != negate, negate)
+			return parseTagMatcher(expr, qb, true != negate, negate)
 		})
-
-		// for _, expr = range exprs {
-		// 	qb, err = parseTag(expr, qb, true != negate, negate)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
-		// }
-		// return qb, nil
 	}
 
 	// or
 	if exprs := splitOnTopLevelChar(expr, '|'); len(exprs) > 1 {
-		// TODO test
+		// TODO test & comment
 		return reducex(exprs, func(expr string, qb bun.QueryBuilder) (bun.QueryBuilder, error) {
-			return parseTag(expr, qb, false != negate, negate)
+			return parseTagMatcher(expr, qb, false != negate, negate)
 		})
-
-		// for _, expr = range exprs {
-		// 	qb, err = parseTag(expr, qb, false != negate, negate)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
-		// }
-		// return qb, nil
 	}
 
 	// negation
@@ -74,13 +58,14 @@ func parseTag(expr string, qb bun.QueryBuilder, mode bool, negate bool) (bun.Que
 
 	// braces
 	if strings.HasPrefix(expr, "(") && strings.HasSuffix(expr, ")") {
-		expr = expr[1 : len(expr)-1] // removes braces
-
+		// removes braces
+		expr = expr[1 : len(expr)-1]
+		// get WhereGroup prefix
 		operator := map[bool]string{
 			true:  " AND ",
 			false: " OR ",
 		}[mode]
-
+		// flip negate flag for braces parsing, when braces are negated
 		if negated {
 			// return nil, fmt.Errorf("negating braces is unsupported: %s", expr)
 			// Does not work because bun is a *****....
@@ -90,12 +75,12 @@ func parseTag(expr string, qb bun.QueryBuilder, mode bool, negate bool) (bun.Que
 			// well, i think i got an idea ^^
 			negate = !negate
 		}
-
+		// apply WhereGroup to query builder
 		qb = qb.WhereGroup(operator, func(qb bun.QueryBuilder) bun.QueryBuilder {
-			qb, err = parseTag(expr, qb, true != negate, negate)
+			qb, err = parseTagMatcher(expr, qb, true != negate, negate)
 			return qb
 		})
-
+		// handle error from WhereGroup callback using global err variable
 		if err != nil {
 			return nil, err
 		}
@@ -104,23 +89,25 @@ func parseTag(expr string, qb bun.QueryBuilder, mode bool, negate bool) (bun.Que
 
 	// raw tag value
 	{
-		if !tagPattern.MatchString(expr) {
+		// validate against tagPattern
+		if !tagMatcherPattern.MatchString(expr) {
 			return nil, fmt.Errorf("invalid tag: %s", expr)
 		}
-
 		// escape special chars just to be sure
-		for _, c := range tagEscapedChars {
-			expr = strings.ReplaceAll(expr, string(c), tagEscapeChar+string(c))
+		for _, c := range sqlEscapedChars {
+			expr = strings.ReplaceAll(expr, string(c), sqlEscapeChar+string(c))
 		}
 		// enable wildcards
 		expr = strings.ReplaceAll(expr, "**", "%")
 		expr = strings.ReplaceAll(expr, "*", "_")
-
+		// add delimiters
+		expr = JoinTags([]string{expr})
+		// construct query
 		query := map[bool]string{
-			true:  "tag NOT LIKE ? ESCAPE '" + tagEscapeChar + "'",
-			false: "tag     LIKE ? ESCAPE '" + tagEscapeChar + "'",
+			true:  "tag NOT LIKE ? ESCAPE '" + sqlEscapeChar + "'",
+			false: "tag     LIKE ? ESCAPE '" + sqlEscapeChar + "'",
 		}[negated != negate]
-
+		// apply to query builder
 		if mode {
 			return qb.Where(query, expr), nil
 		} else {
@@ -148,38 +135,44 @@ func splitOnTopLevelChar(expr string, op rune) []string {
 		}
 	}
 
-	result = append(result, expr[start:])
-	return result
+	return append(result, expr[start:])
 }
 
-func ValidateTag(tag string) error {
-	sq := &bun.SelectQuery{}
-	_, err := parseTag(tag, sq.QueryBuilder(), true, false)
+func ValidateTagMatcher(tag_matcher string) error {
+	// create mock QueryBuilder (fine for validation, but panics when used to render sql as it has no underlying formatter!)
+	qb := (&bun.SelectQuery{}).QueryBuilder()
+	_, err := parseTagMatcher(tag_matcher, qb, true, false)
 	return err
 }
 
-func GetTagQueryBuilder(tag string) (func(bun.QueryBuilder) bun.QueryBuilder, error) {
-	if err := ValidateTag(tag); err != nil {
+func QueryBuilderFromTagMatcher(tag_matcher string) (func(bun.QueryBuilder) bun.QueryBuilder, error) {
+	// validate before returning QueryBuilder, because errors can't be returned from the QueryBuilder callback
+	if err := ValidateTagMatcher(tag_matcher); err != nil {
 		return nil, err
 	}
+	// return QueryBuilder with safe callback
 	return func(qb bun.QueryBuilder) bun.QueryBuilder {
-		qb, _ = parseTag(tag, qb, true, false)
+		qb, _ = parseTagMatcher(tag_matcher, qb, true, false)
 		return qb
 	}, nil
 }
 
-func SplitTags(tag string) ([]string, error) {
-	tag, exists_prefix := strings.CutPrefix(tag, tagDelimiterChar)
-	tag, exists_suffix := strings.CutSuffix(tag, tagDelimiterChar)
+func SplitTags(tags string) ([]string, error) {
+	// validate and strip prefix & suffix
+	tags, exists_prefix := strings.CutPrefix(tags, tagDelimiterChar)
+	tags, exists_suffix := strings.CutSuffix(tags, tagDelimiterChar)
 	if !exists_prefix || !exists_suffix {
 		return nil, errors.New("Prefix or suffix is missing")
 	}
-
-	return strings.Split(tag, tagDelimiterChar), nil
+	// split and return tags
+	return strings.Split(tags, tagDelimiterChar), nil
 }
 
 func SplitTagsSafe(tag string) []string {
-	tags, _ := SplitTags(tag)
+	tags, err := SplitTags(tag)
+	if err != nil {
+		return []string{}
+	}
 	return tags
 }
 
