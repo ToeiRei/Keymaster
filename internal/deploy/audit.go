@@ -12,7 +12,6 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/security"
 	"github.com/toeirei/keymaster/internal/sshkey"
 	"github.com/toeirei/keymaster/internal/state"
 )
@@ -43,7 +42,7 @@ func AuditAccountStrict(account model.Account) error {
 	}()
 
 	// 3. Attempt to connect with that key.
-	deployer, err := NewDeployerFunc(account.Hostname, account.Username, security.FromString(connectKey.PrivateKey), passphrase)
+	deployer, err := NewDeployerFunc(account.Hostname, account.Username, db.SecretFromModelSystemKey(connectKey), passphrase)
 	if err != nil {
 		if errors.Is(err, ErrPassphraseRequired) {
 			return err // Pass the specific error up to the caller (TUI)
@@ -104,7 +103,7 @@ func AuditAccountSerial(account model.Account) error {
 		}
 	}()
 
-	deployer, err := NewDeployer(account.Hostname, account.Username, security.FromString(connectKey.PrivateKey), passphrase)
+	deployer, err := NewDeployer(account.Hostname, account.Username, db.SecretFromModelSystemKey(connectKey), passphrase)
 	if err != nil {
 		if errors.Is(err, ErrPassphraseRequired) {
 			return err // Pass the specific error up to the caller (TUI)

@@ -14,7 +14,6 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/security"
 	"github.com/toeirei/keymaster/internal/state"
 )
 
@@ -73,7 +72,7 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 			passphrase[i] = 0
 		}
 	}()
-	deployer, err := NewDeployerFunc(account.Hostname, account.Username, security.FromString(connectKey.PrivateKey), passphrase)
+	deployer, err := NewDeployerFunc(account.Hostname, account.Username, db.SecretFromModelSystemKey(connectKey), passphrase)
 	if err != nil {
 		if isTUI {
 			return fmt.Errorf(i18n.T("deploy.error_connection_failed_tui"), account.String(), err)

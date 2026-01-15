@@ -25,6 +25,7 @@ import (
 	"context" // Added context import for maintenance timeouts
 
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/mysqldialect"
 	"github.com/uptrace/bun/dialect/pgdialect"
@@ -490,6 +491,28 @@ func RotateSystemKey(publicKey, privateKey string) (int, error) {
 // GetActiveSystemKey retrieves the currently active system key for deployments.
 func GetActiveSystemKey() (*model.SystemKey, error) {
 	return store.GetActiveSystemKey()
+}
+
+// SecretFromModelSystemKey converts a stored SystemKey model into a
+// security.Secret without changing database schema. This provides a single
+// boundary for creating Secret values from stored plaintext private keys.
+func SecretFromModelSystemKey(sk *model.SystemKey) security.Secret {
+	if sk == nil {
+		return nil
+	}
+	return security.FromString(sk.PrivateKey)
+}
+
+// GetActiveSystemKeySecret returns the active system key along with a
+// `security.Secret` constructed from the stored private key. This is a
+// non-invasive helper that avoids callers needing to call
+// `security.FromString(...)` directly.
+func GetActiveSystemKeySecret() (security.Secret, *model.SystemKey, error) {
+	sk, err := GetActiveSystemKey()
+	if err != nil || sk == nil {
+		return nil, sk, err
+	}
+	return SecretFromModelSystemKey(sk), sk, nil
 }
 
 // GetSystemKeyBySerial retrieves a system key by its serial number.
