@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/toeirei/keymaster/internal/security"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
-	"github.com/toeirei/keymaster/internal/security"
 )
 
 // Test that when sshDial fails with a timeout-like error while using the agent,

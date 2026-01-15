@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/security"
+	"golang.org/x/crypto/ssh"
 )
 
 // mockSftp is a minimal sftpRaw implementation used in tests.
