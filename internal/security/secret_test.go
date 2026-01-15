@@ -24,10 +24,13 @@ func TestSecretZero(t *testing.T) {
 	s := FromString("abc123")
 	// Zero the underlying secret
 	(&s).Zero()
-	b := s.Bytes()
-	for i := range b {
-		if b[i] != 0 {
-			t.Fatalf("expected zeroed byte at index %d, got %d", i, b[i])
+	// Inspect the underlying bytes using Use to avoid creating copies.
+	s.Use(func(b []byte) error {
+		for i := range b {
+			if b[i] != 0 {
+				t.Fatalf("expected zeroed byte at index %d, got %d", i, b[i])
+			}
 		}
-	}
+		return nil
+	})
 }
