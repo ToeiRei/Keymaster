@@ -62,6 +62,17 @@ func IsInitialized() bool {
 	return store != nil
 }
 
+// BunDB returns the underlying *bun.DB for the active Store, or nil if
+// the package-level store has not been initialized. Prefer using the
+// Store interface for most operations; this accessor is provided for code
+// that needs direct Bun access for advanced operations or diagnostics.
+func BunDB() *bun.DB {
+	if store == nil {
+		return nil
+	}
+	return store.BunDB()
+}
+
 // RunDBMaintenance performs engine-specific maintenance tasks for the given
 // database DSN. It is safe to call for SQLite/Postgres/MySQL. For SQLite this
 // will run PRAGMA optimize, VACUUM and WAL checkpoint. For Postgres it runs

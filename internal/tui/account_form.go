@@ -16,6 +16,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
@@ -126,7 +127,7 @@ func newAccountFormModelWithSuggester(accountToEdit *model.Account, ts ui.TagSug
 	}
 
 	// Fallback: scan for tags (keeps previous behavior if suggester unavailable)
-	allAccounts, err := ui.GetAllAccounts()
+	allAccounts, err := db.GetAllAccounts()
 	if err != nil {
 		fmt.Printf("Warning: failed to load accounts for tag autocomplete: %v\n", err)
 	}

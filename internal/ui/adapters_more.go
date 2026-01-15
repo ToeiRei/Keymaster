@@ -15,9 +15,7 @@ import (
 // These are thin adapters that forward to the db package when available.
 
 // GetAllAccounts returns all accounts via the DB package, or nil/error if unavailable.
-func GetAllAccounts() ([]model.Account, error) {
-	return db.GetAllAccounts()
-}
+// NOTE: `GetAllAccounts` shim removed — callers should use `internal/db` directly.
 
 // GetAllActiveAccounts returns active accounts via the DB package.
 func GetAllActiveAccounts() ([]model.Account, error) {

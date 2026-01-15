@@ -15,6 +15,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
@@ -297,7 +298,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 2: // Deploy to Tag
 				m.wasFleetDeploy = true // Deploying to a tag is a fleet operation
 				m.state = deployStateSelectTag
-				allAccounts, err := ui.GetAllAccounts()
+				allAccounts, err := db.GetAllAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil

@@ -10,6 +10,7 @@ import (
 
 	"github.com/toeirei/keymaster/internal/config"
 	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
@@ -18,7 +19,7 @@ import (
 // coreAccountReader adapts UI helpers to core.AccountReader.
 type coreAccountReader struct{}
 
-func (coreAccountReader) GetAllAccounts() ([]model.Account, error) { return ui.GetAllAccounts() }
+func (coreAccountReader) GetAllAccounts() ([]model.Account, error) { return db.GetAllAccounts() }
 
 // coreKeyReader adapts UI key manager to core.KeyReader.
 type coreKeyReader struct{}
