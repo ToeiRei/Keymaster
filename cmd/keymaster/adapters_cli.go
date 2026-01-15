@@ -13,6 +13,7 @@ import (
 	crypto_ssh "github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 // cliStoreAdapter adapts package-level db helpers to core.Store.
@@ -106,13 +107,13 @@ func (c *cliDeployerManager) AuditStrict(account model.Account) error {
 	}
 	return core.DefaultDeployerManager.AuditStrict(account)
 }
-func (c *cliDeployerManager) DecommissionAccount(account model.Account, systemPrivateKey string, options interface{}) (core.DecommissionResult, error) {
+func (c *cliDeployerManager) DecommissionAccount(account model.Account, systemPrivateKey security.Secret, options interface{}) (core.DecommissionResult, error) {
 	if core.DefaultDeployerManager == nil {
 		return core.DecommissionResult{}, fmt.Errorf("no deployer manager available")
 	}
 	return core.DefaultDeployerManager.DecommissionAccount(account, systemPrivateKey, options)
 }
-func (c *cliDeployerManager) BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey string, options interface{}) ([]core.DecommissionResult, error) {
+func (c *cliDeployerManager) BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey security.Secret, options interface{}) ([]core.DecommissionResult, error) {
 	if core.DefaultDeployerManager == nil {
 		return nil, fmt.Errorf("no deployer manager available")
 	}

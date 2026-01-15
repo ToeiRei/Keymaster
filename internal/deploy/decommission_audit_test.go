@@ -10,6 +10,7 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 	"github.com/toeirei/keymaster/internal/testutil"
 )
 
@@ -37,7 +38,7 @@ func TestDecommissionAccount_LogsAuditActions(t *testing.T) {
 	acc := model.Account{ID: id, Username: "decom", Hostname: "example.com", Label: "label", IsActive: true}
 
 	// Use core DecommissionAccount facade which orchestrates and delegates to deploy.
-	res := core.DecommissionAccount(acc, "dummy-system-key", core.DecommissionOptions{SkipRemoteCleanup: true})
+	res := core.DecommissionAccount(acc, security.FromString("dummy-system-key"), core.DecommissionOptions{SkipRemoteCleanup: true})
 
 	if res.DatabaseDeleteError != nil {
 		t.Fatalf("expected no database delete error, got: %v", res.DatabaseDeleteError)

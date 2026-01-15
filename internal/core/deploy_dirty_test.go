@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 type fakeDM struct {
@@ -20,10 +21,10 @@ func (f *fakeDM) DeployForAccount(account model.Account, keepFile bool) error {
 }
 func (f *fakeDM) AuditSerial(account model.Account) error { return nil }
 func (f *fakeDM) AuditStrict(account model.Account) error { return nil }
-func (f *fakeDM) DecommissionAccount(account model.Account, systemPrivateKey string, options interface{}) (DecommissionResult, error) {
+func (f *fakeDM) DecommissionAccount(account model.Account, systemPrivateKey security.Secret, options interface{}) (DecommissionResult, error) {
 	return DecommissionResult{}, nil
 }
-func (f *fakeDM) BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey string, options interface{}) ([]DecommissionResult, error) {
+func (f *fakeDM) BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey security.Secret, options interface{}) ([]DecommissionResult, error) {
 	return nil, nil
 }
 func (f *fakeDM) CanonicalizeHostPort(host string) string                   { return host }

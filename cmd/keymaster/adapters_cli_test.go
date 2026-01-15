@@ -11,6 +11,7 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 // Test cliKeyGenerator delegates to crypto/ssh generator
@@ -105,7 +106,7 @@ func TestCliDeployerManager_DeployAndAudit_Decommission(t *testing.T) {
 	db.SetDefaultAccountManager(&fakeAccountManager{})
 	defer db.SetDefaultAccountManager(prevAcct)
 	// Skip remote cleanup to avoid network operations
-	res, err := dm.DecommissionAccount(acct, "syskey", core.DecommissionOptions{SkipRemoteCleanup: true})
+	res, err := dm.DecommissionAccount(acct, security.FromString("syskey"), core.DecommissionOptions{SkipRemoteCleanup: true})
 	if err != nil {
 		t.Fatalf("DecommissionAccount adapter returned error: %v", err)
 	}

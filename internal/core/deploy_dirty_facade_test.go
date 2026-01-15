@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 type fakeStoreForDirty struct {
@@ -49,10 +50,10 @@ func (f *fakeDMForDirty) DeployForAccount(account model.Account, keepFile bool) 
 }
 func (f *fakeDMForDirty) AuditSerial(account model.Account) error { return nil }
 func (f *fakeDMForDirty) AuditStrict(account model.Account) error { return nil }
-func (f *fakeDMForDirty) DecommissionAccount(account model.Account, systemPrivateKey string, options interface{}) (DecommissionResult, error) {
+func (f *fakeDMForDirty) DecommissionAccount(account model.Account, systemPrivateKey security.Secret, options interface{}) (DecommissionResult, error) {
 	return DecommissionResult{}, nil
 }
-func (f *fakeDMForDirty) BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey string, options interface{}) ([]DecommissionResult, error) {
+func (f *fakeDMForDirty) BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey security.Secret, options interface{}) ([]DecommissionResult, error) {
 	return nil, nil
 }
 func (f *fakeDMForDirty) CanonicalizeHostPort(host string) string                   { return host }

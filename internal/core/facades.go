@@ -239,7 +239,7 @@ func DecommissionAccounts(ctx context.Context, targets []model.Account, opts int
 		return DecommissionSummary{}, fmt.Errorf("no active system key")
 	}
 	if len(targets) == 1 {
-		res, err := dm.DecommissionAccount(targets[0], sysKey.PrivateKey, opts)
+		res, err := dm.DecommissionAccount(targets[0], db.SecretFromModelSystemKey(sysKey), opts)
 		if err != nil {
 			return DecommissionSummary{}, err
 		}
@@ -253,7 +253,7 @@ func DecommissionAccounts(ctx context.Context, targets []model.Account, opts int
 		}
 		return summary, nil
 	}
-	results, err := dm.BulkDecommissionAccounts(targets, sysKey.PrivateKey, opts)
+	results, err := dm.BulkDecommissionAccounts(targets, db.SecretFromModelSystemKey(sysKey), opts)
 	if err != nil {
 		return DecommissionSummary{}, err
 	}
