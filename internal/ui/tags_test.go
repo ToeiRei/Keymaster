@@ -7,6 +7,8 @@ package ui
 import (
 	"reflect"
 	"testing"
+
+	"github.com/toeirei/keymaster/internal/core"
 )
 
 func TestSuggestTags(t *testing.T) {
@@ -25,7 +27,7 @@ func TestSuggestTags(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := SuggestTags(tc.allTags, tc.current)
+			got := core.SuggestTags(tc.allTags, tc.current)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("SuggestTags(%v, %q) = %v; want %v", tc.allTags, tc.current, got, tc.want)
 			}

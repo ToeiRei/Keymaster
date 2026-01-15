@@ -7,6 +7,7 @@ package ui
 import (
 	"strings"
 
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 )
 
@@ -47,7 +48,7 @@ func (d *dbTagSuggester) Suggest(currentVal string) []string {
 	if err != nil {
 		return nil
 	}
-	return SuggestTags(tags, currentVal)
+	return core.SuggestTags(tags, currentVal)
 }
 
 // DefaultTagSuggester returns a TagSuggester backed by the database.
