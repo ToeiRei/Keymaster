@@ -47,12 +47,15 @@ func setupTestDB(t *testing.T) {
 func executeCommand(t *testing.T, stdin io.Reader, args ...string) string {
 	t.Helper()
 
-	// Redirect stdout to a buffer
+	// Redirect stdout and stderr to a buffer so we capture log output.
 	oldOut := os.Stdout
+	oldErr := os.Stderr
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+	os.Stderr = w
 	defer func() {
 		os.Stdout = oldOut
+		os.Stderr = oldErr
 	}()
 
 	// Redirect stdin if a reader is provided

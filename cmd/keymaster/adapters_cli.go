@@ -7,6 +7,8 @@ package main
 import (
 	"fmt"
 
+	log "github.com/charmbracelet/log"
+
 	"github.com/toeirei/keymaster/internal/core"
 	crypto_ssh "github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
@@ -247,7 +249,7 @@ var _ core.KeyGenerator = (*cliKeyGenerator)(nil)
 type cliReporter struct{}
 
 func (r *cliReporter) Reportf(format string, args ...any) {
-	fmt.Printf(format, args...)
+	log.Infof(format, args...)
 }
 
 var _ core.Reporter = (*cliReporter)(nil)

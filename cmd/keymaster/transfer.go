@@ -100,7 +100,7 @@ var transferCreateCmd = &cobra.Command{
 							log.Warnf("warning: failed to deactivate account %s: %v", acc.String(), derr)
 						}
 					} else {
-						fmt.Printf("Deactivated account on this instance: %s\n", acc.String())
+						log.Infof("Deactivated account on this instance: %s", acc.String())
 					}
 				}
 			}
@@ -114,10 +114,10 @@ var transferCreateCmd = &cobra.Command{
 			if err := os.WriteFile(outFile, data, 0o600); err != nil {
 				log.Fatalf("%v", err)
 			}
-			fmt.Printf("Wrote transfer package to %s (session: %s)\n", outFile, sid)
+			log.Infof("Wrote transfer package to %s (session: %s)", outFile, sid)
 		} else {
-			fmt.Printf("# transfer session: %s\n", sid)
-			fmt.Println(string(data))
+			log.Infof("# transfer session: %s", sid)
+			log.Info(string(data))
 		}
 	},
 }
@@ -223,7 +223,7 @@ func init() {
 			if err != nil {
 				log.Fatalf("accept transfer failed: %v", err)
 			}
-			fmt.Printf("Accepted transfer: account id=%d %s@%s deployed=%v\n", res.Account.ID, res.Account.Username, res.Account.Hostname, res.RemoteDeployed)
+			log.Infof("Accepted transfer: account id=%d %s@%s deployed=%v", res.Account.ID, res.Account.Username, res.Account.Hostname, res.RemoteDeployed)
 		},
 	}
 	transferAcceptCmd.Flags().String("label", "", "Optional label for the new account")

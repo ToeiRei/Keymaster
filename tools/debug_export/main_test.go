@@ -15,13 +15,15 @@ import (
 // TestMainRuns ensures that the debug export main() runs without panicking
 // and prints expected summary lines. It captures stdout and verifies output.
 func TestMainRuns(t *testing.T) {
-	// Capture stdout
-	old := os.Stdout
+	// Capture stderr (charm log writes to stderr)
+	oldOut := os.Stdout
+	oldErr := os.Stderr
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatalf("pipe failed: %v", err)
 	}
 	os.Stdout = w
+	os.Stderr = w
 
 	done := make(chan struct{})
 	var buf bytes.Buffer
@@ -34,9 +36,10 @@ func TestMainRuns(t *testing.T) {
 	// Run main (should not call os.Exit)
 	main()
 
-	// Restore stdout and close writer so reader finishes
+	// Restore stdout/stderr and close writer so reader finishes
 	_ = w.Close()
-	os.Stdout = old
+	os.Stdout = oldOut
+	os.Stderr = oldErr
 
 	// Wait for reader goroutine with timeout (longer in CI)
 	select {

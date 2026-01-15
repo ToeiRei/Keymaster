@@ -5,7 +5,7 @@
 package main
 
 import (
-	"fmt"
+	log "github.com/charmbracelet/log"
 
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
@@ -40,18 +40,18 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("active accounts: %d\n", len(accs))
+	log.Infof("active accounts: %d", len(accs))
 	for _, a := range accs {
-		fmt.Printf("account: %+v\n", a)
+		log.Infof("account: %+v", a)
 	}
 
 	all, err := db.GetAllAccounts()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("all accounts: %d\n", len(all))
+	log.Infof("all accounts: %d", len(all))
 	for _, a := range all {
-		fmt.Printf("all account: %+v\n", a)
+		log.Infof("all account: %+v", a)
 	}
 
 	// Direct SQL probe removed — use package-level helpers above.

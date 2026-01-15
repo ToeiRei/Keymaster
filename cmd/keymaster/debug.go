@@ -6,7 +6,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"strings"
 
@@ -21,10 +20,10 @@ var debugCmd = &cobra.Command{
 	Use:   "debug",
 	Short: "Dump debug information about config, env, flags and settings",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("--- KEYMASTER DEBUG ---")
+		log.Info("--- KEYMASTER DEBUG ---")
 		// Config file used
 		used := viper.ConfigFileUsed()
-		fmt.Printf("Config file used: %s\n", used)
+		log.Infof("Config file used: %s", used)
 
 		// Viper settings
 		settings := viper.AllSettings()
@@ -32,27 +31,27 @@ var debugCmd = &cobra.Command{
 		if err != nil {
 			log.Errorf("could not marshal viper settings: %v", err)
 		} else {
-			fmt.Println("-- viper.AllSettings() --")
-			fmt.Println(string(b))
+			log.Info("-- viper.AllSettings() --")
+			log.Info(string(b))
 		}
 
 		// Flags
-		fmt.Println("-- flags --")
+		log.Info("-- flags --")
 		cmd.Flags().VisitAll(func(f *pflag.Flag) {
 			val := f.Value.String()
-			fmt.Printf("%s = %s\n", f.Name, val)
+			log.Infof("%s = %s", f.Name, val)
 		})
 
 		// Environment variables of interest
-		fmt.Println("-- environment (KEYMASTER_*, KEYMASTER, CONFIG*) --")
+		log.Info("-- environment (KEYMASTER_*, KEYMASTER, CONFIG*) --")
 		for _, e := range os.Environ() {
 			if strings.HasPrefix(e, "KEYMASTER_") || strings.HasPrefix(e, "KEYMASTER") || strings.HasPrefix(e, "CONFIG") {
-				fmt.Println(e)
+				log.Info(e)
 			}
 		}
 
 		// Print GO env hints
-		fmt.Printf("PWD=%s\n", os.Getenv("PWD"))
-		fmt.Println("--- END DEBUG ---")
+		log.Infof("PWD=%s", os.Getenv("PWD"))
+		log.Info("--- END DEBUG ---")
 	},
 }
