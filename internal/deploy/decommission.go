@@ -80,7 +80,7 @@ func (r DecommissionResult) String() string {
 // DecommissionAccount removes SSH access for an account and deletes it from the database.
 // It first attempts to clean up the remote authorized_keys file, then removes the account
 // from the database. The operation can be configured with DecommissionOptions.
-func DecommissionAccount(account model.Account, systemKey string, options DecommissionOptions) DecommissionResult {
+func DecommissionAccount(account model.Account, systemKey security.Secret, options DecommissionOptions) DecommissionResult {
 	result := DecommissionResult{
 		AccountID:     account.ID,
 		AccountString: account.String(),
@@ -160,7 +160,7 @@ func DecommissionAccount(account model.Account, systemKey string, options Decomm
 }
 
 // cleanupRemoteAuthorizedKeys connects to the remote host and removes the authorized_keys file
-func cleanupRemoteAuthorizedKeys(account model.Account, systemKey string, keepFile bool, result *DecommissionResult) error {
+func cleanupRemoteAuthorizedKeys(account model.Account, systemKey security.Secret, keepFile bool, result *DecommissionResult) error {
 	// Get passphrase from cache and ensure it's wiped after use.
 	passphrase := state.PasswordCache.Get()
 	defer func() {
@@ -170,7 +170,7 @@ func cleanupRemoteAuthorizedKeys(account model.Account, systemKey string, keepFi
 	}()
 
 	// Create deployer connection
-	deployer, err := NewDeployerFunc(account.Hostname, account.Username, security.FromString(systemKey), passphrase)
+	deployer, err := NewDeployerFunc(account.Hostname, account.Username, systemKey, passphrase)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s@%s: %w", account.Username, account.Hostname, err)
 	}
@@ -186,7 +186,7 @@ func cleanupRemoteAuthorizedKeys(account model.Account, systemKey string, keepFi
 }
 
 // cleanupRemoteAuthorizedKeysSelective connects to the remote host and removes specific keys
-func cleanupRemoteAuthorizedKeysSelective(account model.Account, systemKey string, options DecommissionOptions, result *DecommissionResult) error {
+func cleanupRemoteAuthorizedKeysSelective(account model.Account, systemKey security.Secret, options DecommissionOptions, result *DecommissionResult) error {
 	// Get passphrase from cache and ensure it's wiped after use.
 	passphrase := state.PasswordCache.Get()
 	defer func() {
@@ -196,7 +196,7 @@ func cleanupRemoteAuthorizedKeysSelective(account model.Account, systemKey strin
 	}()
 
 	// Create deployer connection
-	deployer, err := NewDeployerFunc(account.Hostname, account.Username, security.FromString(systemKey), passphrase)
+	deployer, err := NewDeployerFunc(account.Hostname, account.Username, systemKey, passphrase)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s@%s: %w", account.Username, account.Hostname, err)
 	}
@@ -378,7 +378,7 @@ func extractNonKeymasterContent(content string) string {
 // (removed unused helper: removeKeymasterManagedSection)
 
 // BulkDecommissionAccounts decommissions multiple accounts with progress reporting
-func BulkDecommissionAccounts(accounts []model.Account, systemKey string, options DecommissionOptions) []DecommissionResult {
+func BulkDecommissionAccounts(accounts []model.Account, systemKey security.Secret, options DecommissionOptions) []DecommissionResult {
 	results := make([]DecommissionResult, 0, len(accounts))
 
 	for i, account := range accounts {

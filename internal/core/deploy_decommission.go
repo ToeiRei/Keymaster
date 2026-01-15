@@ -20,7 +20,7 @@ import (
 // so tests can inject fakes. It intentionally uses DeployAuthorizedKeys to write
 // back cleaned content (and writes an empty file when deletion would previously occur),
 // avoiding direct sftp manipulations from core.
-func DecommissionAccount(account model.Account, systemKey string, options DecommissionOptions) DecommissionResult {
+func DecommissionAccount(account model.Account, systemKey security.Secret, options DecommissionOptions) DecommissionResult {
 	result := DecommissionResult{
 		AccountID:     account.ID,
 		AccountString: account.String(),
@@ -95,7 +95,7 @@ func DecommissionAccount(account model.Account, systemKey string, options Decomm
 }
 
 // BulkDecommissionAccounts decommissions multiple accounts with progress reporting
-func BulkDecommissionAccounts(accounts []model.Account, systemKey string, options DecommissionOptions) []DecommissionResult {
+func BulkDecommissionAccounts(accounts []model.Account, systemKey security.Secret, options DecommissionOptions) []DecommissionResult {
 	results := make([]DecommissionResult, 0, len(accounts))
 
 	for i, account := range accounts {
@@ -111,7 +111,7 @@ func BulkDecommissionAccounts(accounts []model.Account, systemKey string, option
 }
 
 // cleanupRemoteAuthorizedKeys connects to the remote host and removes or updates the authorized_keys content
-func cleanupRemoteAuthorizedKeys(account model.Account, systemKey string, keepFile bool, result *DecommissionResult) error {
+func cleanupRemoteAuthorizedKeys(account model.Account, systemKey security.Secret, keepFile bool, result *DecommissionResult) error {
 	passphrase := state.PasswordCache.Get()
 	defer func() {
 		for i := range passphrase {
@@ -119,7 +119,7 @@ func cleanupRemoteAuthorizedKeys(account model.Account, systemKey string, keepFi
 		}
 	}()
 
-	deployer, err := NewDeployerFactory(account.Hostname, account.Username, security.FromString(systemKey), passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, systemKey, passphrase)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s@%s: %w", account.Username, account.Hostname, err)
 	}
@@ -138,7 +138,7 @@ func cleanupRemoteAuthorizedKeys(account model.Account, systemKey string, keepFi
 }
 
 // cleanupRemoteAuthorizedKeysSelective removes specific keys or sections using DeployAuthorizedKeys
-func cleanupRemoteAuthorizedKeysSelective(account model.Account, systemKey string, options DecommissionOptions, result *DecommissionResult) error {
+func cleanupRemoteAuthorizedKeysSelective(account model.Account, systemKey security.Secret, options DecommissionOptions, result *DecommissionResult) error {
 	passphrase := state.PasswordCache.Get()
 	defer func() {
 		for i := range passphrase {
@@ -146,7 +146,7 @@ func cleanupRemoteAuthorizedKeysSelective(account model.Account, systemKey strin
 		}
 	}()
 
-	deployer, err := NewDeployerFactory(account.Hostname, account.Username, security.FromString(systemKey), passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, systemKey, passphrase)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s@%s: %w", account.Username, account.Hostname, err)
 	}

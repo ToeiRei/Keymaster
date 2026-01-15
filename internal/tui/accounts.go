@@ -1108,7 +1108,7 @@ func (m *accountsModel) performDecommissionWithKeys() tea.Cmd {
 			}
 
 			// Use the TUI adapter which implements core.DeployerManager to perform decommission.
-			res, err := deployAdapter.DecommissionAccount(account, sk.PrivateKey, options)
+			res, err := deployAdapter.DecommissionAccount(account, db.SecretFromModelSystemKey(sk), options)
 			if err != nil {
 				return core.DecommissionResult{}, err
 			}

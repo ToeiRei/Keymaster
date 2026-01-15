@@ -46,7 +46,7 @@ func (builtinDeployerManager) AuditStrict(account model.Account) error {
 	return AuditAccountStrict(account)
 }
 
-func (builtinDeployerManager) DecommissionAccount(account model.Account, systemPrivateKey string, options interface{}) (DecommissionResult, error) {
+func (builtinDeployerManager) DecommissionAccount(account model.Account, systemPrivateKey security.Secret, options interface{}) (DecommissionResult, error) {
 	var opts DecommissionOptions
 	if o, ok := options.(DecommissionOptions); ok {
 		opts = o
@@ -55,7 +55,7 @@ func (builtinDeployerManager) DecommissionAccount(account model.Account, systemP
 	return r, nil
 }
 
-func (builtinDeployerManager) BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey string, options interface{}) ([]DecommissionResult, error) {
+func (builtinDeployerManager) BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey security.Secret, options interface{}) ([]DecommissionResult, error) {
 	var opts DecommissionOptions
 	if o, ok := options.(DecommissionOptions); ok {
 		opts = o

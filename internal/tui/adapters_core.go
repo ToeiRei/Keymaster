@@ -169,7 +169,7 @@ func (coreDeployAdapter) ImportRemoteKeys(account model.Account) ([]model.Public
 	return core.DefaultDeployerManager.ImportRemoteKeys(account)
 }
 
-func (coreDeployAdapter) DecommissionAccount(account model.Account, systemKey string, options interface{}) (core.DecommissionResult, error) {
+func (coreDeployAdapter) DecommissionAccount(account model.Account, systemKey security.Secret, options interface{}) (core.DecommissionResult, error) {
 	return core.DefaultDeployerManager.DecommissionAccount(account, systemKey, options)
 }
 
@@ -189,7 +189,7 @@ func (coreDeployAdapter) AuditStrict(account model.Account) error {
 	return core.DefaultDeployerManager.AuditStrict(account)
 }
 
-func (coreDeployAdapter) BulkDecommissionAccounts(accounts []model.Account, systemKey string, options interface{}) ([]core.DecommissionResult, error) {
+func (coreDeployAdapter) BulkDecommissionAccounts(accounts []model.Account, systemKey security.Secret, options interface{}) ([]core.DecommissionResult, error) {
 	return core.DefaultDeployerManager.BulkDecommissionAccounts(accounts, systemKey, options)
 }
 

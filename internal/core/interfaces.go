@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 // Store defines minimal data-store operations used by CLI facades.
@@ -74,8 +75,8 @@ type DeployerManager interface {
 	DeployForAccount(account model.Account, keepFile bool) error
 	AuditSerial(account model.Account) error
 	AuditStrict(account model.Account) error
-	DecommissionAccount(account model.Account, systemPrivateKey string, options interface{}) (DecommissionResult, error)
-	BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey string, options interface{}) ([]DecommissionResult, error)
+	DecommissionAccount(account model.Account, systemPrivateKey security.Secret, options interface{}) (DecommissionResult, error)
+	BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey security.Secret, options interface{}) ([]DecommissionResult, error)
 	CanonicalizeHostPort(host string) string
 	ParseHostPort(host string) (string, string, error)
 	GetRemoteHostKey(host string) (string, error)
