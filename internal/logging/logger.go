@@ -6,13 +6,14 @@ package logging
 
 import (
 	"fmt"
+	"os"
 
 	clog "github.com/charmbracelet/log"
 )
 
 // L is the package-level logger. Callers should use the helper functions
 // below for compatibility with existing calls.
-var L = clog.New()
+var L = clog.New(os.Stderr)
 
 // Debugf logs a debug-level formatted message.
 func Debugf(format string, v ...interface{}) {
