@@ -97,7 +97,7 @@ var transferCreateCmd = &cobra.Command{
 				if acc.IsActive {
 					if derr := db.ToggleAccountStatus(acc.ID); derr != nil {
 						if verbose {
-							log.Printf("warning: failed to deactivate account %s: %v", acc.String(), derr)
+							log.Warnf("warning: failed to deactivate account %s: %v", acc.String(), derr)
 						}
 					} else {
 						fmt.Printf("Deactivated account on this instance: %s\n", acc.String())

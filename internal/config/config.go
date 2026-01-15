@@ -103,7 +103,7 @@ func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_c
 		}
 		if fi, err := os.Stat(p); err == nil {
 			if fi.Size() == 0 {
-				log.Printf("candidate config: %s (empty)", p)
+				log.Infof("candidate config: %s (empty)", p)
 				// treat empty as absent
 				continue
 			}
@@ -111,9 +111,9 @@ func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_c
 			viper.SetConfigFile(p)
 			if rerr := viper.ReadInConfig(); rerr != nil {
 				// If parsing failed, surface diagnostic information
-				log.Printf("failed reading config %s: %v", p, rerr)
+				log.Errorf("failed reading config %s: %v", p, rerr)
 				// dump candidate info
-				log.Printf("candidate config: %s (size %d)", p, fi.Size())
+				log.Infof("candidate config: %s (size %d)", p, fi.Size())
 				return c, rerr
 			}
 			foundConfig = true
@@ -131,7 +131,7 @@ func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_c
 	// If a config file was successfully read/merged, log it for easier debugging.
 	used := viper.ConfigFileUsed()
 	if used != "" {
-		log.Printf("using config %s", used)
+		log.Infof("using config %s", used)
 	} else {
 		// If none was used, check whether any candidate existed but was zero-length
 		// (helpful for debugging cases where an empty file causes defaults to be used).
@@ -148,9 +148,9 @@ func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_c
 			}
 		}
 		if foundEmpty != "" {
-			log.Printf("using config none (found zero-length config %s)", foundEmpty)
+			log.Infof("using config none (found zero-length config %s)", foundEmpty)
 		} else {
-			log.Printf("using config none (defaults)")
+			log.Infof("using config none (defaults)")
 		}
 	}
 
@@ -168,17 +168,17 @@ func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_c
 
 	// parse config
 	if err := viper.Unmarshal(&c); err != nil {
-		log.Printf("viper.Unmarshal error: %v", err)
+		log.Errorf("viper.Unmarshal error: %v", err)
 		if used := viper.ConfigFileUsed(); used != "" {
-			log.Printf("viper.ConfigFileUsed: %s", used)
+			log.Infof("viper.ConfigFileUsed: %s", used)
 			if data, rerr := os.ReadFile(used); rerr == nil {
 				sample := data
 				if len(sample) > 512 {
 					sample = sample[:512]
 				}
-				log.Printf("first bytes of %s: %q", used, sample)
+				log.Infof("first bytes of %s: %q", used, sample)
 			} else {
-				log.Printf("could not read used config file %s: %v", used, rerr)
+				log.Errorf("could not read used config file %s: %v", used, rerr)
 			}
 		}
 		// Also dump candidate files if present
@@ -193,15 +193,15 @@ func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_c
 						if len(sample) > 256 {
 							sample = sample[:256]
 						}
-						log.Printf("first bytes of candidate %s: %q", p, sample)
+						log.Infof("first bytes of candidate %s: %q", p, sample)
 					} else {
-						log.Printf("could not read candidate %s: %v", p, rerr)
+						log.Errorf("could not read candidate %s: %v", p, rerr)
 					}
 				} else {
-					log.Printf("candidate %s is empty", p)
+					log.Infof("candidate %s is empty", p)
 				}
 			} else {
-				log.Printf("candidate %s not present", p)
+				log.Infof("candidate %s not present", p)
 			}
 		}
 		return c, err

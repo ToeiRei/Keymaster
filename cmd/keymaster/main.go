@@ -66,12 +66,12 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 
 	// Diagnostic: print current working directory and KEYMASTER-related env vars
 	if wd, wderr := os.Getwd(); wderr == nil {
-		log.Printf("startup cwd: %s", wd)
+		log.Infof("startup cwd: %s", wd)
 	}
 	// Print any environment variables that might affect config discovery/parsing
 	for _, e := range os.Environ() {
 		if strings.HasPrefix(e, "KEYMASTER_") || strings.HasPrefix(e, "KEYMASTER") || strings.HasPrefix(e, "CONFIG") {
-			log.Printf("env: %s", e)
+			log.Infof("env: %s", e)
 		}
 	}
 
@@ -90,7 +90,7 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 		// This is the first run, or the config file was deleted. Create a default one.
 		if writeErr := config.WriteConfigFile(&appConfig, false); writeErr != nil {
 			// Log a warning but don't fail, as the app can run on defaults.
-			log.Printf("Warning: could not write default config file: %v", writeErr)
+			log.Warnf("Warning: could not write default config file: %v", writeErr)
 		}
 	} else if err != nil {
 		// If it's a YAML parse error caused by control characters, log a
@@ -99,9 +99,9 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 		if strings.Contains(err.Error(), "control characters are not allowed") {
 			used := viper.ConfigFileUsed()
 			if used == "" {
-				log.Printf("The config appears to be invalid (parse error). Run 'keymaster debug' to inspect configuration files: %v", err)
+				log.Errorf("The config appears to be invalid (parse error). Run 'keymaster debug' to inspect configuration files: %v", err)
 			} else {
-				log.Printf("The config you are using (%s) appears to be invalid: %v. Run 'keymaster debug' to inspect and fix it.", used, err)
+				log.Errorf("The config you are using (%s) appears to be invalid: %v. Run 'keymaster debug' to inspect and fix it.", used, err)
 			}
 		} else {
 			return fmt.Errorf("error loading config: %w", err)
@@ -112,9 +112,9 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 	// config for the user so subsequent runs have a persisted file to inspect.
 	if viper.ConfigFileUsed() == "" {
 		if writeErr := config.WriteConfigFile(&appConfig, false); writeErr != nil {
-			log.Printf("Warning: could not write default config file: %v", writeErr)
+			log.Warnf("Warning: could not write default config file: %v", writeErr)
 		} else {
-			log.Printf("Wrote default config to user config path")
+			log.Info("Wrote default config to user config path")
 		}
 	}
 
@@ -146,7 +146,7 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 
 	// Recover from any previous crashes
 	if err := core.RecoverFromCrash(); err != nil {
-		log.Printf("Bootstrap recovery error: %v", err)
+		log.Errorf("Bootstrap recovery error: %v", err)
 	}
 
 	// Start background session reaper
@@ -163,7 +163,7 @@ func main() {
 	// Set up cleanup store for bootstrap operations
 	defer func() {
 		if err := core.CleanupAllActiveSessions(); err != nil {
-			log.Printf("Error during final cleanup: %v", err)
+			log.Errorf("Error during final cleanup: %v", err)
 		} else {
 			log.Info("Bootstrap cleanup complete.")
 		}

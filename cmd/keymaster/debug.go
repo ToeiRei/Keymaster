@@ -30,7 +30,7 @@ var debugCmd = &cobra.Command{
 		settings := viper.AllSettings()
 		b, err := json.MarshalIndent(settings, "", "  ")
 		if err != nil {
-			log.Printf("could not marshal viper settings: %v", err)
+			log.Errorf("could not marshal viper settings: %v", err)
 		} else {
 			fmt.Println("-- viper.AllSettings() --")
 			fmt.Println(string(b))
