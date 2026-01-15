@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 
+	log "github.com/charmbracelet/log"
+
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
@@ -53,6 +55,11 @@ func executeCommand(t *testing.T, stdin io.Reader, args ...string) string {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 	os.Stderr = w
+	// Try to redirect the charmbracelet logger to the pipe so package-level logs
+	// are captured by the test. If the logger supports SetOutput, this will
+	// direct its output to our pipe.
+	log.SetOutput(w)
+	defer log.SetOutput(os.Stderr)
 	defer func() {
 		os.Stdout = oldOut
 		os.Stderr = oldErr
