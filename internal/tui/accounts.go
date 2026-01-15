@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
 
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
@@ -1086,8 +1087,8 @@ func (m *accountsModel) performDecommissionWithKeys() tea.Cmd {
 		// Provide a decommander closure that encapsulates environment-specific
 		// steps (fetching active system key, building options, delegating to adapter).
 		decommander := func(account model.Account, selectedKeys map[int]bool) (core.DecommissionResult, error) {
-			// Fetch active system key via UI adapter
-			sk, err := ui.GetActiveSystemKey()
+			// Fetch active system key from DB
+			sk, err := db.GetActiveSystemKey()
 			if err != nil || sk == nil {
 				return core.DecommissionResult{}, err
 			}

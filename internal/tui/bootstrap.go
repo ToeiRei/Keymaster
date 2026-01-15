@@ -23,6 +23,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/bootstrap"
 	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
@@ -1213,7 +1214,7 @@ func (m *bootstrapModel) loadAvailableKeys() tea.Cmd {
 		}
 
 		// Get system key to filter it out from selectable keys
-		systemKey, err := ui.GetActiveSystemKey()
+		systemKey, err := db.GetActiveSystemKey()
 		var systemKeyData string
 		if err == nil && systemKey != nil {
 			systemKeyData = systemKey.PublicKey

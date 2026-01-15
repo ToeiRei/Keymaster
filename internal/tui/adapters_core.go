@@ -32,7 +32,7 @@ func (coreKeyReader) GetAllPublicKeys() ([]model.PublicKey, error) {
 	return km.GetAllPublicKeys()
 }
 
-func (coreKeyReader) GetActiveSystemKey() (*model.SystemKey, error) { return ui.GetActiveSystemKey() }
+func (coreKeyReader) GetActiveSystemKey() (*model.SystemKey, error) { return db.GetActiveSystemKey() }
 
 // coreAuditReader adapts UI audit helpers to core.AuditReader.
 type coreAuditReader struct{}
@@ -110,7 +110,7 @@ func (coreKeyStore) AssignKeyToAccount(keyID, accountID int) error {
 type coreKeysContentBuilder struct{}
 
 func (coreKeysContentBuilder) Generate(accountID int) (string, error) {
-	sk, _ := ui.GetActiveSystemKey()
+	sk, _ := db.GetActiveSystemKey()
 	km := ui.DefaultKeyManager()
 	if km == nil {
 		return "", fmt.Errorf("no key manager available")

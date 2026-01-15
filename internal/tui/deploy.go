@@ -223,7 +223,7 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else { // No error, success case for a single deployment.
 				m.state = deployStateComplete
 				if !m.wasFleetDeploy { // Only set this status for single, non-fleet deploys
-					activeKey, err := ui.GetActiveSystemKey()
+					activeKey, err := db.GetActiveSystemKey()
 					if err != nil {
 						m.err = fmt.Errorf(i18n.T("deploy.error_get_serial_for_status"), err)
 					} else {
