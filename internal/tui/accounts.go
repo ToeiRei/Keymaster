@@ -14,8 +14,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/ui"
-
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
@@ -85,7 +83,7 @@ type accountsModel struct {
 	keySelectionButtonCursor int          // 0 for Cancel, 1 for Continue
 	keySelectionInButtonMode bool         // True when navigating buttons instead of keys
 	width, height            int
-	searcher                 ui.AccountSearcher
+	searcher                 db.AccountSearcher
 	transferMode             bool
 	hasInteracted            bool // True once user navigates or performs an action
 }
@@ -593,7 +591,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.displayedAccounts) > 0 {
 				accToEdit := m.displayedAccounts[m.cursor]
 				m.state = accountsFormView
-				m.form = newAccountFormModelWithSuggester(&accToEdit, ui.DefaultTagSuggester())
+				m.form = newAccountFormModelWithSuggester(&accToEdit, nil)
 				m.status = ""
 				return m, m.form.Init()
 			}
@@ -631,7 +629,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Switch to the form view to add a new account.
 		case "a":
 			m.state = accountsFormView
-			m.form = newAccountFormModelWithSuggester(nil, ui.DefaultTagSuggester())
+			m.form = newAccountFormModelWithSuggester(nil, nil)
 			m.status = "" // Clear status before showing form
 			return m, m.form.Init()
 

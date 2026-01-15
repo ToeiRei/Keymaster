@@ -21,7 +21,6 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	tuidbg "github.com/toeirei/keymaster/internal/tui/debug"
-	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // viewState represents which part of the UI is currently active.
@@ -442,6 +441,17 @@ func (m mainModel) View() string {
 	}
 }
 
+// formatLabelPadding formats a label/value pair locally to avoid depending on `internal/ui`.
+func formatLabelPadding(label, value string, labelWidth int) string {
+	if labelWidth <= 0 {
+		return label + " " + value
+	}
+	if len(label) >= labelWidth {
+		return label + " " + value
+	}
+	return label + strings.Repeat(" ", labelWidth-len(label)) + " " + value
+}
+
 // View renders the main menu and dashboard.
 func (m menuModel) View(data dashboardData, width, height int) string {
 	// Title (i18n)
@@ -504,7 +514,7 @@ func (m menuModel) View(data dashboardData, width, height int) string {
 	}
 
 	for i, label := range labelsOnly {
-		dashboardItems = append(dashboardItems, ui.FormatLabelPadding(label, statusItems[i].value, maxLabelLen))
+		dashboardItems = append(dashboardItems, formatLabelPadding(label, statusItems[i].value, maxLabelLen))
 	}
 
 	// Deployment Status

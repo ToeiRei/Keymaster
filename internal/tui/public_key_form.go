@@ -18,7 +18,6 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/sshkey"
-	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // publicKeyCreatedMsg is a message to signal that a key was created successfully
@@ -114,7 +113,7 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var expiresAt time.Time
 			expVal := strings.TrimSpace(m.expInput.Value())
 			if expVal != "" {
-				t, err := ui.ParseExpiryInput(expVal)
+				t, err := parseExpiryInput(expVal)
 				if err != nil {
 					m.err = fmt.Errorf("invalid expiration format; use YYYY-MM-DD or RFC3339")
 					return m, nil
@@ -201,4 +200,19 @@ func (m publicKeyFormModel) View() string {
 	helpLine := footerStyle.Render(i18n.T("public_key_form.help"))
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", helpLine)
+}
+
+// parseExpiryInput parses expiration strings (RFC3339 or YYYY-MM-DD).
+func parseExpiryInput(s string) (time.Time, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}, nil
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t, nil
+	}
+	if t2, err := time.Parse("2006-01-02", s); err == nil {
+		return time.Date(t2.Year(), t2.Month(), t2.Day(), 0, 0, 0, 0, time.UTC), nil
+	}
+	return time.Time{}, fmt.Errorf("invalid expiry format")
 }

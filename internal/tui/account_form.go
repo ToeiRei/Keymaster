@@ -19,7 +19,6 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // focusedStyle is a simple style for focused text inputs.
@@ -60,12 +59,54 @@ type accountFormModel struct {
 	suggestions      []string
 	suggestionCursor int
 	isSuggesting     bool
-	tagSuggester     ui.TagSuggester
+	tagSuggester     TagSuggester
 }
 
 // newAccountFormModelWithSuggester creates a new form model with an injected
 // TagSuggester. Pass `nil` to use the package default suggester.
-func newAccountFormModelWithSuggester(accountToEdit *model.Account, ts ui.TagSuggester) accountFormModel {
+// TagSuggester defines a minimal suggester used by the TUI form.
+type TagSuggester interface {
+	AllTags() ([]string, error)
+	Suggest(currentVal string) []string
+}
+
+// dbTagSuggester implements TagSuggester by scanning the DB.
+type dbTagSuggester struct{}
+
+func (d *dbTagSuggester) AllTags() ([]string, error) {
+	allAccounts, err := db.GetAllAccounts()
+	if err != nil {
+		return nil, err
+	}
+	tagSet := make(map[string]struct{})
+	for _, acc := range allAccounts {
+		if acc.Tags == "" {
+			continue
+		}
+		for _, tag := range strings.Split(acc.Tags, ",") {
+			t := strings.TrimSpace(tag)
+			if t != "" {
+				tagSet[t] = struct{}{}
+			}
+		}
+	}
+	tags := make([]string, 0, len(tagSet))
+	for t := range tagSet {
+		tags = append(tags, t)
+	}
+	sort.Strings(tags)
+	return tags, nil
+}
+
+func (d *dbTagSuggester) Suggest(currentVal string) []string {
+	tags, err := d.AllTags()
+	if err != nil {
+		return nil
+	}
+	return SuggestTags(tags, currentVal)
+}
+
+func newAccountFormModelWithSuggester(accountToEdit *model.Account, ts TagSuggester) accountFormModel {
 	m := accountFormModel{
 		inputs:       make([]textinput.Model, 4),
 		isSuggesting: false,
@@ -125,6 +166,17 @@ func newAccountFormModelWithSuggester(accountToEdit *model.Account, ts ui.TagSug
 		}
 		// Fall through to fallback DB scan on error
 	}
+	// If no suggester provided, use DB-backed suggester.
+	if ts == nil {
+		// Do not set a TagSuggester here: prefer to populate m.allTags and
+		// leave m.tagSuggester nil so tests that override m.allTags get used.
+		d := dbTagSuggester{}
+		if tags, err := d.AllTags(); err == nil {
+			m.allTags = tags
+			sort.Strings(m.allTags)
+			return m
+		}
+	}
 
 	// Fallback: scan for tags (keeps previous behavior if suggester unavailable)
 	allAccounts, err := db.GetAllAccounts()
@@ -133,7 +185,7 @@ func newAccountFormModelWithSuggester(accountToEdit *model.Account, ts ui.TagSug
 	}
 	tagSet := make(map[string]struct{})
 	for _, acc := range allAccounts {
-		for _, tag := range ui.SplitTags(acc.Tags) {
+		for _, tag := range SplitTags(acc.Tags) {
 			tagSet[tag] = struct{}{}
 		}
 	}
@@ -285,7 +337,7 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					} else {
 						// Add new account via injected AccountManager when available.
-						mgr := ui.DefaultAccountManager()
+						mgr := db.DefaultAccountManager()
 						if mgr == nil {
 							m.err = fmt.Errorf("no account manager configured")
 							return m, nil
@@ -350,6 +402,66 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+// --- Local tag helpers (copied from ui/helpers.go) ---
+// SuggestTags returns a list of suggested tags based on the current input value.
+func SuggestTags(allTags []string, currentVal string) []string {
+	parts := strings.Split(currentVal, ",")
+	if len(parts) == 0 {
+		return nil
+	}
+	lastPart := strings.TrimSpace(parts[len(parts)-1])
+	if lastPart == "" {
+		return nil
+	}
+	lowerLast := strings.ToLower(lastPart)
+
+	present := make(map[string]struct{})
+	for i := 0; i < len(parts)-1; i++ {
+		p := strings.ToLower(strings.TrimSpace(parts[i]))
+		if p != "" {
+			present[p] = struct{}{}
+		}
+	}
+
+	var suggestions []string
+	for _, tag := range allTags {
+		lowerTag := strings.ToLower(tag)
+		if strings.HasPrefix(lowerTag, lowerLast) {
+			if _, ok := present[lowerTag]; !ok {
+				suggestions = append(suggestions, tag)
+			}
+		}
+	}
+	return suggestions
+}
+
+// SplitTags splits a comma-separated tag string into trimmed, non-empty tags.
+func SplitTags(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		tp := strings.TrimSpace(p)
+		if tp != "" {
+			out = append(out, tp)
+		}
+	}
+	return out
+}
+
+// SplitTagsPreserveTrailing splits tags like SplitTags but preserves an empty
+// trailing element when the input ends with a comma. Each part is trimmed.
+func SplitTagsPreserveTrailing(s string) []string {
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		out = append(out, strings.TrimSpace(p))
+	}
+	return out
 }
 
 // updateInputs passes messages to the underlying text input models.
@@ -464,7 +576,7 @@ func (m *accountFormModel) updateSuggestions() {
 	}
 
 	currentVal := m.inputs[3].Value()
-	parts := ui.SplitTagsPreserveTrailing(currentVal)
+	parts := SplitTagsPreserveTrailing(currentVal)
 	if len(parts) == 0 {
 		m.suggestions = nil
 		return
