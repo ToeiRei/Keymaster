@@ -208,8 +208,18 @@ func init() {
 					aks, _ := km.GetKeysForAccount(accountID)
 					return keys.BuildAuthorizedKeysContent(sk, gks, aks)
 				},
-				NewBootstrapDeployer: func(hostname, username string, privateKey security.Secret, expectedHostKey string) (core.BootstrapDeployer, error) {
-					return core.NewBootstrapDeployer(hostname, username, privateKey, expectedHostKey)
+				NewBootstrapDeployer: func(hostname, username string, privateKey interface{}, expectedHostKey string) (core.BootstrapDeployer, error) {
+					// Normalize to security.Secret for core
+					switch v := privateKey.(type) {
+					case security.Secret:
+						return core.NewBootstrapDeployer(hostname, username, v, expectedHostKey)
+					case string:
+						return core.NewBootstrapDeployer(hostname, username, security.FromString(v), expectedHostKey)
+					case []byte:
+						return core.NewBootstrapDeployer(hostname, username, security.FromBytes(v), expectedHostKey)
+					default:
+						return core.NewBootstrapDeployer(hostname, username, nil, expectedHostKey)
+					}
 				},
 				GetActiveSystemKey: func() (*model.SystemKey, error) { return db.GetActiveSystemKey() },
 				LogAudit: func(e core.BootstrapAuditEvent) error {

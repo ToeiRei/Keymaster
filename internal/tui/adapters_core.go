@@ -129,8 +129,20 @@ func (coreKeysContentBuilder) Generate(accountID int) (string, error) {
 // coreBootstrapDeployerFactory adapts core bootstrap factory to a simple type used by TUI.
 type coreBootstrapDeployerFactory struct{}
 
-func (coreBootstrapDeployerFactory) New(hostname, username string, privateKey security.Secret, expectedHostKey string) (core.BootstrapDeployer, error) {
-	return core.NewBootstrapDeployer(hostname, username, privateKey, expectedHostKey)
+func (coreBootstrapDeployerFactory) New(hostname, username string, privateKey interface{}, expectedHostKey string) (core.BootstrapDeployer, error) {
+	// Accept either a string or a security.Secret and normalize to security.Secret
+	var sk security.Secret
+	switch v := privateKey.(type) {
+	case security.Secret:
+		sk = v
+	case string:
+		sk = security.FromString(v)
+	case []byte:
+		sk = security.FromBytes(v)
+	default:
+		sk = nil
+	}
+	return core.NewBootstrapDeployer(hostname, username, sk, expectedHostKey)
 }
 
 // coreDeployAdapter delegates deploy-related operations to core.DefaultDeployerManager.

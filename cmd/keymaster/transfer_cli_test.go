@@ -51,7 +51,7 @@ func TestTransferCLI_CreateAndAccept(t *testing.T) {
 
 	// Override bootstrap deployer to avoid network in tests
 	orig := core.NewBootstrapDeployerFunc
-	core.NewBootstrapDeployerFunc = func(hostname, username, privateKey, expectedHostKey string) (core.BootstrapDeployer, error) {
+	core.NewBootstrapDeployerFunc = func(hostname, username string, privateKey interface{}, expectedHostKey string) (core.BootstrapDeployer, error) {
 		return &testDeployer{}, nil
 	}
 	defer func() { core.NewBootstrapDeployerFunc = orig }()

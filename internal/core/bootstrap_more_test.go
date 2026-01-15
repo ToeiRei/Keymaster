@@ -177,7 +177,7 @@ func TestSystemKeyWarningRecorded(t *testing.T) {
 		AddAccount:          func(u, h, l, tags string) (int, error) { return 901, nil },
 		DeleteAccount:       func(id int) error { return nil },
 		GenerateKeysContent: func(accountID int) (string, error) { return "ok", nil },
-		NewBootstrapDeployer: func(hostname, username, privateKey, expectedHostKey string) (BootstrapDeployer, error) {
+		NewBootstrapDeployer: func(hostname, username string, privateKey interface{}, expectedHostKey string) (BootstrapDeployer, error) {
 			return &spyDeployer{}, nil
 		},
 		GetActiveSystemKey: func() (*model.SystemKey, error) { return &model.SystemKey{Serial: 9, PublicKey: "pk"}, nil },
