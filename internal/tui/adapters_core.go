@@ -13,7 +13,6 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // coreAccountReader adapts UI helpers to core.AccountReader.
@@ -25,7 +24,7 @@ func (coreAccountReader) GetAllAccounts() ([]model.Account, error) { return db.G
 type coreKeyReader struct{}
 
 func (coreKeyReader) GetAllPublicKeys() ([]model.PublicKey, error) {
-	km := ui.DefaultKeyManager()
+	km := db.DefaultKeyManager()
 	if km == nil {
 		return nil, nil
 	}
@@ -63,7 +62,7 @@ func (coreSystemKeyStore) RotateSystemKey(publicKey, privateKey string) (int, er
 type coreAccountStore struct{}
 
 func (coreAccountStore) AddAccount(username, hostname, label, tags string) (int, error) {
-	mgr := ui.DefaultAccountManager()
+	mgr := db.DefaultAccountManager()
 	if mgr == nil {
 		return 0, fmt.Errorf("no account manager configured")
 	}
@@ -71,7 +70,7 @@ func (coreAccountStore) AddAccount(username, hostname, label, tags string) (int,
 }
 
 func (coreAccountStore) DeleteAccount(accountID int) error {
-	mgr := ui.DefaultAccountManager()
+	mgr := db.DefaultAccountManager()
 	if mgr == nil {
 		return fmt.Errorf("no account manager configured")
 	}
@@ -82,7 +81,7 @@ func (coreAccountStore) DeleteAccount(accountID int) error {
 type coreKeyStore struct{}
 
 func (coreKeyStore) GetGlobalPublicKeys() ([]model.PublicKey, error) {
-	km := ui.DefaultKeyManager()
+	km := db.DefaultKeyManager()
 	if km == nil {
 		return nil, fmt.Errorf("no key manager configured")
 	}
@@ -90,7 +89,7 @@ func (coreKeyStore) GetGlobalPublicKeys() ([]model.PublicKey, error) {
 }
 
 func (coreKeyStore) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
-	km := ui.DefaultKeyManager()
+	km := db.DefaultKeyManager()
 	if km == nil {
 		return nil, fmt.Errorf("no key manager configured")
 	}
@@ -98,7 +97,7 @@ func (coreKeyStore) GetKeysForAccount(accountID int) ([]model.PublicKey, error) 
 }
 
 func (coreKeyStore) AssignKeyToAccount(keyID, accountID int) error {
-	km := ui.DefaultKeyManager()
+	km := db.DefaultKeyManager()
 	if km == nil {
 		return fmt.Errorf("no key manager configured")
 	}
@@ -111,7 +110,7 @@ type coreKeysContentBuilder struct{}
 
 func (coreKeysContentBuilder) Generate(accountID int) (string, error) {
 	sk, _ := db.GetActiveSystemKey()
-	km := ui.DefaultKeyManager()
+	km := db.DefaultKeyManager()
 	if km == nil {
 		return "", fmt.Errorf("no key manager available")
 	}

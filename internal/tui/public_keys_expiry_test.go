@@ -9,8 +9,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
-	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // TestExpiryToggleEpochZero verifies that pressing 'e' toggles a key's expiry
@@ -19,7 +19,7 @@ func TestExpiryToggleEpochZero(t *testing.T) {
 	initTestDBT(t)
 	i18n.Init("en")
 
-	km := ui.DefaultKeyManager()
+	km := db.DefaultKeyManager()
 	if km == nil {
 		t.Fatal("no key manager")
 	}
@@ -91,7 +91,7 @@ func TestExpiryModalFlow(t *testing.T) {
 	initTestDBT(t)
 	i18n.Init("en")
 
-	km := ui.DefaultKeyManager()
+	km := db.DefaultKeyManager()
 	if km == nil {
 		t.Fatal("no key manager")
 	}

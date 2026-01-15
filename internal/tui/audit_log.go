@@ -18,7 +18,6 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // Risk-based color styles for audit log actions.
@@ -54,11 +53,11 @@ type auditLogModel struct {
 	filterCol   int // 0=all, 1=timestamp, 2=user, 3=action, 4=details
 	isFiltering bool
 	err         error
-	searcher    ui.AuditSearcher
+	searcher    db.AuditSearcher
 }
 
 // newAuditLogModelWithSearcher creates a new model for the audit log view, loading entries from the provided searcher.
-func newAuditLogModelWithSearcher(searcher ui.AuditSearcher) *auditLogModel {
+func newAuditLogModelWithSearcher(searcher db.AuditSearcher) *auditLogModel {
 	m := &auditLogModel{searcher: searcher}
 	var entries []model.AuditLogEntry
 	var err error

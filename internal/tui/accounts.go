@@ -14,12 +14,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/ui"
 
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
-	"github.com/toeirei/keymaster/internal/ui"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -96,7 +96,7 @@ type accountsModel struct {
 // newAccountsModelWithSearcher creates an accountsModel that will use the
 // provided AccountSearcher for server-side searches. Pass nil to rely on the
 // package default searcher.
-func newAccountsModelWithSearcher(s ui.AccountSearcher) accountsModel {
+func newAccountsModelWithSearcher(s db.AccountSearcher) accountsModel {
 	m := accountsModel{
 		viewport: viewport.New(0, 0),
 		searcher: s,
@@ -105,7 +105,7 @@ func newAccountsModelWithSearcher(s ui.AccountSearcher) accountsModel {
 	// Load initial account list via the injected searcher (or UI default).
 	if s != nil {
 		m.accounts, err = s.SearchAccounts("")
-	} else if def := ui.DefaultAccountSearcher(); def != nil {
+	} else if def := db.DefaultAccountSearcher(); def != nil {
 		m.accounts, err = def.SearchAccounts("")
 	}
 	if err != nil {
@@ -128,8 +128,8 @@ func (m *accountsModel) rebuildDisplayedAccounts() {
 	if m.searcher != nil {
 		searchFunc = func(q string) ([]model.Account, error) { return m.searcher.SearchAccounts(q) }
 	} else {
-		// Use UI default searcher when no injected searcher provided.
-		defaultSearcher := ui.DefaultAccountSearcher()
+		// Use DB default searcher when no injected searcher provided.
+		defaultSearcher := db.DefaultAccountSearcher()
 		if defaultSearcher != nil {
 			searchFunc = func(q string) ([]model.Account, error) { return defaultSearcher.SearchAccounts(q) }
 		}
@@ -174,7 +174,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = i18n.T("accounts.status.modified_success")
 			if m.searcher != nil {
 				m.accounts, m.err = m.searcher.SearchAccounts("")
-			} else if def := ui.DefaultAccountSearcher(); def != nil {
+			} else if def := db.DefaultAccountSearcher(); def != nil {
 				m.accounts, m.err = def.SearchAccounts("")
 			}
 			m.rebuildDisplayedAccounts()
@@ -215,7 +215,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "y":
 				// Assign the keys
-				km := ui.DefaultKeyManager()
+				km := db.DefaultKeyManager()
 				if km == nil {
 					// No key manager available; skip assignment but record status
 					m.status = i18n.T("accounts.status.import_skipped_assign", len(m.pendingImportKeys))
@@ -376,7 +376,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, m.loadKeysForSelection()
 					} else {
 						// Simple delete without decommission. Prefer AccountManager when available.
-						mgr := ui.DefaultAccountManager()
+						mgr := db.DefaultAccountManager()
 						if mgr == nil {
 							m.err = fmt.Errorf("no account manager configured")
 						} else if err := mgr.DeleteAccount(m.accountToDelete.ID); err != nil {
@@ -385,7 +385,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							m.status = i18n.T("accounts.status.delete_success", m.accountToDelete.String())
 							if m.searcher != nil {
 								m.accounts, m.err = m.searcher.SearchAccounts("")
-							} else if def := ui.DefaultAccountSearcher(); def != nil {
+							} else if def := db.DefaultAccountSearcher(); def != nil {
 								m.accounts, m.err = def.SearchAccounts("")
 							}
 							m.rebuildDisplayedAccounts()
@@ -438,7 +438,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = i18n.T("accounts.status.decommission_partial", result.AccountString, result.RemoteCleanupError)
 			if m.searcher != nil {
 				m.accounts, m.err = m.searcher.SearchAccounts("")
-			} else if def := ui.DefaultAccountSearcher(); def != nil {
+			} else if def := db.DefaultAccountSearcher(); def != nil {
 				m.accounts, m.err = def.SearchAccounts("")
 			}
 			m.rebuildDisplayedAccounts()
@@ -447,7 +447,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = i18n.T("accounts.status.decommission_success", result.AccountString)
 			if m.searcher != nil {
 				m.accounts, m.err = m.searcher.SearchAccounts("")
-			} else if def := ui.DefaultAccountSearcher(); def != nil {
+			} else if def := db.DefaultAccountSearcher(); def != nil {
 				m.accounts, m.err = def.SearchAccounts("")
 			}
 			m.rebuildDisplayedAccounts()
@@ -497,7 +497,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Refresh list
 		if m.searcher != nil {
 			m.accounts, m.err = m.searcher.SearchAccounts("")
-		} else if def := ui.DefaultAccountSearcher(); def != nil {
+		} else if def := db.DefaultAccountSearcher(); def != nil {
 			m.accounts, m.err = def.SearchAccounts("")
 		}
 		m.rebuildDisplayedAccounts()
@@ -610,7 +610,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.status = i18n.T("accounts.status.toggle_success", accToToggle.String())
 					if m.searcher != nil {
 						m.accounts, m.err = m.searcher.SearchAccounts("")
-					} else if def := ui.DefaultAccountSearcher(); def != nil {
+					} else if def := db.DefaultAccountSearcher(); def != nil {
 						m.accounts, m.err = def.SearchAccounts("")
 					}
 					m.rebuildDisplayedAccounts()
@@ -1045,7 +1045,7 @@ func importTransferCmd(account model.Account) tea.Cmd {
 func (m *accountsModel) loadKeysForSelection() tea.Cmd {
 	return func() tea.Msg {
 		// Get global keys
-		km := ui.DefaultKeyManager()
+		km := db.DefaultKeyManager()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}

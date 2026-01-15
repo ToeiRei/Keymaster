@@ -17,7 +17,6 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // filterStyle was removed as it was unused; styles are created inline where needed.
@@ -71,7 +70,7 @@ func newAssignKeysModel() *assignKeysModel {
 		return m
 	}
 	// We also fetch all keys now, so we don't have to do it later.
-	km := ui.DefaultKeyManager()
+	km := db.DefaultKeyManager()
 	if km == nil {
 		m.err = fmt.Errorf("no key manager available")
 		return m
@@ -188,7 +187,7 @@ func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cm
 			m.hasInteracted = true
 
 			// Refresh the key list to ensure we have the latest data
-			km := ui.DefaultKeyManager()
+			km := db.DefaultKeyManager()
 			if km == nil {
 				m.err = fmt.Errorf("no key manager available")
 				return m, nil
@@ -287,7 +286,7 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if _, assigned := m.assignedKeys[selectedKey.ID]; assigned {
 				// Unassign
 				m.status = i18n.T("assign_keys.status.unassign_attempt", selectedKey.Comment)
-				km := ui.DefaultKeyManager()
+				km := db.DefaultKeyManager()
 				if km == nil {
 					m.err = fmt.Errorf("no key manager available")
 					m.status = i18n.T("assign_keys.status.unassign_error", m.err)
@@ -306,7 +305,7 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				// Assign
 				m.status = i18n.T("assign_keys.status.assign_attempt", selectedKey.Comment)
-				km := ui.DefaultKeyManager()
+				km := db.DefaultKeyManager()
 				if km == nil {
 					m.err = fmt.Errorf("no key manager available")
 					m.status = i18n.T("assign_keys.status.assign_error", m.err)

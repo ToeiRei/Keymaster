@@ -7,13 +7,13 @@ package tui
 import (
 	"fmt"
 
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/ui"
 )
 
 type tagsViewModel struct {
@@ -28,12 +28,12 @@ type tagsViewModel struct {
 	filter      string
 	isFiltering bool
 	err         error
-	searcher    ui.AccountSearcher
+	searcher    db.AccountSearcher
 }
 
 // newTagsViewModelWithSearcher constructs a tags view model and allows an
 // optional AccountSearcher to be provided for server-side operations.
-func newTagsViewModelWithSearcher(s ui.AccountSearcher) tagsViewModel {
+func newTagsViewModelWithSearcher(s db.AccountSearcher) tagsViewModel {
 	m := tagsViewModel{
 		expanded: make(map[string]bool),
 		searcher: s,
@@ -43,7 +43,7 @@ func newTagsViewModelWithSearcher(s ui.AccountSearcher) tagsViewModel {
 	var err error
 	if s != nil {
 		accounts, err = s.SearchAccounts("")
-	} else if def := ui.DefaultAccountSearcher(); def != nil {
+	} else if def := db.DefaultAccountSearcher(); def != nil {
 		accounts, err = def.SearchAccounts("")
 	}
 	if err != nil {

@@ -6,14 +6,13 @@ package tui
 
 import (
 	"github.com/toeirei/keymaster/internal/db"
-	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // package-level audit writer override for tui tests
-var auditWriter ui.AuditWriter
+var auditWriter db.AuditWriter
 
 // SetAuditWriter sets a package-level AuditWriter for tui components.
-func SetAuditWriter(w ui.AuditWriter) {
+func SetAuditWriter(w db.AuditWriter) {
 	auditWriter = w
 }
 

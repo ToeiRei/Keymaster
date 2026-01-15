@@ -17,6 +17,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	tuidbg "github.com/toeirei/keymaster/internal/tui/debug"
@@ -83,9 +84,9 @@ type mainModel struct {
 	height     int
 	err        error
 	// Injected searchers to propagate to sub-models for server-side search.
-	accountSearcher ui.AccountSearcher
-	keySearcher     ui.KeySearcher
-	auditSearcher   ui.AuditSearcher
+	accountSearcher db.AccountSearcher
+	keySearcher     db.KeySearcher
+	auditSearcher   db.AuditSearcher
 }
 
 // menuModel holds the state for the main menu.
@@ -105,7 +106,7 @@ type languageModel struct {
 // initialModelWithSearchers creates the starting state of the TUI while
 // allowing injection of searchers used by sub-models. Pass nil to use
 // package defaults.
-func initialModelWithSearchers(a ui.AccountSearcher, k ui.KeySearcher, au ui.AuditSearcher) mainModel {
+func initialModelWithSearchers(a db.AccountSearcher, k db.KeySearcher, au db.AuditSearcher) mainModel {
 	return mainModel{
 		state: menuView,
 		menu: menuModel{
@@ -128,7 +129,7 @@ func initialModelWithSearchers(a ui.AccountSearcher, k ui.KeySearcher, au ui.Aud
 }
 
 func initialModel() mainModel {
-	return initialModelWithSearchers(ui.DefaultAccountSearcher(), ui.DefaultKeySearcher(), ui.DefaultAuditSearcher())
+	return initialModelWithSearchers(db.DefaultAccountSearcher(), db.DefaultKeySearcher(), db.DefaultAuditSearcher())
 }
 
 // Init is the first function that will be called by the Bubble Tea runtime.

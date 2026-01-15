@@ -19,7 +19,6 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
-	"github.com/toeirei/keymaster/internal/ui"
 	"golang.org/x/term"
 )
 
@@ -75,13 +74,13 @@ type deployModel struct {
 	pendingCmd         tea.Cmd // Command to re-run after getting passphrase
 	wasFleetDeploy     bool    // Flag to remember if the last operation was a fleet deployment
 	width, height      int
-	searcher           ui.AccountSearcher
+	searcher           db.AccountSearcher
 }
 
 // newDeployModel creates a new model for the deployment view.
 // newDeployModelWithSearcher creates a deploy model and accepts an optional
 // AccountSearcher for server-side lookups.
-func newDeployModelWithSearcher(s ui.AccountSearcher) deployModel {
+func newDeployModelWithSearcher(s db.AccountSearcher) deployModel {
 	pi := newPassphraseInput()
 	fi := newFilenameInput()
 	m := deployModel{
@@ -402,7 +401,7 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.err = err
 					return m, nil
 				}
-				km := ui.DefaultKeyManager()
+				km := db.DefaultKeyManager()
 				if km == nil {
 					m.err = fmt.Errorf("no key manager available")
 					return m, nil

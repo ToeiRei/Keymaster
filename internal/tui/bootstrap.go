@@ -27,7 +27,6 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/ui"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -1204,7 +1203,7 @@ func (m *bootstrapModel) testConnection() tea.Cmd {
 // System keys are automatically deployed and should not be selectable.
 func (m *bootstrapModel) loadAvailableKeys() tea.Cmd {
 	return func() tea.Msg {
-		km := ui.DefaultKeyManager()
+		km := db.DefaultKeyManager()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}
