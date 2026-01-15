@@ -76,14 +76,14 @@ func (builtinDeployerManager) GetRemoteHostKey(host string) (string, error) {
 
 func (builtinDeployerManager) FetchAuthorizedKeys(account model.Account) ([]byte, error) {
 	// Use NewDeployerFactory hook which handles agent/passphrase.
-	var privateKey string
+	var privateKeySecret security.Secret
 	if account.Serial == 0 {
 		sk, err := db.GetActiveSystemKey()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get active system key: %w", err)
 		}
 		if sk != nil {
-			privateKey = sk.PrivateKey
+			privateKeySecret = db.SecretFromModelSystemKey(sk)
 		}
 	} else {
 		sk, err := db.GetSystemKeyBySerial(account.Serial)
@@ -93,7 +93,7 @@ func (builtinDeployerManager) FetchAuthorizedKeys(account model.Account) ([]byte
 		if sk == nil {
 			return nil, fmt.Errorf("no system key for serial %d", account.Serial)
 		}
-		privateKey = sk.PrivateKey
+		privateKeySecret = db.SecretFromModelSystemKey(sk)
 	}
 
 	passphrase := state.PasswordCache.Get()
@@ -103,8 +103,7 @@ func (builtinDeployerManager) FetchAuthorizedKeys(account model.Account) ([]byte
 		}
 	}()
 
-	skSecret := security.FromString(privateKey)
-	deployer, err := NewDeployerFactory(account.Hostname, account.Username, skSecret, passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, privateKeySecret, passphrase)
 	if err != nil {
 		return nil, err
 	}
