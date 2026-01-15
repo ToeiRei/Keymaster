@@ -249,11 +249,11 @@ func (m accountFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Update existing account
 					label := m.inputs[2].Value()
 					tags := m.inputs[3].Value()
-					if err := ui.UpdateAccountLabel(m.editingAccount.ID, label); err != nil {
+					if err := db.UpdateAccountLabel(m.editingAccount.ID, label); err != nil {
 						m.err = err
 						return m, nil
 					}
-					if err := ui.UpdateAccountTags(m.editingAccount.ID, tags); err != nil {
+					if err := db.UpdateAccountTags(m.editingAccount.ID, tags); err != nil {
 						m.err = err
 						return m, nil
 					}

@@ -52,11 +52,11 @@ func (coreAuditor) LogAction(action, details string) error {
 type coreSystemKeyStore struct{}
 
 func (coreSystemKeyStore) CreateSystemKey(publicKey, privateKey string) (int, error) {
-	return ui.CreateSystemKey(publicKey, privateKey)
+	return db.CreateSystemKey(publicKey, privateKey)
 }
 
 func (coreSystemKeyStore) RotateSystemKey(publicKey, privateKey string) (int, error) {
-	return ui.RotateSystemKey(publicKey, privateKey)
+	return db.RotateSystemKey(publicKey, privateKey)
 }
 
 // coreAccountStore adapts the UI account manager to core.AccountStore.
@@ -191,27 +191,27 @@ var deployAdapter = coreDeployAdapter{}
 type coreSessionStore struct{}
 
 func (coreSessionStore) SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error {
-	return ui.SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey, expiresAt, status)
+	return db.SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey, expiresAt, status)
 }
 
 func (coreSessionStore) GetBootstrapSession(id string) (*model.BootstrapSession, error) {
-	return ui.GetBootstrapSession(id)
+	return db.GetBootstrapSession(id)
 }
 
 func (coreSessionStore) DeleteBootstrapSession(id string) error {
-	return ui.DeleteBootstrapSession(id)
+	return db.DeleteBootstrapSession(id)
 }
 
 func (coreSessionStore) UpdateBootstrapSessionStatus(id string, status string) error {
-	return ui.UpdateBootstrapSessionStatus(id, status)
+	return db.UpdateBootstrapSessionStatus(id, status)
 }
 
 func (coreSessionStore) GetExpiredBootstrapSessions() ([]*model.BootstrapSession, error) {
-	return ui.GetExpiredBootstrapSessions()
+	return db.GetExpiredBootstrapSessions()
 }
 
 func (coreSessionStore) GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error) {
-	return ui.GetOrphanedBootstrapSessions()
+	return db.GetOrphanedBootstrapSessions()
 }
 
 // coreConfigSaver adapts package-level config persistence to a small adapter

@@ -169,7 +169,7 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// If this individual deployment succeeded, clear the dirty flag.
 			if res.err == nil {
-				_ = ui.UpdateAccountIsDirty(res.account.ID, false)
+				_ = db.UpdateAccountIsDirty(res.account.ID, false)
 			}
 
 			if len(m.fleetResults) == len(m.accountsInFleet) {
@@ -231,7 +231,7 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				// Clear is_dirty for the account on successful deploy
-				_ = ui.UpdateAccountIsDirty(m.selectedAccount.ID, false)
+				_ = db.UpdateAccountIsDirty(m.selectedAccount.ID, false)
 			}
 		}
 		// Don't process other input while deployment is running
@@ -546,7 +546,7 @@ func (m deployModel) updateShowAuthorizedKeys(msg tea.Msg) (tea.Model, tea.Cmd) 
 			return m, textinput.Blink
 		case "x":
 			// Clear the is_dirty flag for this account (user-confirmed).
-			if err := ui.UpdateAccountIsDirty(m.selectedAccount.ID, false); err != nil {
+			if err := db.UpdateAccountIsDirty(m.selectedAccount.ID, false); err != nil {
 				m.status = fmt.Sprintf("clear failed: %v", err)
 			} else {
 				m.status = i18n.T("deploy.status.cleared")
@@ -609,7 +609,7 @@ func (m deployModel) updateComplete(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "x":
 			// Allow user to clear the is_dirty flag from the completion screen.
-			if err := ui.UpdateAccountIsDirty(m.selectedAccount.ID, false); err != nil {
+			if err := db.UpdateAccountIsDirty(m.selectedAccount.ID, false); err != nil {
 				m.status = fmt.Sprintf("clear failed: %v", err)
 			} else {
 				m.status = i18n.T("deploy.status.cleared")

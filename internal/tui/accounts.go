@@ -603,7 +603,7 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "t":
 			if len(m.displayedAccounts) > 0 {
 				accToToggle := m.displayedAccounts[m.cursor]
-				if err := ui.ToggleAccountStatus(accToToggle.ID); err != nil {
+				if err := db.ToggleAccountStatus(accToToggle.ID); err != nil {
 					m.err = err
 				} else {
 					// Refresh the list after toggling.
@@ -974,7 +974,7 @@ func verifyHostKeyCmd(hostname string) tea.Cmd {
 		warning := sshkey.CheckHostKeyAlgorithm(pk)
 
 		// Store in DB via UI adapter.
-		err = ui.AddKnownHostKey(hostname, keyStr)
+		err = db.AddKnownHostKey(hostname, keyStr)
 		if err != nil {
 			return hostKeyVerifiedMsg{hostname: hostname, err: fmt.Errorf("failed to save key to database: %w", err), warning: warning}
 		}
