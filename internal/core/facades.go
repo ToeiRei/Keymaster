@@ -187,7 +187,7 @@ func WriteBackup(ctx context.Context, data *model.BackupData, w io.Writer) error
 	if err != nil {
 		return fmt.Errorf("create zstd writer: %w", err)
 	}
-	defer zw.Close()
+	defer func() { _ = zw.Close() }()
 	enc := json.NewEncoder(zw)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(data); err != nil {

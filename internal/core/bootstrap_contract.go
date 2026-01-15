@@ -202,7 +202,8 @@ func PerformBootstrapDeployment(ctx context.Context, params BootstrapParams, dep
 					return res, fmt.Errorf("failed to assign key %d: %w", kid, err)
 				}
 			} else {
-				// Not fatal: warn and continue
+				// Not fatal: warn and continue — record a warning so callers know assignment was skipped.
+				res.Warnings = append(res.Warnings, fmt.Sprintf("no AssignKey dependency; skipped assigning key %d", kid))
 			}
 		}
 	}
@@ -261,7 +262,9 @@ func PerformBootstrapDeployment(ctx context.Context, params BootstrapParams, dep
 
 	// Update or remove persisted bootstrap session state if a store was provided.
 	if params.HostKey != "" || params.TempPrivateKey != "" {
-		// noop - params contain keys but session lifecycle is controlled by SessionStore below.
+		// Intentional no-op; reference fields to avoid empty branch warnings.
+		_ = params.HostKey
+		_ = params.TempPrivateKey
 	}
 
 	if paramsTemp := params; paramsTemp.SessionID != "" {

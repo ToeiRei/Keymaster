@@ -25,7 +25,7 @@ func Launch() {
 	m := newTestModel()
 	if _, err := tea.NewProgram(&m).Run(); err != nil {
 		// On failure, print to stderr and exit non-zero to aid debugging.
-		os.Stderr.WriteString("test screen error: " + err.Error() + "\n")
+		_, _ = os.Stderr.WriteString("test screen error: " + err.Error() + "\n")
 		os.Exit(1)
 	}
 }

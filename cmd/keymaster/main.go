@@ -875,7 +875,7 @@ Example (Full Restore):
 		if err != nil {
 			log.Fatalf("%s", i18n.T("restore.cli_error_read", err))
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		if err := core.RunRestoreCmd(cmd.Context(), f, core.RestoreOptions{Full: fullRestore}, &cliStoreAdapter{}); err != nil {
 			log.Fatalf("%s", i18n.T("restore.cli_error_import", err))
 		}
@@ -946,7 +946,7 @@ Examples:
 		if err != nil {
 			log.Fatalf("%s", i18n.T("backup.cli_error_write", err))
 		}
-		defer outf.Close()
+		defer func() { _ = outf.Close() }()
 		if err := core.RunWriteBackupCmd(cmd.Context(), data, outf); err != nil {
 			log.Fatalf("%s", i18n.T("backup.cli_error_write", err))
 		}
