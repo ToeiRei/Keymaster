@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 
 	genssh "github.com/toeirei/keymaster/internal/crypto/ssh"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 // (nopReadWriteCloser removed; reuse helpers from other tests)
@@ -57,7 +58,7 @@ func TestNewDeployer_PrivateKeyFailsAgentSucceeds(t *testing.T) {
 	sshAgentGetter = func() agent.Agent { return keyring }
 
 	// 6) Call NewDeployerWithConfig — system key will fail, agent should succeed
-	d, err := NewDeployerWithConfig("example.com", "user", privPEM, nil, DefaultConnectionConfig(), false)
+	d, err := NewDeployerWithConfig("example.com", "user", security.FromString(privPEM), nil, DefaultConnectionConfig(), false)
 	if err != nil {
 		t.Fatalf("expected success via agent fallback, got error: %v", err)
 	}

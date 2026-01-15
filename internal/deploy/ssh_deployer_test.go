@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"golang.org/x/crypto/ssh"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 // mockSftp is a minimal sftpRaw implementation used in tests.
@@ -64,7 +65,7 @@ func TestNewDeployerWithExpectedHostKey_Success(t *testing.T) {
 		return &mockSftp{}, nil
 	}
 
-	d, err := NewBootstrapDeployerWithExpectedKey("example.com", "user", string(priv), strings.TrimSpace(string(ssh.MarshalAuthorizedKey(pk))))
+	d, err := NewBootstrapDeployerWithExpectedKey("example.com", "user", security.FromBytes(priv), strings.TrimSpace(string(ssh.MarshalAuthorizedKey(pk))))
 	if err != nil {
 		t.Fatalf("expected success, got error: %v", err)
 	}
@@ -104,7 +105,7 @@ func TestNewDeployerWithExpectedHostKey_Mismatch(t *testing.T) {
 		return &ssh.Client{}, nil
 	}
 
-	_, err = NewBootstrapDeployerWithExpectedKey("example.com", "user", string(priv), "ssh-ed25519 AAAA-invalid-key")
+	_, err = NewBootstrapDeployerWithExpectedKey("example.com", "user", security.FromBytes(priv), "ssh-ed25519 AAAA-invalid-key")
 	if err == nil {
 		t.Fatalf("expected error due to host key mismatch, got nil")
 	}

@@ -15,6 +15,7 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 
 	genssh "github.com/toeirei/keymaster/internal/crypto/ssh"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 // Success path when a valid unencrypted private key is provided.
@@ -34,7 +35,7 @@ func TestNewDeployer_PrivateKeySuccess(t *testing.T) {
 	}
 	newSftpClient = func(c sshClientIface) (sftpRaw, error) { return &mockSftp{}, nil }
 
-	d, err := NewDeployerWithConfig("example.com", "user", priv, nil, DefaultConnectionConfig(), false)
+	d, err := NewDeployerWithConfig("example.com", "user", security.FromString(priv), nil, DefaultConnectionConfig(), false)
 	if err != nil {
 		t.Fatalf("expected success, got error: %v", err)
 	}
@@ -61,7 +62,7 @@ func TestNewDeployer_SftpCreationFails(t *testing.T) {
 	}
 	newSftpClient = func(c sshClientIface) (sftpRaw, error) { return nil, fmt.Errorf("sftp init failed") }
 
-	_, err = NewDeployerWithConfig("example.com", "user", priv, nil, DefaultConnectionConfig(), false)
+	_, err = NewDeployerWithConfig("example.com", "user", security.FromString(priv), nil, DefaultConnectionConfig(), false)
 	if err == nil || !strings.Contains(err.Error(), "failed to create sftp client") {
 		t.Fatalf("expected sftp creation error, got: %v", err)
 	}
@@ -89,7 +90,7 @@ func TestNewDeployer_HostKeyMismatchClassified(t *testing.T) {
 		return nil, fmt.Errorf("!!! HOST KEY MISMATCH FOR example.com !!!")
 	}
 
-	_, err := NewDeployerWithConfig("example.com", "user", "", nil, DefaultConnectionConfig(), false)
+	_, err := NewDeployerWithConfig("example.com", "user", security.FromString(""), nil, DefaultConnectionConfig(), false)
 	if err == nil {
 		t.Fatalf("expected error but got nil")
 	}

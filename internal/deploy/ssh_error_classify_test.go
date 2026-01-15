@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 // Test that when sshDial fails with a timeout-like error while using the agent,
@@ -28,7 +29,7 @@ func TestNewDeployer_AgentConnectionTimeoutClassified(t *testing.T) {
 		return nil, fmt.Errorf("i/o timeout")
 	}
 
-	_, err := NewDeployerWithConfig("example.com", "user", "", nil, DefaultConnectionConfig(), false)
+	_, err := NewDeployerWithConfig("example.com", "user", security.FromString(""), nil, DefaultConnectionConfig(), false)
 	if err == nil {
 		t.Fatalf("expected error but got nil")
 	}
@@ -50,7 +51,7 @@ func TestNewDeployer_AgentAuthClassified(t *testing.T) {
 		return nil, fmt.Errorf("permission denied")
 	}
 
-	_, err := NewDeployerWithConfig("example.com", "user", "", nil, DefaultConnectionConfig(), false)
+	_, err := NewDeployerWithConfig("example.com", "user", security.FromString(""), nil, DefaultConnectionConfig(), false)
 	if err == nil {
 		t.Fatalf("expected error but got nil")
 	}

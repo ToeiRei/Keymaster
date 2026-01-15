@@ -11,6 +11,7 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 
 	genssh "github.com/toeirei/keymaster/internal/crypto/ssh"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 func TestNewDeployer_NoAgentAvailable(t *testing.T) {
@@ -20,7 +21,7 @@ func TestNewDeployer_NoAgentAvailable(t *testing.T) {
 	// Simulate no ssh agent present
 	sshAgentGetter = func() agent.Agent { return nil }
 
-	_, err := NewDeployerWithConfig("example.com", "user", "", nil, DefaultConnectionConfig(), false)
+	_, err := NewDeployerWithConfig("example.com", "user", security.FromString(""), nil, DefaultConnectionConfig(), false)
 	if err == nil || !strings.Contains(err.Error(), "no authentication method available") {
 		t.Fatalf("expected no authentication method error, got: %v", err)
 	}
@@ -33,7 +34,7 @@ func TestNewDeployer_EncryptedPrivateKeyRequiresPassphrase(t *testing.T) {
 		t.Fatalf("failed to generate key: %v", err)
 	}
 
-	_, err = NewDeployerWithConfig("example.com", "user", priv, nil, DefaultConnectionConfig(), false)
+	_, err = NewDeployerWithConfig("example.com", "user", security.FromString(priv), nil, DefaultConnectionConfig(), false)
 	if err != ErrPassphraseRequired {
 		t.Fatalf("expected ErrPassphraseRequired, got: %v", err)
 	}
