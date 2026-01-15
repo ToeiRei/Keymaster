@@ -23,4 +23,3 @@ func TestContainsIgnoreCase(t *testing.T) {
 		}
 	}
 }
-

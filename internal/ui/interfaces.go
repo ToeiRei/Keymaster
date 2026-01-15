@@ -20,4 +20,3 @@ type KeySearcher interface {
 type AuditSearcher interface {
 	GetAllAuditLogEntries() ([]model.AuditLogEntry, error)
 }
-

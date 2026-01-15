@@ -32,4 +32,3 @@ func (f *FakeSSHClient) Close() error {
 func NewFakeSSHClient() sshClientIface {
 	return &FakeSSHClient{}
 }
-

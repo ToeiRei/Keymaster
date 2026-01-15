@@ -498,4 +498,3 @@ func (m *accountFormModel) applySuggestion() {
 	m.inputs[3].SetValue(newValue)
 	m.inputs[3].SetCursor(len(newValue))
 }
-

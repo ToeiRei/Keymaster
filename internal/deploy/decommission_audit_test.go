@@ -62,4 +62,3 @@ func TestDecommissionAccount_LogsAuditActions(t *testing.T) {
 		t.Fatalf("unexpected final audit action: %s", last)
 	}
 }
-

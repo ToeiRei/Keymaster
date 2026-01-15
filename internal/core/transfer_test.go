@@ -74,4 +74,3 @@ func TestAcceptTransferPackage_CRCMismatch(t *testing.T) {
 		t.Fatalf("expected CRC mismatch error, got nil")
 	}
 }
-

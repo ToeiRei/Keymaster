@@ -22,4 +22,3 @@ func PerformDecommissionWithKeys(account model.Account, selectedKeysToKeep map[i
 	}
 	return decommander(account, selectedKeysToKeep)
 }
-

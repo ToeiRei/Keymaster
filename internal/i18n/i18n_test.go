@@ -50,4 +50,3 @@ func TestT_BasicAndFormatting(t *testing.T) {
 		t.Fatalf("expected German 'Alle', got %q", got)
 	}
 }
-

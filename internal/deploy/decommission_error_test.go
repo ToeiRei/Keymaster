@@ -99,4 +99,3 @@ func TestRemoveSelectiveKeymasterContent_RemoveSystemKeyOnly(t *testing.T) {
 		t.Fatalf("expected user key 'k-remains' to remain, but it was removed")
 	}
 }
-

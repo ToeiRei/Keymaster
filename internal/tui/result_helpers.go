@@ -29,4 +29,3 @@ func renderResultBlock(primary string, warnings []string, err error) string {
 	}
 	return strings.Join(parts, "\n")
 }
-

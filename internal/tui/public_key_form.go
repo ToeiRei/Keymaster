@@ -201,4 +201,3 @@ func (m publicKeyFormModel) View() string {
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, "\n", mainArea, "\n", helpLine)
 }
-

@@ -31,4 +31,3 @@ func DeployList(dm DeployerManager, accounts []model.Account) []DeployResult {
 	}
 	return results
 }
-

@@ -260,4 +260,3 @@ func (s *SqliteStore) ImportDataFromBackup(backup *model.BackupData) error {
 func (s *SqliteStore) IntegrateDataFromBackup(backup *model.BackupData) error {
 	return IntegrateDataFromBackupBun(s.bun, backup)
 }
-

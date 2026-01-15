@@ -81,4 +81,3 @@ func TestGetConfigPathFromCli_WithValidFile(t *testing.T) {
 		t.Fatalf("expected path %s, got %v", file.Name(), p)
 	}
 }
-

@@ -31,4 +31,3 @@ func TestFilterKeys(t *testing.T) {
 		t.Fatalf("expected all keys when query empty, got %d", len(res))
 	}
 }
-

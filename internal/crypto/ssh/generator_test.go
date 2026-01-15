@@ -121,4 +121,3 @@ func TestFingerprintSHA256(t *testing.T) {
 		t.Fatal("expected non-empty fingerprint")
 	}
 }
-

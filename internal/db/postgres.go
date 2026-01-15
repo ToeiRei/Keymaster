@@ -222,4 +222,3 @@ func (s *PostgresStore) ImportDataFromBackup(backup *model.BackupData) error {
 func (s *PostgresStore) IntegrateDataFromBackup(backup *model.BackupData) error {
 	return IntegrateDataFromBackupBun(s.bun, backup)
 }
-

@@ -58,4 +58,3 @@ func TestFormUsesTagSuggester_SuggestUsed(t *testing.T) {
 		t.Fatalf("expected suggestion from mock suggester, got: %v", mp.suggestions)
 	}
 }
-

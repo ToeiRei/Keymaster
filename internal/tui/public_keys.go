@@ -693,4 +693,3 @@ func (m *publicKeysModel) viewUsageReport() string {
 	b.WriteString(helpStyle.Render("\n" + i18n.T("public_keys.usage_report.help")))
 	return b.String()
 }
-

@@ -584,4 +584,3 @@ func performAuditCmd(account model.Account, mode auditModeType) tea.Cmd {
 		return auditResultMsg{account: account, err: err}
 	}
 }
-

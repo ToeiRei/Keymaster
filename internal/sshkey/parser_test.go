@@ -98,4 +98,3 @@ func TestCheckHostKeyAlgorithm_FromTestKeys(t *testing.T) {
 		}
 	}
 }
-

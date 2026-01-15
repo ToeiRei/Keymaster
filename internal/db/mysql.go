@@ -217,4 +217,3 @@ func (s *MySQLStore) ImportDataFromBackup(backup *model.BackupData) error {
 func (s *MySQLStore) IntegrateDataFromBackup(backup *model.BackupData) error {
 	return IntegrateDataFromBackupBun(s.bun, backup)
 }
-

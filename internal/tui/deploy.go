@@ -912,4 +912,3 @@ func performDeploymentCmd(account model.Account) tea.Cmd {
 
 // startFilteringMsg is a message to trigger filter mode in the deploy single account view.
 type startFilteringMsg struct{}
-

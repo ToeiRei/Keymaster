@@ -41,4 +41,3 @@ func TestBuildAccountsByTagAndUniqueTags(t *testing.T) {
 }
 
 // Validation already tested in validation_test.go
-

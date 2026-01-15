@@ -112,4 +112,3 @@ func ImportRemoteKeys(account model.Account) (importedKeys []model.PublicKey, sk
 
 	return importedKeys, skippedCount, warning, nil
 }
-

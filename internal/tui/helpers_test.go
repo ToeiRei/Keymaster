@@ -109,4 +109,3 @@ func TestBoolToYesNo_Localized(t *testing.T) {
 		t.Fatalf("expected localized value in de for true")
 	}
 }
-

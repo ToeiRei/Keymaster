@@ -304,4 +304,3 @@ func FilterKeysForBootstrap(allKeys []model.PublicKey, systemKeyData string) (us
 
 // Pure helpers for authorized_keys generation live in internal/keys to avoid
 // import cycles with the deploy package. See internal/keys for builders.
-

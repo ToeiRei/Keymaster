@@ -30,4 +30,3 @@ func CreateTransferBootstrap(username, hostname, label, tags string) (sessionID 
 	// Return session id and private key PEM for out-of-band transfer.
 	return s.ID, string(s.TempKeyPair.GetPrivateKeyPEM()), nil
 }
-

@@ -38,4 +38,3 @@ func MarshalEd25519PrivateKey(key ed25519.PrivateKey, comment string) (*pem.Bloc
 	}
 	return pemBlock, nil
 }
-

@@ -81,4 +81,3 @@ func TestAuditAccountStrict_DriftDetected(t *testing.T) {
 }
 
 // bytesFromString is provided by testhelpers_test.go
-

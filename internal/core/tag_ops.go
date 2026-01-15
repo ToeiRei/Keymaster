@@ -69,4 +69,3 @@ func joinTags(parts []string) string {
 	}
 	return strings.Join(parts, ", ")
 }
-

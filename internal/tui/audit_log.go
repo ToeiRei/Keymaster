@@ -316,4 +316,3 @@ func (m *auditLogModel) renderAuditLogTable() string {
 	}
 	return out.String()
 }
-

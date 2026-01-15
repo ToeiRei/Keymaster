@@ -24,4 +24,3 @@ func (f *fakeDeployer) Close()                                    {}
 
 // bytesFromString is a small helper used by tests to create buffers.
 func bytesFromString(s string) *bytes.Buffer { return testutil.BytesFromString(s) }
-

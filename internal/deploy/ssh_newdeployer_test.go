@@ -97,4 +97,3 @@ func TestGetRemoteHostKey_Default(t *testing.T) {
 		t.Fatalf("retrieved key does not match expected key")
 	}
 }
-

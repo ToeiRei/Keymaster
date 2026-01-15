@@ -106,4 +106,3 @@ func BuildDashboardData(accounts AccountReader, keys KeyReader, audits AuditRead
 
 	return out, nil
 }
-

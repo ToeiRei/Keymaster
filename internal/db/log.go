@@ -22,4 +22,3 @@ func dbLogf(format string, v ...any) {
 		log.Debug(fmt.Sprintf(format, v...))
 	}
 }
-

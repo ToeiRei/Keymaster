@@ -414,4 +414,3 @@ func SetDefaultAuditWriter(w AuditWriter) {
 func ClearDefaultAuditWriter() {
 	defaultAuditWriter = nil
 }
-

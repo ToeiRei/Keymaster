@@ -64,4 +64,3 @@ func TestPerformDecommissionWithKeys_Delegates(t *testing.T) {
 		t.Fatalf("unexpected result account id: %d", res.AccountID)
 	}
 }
-

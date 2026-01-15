@@ -493,4 +493,3 @@ func (m *assignKeysModel) View() string {
 
 	return lipgloss.JoinVertical(lipgloss.Top, header, mainArea, footer)
 }
-

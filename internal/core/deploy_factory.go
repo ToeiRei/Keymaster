@@ -36,4 +36,3 @@ var CanonicalizeHostPort = func(host string) string { return host }
 var ParseHostPort = func(host string) (string, string, error) { return host, "", nil }
 var GetRemoteHostKey = func(host string) (string, error) { return "", fmt.Errorf("host key fetcher not configured") }
 var IsPassphraseRequired = func(err error) bool { return false }
-

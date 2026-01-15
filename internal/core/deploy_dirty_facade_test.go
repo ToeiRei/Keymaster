@@ -82,4 +82,3 @@ func TestDeployDirtyAccounts_ClearsOnSuccess(t *testing.T) {
 		t.Fatalf("expected 2 cleared flags, got %d", len(st.cleared))
 	}
 }
-

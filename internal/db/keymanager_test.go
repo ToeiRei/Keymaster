@@ -104,4 +104,3 @@ func TestKeyManager_AssignUnassign_Audit(t *testing.T) {
 		t.Fatalf("expected 1 key after duplicate assign; got %d", len(keysDup))
 	}
 }
-

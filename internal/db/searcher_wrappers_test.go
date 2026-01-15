@@ -209,4 +209,3 @@ func TestDefaultWrappers_WithStore(t *testing.T) {
 		t.Fatal("expected DefaultAuditWriter to return non-nil when store set")
 	}
 }
-

@@ -55,4 +55,3 @@ var debugCmd = &cobra.Command{
 		log.Info("--- END DEBUG ---")
 	},
 }
-

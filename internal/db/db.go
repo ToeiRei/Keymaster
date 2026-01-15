@@ -553,4 +553,3 @@ func ImportDataFromBackup(backup *model.BackupData) error {
 func IntegrateDataFromBackup(backup *model.BackupData) error {
 	return store.IntegrateDataFromBackup(backup)
 }
-

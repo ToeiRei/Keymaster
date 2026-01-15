@@ -79,4 +79,3 @@ func TestTransferCLI_CreateAndAccept(t *testing.T) {
 		t.Fatalf("expected account cliuser@example.local in DB")
 	}
 }
-

@@ -76,4 +76,3 @@ func TestSSHKeyTypeToVerifyCommand(t *testing.T) {
 		}
 	}
 }
-

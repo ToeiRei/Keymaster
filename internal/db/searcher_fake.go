@@ -18,4 +18,3 @@ type FakeAuditSearcher = testutil.FakeAuditSearcher
 type FakeAuditWriter = testutil.FakeAuditWriter
 type FakeAccountManager = testutil.FakeAccountManager
 type FakeKeyManager = testutil.FakeKeyManager
-

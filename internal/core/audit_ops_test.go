@@ -24,4 +24,3 @@ func TestAuditActionRisk(t *testing.T) {
 		}
 	}
 }
-

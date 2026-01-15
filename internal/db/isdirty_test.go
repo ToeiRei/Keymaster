@@ -165,4 +165,3 @@ func TestIsDirtyFlags(t *testing.T) {
 		}
 	})
 }
-

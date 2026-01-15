@@ -26,4 +26,3 @@ func TestCreateBunDB_VariousDialects(t *testing.T) {
 		}
 	}
 }
-

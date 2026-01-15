@@ -109,4 +109,3 @@ func TestNewDeployerWithExpectedHostKey_Mismatch(t *testing.T) {
 		t.Fatalf("expected error due to host key mismatch, got nil")
 	}
 }
-

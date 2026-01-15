@@ -130,4 +130,3 @@ func T(messageID string, templateData ...interface{}) string {
 
 	return msg
 }
-

@@ -266,4 +266,3 @@ func extractNonKeymasterContent(content string) string {
 
 	return strings.Join(result, "\n")
 }
-

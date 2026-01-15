@@ -243,4 +243,3 @@ func splitUserHost(s string) []string {
 	}
 	return nil
 }
-

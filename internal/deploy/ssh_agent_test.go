@@ -38,4 +38,3 @@ func TestNewDeployer_EncryptedPrivateKeyRequiresPassphrase(t *testing.T) {
 		t.Fatalf("expected ErrPassphraseRequired, got: %v", err)
 	}
 }
-

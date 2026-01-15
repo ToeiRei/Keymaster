@@ -60,4 +60,3 @@ func StatusBar(left, right string, width int) string {
 	const revOff = "\x1b[0m"
 	return revOn + line + revOff
 }
-

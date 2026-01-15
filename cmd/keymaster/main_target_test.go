@@ -55,4 +55,3 @@ func TestRunParallelTasks_EmptyAccounts_PrintsNoAccounts(t *testing.T) {
 		t.Fatalf("expected output to contain %q, got %q", expected, out)
 	}
 }
-

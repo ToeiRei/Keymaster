@@ -32,4 +32,3 @@ func SetAccountsIsDirtyByID(accounts []model.Account, ids map[int]struct{}, dirt
 	}
 	return out
 }
-

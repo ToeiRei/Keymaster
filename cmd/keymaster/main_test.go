@@ -554,4 +554,3 @@ func TestExportSSHConfigCmd(t *testing.T) {
 		}
 	})
 }
-

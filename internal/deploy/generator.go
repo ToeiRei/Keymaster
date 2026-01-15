@@ -185,4 +185,3 @@ func GenerateSelectiveKeysContent(accountID int, serial int, excludeKeyIDs []int
 
 	return content.String(), nil
 }
-

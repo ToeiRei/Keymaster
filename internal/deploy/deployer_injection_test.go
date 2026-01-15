@@ -54,4 +54,3 @@ func TestRunDeploymentWithInjectedDeployer(t *testing.T) {
 		t.Fatalf("authorized_keys did not include system key: %q", fake.seen)
 	}
 }
-

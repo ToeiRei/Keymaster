@@ -123,4 +123,3 @@ func DefaultAuditWriter() AuditWriter {
 	}
 	return nil
 }
-

@@ -316,4 +316,3 @@ func (dp *DatePicker) renderButtons() string {
 
 	return lipgloss.JoinHorizontal(lipgloss.Center, okBtn, "  ", cancelBtn)
 }
-

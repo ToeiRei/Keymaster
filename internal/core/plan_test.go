@@ -39,4 +39,3 @@ func TestBuildBootstrapDeploymentPlan_Basic(t *testing.T) {
 		t.Fatalf("expected authorized keys content, got empty string")
 	}
 }
-

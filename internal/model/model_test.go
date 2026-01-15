@@ -25,4 +25,3 @@ func TestPublicKeyString(t *testing.T) {
 		t.Errorf("unexpected PublicKey.String(): got %q want %q", got, want)
 	}
 }
-

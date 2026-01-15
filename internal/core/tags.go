@@ -62,4 +62,3 @@ func UniqueTags(accounts []model.Account) []string {
 	}
 	return out
 }
-

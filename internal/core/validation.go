@@ -21,4 +21,3 @@ func ValidateBootstrapParams(username, hostname, label, tags string) error {
 	}
 	return nil
 }
-

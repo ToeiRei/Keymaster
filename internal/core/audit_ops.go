@@ -32,4 +32,3 @@ func AuditActionRisk(action string) string {
 		return "info"
 	}
 }
-

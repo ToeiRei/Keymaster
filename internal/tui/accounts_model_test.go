@@ -54,4 +54,3 @@ func TestListContentView_CursorIndicatorAndEntries(t *testing.T) {
 		t.Fatalf("expected both alice and bob in output, got: %q", out)
 	}
 }
-

@@ -265,4 +265,3 @@ func Save() error {
 	// Write the structured config to the user-specific file.
 	return WriteConfigFile(&currentConfig, false)
 }
-

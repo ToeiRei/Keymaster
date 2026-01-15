@@ -23,4 +23,3 @@ func TokenizeSearchQuery(q string) []string {
 	}
 	return out
 }
-

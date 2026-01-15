@@ -31,4 +31,3 @@ type KnownHost struct {
 	Hostname string `json:"hostname"`
 	Key      string `json:"key"`
 }
-

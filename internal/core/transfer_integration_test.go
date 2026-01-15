@@ -69,4 +69,3 @@ func TestCoreTransfer_EndToEnd(t *testing.T) {
 		t.Fatalf("expected account alice@example.test in DB")
 	}
 }
-

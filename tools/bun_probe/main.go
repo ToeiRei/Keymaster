@@ -14,4 +14,3 @@ func main() {
 	// `tools_probe` build tag. Keeps the tools package parseable.
 	fmt.Println("bun_probe: noop")
 }
-

@@ -108,4 +108,3 @@ func TestInstallSignalHandlerIdempotent(t *testing.T) {
 		t.Fatal("expected signal handler to be installed")
 	}
 }
-

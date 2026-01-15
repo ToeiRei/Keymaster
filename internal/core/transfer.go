@@ -132,4 +132,3 @@ func AcceptTransferPackage(ctx context.Context, pkgBytes []byte, deps BootstrapD
 
 	return PerformBootstrapDeployment(ctx, params, deps)
 }
-

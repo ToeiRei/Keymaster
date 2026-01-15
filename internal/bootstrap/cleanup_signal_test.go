@@ -57,4 +57,3 @@ func TestCleanupSession_LogsStructuredAudit(t *testing.T) {
 		t.Fatalf("unexpected audit details: %s", details)
 	}
 }
-

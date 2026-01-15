@@ -464,4 +464,3 @@ func IsDBInitialized() bool {
 func InitDB(dbType, dsn string) error {
 	return db.InitDB(dbType, dsn)
 }
-

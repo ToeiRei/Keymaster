@@ -56,4 +56,3 @@ func TestDirtyAccountsAndDeployList(t *testing.T) {
 		t.Fatalf("deploy called for unexpected ids: %v", f.called)
 	}
 }
-

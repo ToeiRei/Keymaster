@@ -462,4 +462,3 @@ func TestDeployAuthorizedKeys_ChmodFailAndRenameRecover(t *testing.T) {
 		t.Fatalf("expected DeployAuthorizedKeys to fail due to rename error")
 	}
 }
-

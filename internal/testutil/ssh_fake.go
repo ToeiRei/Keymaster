@@ -29,4 +29,3 @@ func (f *FakeSSHClient) Close() error {
 func NewFakeSSHClient() *FakeSSHClient {
 	return &FakeSSHClient{}
 }
-

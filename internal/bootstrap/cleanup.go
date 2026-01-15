@@ -393,4 +393,3 @@ func cleanupExpiredSessionModel(session *model.BootstrapSession) error {
 
 	return nil
 }
-

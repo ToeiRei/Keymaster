@@ -62,4 +62,3 @@ func (p *passwordMailbox) Clear() {
 	}
 	p.value = nil
 }
-

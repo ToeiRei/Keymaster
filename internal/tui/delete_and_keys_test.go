@@ -93,4 +93,3 @@ func TestKeySelection_NavigationAndButtons(t *testing.T) {
 		t.Fatalf("expected isConfirmingDelete false after cancel")
 	}
 }
-

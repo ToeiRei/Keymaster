@@ -179,4 +179,3 @@ func (p *Pane) View() string {
 	}
 	return b.String()
 }
-

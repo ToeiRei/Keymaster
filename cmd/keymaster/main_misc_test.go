@@ -84,4 +84,3 @@ func TestWriteAndReadCompressedBackup_RoundTrip(t *testing.T) {
 		t.Fatalf("unexpected backup roundtrip result: %+v", got)
 	}
 }
-

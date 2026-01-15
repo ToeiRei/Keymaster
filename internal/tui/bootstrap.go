@@ -1351,4 +1351,3 @@ func (m *bootstrapModel) advanceStep() (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
-

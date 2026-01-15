@@ -77,4 +77,3 @@ func TestEnsureCursorInView(t *testing.T) {
 		t.Fatalf("expected unchanged yOffset 0, got %d", got)
 	}
 }
-

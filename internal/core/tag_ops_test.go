@@ -72,4 +72,3 @@ func TestSuggestTagsAndApplySuggestion(t *testing.T) {
 		t.Fatalf("ApplySuggestion empty unexpected: %q", out)
 	}
 }
-

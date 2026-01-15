@@ -90,4 +90,3 @@ func TestCoreKeyStore_WithFakeKeyManager(t *testing.T) {
 		t.Fatalf("Assign returned error: %v", err)
 	}
 }
-

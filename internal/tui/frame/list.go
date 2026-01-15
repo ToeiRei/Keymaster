@@ -89,4 +89,3 @@ func (l *ListView) Render() string {
 	}
 	return b.String()
 }
-

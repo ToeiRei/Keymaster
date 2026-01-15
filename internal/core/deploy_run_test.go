@@ -102,4 +102,3 @@ func TestRunDeploymentForAccount_ConnectionError(t *testing.T) {
 		t.Fatalf("expected connection error, got nil")
 	}
 }
-

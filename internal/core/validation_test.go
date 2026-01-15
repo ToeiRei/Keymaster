@@ -28,4 +28,3 @@ func TestValidateBootstrapParams(t *testing.T) {
 		})
 	}
 }
-

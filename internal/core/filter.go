@@ -50,4 +50,3 @@ func FilterKeys(keys []model.PublicKey, query string) []model.PublicKey {
 	}
 	return out
 }
-

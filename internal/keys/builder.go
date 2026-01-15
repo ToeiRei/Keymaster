@@ -105,4 +105,3 @@ func SSHKeyTypeToVerifyCommand(keyType string) string {
 		return "ssh-keygen -lf /etc/ssh/ssh_host_*_key.pub"
 	}
 }
-

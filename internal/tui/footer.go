@@ -17,4 +17,3 @@ func AlignFooter(left, right string, width int) string {
 	}
 	return left + strings.Repeat(" ", spaces) + right
 }
-

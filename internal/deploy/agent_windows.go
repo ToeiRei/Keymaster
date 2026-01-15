@@ -45,4 +45,3 @@ func getSSHAgent() agent.Agent {
 
 	return nil
 }
-

@@ -10,4 +10,3 @@ package tui
 
 // No production helpers remain here; tests live in _test.go files under
 // the same package.
-

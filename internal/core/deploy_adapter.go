@@ -126,4 +126,3 @@ func (builtinDeployerManager) IsPassphraseRequired(err error) bool {
 
 // DefaultDeployerManager is the production implementation used by UIs.
 var DefaultDeployerManager DeployerManager = builtinDeployerManager{}
-

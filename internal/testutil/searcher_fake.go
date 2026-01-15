@@ -221,4 +221,3 @@ func (f *FakeKeyManager) SetPublicKeyExpiry(id int, expiresAt time.Time) error {
 	f.Calls = append(f.Calls, [3]string{"SetPublicKeyExpiry", strconv.Itoa(id), expiresAt.UTC().Format(time.RFC3339)})
 	return nil
 }
-

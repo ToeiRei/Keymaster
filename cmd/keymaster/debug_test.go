@@ -35,4 +35,3 @@ func TestDebugAddAccount(t *testing.T) {
 		fmt.Printf("acct: %+v\n", a)
 	}
 }
-

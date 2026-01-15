@@ -47,4 +47,3 @@ func BuildBootstrapDeploymentPlan(params BootstrapParams, systemKey *model.Syste
 
 	return plan, nil
 }
-

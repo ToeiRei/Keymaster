@@ -47,4 +47,3 @@ func GenerateAndMarshalEd25519Key(comment string, passphrase string) (publicKeyS
 	privateKeyString = string(pem.EncodeToMemory(pemBlock))
 	return publicKeyString, privateKeyString, nil
 }
-

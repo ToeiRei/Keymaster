@@ -87,4 +87,3 @@ var (
 				Foreground(colorWhite).
 				Background(colorHighlight)
 )
-

@@ -500,4 +500,3 @@ func (m testModel) renderHorizontalSeparator() string {
 	line += " "
 	return style.Render(line)
 }
-

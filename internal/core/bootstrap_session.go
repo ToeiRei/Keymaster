@@ -49,4 +49,3 @@ func CancelBootstrapSession(store SessionStore, sessionID string) error {
 	}
 	return store.DeleteBootstrapSession(sessionID)
 }
-

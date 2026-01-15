@@ -146,4 +146,3 @@ func TestPublicKeys_List_Toggle_Search_Delete_Assignments(t *testing.T) {
 		}
 	})
 }
-

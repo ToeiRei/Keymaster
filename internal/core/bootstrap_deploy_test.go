@@ -147,4 +147,3 @@ func TestPerformBootstrapDeployment_DeployFailUpdatesSession(t *testing.T) {
 		t.Fatalf("did not expect session status update on early return; got %q", updated)
 	}
 }
-

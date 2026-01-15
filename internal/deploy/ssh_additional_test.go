@@ -36,4 +36,3 @@ func TestGetAuthorizedKeys_OpenError(t *testing.T) {
 		t.Fatalf("expected GetAuthorizedKeys to fail when file missing")
 	}
 }
-

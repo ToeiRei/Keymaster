@@ -391,4 +391,3 @@ func BulkDecommissionAccounts(accounts []model.Account, systemKey string, option
 
 	return results
 }
-

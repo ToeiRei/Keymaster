@@ -209,4 +209,3 @@ func (m tagsViewModel) View() string {
 
 	return lipgloss.JoinVertical(lipgloss.Left, title, "", listPane, "", helpLine)
 }
-

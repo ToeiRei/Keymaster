@@ -106,4 +106,3 @@ func TestManyViews_RenderNonEmpty(t *testing.T) {
 	var af accountFormModel
 	_ = af.View() // acceptable but ensure no panic
 }
-

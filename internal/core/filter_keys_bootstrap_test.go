@@ -35,4 +35,3 @@ func TestFilterKeysForBootstrap(t *testing.T) {
 		t.Fatalf("expected global id 3, got %v", global2)
 	}
 }
-

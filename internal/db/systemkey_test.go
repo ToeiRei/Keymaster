@@ -87,4 +87,3 @@ func TestSystemKey_CreateRotateAndActive(t *testing.T) {
 		t.Fatalf("expected to find system key for serial %d", s2)
 	}
 }
-

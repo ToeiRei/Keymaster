@@ -67,4 +67,3 @@ func TestBuildDashboardData(t *testing.T) {
 		t.Fatalf("unexpected recent logs")
 	}
 }
-

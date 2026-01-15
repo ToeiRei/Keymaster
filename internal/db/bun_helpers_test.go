@@ -59,4 +59,3 @@ func TestBeginTx_WithTx_IsInitialized_GetAllAuditLogEntries(t *testing.T) {
 		}
 	})
 }
-

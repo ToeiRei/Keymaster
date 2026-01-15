@@ -111,4 +111,3 @@ func TestAssignKeys_AssignAndUnassign(t *testing.T) {
 		t.Fatalf("expected no keys assigned after unassign, got: %v", assigned)
 	}
 }
-

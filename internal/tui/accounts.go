@@ -1139,4 +1139,3 @@ type keySelectionLoadedMsg struct {
 type decommissionCompletedMsg struct {
 	result core.DecommissionResult
 }
-

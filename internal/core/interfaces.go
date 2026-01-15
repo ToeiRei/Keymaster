@@ -148,4 +148,3 @@ type BackupStore interface {
 	WriteBackup(ctx context.Context, w io.Writer, data *model.BackupData) error
 	ReadBackup(ctx context.Context, r io.Reader) (*model.BackupData, error)
 }
-

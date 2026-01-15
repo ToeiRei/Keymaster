@@ -60,4 +60,3 @@ func TestRunDeploymentForAccount_Success(t *testing.T) {
 		t.Fatalf("injected runDeploymentFunc was not called")
 	}
 }
-

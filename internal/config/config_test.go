@@ -236,4 +236,3 @@ func TestGetConfigPath(t *testing.T) {
 		})
 	}
 }
-

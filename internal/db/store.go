@@ -71,4 +71,3 @@ type Store interface {
 	// BunDB exposes the underlying *bun.DB for advanced operations or diagnostics.
 	BunDB() *bun.DB
 }
-

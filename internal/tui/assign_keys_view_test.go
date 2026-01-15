@@ -57,4 +57,3 @@ func TestAssignKeys_KeyFilteringAndCheckedMarks(t *testing.T) {
 		t.Fatalf("expected only global key after filter, got: %v", fk)
 	}
 }
-

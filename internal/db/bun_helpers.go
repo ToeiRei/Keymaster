@@ -45,4 +45,3 @@ func WithTx(ctx context.Context, db *bun.DB, fn func(ctx context.Context, tx bun
 	}
 	return tx.Commit()
 }
-

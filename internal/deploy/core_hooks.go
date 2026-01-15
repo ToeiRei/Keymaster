@@ -52,4 +52,3 @@ func (a *deployAdapter) DeployAuthorizedKeys(content string) error {
 }
 func (a *deployAdapter) GetAuthorizedKeys() ([]byte, error) { return a.inner.GetAuthorizedKeys() }
 func (a *deployAdapter) Close()                             { a.inner.Close() }
-

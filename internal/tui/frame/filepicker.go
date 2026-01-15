@@ -459,4 +459,3 @@ func (fp *FilePicker) renderInfoBar() string {
 	info := "Selected: " + selected + " | j/k navigate | enter select | u go up"
 	return infoStyle.Render(info)
 }
-

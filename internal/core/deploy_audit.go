@@ -123,4 +123,3 @@ func AuditAccountSerial(account model.Account) error {
 	}
 	return nil
 }
-

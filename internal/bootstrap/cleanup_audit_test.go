@@ -56,4 +56,3 @@ func TestCleanupOrphanedSession_LogsAudit(t *testing.T) {
 		t.Fatalf("expected session deleted, still present")
 	}
 }
-

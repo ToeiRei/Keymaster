@@ -708,4 +708,3 @@ func refreshDashboardCmd() tea.Cmd {
 		return dashboardDataMsg{data: data}
 	}
 }
-

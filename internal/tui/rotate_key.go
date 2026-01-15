@@ -356,4 +356,3 @@ func performRotation(passphrase string) tea.Cmd {
 		return keyRotatedMsg{serial: serial}
 	}
 }
-

@@ -222,4 +222,3 @@ func (coreConfigSaver) Save() error {
 }
 
 var configSaver = coreConfigSaver{}
-

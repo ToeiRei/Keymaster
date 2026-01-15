@@ -88,4 +88,3 @@ func CheckHostKeyAlgorithm(key ssh.PublicKey) string {
 		return ""
 	}
 }
-

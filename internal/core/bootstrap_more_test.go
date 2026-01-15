@@ -197,4 +197,3 @@ func TestSystemKeyWarningRecorded(t *testing.T) {
 		t.Fatalf("expected system key warning in result")
 	}
 }
-

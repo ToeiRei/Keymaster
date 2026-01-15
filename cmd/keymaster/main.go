@@ -1015,4 +1015,3 @@ Example:
 }
 
 // migration target initialization is handled by `core.RunMigrateCmd` and `cliStoreFactory`.
-

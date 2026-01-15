@@ -265,4 +265,3 @@ func (a *cliAuditWriter) LogAction(action, details string) error {
 }
 
 var _ core.AuditWriter = (*cliAuditWriter)(nil)
-

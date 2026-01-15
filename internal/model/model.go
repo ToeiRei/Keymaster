@@ -90,4 +90,3 @@ type BootstrapSession struct {
 	ExpiresAt     time.Time // When the session expires.
 	Status        string    // Current status (active, committing, completed, failed, orphaned).
 }
-

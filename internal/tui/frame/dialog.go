@@ -131,4 +131,3 @@ func (d *Dialog) renderButtonArea() string {
 
 	return buttonAreaStyle.Render(buttonRow)
 }
-

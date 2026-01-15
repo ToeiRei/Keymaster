@@ -179,4 +179,3 @@ func (s *BootstrapSession) UpdateStatus(status SessionStatus) error {
 	s.Status = status
 	return db.UpdateBootstrapSessionStatus(s.ID, string(status))
 }
-

@@ -51,4 +51,3 @@ func TestImportRemoteKeys_AddsKey(t *testing.T) {
 		t.Fatalf("expected 1 imported key, got %d", len(imported))
 	}
 }
-

@@ -21,4 +21,3 @@ func (f *FakeRemoteDeployer) Close()                                    {}
 func BytesFromString(s string) *bytes.Buffer { return bytes.NewBufferString(s) }
 
 // (No audit writer here — use testutil.FakeAuditWriter or db.WithAuditWriter helpers.)
-
