@@ -4,17 +4,13 @@
 
 package db
 
-import "log"
-
-var debugEnabled bool
+import "github.com/toeirei/keymaster/internal/logging"
 
 // SetDebug enables or disables DB debug logging. Disabled by default.
 func SetDebug(enabled bool) {
-	debugEnabled = enabled
+	logging.SetDebug(enabled)
 }
 
 func dbLogf(format string, v ...any) {
-	if debugEnabled {
-		log.Printf(format, v...)
-	}
+	logging.Debugf(format, v...)
 }
