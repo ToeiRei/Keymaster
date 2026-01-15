@@ -38,7 +38,7 @@ func TestBuildAndAcceptTransferPackage_Success(t *testing.T) {
 		GenerateKeysContent: func(accountID int) (string, error) {
 			return "ssh-ed25519 AAA... test", nil
 		},
-		NewBootstrapDeployer: func(hostname, username, privateKey, expectedHostKey string) (BootstrapDeployer, error) {
+		NewBootstrapDeployer: func(hostname, username string, privateKey interface{}, expectedHostKey string) (BootstrapDeployer, error) {
 			return fd, nil
 		},
 		GetActiveSystemKey: func() (*model.SystemKey, error) { return nil, nil },

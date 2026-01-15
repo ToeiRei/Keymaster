@@ -9,6 +9,7 @@ import (
 
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 	"github.com/toeirei/keymaster/internal/state"
 )
 
@@ -21,7 +22,7 @@ func (b *builtinBootstrapDeployer) DeployAuthorizedKeys(content string) error {
 func (b *builtinBootstrapDeployer) Close() { b.d.Close() }
 
 // NewBootstrapDeployer creates a BootstrapDeployer via the registered hook.
-func NewBootstrapDeployer(hostname, username, privateKey, expectedHostKey string) (BootstrapDeployer, error) {
+func NewBootstrapDeployer(hostname, username string, privateKey security.Secret, expectedHostKey string) (BootstrapDeployer, error) {
 	d, err := NewBootstrapDeployerFunc(hostname, username, privateKey, expectedHostKey)
 	if err != nil {
 		return nil, err

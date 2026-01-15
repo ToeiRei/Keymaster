@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 type testDeployer struct {
@@ -54,7 +55,7 @@ func (s *stubSessionStore) GetOrphanedBootstrapSessions() ([]*model.BootstrapSes
 
 func TestPerformBootstrapDeployment_SuccessPath(t *testing.T) {
 	ctx := context.Background()
-	params := BootstrapParams{Username: "alice", Hostname: "h", SelectedKeyIDs: []int{1, 2}, TempPrivateKey: "p", HostKey: "k", SessionID: "sess-1"}
+	params := BootstrapParams{Username: "alice", Hostname: "h", SelectedKeyIDs: []int{1, 2}, TempPrivateKey: security.FromString("p"), HostKey: "k", SessionID: "sess-1"}
 
 	var deletedID int
 	var auditEvent BootstrapAuditEvent
@@ -66,7 +67,7 @@ func TestPerformBootstrapDeployment_SuccessPath(t *testing.T) {
 		DeleteAccount:       func(id int) error { deletedID = id; return nil },
 		AssignKey:           func(k, a int) error { return nil },
 		GenerateKeysContent: func(accountID int) (string, error) { return "ok", nil },
-		NewBootstrapDeployer: func(hostname, username, privateKey, expectedHostKey string) (BootstrapDeployer, error) {
+		NewBootstrapDeployer: func(hostname, username string, privateKey interface{}, expectedHostKey string) (BootstrapDeployer, error) {
 			return fake, nil
 		},
 		GetActiveSystemKey: func() (*model.SystemKey, error) { return &model.SystemKey{Serial: 5, PublicKey: "pk"}, nil },
@@ -122,14 +123,14 @@ func TestPerformBootstrapDeployment_AssignKeyFailCleansUp(t *testing.T) {
 
 func TestPerformBootstrapDeployment_DeployFailUpdatesSession(t *testing.T) {
 	ctx := context.Background()
-	params := BootstrapParams{Username: "carol", Hostname: "x", TempPrivateKey: "p", HostKey: "k", SessionID: "s-2"}
+	params := BootstrapParams{Username: "carol", Hostname: "x", TempPrivateKey: security.FromString("p"), HostKey: "k", SessionID: "s-2"}
 	var deletedID int
 	updated := ""
 	deps := BootstrapDeps{
 		AddAccount:          func(u, h, l, tags string) (int, error) { return 303, nil },
 		DeleteAccount:       func(id int) error { deletedID = id; return nil },
 		GenerateKeysContent: func(accountID int) (string, error) { return "ok", nil },
-		NewBootstrapDeployer: func(hostname, username, privateKey, expectedHostKey string) (BootstrapDeployer, error) {
+		NewBootstrapDeployer: func(hostname, username string, privateKey interface{}, expectedHostKey string) (BootstrapDeployer, error) {
 			return &testDeployer{err: errors.New("ssh fail")}, nil
 		},
 		SessionStore: &stubSessionStore{updated: &updated},

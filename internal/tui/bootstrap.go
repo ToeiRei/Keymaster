@@ -27,6 +27,7 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -1264,9 +1265,9 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			pfSelectedKeyIDs = append(pfSelectedKeyIDs, k.ID)
 		}
 
-		pfTempPrivateKey := ""
+		var pfTempPrivateKey security.Secret
 		if m.session != nil && m.session.TempKeyPair != nil {
-			pfTempPrivateKey = string(m.session.TempKeyPair.GetPrivateKeyPEM())
+			pfTempPrivateKey = security.FromBytes(m.session.TempKeyPair.GetPrivateKeyPEM())
 		}
 
 		params := core.BootstrapParams{

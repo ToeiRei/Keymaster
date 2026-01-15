@@ -25,7 +25,9 @@ var NewDeployerFactory = func(host, user, privateKey string, passphrase []byte) 
 
 // NewBootstrapDeployerFunc is a hook that production code may set to create
 // bootstrap deployers without core importing the deploy package.
-var NewBootstrapDeployerFunc = func(hostname, username, privateKey, expectedHostKey string) (BootstrapDeployer, error) {
+var NewBootstrapDeployerFunc = func(hostname, username string, privateKey interface{}, expectedHostKey string) (BootstrapDeployer, error) {
+	// Default is conservative: accept interface{} to avoid early breakage; callers
+	// should provide a `security.Secret` in normal usage.
 	return nil, fmt.Errorf("no bootstrap deployer configured")
 }
 

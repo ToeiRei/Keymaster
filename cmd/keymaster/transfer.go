@@ -18,6 +18,7 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 // transferCmd is the root `transfer` command.
@@ -187,7 +188,7 @@ func init() {
 				Hostname:       pkg["host"],
 				Label:          labelFlag,
 				Tags:           tagsFlag,
-				TempPrivateKey: string(privBytes),
+				TempPrivateKey: security.FromBytes(privBytes),
 				HostKey:        pkg["host_key"],
 				SessionID:      pkg["session_id"],
 			}
@@ -207,7 +208,7 @@ func init() {
 					aks, _ := km.GetKeysForAccount(accountID)
 					return keys.BuildAuthorizedKeysContent(sk, gks, aks)
 				},
-				NewBootstrapDeployer: func(hostname, username, privateKey, expectedHostKey string) (core.BootstrapDeployer, error) {
+				NewBootstrapDeployer: func(hostname, username string, privateKey security.Secret, expectedHostKey string) (core.BootstrapDeployer, error) {
 					return core.NewBootstrapDeployer(hostname, username, privateKey, expectedHostKey)
 				},
 				GetActiveSystemKey: func() (*model.SystemKey, error) { return db.GetActiveSystemKey() },

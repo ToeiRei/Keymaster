@@ -12,6 +12,7 @@ import (
 
 	"github.com/toeirei/keymaster/internal/bootstrap"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 // BootstrapParams contains the information required to perform a bootstrap
@@ -24,8 +25,9 @@ type BootstrapParams struct {
 	Tags           string
 	SelectedKeyIDs []int
 	// TempPrivateKey is the PEM-encoded private key used for the bootstrap
-	// SSH connection. May be empty in some flows.
-	TempPrivateKey string
+	// SSH connection. May be empty in some flows. It is stored as a
+	// `security.Secret` to reduce accidental leakage via logging/formatting.
+	TempPrivateKey security.Secret
 	// HostKey is the expected host key (authorized_keys format) used for
 	// host key verification during bootstrap deployment.
 	HostKey string
@@ -116,7 +118,9 @@ type BootstrapDeps struct {
 	GenerateKeysContent func(accountID int) (string, error)
 
 	// NewBootstrapDeployer creates a deployer configured with an expected host key.
-	NewBootstrapDeployer func(hostname, username, privateKey, expectedHostKey string) (BootstrapDeployer, error)
+	// Accepts either a string (legacy) or a `security.Secret` value depending on
+	// caller context. Implementations should handle both.
+	NewBootstrapDeployer func(hostname, username string, privateKey interface{}, expectedHostKey string) (BootstrapDeployer, error)
 
 	// GetActiveSystemKey fetches the active system key serial and public key.
 	GetActiveSystemKey func() (*model.SystemKey, error)
@@ -261,7 +265,7 @@ func PerformBootstrapDeployment(ctx context.Context, params BootstrapParams, dep
 	res.KeysDeployed = params.SelectedKeyIDs
 
 	// Update or remove persisted bootstrap session state if a store was provided.
-	if params.HostKey != "" || params.TempPrivateKey != "" {
+	if params.HostKey != "" || len(params.TempPrivateKey) != 0 {
 		// Intentional no-op; reference fields to avoid empty branch warnings.
 		_ = params.HostKey
 		_ = params.TempPrivateKey

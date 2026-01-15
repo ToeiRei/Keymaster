@@ -13,6 +13,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 // coreAccountReader adapts UI helpers to core.AccountReader.
@@ -128,7 +129,7 @@ func (coreKeysContentBuilder) Generate(accountID int) (string, error) {
 // coreBootstrapDeployerFactory adapts core bootstrap factory to a simple type used by TUI.
 type coreBootstrapDeployerFactory struct{}
 
-func (coreBootstrapDeployerFactory) New(hostname, username, privateKey, expectedHostKey string) (core.BootstrapDeployer, error) {
+func (coreBootstrapDeployerFactory) New(hostname, username string, privateKey security.Secret, expectedHostKey string) (core.BootstrapDeployer, error) {
 	return core.NewBootstrapDeployer(hostname, username, privateKey, expectedHostKey)
 }
 

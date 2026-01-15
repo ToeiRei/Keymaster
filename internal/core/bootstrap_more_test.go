@@ -91,7 +91,7 @@ func TestNewBootstrapDeployerCreationFailure_CleansUp(t *testing.T) {
 		AddAccount:          func(u, h, l, tags string) (int, error) { return 601, nil },
 		DeleteAccount:       func(id int) error { deleted = id; return nil },
 		GenerateKeysContent: func(accountID int) (string, error) { return "ok", nil },
-		NewBootstrapDeployer: func(hostname, username, privateKey, expectedHostKey string) (BootstrapDeployer, error) {
+		NewBootstrapDeployer: func(hostname, username string, privateKey interface{}, expectedHostKey string) (BootstrapDeployer, error) {
 			return nil, errors.New("create fail")
 		},
 	}
@@ -137,7 +137,7 @@ func TestAuditorVsLogAudit_Priority(t *testing.T) {
 		AddAccount:          func(u, h, l, tags string) (int, error) { return 801, nil },
 		DeleteAccount:       func(id int) error { return nil },
 		GenerateKeysContent: func(accountID int) (string, error) { return "ok", nil },
-		NewBootstrapDeployer: func(hostname, username, privateKey, expectedHostKey string) (BootstrapDeployer, error) {
+		NewBootstrapDeployer: func(hostname, username string, privateKey interface{}, expectedHostKey string) (BootstrapDeployer, error) {
 			return &spyDeployer{}, nil
 		},
 		Auditor: sa,
@@ -156,7 +156,7 @@ func TestAuditorVsLogAudit_Priority(t *testing.T) {
 		AddAccount:          func(u, h, l, tags string) (int, error) { return 802, nil },
 		DeleteAccount:       func(id int) error { return nil },
 		GenerateKeysContent: func(accountID int) (string, error) { return "ok", nil },
-		NewBootstrapDeployer: func(hostname, username, privateKey, expectedHostKey string) (BootstrapDeployer, error) {
+		NewBootstrapDeployer: func(hostname, username string, privateKey interface{}, expectedHostKey string) (BootstrapDeployer, error) {
 			return &spyDeployer{}, nil
 		},
 		LogAudit: func(e BootstrapAuditEvent) error { called = true; return nil },

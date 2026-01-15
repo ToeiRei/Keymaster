@@ -38,8 +38,8 @@ func TestCoreTransfer_EndToEnd(t *testing.T) {
 		GenerateKeysContent: func(accountID int) (string, error) {
 			return "ssh-ed25519 AAA... test", nil
 		},
-		NewBootstrapDeployer: func(hostname, username, privateKey, expectedHostKey string) (BootstrapDeployer, error) {
-			return &fakeDeployer{}, nil
+		NewBootstrapDeployer: func(hostname, username string, privateKey interface{}, expectedHostKey string) (BootstrapDeployer, error) {
+			return &fakeDeployer{deployed: "ok"}, nil
 		},
 		GetActiveSystemKey: func() (*model.SystemKey, error) { return nil, nil },
 		LogAudit:           func(e BootstrapAuditEvent) error { return nil },

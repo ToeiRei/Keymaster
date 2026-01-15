@@ -13,6 +13,7 @@ import (
 	"fmt"
 
 	"github.com/toeirei/keymaster/internal/bootstrap"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 // TransferPackage represents the JSON transfer package format.
@@ -126,7 +127,7 @@ func AcceptTransferPackage(ctx context.Context, pkgBytes []byte, deps BootstrapD
 		Hostname:       pkg.Host,
 		Label:          "",
 		Tags:           "",
-		TempPrivateKey: string(priv),
+		TempPrivateKey: security.FromBytes(priv),
 		HostKey:        pkg.HostKey,
 	}
 

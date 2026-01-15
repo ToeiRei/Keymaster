@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/security"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -22,11 +23,27 @@ func init() {
 	}
 
 	// Wire bootstrap deployer creation hooks.
-	core.NewBootstrapDeployerFunc = func(hostname, username, privateKey, expectedHostKey string) (core.BootstrapDeployer, error) {
-		if expectedHostKey != "" {
-			return NewBootstrapDeployerWithExpectedKey(hostname, username, privateKey, expectedHostKey)
+	core.NewBootstrapDeployerFunc = func(hostname, username string, privateKey interface{}, expectedHostKey string) (core.BootstrapDeployer, error) {
+		// Accept either string (legacy) or security.Secret
+		var pkStr string
+		switch v := privateKey.(type) {
+		case string:
+			pkStr = v
+		case security.Secret:
+			// Copy bytes into a string for the existing deployer API.
+			b := v.Bytes()
+			pkStr = string(b)
+			// zero the temporary copy
+			for i := range b {
+				b[i] = 0
+			}
+		default:
+			pkStr = ""
 		}
-		return NewBootstrapDeployer(hostname, username, privateKey)
+		if expectedHostKey != "" {
+			return NewBootstrapDeployerWithExpectedKey(hostname, username, pkStr, expectedHostKey)
+		}
+		return NewBootstrapDeployer(hostname, username, pkStr)
 	}
 
 	// Network helper passthroughs.
