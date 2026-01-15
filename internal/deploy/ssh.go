@@ -384,14 +384,24 @@ func newDeployerInternal(host, user string, privateKey security.Secret, passphra
 	// If a private key is provided, use it exclusively. This is the standard path
 	// for deployment and auditing with a Keymaster system key.
 	if len(privateKey) != 0 {
-		signer, err := ssh.ParsePrivateKey(privateKey.Bytes())
+		var signer ssh.Signer
+		var err error
+
+		// Parse private key without making an extra copy where possible.
+		err = privateKey.Use(func(b []byte) error {
+			signer, err = ssh.ParsePrivateKey(b)
+			return err
+		})
 		if err != nil {
 			// Check if the error is because the key is encrypted.
 			var pme *ssh.PassphraseMissingError
 			if errors.As(err, &pme) {
 				// If it's encrypted and we have a passphrase, try to parse it again.
 				if len(passphrase) > 0 {
-					signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey.Bytes(), passphrase)
+					err = privateKey.Use(func(b []byte) error {
+						signer, err = ssh.ParsePrivateKeyWithPassphrase(b, passphrase)
+						return err
+					})
 				} else {
 					// Key is encrypted, but we have no passphrase. Signal to the caller.
 					return nil, ErrPassphraseRequired
@@ -485,9 +495,13 @@ func newDeployerWithExpectedHostKey(host, user string, privateKey security.Secre
 	// Add port 22 if not specified
 	addr := CanonicalizeHostPort(host)
 
-	// Parse the private key
-	signer, err := ssh.ParsePrivateKey(privateKey.Bytes())
-	if err != nil {
+	// Parse the private key without extra copies when possible.
+	var signer ssh.Signer
+	if err := privateKey.Use(func(b []byte) error {
+		var e error
+		signer, e = ssh.ParsePrivateKey(b)
+		return e
+	}); err != nil {
 		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
 
