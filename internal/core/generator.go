@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
 )
@@ -20,7 +19,11 @@ const SystemKeyRestrictions = `command="internal-sftp",no-port-forwarding,no-x11
 
 // GenerateKeysContent constructs the authorized_keys file content for a given account.
 func GenerateKeysContent(accountID int) (string, error) {
-	activeKey, err := db.GetActiveSystemKey()
+	kr := DefaultKeyReader()
+	if kr == nil {
+		return "", fmt.Errorf("no KeyReader available")
+	}
+	activeKey, err := kr.GetActiveSystemKey()
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve active system key: %w", err)
 	}
@@ -32,7 +35,11 @@ func GenerateKeysContent(accountID int) (string, error) {
 
 // GenerateKeysContentForSerial constructs the authorized_keys file content for a given account using a specific system key serial.
 func GenerateKeysContentForSerial(accountID int, serial int) (string, error) {
-	systemKey, err := db.GetSystemKeyBySerial(serial)
+	kr := DefaultKeyReader()
+	if kr == nil {
+		return "", fmt.Errorf("no KeyReader available")
+	}
+	systemKey, err := kr.GetSystemKeyBySerial(serial)
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve active system key: %w", err)
 	}
@@ -40,15 +47,15 @@ func GenerateKeysContentForSerial(accountID int, serial int) (string, error) {
 		return "", fmt.Errorf("no active system key found. please generate one first")
 	}
 
-	km := db.DefaultKeyManager()
-	if km == nil {
-		return "", fmt.Errorf("no key manager available")
+	kl := DefaultKeyLister()
+	if kl == nil {
+		return "", fmt.Errorf("no key lister available")
 	}
-	globalKeys, err := km.GetGlobalPublicKeys()
+	globalKeys, err := kl.GetGlobalPublicKeys()
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve global public keys: %w", err)
 	}
-	accountKeys, err := km.GetKeysForAccount(accountID)
+	accountKeys, err := kl.GetKeysForAccount(accountID)
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve keys for account ID %d: %w", accountID, err)
 	}
@@ -62,7 +69,11 @@ func GenerateSelectiveKeysContent(accountID int, serial int, excludeKeyIDs []int
 
 	if !removeSystemKey {
 		if serial == 0 {
-			activeKey, err := db.GetActiveSystemKey()
+			kr := DefaultKeyReader()
+			if kr == nil {
+				return "", fmt.Errorf("could not retrieve active system key: no KeyReader")
+			}
+			activeKey, err := kr.GetActiveSystemKey()
 			if err != nil {
 				return "", fmt.Errorf("could not retrieve active system key: %w", err)
 			}
@@ -72,7 +83,11 @@ func GenerateSelectiveKeysContent(accountID int, serial int, excludeKeyIDs []int
 			serial = activeKey.Serial
 		}
 
-		systemKey, err := db.GetSystemKeyBySerial(serial)
+		kr := DefaultKeyReader()
+		if kr == nil {
+			return "", fmt.Errorf("could not retrieve system key: no KeyReader")
+		}
+		systemKey, err := kr.GetSystemKeyBySerial(serial)
 		if err != nil {
 			return "", fmt.Errorf("could not retrieve system key: %w", err)
 		}
@@ -85,16 +100,16 @@ func GenerateSelectiveKeysContent(accountID int, serial int, excludeKeyIDs []int
 		content.WriteString(restrictedSystemKey)
 	}
 
-	km := db.DefaultKeyManager()
-	if km == nil {
-		return "", fmt.Errorf("no key manager available")
+	kl := DefaultKeyLister()
+	if kl == nil {
+		return "", fmt.Errorf("no key lister available")
 	}
-	globalKeys, err := km.GetGlobalPublicKeys()
+	globalKeys, err := kl.GetGlobalPublicKeys()
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve global public keys: %w", err)
 	}
 
-	accountKeys, err := km.GetKeysForAccount(accountID)
+	accountKeys, err := kl.GetKeysForAccount(accountID)
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve keys for account ID %d: %w", accountID, err)
 	}

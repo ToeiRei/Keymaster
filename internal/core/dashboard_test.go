@@ -23,6 +23,12 @@ type fakeKeyReader struct {
 
 func (f fakeKeyReader) GetAllPublicKeys() ([]model.PublicKey, error)  { return f.keys, nil }
 func (f fakeKeyReader) GetActiveSystemKey() (*model.SystemKey, error) { return f.sys, nil }
+func (f fakeKeyReader) GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
+	if f.sys != nil && f.sys.Serial == serial {
+		return f.sys, nil
+	}
+	return nil, nil
+}
 
 type fakeAuditReader struct{ entries []model.AuditLogEntry }
 

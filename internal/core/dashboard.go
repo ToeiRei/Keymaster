@@ -34,6 +34,7 @@ type AccountReader interface {
 type KeyReader interface {
 	GetAllPublicKeys() ([]model.PublicKey, error)
 	GetActiveSystemKey() (*model.SystemKey, error)
+	GetSystemKeyBySerial(serial int) (*model.SystemKey, error)
 }
 
 // AuditReader exposes audit log reads required by the dashboard.
