@@ -38,7 +38,7 @@ func (coreKeyReader) GetActiveSystemKey() (*model.SystemKey, error) { return db.
 type coreAuditReader struct{}
 
 func (coreAuditReader) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
-	return ui.GetAllAuditLogEntries()
+	return db.GetAllAuditLogEntries()
 }
 
 // coreAuditor adapts the TUI package-level audit helper to core.Auditor.

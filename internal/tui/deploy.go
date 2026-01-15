@@ -266,7 +266,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.wasFleetDeploy = true
 				m.state = deployStateFleetInProgress
 				var err error
-				m.accountsInFleet, err = ui.GetAllActiveAccounts()
+				m.accountsInFleet, err = db.GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -286,7 +286,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.wasFleetDeploy = false
 				m.action = actionDeploySingle
 				var err error
-				m.accounts, err = ui.GetAllActiveAccounts()
+				m.accounts, err = db.GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -313,7 +313,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.action = actionGetKeys
 				var err error
 				// Only allow deploying to or viewing keys for active accounts.
-				m.accounts, err = ui.GetAllActiveAccounts()
+				m.accounts, err = db.GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -489,7 +489,7 @@ func (m deployModel) updateSelectTag(msg tea.Msg) (tea.Model, tea.Cmd) {
 			selectedTag := m.tags[m.tagCursor]
 
 			// Filter accounts by this tag
-			allAccounts, err := ui.GetAllActiveAccounts()
+			allAccounts, err := db.GetAllActiveAccounts()
 			if err != nil {
 				m.err = err
 				return m, nil

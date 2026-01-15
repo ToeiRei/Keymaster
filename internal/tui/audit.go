@@ -18,7 +18,6 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
-	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // auditModeType represents the comparison mode for the audit.
@@ -171,7 +170,7 @@ func (m auditModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 0: // Audit Fleet
 				m.wasFleetDeploy = true
 				var err error
-				m.accountsInFleet, err = ui.GetAllActiveAccounts()
+				m.accountsInFleet, err = db.GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -190,7 +189,7 @@ func (m auditModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(cmds...)
 			case 1: // Audit Single
 				m.wasFleetDeploy = false
-				m.accounts, _ = ui.GetAllActiveAccounts()
+				m.accounts, _ = db.GetAllActiveAccounts()
 				m.state = auditStateSelectAccount
 				m.accountCursor = 0
 				m.status = ""
@@ -359,7 +358,7 @@ func (m auditModel) updateSelectTag(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			selected := m.tags[m.tagCursor]
-			all, err := ui.GetAllActiveAccounts()
+			all, err := db.GetAllActiveAccounts()
 			if err != nil {
 				m.err = err
 				return m, nil

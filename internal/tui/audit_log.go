@@ -15,6 +15,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
@@ -65,7 +66,7 @@ func newAuditLogModelWithSearcher(searcher ui.AuditSearcher) *auditLogModel {
 		entries, err = searcher.GetAllAuditLogEntries()
 	} else {
 		// Fallback to the direct DB helper when no searcher is provided.
-		entries, err = ui.GetAllAuditLogEntries()
+		entries, err = db.GetAllAuditLogEntries()
 	}
 	if err != nil {
 		m.err = err

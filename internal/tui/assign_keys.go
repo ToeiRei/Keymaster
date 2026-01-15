@@ -14,6 +14,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
@@ -64,7 +65,7 @@ func newAssignKeysModel() *assignKeysModel {
 
 	var err error
 	// Only show active accounts for assignment.
-	m.accounts, err = ui.GetAllActiveAccounts()
+	m.accounts, err = db.GetAllActiveAccounts()
 	if err != nil {
 		m.err = err
 		return m
