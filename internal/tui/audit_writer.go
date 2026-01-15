@@ -22,7 +22,7 @@ func ClearAuditWriter() {
 }
 
 // logAction writes an audit entry using the package override when present,
-// otherwise falls back to the global `ui.DefaultAuditWriter` helper.
+// otherwise falls back to the global DB default audit writer.
 func logAction(action, details string) error {
 	if auditWriter != nil {
 		return auditWriter.LogAction(action, details)
