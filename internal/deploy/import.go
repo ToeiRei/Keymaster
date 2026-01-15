@@ -27,7 +27,7 @@ import (
 func ImportRemoteKeys(account model.Account) (importedKeys []model.PublicKey, skippedCount int, warning string, err error) {
 	// 1. Get the correct system key to connect with.
 	var connectKey *model.SystemKey
-	var privateKey string
+	var privateKeySecret security.Secret
 
 	if account.Serial == 0 {
 		// For a new host, we try to use the active key.
@@ -38,9 +38,9 @@ func ImportRemoteKeys(account model.Account) (importedKeys []model.PublicKey, sk
 		if connectKey == nil {
 			// Not a fatal error. We can proceed with just the agent and issue a warning.
 			warning = "Warning: No active system key. Using SSH agent."
-			privateKey = "" // Explicitly empty
+			privateKeySecret = nil
 		} else {
-			privateKey = connectKey.PrivateKey
+			privateKeySecret = db.SecretFromModelSystemKey(connectKey)
 		}
 	} else {
 		connectKey, err = db.GetSystemKeyBySerial(account.Serial)
@@ -50,7 +50,7 @@ func ImportRemoteKeys(account model.Account) (importedKeys []model.PublicKey, sk
 		if connectKey == nil {
 			return nil, 0, "", fmt.Errorf("db inconsistency: no system key found for serial %d", account.Serial)
 		}
-		privateKey = connectKey.PrivateKey
+		privateKeySecret = db.SecretFromModelSystemKey(connectKey)
 	}
 
 	// Get passphrase from cache and ensure it's wiped after use.
@@ -62,7 +62,7 @@ func ImportRemoteKeys(account model.Account) (importedKeys []model.PublicKey, sk
 	}()
 
 	// 2. Connect using the deployer.
-	deployer, err := NewDeployerFunc(account.Hostname, account.Username, security.FromString(privateKey), passphrase)
+	deployer, err := NewDeployerFunc(account.Hostname, account.Username, privateKeySecret, passphrase)
 	if err != nil {
 		return nil, 0, warning, fmt.Errorf("connection failed: %w", err)
 	}
