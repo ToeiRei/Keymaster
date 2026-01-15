@@ -155,7 +155,7 @@ func (fp *FilePicker) MoveUp() {
 		fp.selected--
 		// Scroll viewport if needed to keep selection visible
 		if fp.selected < fp.vp.YOffset {
-			fp.vp.LineUp(1)
+			fp.vp.ScrollUp(1)
 		}
 	}
 }
@@ -166,7 +166,7 @@ func (fp *FilePicker) MoveDown() {
 		fp.selected++
 		// Scroll viewport if needed to keep selection visible
 		if fp.selected >= fp.vp.YOffset+fp.vp.Height {
-			fp.vp.LineDown(1)
+			fp.vp.ScrollDown(1)
 		}
 	}
 }
@@ -174,14 +174,14 @@ func (fp *FilePicker) MoveDown() {
 // ScrollUp scrolls the viewport up.
 func (fp *FilePicker) ScrollUp() {
 	if fp.Focused == 0 {
-		fp.vp.LineUp(1)
+		fp.vp.ScrollUp(1)
 	}
 }
 
 // ScrollDown scrolls the viewport down.
 func (fp *FilePicker) ScrollDown() {
 	if fp.Focused == 0 {
-		fp.vp.LineDown(1)
+		fp.vp.ScrollDown(1)
 	}
 }
 

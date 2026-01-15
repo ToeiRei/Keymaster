@@ -39,7 +39,7 @@ func parseTagMatcher(expr string, qb bun.QueryBuilder, mode bool, negate bool) (
 	if exprs := splitOnTopLevelChar(expr, '&'); len(exprs) > 1 {
 		// TODO test & comment
 		return reducex(exprs, func(expr string, qb bun.QueryBuilder) (bun.QueryBuilder, error) {
-			return parseTagMatcher(expr, qb, true != negate, negate)
+			return parseTagMatcher(expr, qb, !negate, negate)
 		})
 	}
 
@@ -47,7 +47,7 @@ func parseTagMatcher(expr string, qb bun.QueryBuilder, mode bool, negate bool) (
 	if exprs := splitOnTopLevelChar(expr, '|'); len(exprs) > 1 {
 		// TODO test & comment
 		return reducex(exprs, func(expr string, qb bun.QueryBuilder) (bun.QueryBuilder, error) {
-			return parseTagMatcher(expr, qb, false != negate, negate)
+			return parseTagMatcher(expr, qb, negate, negate)
 		})
 	}
 
@@ -77,7 +77,7 @@ func parseTagMatcher(expr string, qb bun.QueryBuilder, mode bool, negate bool) (
 		}
 		// apply WhereGroup to query builder
 		qb = qb.WhereGroup(operator, func(qb bun.QueryBuilder) bun.QueryBuilder {
-			qb, err = parseTagMatcher(expr, qb, true != negate, negate)
+			qb, err = parseTagMatcher(expr, qb, !negate, negate)
 			return qb
 		})
 		// handle error from WhereGroup callback using global err variable
@@ -162,7 +162,7 @@ func SplitTags(tags string) ([]string, error) {
 	tags, exists_prefix := strings.CutPrefix(tags, tagDelimiterChar)
 	tags, exists_suffix := strings.CutSuffix(tags, tagDelimiterChar)
 	if !exists_prefix || !exists_suffix {
-		return nil, errors.New("Prefix or suffix is missing")
+		return nil, errors.New("prefix or suffix is missing")
 	}
 	// split and return tags
 	return strings.Split(tags, tagDelimiterChar), nil

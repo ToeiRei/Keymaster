@@ -197,7 +197,7 @@ func (m *testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "j", "down":
 			if !m.showDialog && !m.showFilePicker && !m.showDatePicker {
-				m.vp.LineDown(1)
+				m.vp.ScrollDown(1)
 			} else if m.showFilePicker {
 				m.filePicker.MoveDown()
 			} else if m.showDatePicker {
@@ -205,7 +205,7 @@ func (m *testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "k", "up":
 			if !m.showDialog && !m.showFilePicker && !m.showDatePicker {
-				m.vp.LineUp(1)
+				m.vp.ScrollUp(1)
 			} else if m.showFilePicker {
 				m.filePicker.MoveUp()
 			} else if m.showDatePicker {

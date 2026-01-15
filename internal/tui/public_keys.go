@@ -65,12 +65,7 @@ type publicKeysModel struct {
 	width, height   int
 }
 
-// newPublicKeysModel creates a new model for the public key view, pre-loading keys from the database.
-//
-//nolint:unused
-func newPublicKeysModel() publicKeysModel {
-	return newPublicKeysModelWithSearcher(ui.DefaultKeySearcher())
-}
+// newPublicKeysModel removed — use `newPublicKeysModelWithSearcher` directly.
 
 // newPublicKeysModelWithSearcher creates a publicKeysModel that will use the
 // provided KeySearcher for server-side searches. Pass nil to force local filtering.

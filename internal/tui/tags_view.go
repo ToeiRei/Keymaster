@@ -59,12 +59,7 @@ func newTagsViewModelWithSearcher(s ui.AccountSearcher) tagsViewModel {
 	return m
 }
 
-// newTagsViewModel is a convenience wrapper that uses the package default searcher.
-//
-//nolint:unused
-func newTagsViewModel() tagsViewModel {
-	return newTagsViewModelWithSearcher(ui.DefaultAccountSearcher())
-}
+// newTagsViewModel removed — use `newTagsViewModelWithSearcher` directly.
 
 // rebuildLines constructs the flattened list of items to display.
 func (m *tagsViewModel) rebuildLines() {

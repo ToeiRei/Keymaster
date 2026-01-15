@@ -75,7 +75,6 @@ type deployModel struct {
 	wasFleetDeploy     bool    // Flag to remember if the last operation was a fleet deployment
 	width, height      int
 	searcher           ui.AccountSearcher
-	hasInteracted      bool
 }
 
 // newDeployModel creates a new model for the deployment view.
@@ -105,12 +104,7 @@ func newDeployModelWithSearcher(s ui.AccountSearcher) deployModel {
 	return m
 }
 
-// newDeployModel is a convenience wrapper that uses the package default searcher.
-//
-//nolint:unused
-func newDeployModel() deployModel {
-	return newDeployModelWithSearcher(ui.DefaultAccountSearcher())
-}
+// newDeployModel removed — use `newDeployModelWithSearcher` with an explicit searcher.
 
 // Init initializes the deploy model.
 func (m deployModel) Init() tea.Cmd {

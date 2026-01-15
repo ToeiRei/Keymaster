@@ -86,9 +86,8 @@ type bootstrapModel struct {
 	verifyCommandCopied  bool   // For ssh-keygen verify command
 	currentVerifyCommand string // Current verify command for copying
 	// Transfer package UI status
-	transferCopied    bool
-	transferErr       error
-	transferImporting bool
+	transferCopied bool
+	transferErr    error
 }
 
 // Bootstrap workflow messages

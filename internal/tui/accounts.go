@@ -89,10 +89,8 @@ type accountsModel struct {
 	hasInteracted            bool // True once user navigates or performs an action
 }
 
-//nolint:unused
-func newAccountsModel() accountsModel {
-	return newAccountsModelWithSearcher(ui.DefaultAccountSearcher())
-}
+// newAccountsModel removed — use `newAccountsModelWithSearcher` or
+// `ui.DefaultAccountSearcher()` directly.
 
 // newAccountsModelWithSearcher creates an accountsModel that will use the
 // provided AccountSearcher for server-side searches. Pass nil to rely on the

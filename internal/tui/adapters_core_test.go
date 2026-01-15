@@ -58,7 +58,7 @@ func TestCoreKeyReader_GetAllPublicKeys_NoManager_ReturnsNil(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if keys != nil && len(keys) != 0 {
+	if len(keys) != 0 {
 		t.Fatalf("expected nil/empty slice when no key manager, got: %v", keys)
 	}
 }
