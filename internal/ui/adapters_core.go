@@ -6,6 +6,7 @@ package ui
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
@@ -72,3 +73,45 @@ func (accountSerialUpdater) UpdateAccountSerial(accountID int, serial int) error
 }
 
 func DefaultAccountSerialUpdater() core.AccountSerialUpdater { return accountSerialUpdater{} }
+
+// coreKeyImporter adapts DB key manager to core.KeyImporter.
+type coreKeyImporter struct{}
+
+func (coreKeyImporter) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) (*model.PublicKey, error) {
+	km := db.DefaultKeyManager()
+	if km == nil {
+		return nil, fmt.Errorf("no KeyManager available")
+	}
+	return km.AddPublicKeyAndGetModel(algorithm, keyData, comment, isGlobal, expiresAt)
+}
+
+// coreAuditWriter adapts DB audit writer to core.AuditWriter.
+type coreAuditWriter struct{}
+
+func (coreAuditWriter) LogAction(action, details string) error {
+	if w := db.DefaultAuditWriter(); w != nil {
+		return w.LogAction(action, details)
+	}
+	return nil
+}
+
+// coreAccountManager adapts DB account manager to core.AccountManager.
+type coreAccountManager struct{}
+
+func (coreAccountManager) DeleteAccount(id int) error {
+	if m := db.DefaultAccountManager(); m != nil {
+		return m.DeleteAccount(id)
+	}
+	return fmt.Errorf("no account manager available")
+}
+
+func init() {
+	core.SetDefaultKeyReader(DefaultCoreKeyReader())
+	core.SetDefaultKeyLister(DefaultCoreKeyLister())
+	core.SetDefaultAccountSerialUpdater(DefaultAccountSerialUpdater())
+	core.SetDefaultKeyImporter(coreKeyImporter{})
+	core.SetDefaultAuditWriter(coreAuditWriter{})
+	core.SetDefaultAccountManager(coreAccountManager{})
+	core.SetDefaultDBInit(db.InitDB)
+	core.SetDefaultDBIsInitialized(db.IsInitialized)
+}

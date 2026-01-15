@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/logging"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
@@ -32,7 +31,7 @@ func DecommissionAccount(account model.Account, systemKey security.Secret, optio
 		auditAction = "DECOMMISSION_DRYRUN"
 		auditDetails = fmt.Sprintf("DRY RUN: Would decommission account %s (ID: %d)", account.String(), account.ID)
 	}
-	if w := db.DefaultAuditWriter(); w != nil {
+	if w := DefaultAuditWriter(); w != nil {
 		_ = w.LogAction(auditAction, auditDetails)
 	}
 
@@ -55,7 +54,7 @@ func DecommissionAccount(account model.Account, systemKey security.Secret, optio
 			if !options.Force {
 				result.Skipped = true
 				result.SkipReason = fmt.Sprintf("remote cleanup failed and --force not specified: %v", err)
-				if w := db.DefaultAuditWriter(); w != nil {
+				if w := DefaultAuditWriter(); w != nil {
 					_ = w.LogAction("DECOMMISSION_FAILED", fmt.Sprintf("Failed to decommission %s: %v", account.String(), err))
 				}
 				return result
@@ -63,17 +62,17 @@ func DecommissionAccount(account model.Account, systemKey security.Secret, optio
 		}
 	}
 
-	mgr := db.DefaultAccountManager()
+	mgr := DefaultAccountManager()
 	if mgr == nil {
 		result.DatabaseDeleteError = fmt.Errorf("no account manager configured")
-		if w := db.DefaultAuditWriter(); w != nil {
+		if w := DefaultAuditWriter(); w != nil {
 			_ = w.LogAction("DECOMMISSION_FAILED", fmt.Sprintf("Failed to delete account %s from database: %v", account.String(), result.DatabaseDeleteError))
 		}
 		return result
 	}
 	if err := mgr.DeleteAccount(account.ID); err != nil {
 		result.DatabaseDeleteError = err
-		if w := db.DefaultAuditWriter(); w != nil {
+		if w := DefaultAuditWriter(); w != nil {
 			_ = w.LogAction("DECOMMISSION_FAILED", fmt.Sprintf("Failed to delete account %s from database: %v", account.String(), err))
 		}
 		return result
@@ -87,7 +86,7 @@ func DecommissionAccount(account model.Account, systemKey security.Secret, optio
 	if result.BackupPath != "" {
 		details += fmt.Sprintf(" - Backup created: %s", result.BackupPath)
 	}
-	if w := db.DefaultAuditWriter(); w != nil {
+	if w := DefaultAuditWriter(); w != nil {
 		_ = w.LogAction("DECOMMISSION_SUCCESS", details)
 	}
 

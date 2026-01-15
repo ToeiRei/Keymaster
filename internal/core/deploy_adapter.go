@@ -7,7 +7,6 @@ package core
 import (
 	"fmt"
 
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
 	"github.com/toeirei/keymaster/internal/state"
@@ -77,23 +76,28 @@ func (builtinDeployerManager) GetRemoteHostKey(host string) (string, error) {
 func (builtinDeployerManager) FetchAuthorizedKeys(account model.Account) ([]byte, error) {
 	// Use NewDeployerFactory hook which handles agent/passphrase.
 	var privateKeySecret security.Secret
-	if account.Serial == 0 {
-		sk, err := db.GetActiveSystemKey()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get active system key: %w", err)
-		}
-		if sk != nil {
-			privateKeySecret = db.SecretFromModelSystemKey(sk)
-		}
+	kr := DefaultKeyReader()
+	if kr == nil {
+		privateKeySecret = nil
 	} else {
-		sk, err := db.GetSystemKeyBySerial(account.Serial)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get system key for serial %d: %w", account.Serial, err)
+		if account.Serial == 0 {
+			sk, err := kr.GetActiveSystemKey()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get active system key: %w", err)
+			}
+			if sk != nil {
+				privateKeySecret = SystemKeyToSecret(sk)
+			}
+		} else {
+			sk, err := kr.GetSystemKeyBySerial(account.Serial)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get system key for serial %d: %w", account.Serial, err)
+			}
+			if sk == nil {
+				return nil, fmt.Errorf("no system key for serial %d", account.Serial)
+			}
+			privateKeySecret = SystemKeyToSecret(sk)
 		}
-		if sk == nil {
-			return nil, fmt.Errorf("no system key for serial %d", account.Serial)
-		}
-		privateKeySecret = db.SecretFromModelSystemKey(sk)
 	}
 
 	passphrase := state.PasswordCache.Get()

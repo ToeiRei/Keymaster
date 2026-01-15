@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
@@ -22,8 +21,12 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 	var connectKey *model.SystemKey
 	var err error
 
+	kr := DefaultKeyReader()
+	if kr == nil {
+		return errors.New(i18n.T("deploy.error_no_bootstrap_key"))
+	}
 	if account.Serial == 0 {
-		connectKey, err = db.GetActiveSystemKey()
+		connectKey, err = kr.GetActiveSystemKey()
 		if err != nil {
 			return fmt.Errorf(i18n.T("deploy.error_get_bootstrap_key"), err)
 		}
@@ -34,7 +37,7 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 			return errors.New(i18n.T("deploy.error_no_bootstrap_key"))
 		}
 	} else {
-		connectKey, err = db.GetSystemKeyBySerial(account.Serial)
+		connectKey, err = kr.GetSystemKeyBySerial(account.Serial)
 		if err != nil {
 			return fmt.Errorf(i18n.T("deploy.error_get_serial_key"), account.Serial, err)
 		}
@@ -50,7 +53,7 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 	if err != nil {
 		return err
 	}
-	activeKey, err := db.GetActiveSystemKey()
+	activeKey, err := kr.GetActiveSystemKey()
 	if err != nil || activeKey == nil {
 		return errors.New(i18n.T("deploy.error_get_active_key_for_serial"))
 	}
@@ -61,7 +64,7 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 			passphrase[i] = 0
 		}
 	}()
-	deployer, err := NewDeployerFactory(account.Hostname, account.Username, db.SecretFromModelSystemKey(connectKey), passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, SystemKeyToSecret(connectKey), passphrase)
 	if err != nil {
 		if isTUI {
 			return fmt.Errorf(i18n.T("deploy.error_connection_failed_tui"), account.String(), err)
@@ -75,8 +78,12 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 		return fmt.Errorf(i18n.T("deploy.error_deployment_failed"), err)
 	}
 
+	updater := DefaultAccountSerialUpdater()
+	if updater == nil {
+		return errors.New(i18n.T("deploy.error_get_active_key_for_serial"))
+	}
 	for i := 0; i < 5; i++ {
-		if err = db.UpdateAccountSerial(account.ID, activeKey.Serial); err == nil || !strings.Contains(err.Error(), "database is locked") {
+		if err = updater.UpdateAccountSerial(account.ID, activeKey.Serial); err == nil || !strings.Contains(err.Error(), "database is locked") {
 			break
 		}
 		time.Sleep(time.Duration(50+rand.Intn(100)) * time.Millisecond)

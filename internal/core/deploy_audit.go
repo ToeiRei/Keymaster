@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
@@ -23,7 +22,11 @@ func AuditAccountStrict(account model.Account) error {
 		return errors.New(i18n.T("audit.error_not_deployed"))
 	}
 
-	connectKey, err := db.GetSystemKeyBySerial(account.Serial)
+	kr := DefaultKeyReader()
+	if kr == nil {
+		return errors.New(i18n.T("audit.error_no_serial_key", account.Serial))
+	}
+	connectKey, err := kr.GetSystemKeyBySerial(account.Serial)
 	if err != nil {
 		return errors.New(i18n.T("audit.error_get_serial_key", account.Serial, err))
 	}
@@ -38,7 +41,7 @@ func AuditAccountStrict(account model.Account) error {
 		}
 	}()
 
-	deployer, err := NewDeployerFactory(account.Hostname, account.Username, db.SecretFromModelSystemKey(connectKey), passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, SystemKeyToSecret(connectKey), passphrase)
 	if err != nil {
 		return fmt.Errorf(i18n.T("audit.error_connection_failed"), account.Serial, err)
 	}
@@ -74,7 +77,11 @@ func AuditAccountSerial(account model.Account) error {
 		return errors.New(i18n.T("audit.error_not_deployed"))
 	}
 
-	connectKey, err := db.GetSystemKeyBySerial(account.Serial)
+	kr := DefaultKeyReader()
+	if kr == nil {
+		return errors.New(i18n.T("audit.error_no_serial_key", account.Serial))
+	}
+	connectKey, err := kr.GetSystemKeyBySerial(account.Serial)
 	if err != nil {
 		return errors.New(i18n.T("audit.error_get_serial_key", account.Serial, err))
 	}
@@ -89,7 +96,7 @@ func AuditAccountSerial(account model.Account) error {
 		}
 	}()
 
-	deployer, err := NewDeployerFactory(account.Hostname, account.Username, db.SecretFromModelSystemKey(connectKey), passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, SystemKeyToSecret(connectKey), passphrase)
 	if err != nil {
 		return fmt.Errorf(i18n.T("audit.error_connection_failed"), account.Serial, err)
 	}

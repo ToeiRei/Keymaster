@@ -21,7 +21,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"github.com/toeirei/keymaster/internal/bootstrap"
 	"github.com/toeirei/keymaster/internal/config"
-	"github.com/toeirei/keymaster/internal/db"
+
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
 )
@@ -239,7 +239,7 @@ func DecommissionAccounts(ctx context.Context, targets []model.Account, opts int
 		return DecommissionSummary{}, fmt.Errorf("no active system key")
 	}
 	if len(targets) == 1 {
-		res, err := dm.DecommissionAccount(targets[0], db.SecretFromModelSystemKey(sysKey), opts)
+		res, err := dm.DecommissionAccount(targets[0], SystemKeyToSecret(sysKey), opts)
 		if err != nil {
 			return DecommissionSummary{}, err
 		}
@@ -253,7 +253,7 @@ func DecommissionAccounts(ctx context.Context, targets []model.Account, opts int
 		}
 		return summary, nil
 	}
-	results, err := dm.BulkDecommissionAccounts(targets, db.SecretFromModelSystemKey(sysKey), opts)
+	results, err := dm.BulkDecommissionAccounts(targets, SystemKeyToSecret(sysKey), opts)
 	if err != nil {
 		return DecommissionSummary{}, err
 	}
@@ -458,9 +458,9 @@ func CleanupAllActiveSessions() error {
 
 // DB init helpers (thin wrappers around internal/db) -----------------------
 func IsDBInitialized() bool {
-	return db.IsInitialized()
+	return DefaultIsDBInitialized()
 }
 
 func InitDB(dbType, dsn string) error {
-	return db.InitDB(dbType, dsn)
+	return DefaultInitDB(dbType, dsn)
 }

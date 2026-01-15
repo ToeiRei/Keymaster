@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
 	"github.com/toeirei/keymaster/internal/sshkey"
@@ -24,26 +23,33 @@ func ImportRemoteKeys(account model.Account) (importedKeys []model.PublicKey, sk
 	var connectKey *model.SystemKey
 	var privateKeySecret security.Secret
 
-	if account.Serial == 0 {
-		connectKey, err = db.GetActiveSystemKey()
-		if err != nil {
-			return nil, 0, "", fmt.Errorf("failed to get active system key for import: %w", err)
-		}
-		if connectKey == nil {
-			warning = "Warning: No active system key. Using SSH agent."
-			privateKeySecret = nil
-		} else {
-			privateKeySecret = db.SecretFromModelSystemKey(connectKey)
-		}
+	kr := DefaultKeyReader()
+	if kr == nil {
+		// no reader configured — proceed but warn and use SSH agent
+		warning = "Warning: No active system key. Using SSH agent."
+		privateKeySecret = nil
 	} else {
-		connectKey, err = db.GetSystemKeyBySerial(account.Serial)
-		if err != nil {
-			return nil, 0, "", fmt.Errorf("failed to get system key %d for import: %w", account.Serial, err)
+		if account.Serial == 0 {
+			connectKey, err = kr.GetActiveSystemKey()
+			if err != nil {
+				return nil, 0, "", fmt.Errorf("failed to get active system key for import: %w", err)
+			}
+			if connectKey == nil {
+				warning = "Warning: No active system key. Using SSH agent."
+				privateKeySecret = nil
+			} else {
+				privateKeySecret = SystemKeyToSecret(connectKey)
+			}
+		} else {
+			connectKey, err = kr.GetSystemKeyBySerial(account.Serial)
+			if err != nil {
+				return nil, 0, "", fmt.Errorf("failed to get system key %d for import: %w", account.Serial, err)
+			}
+			if connectKey == nil {
+				return nil, 0, "", fmt.Errorf("db inconsistency: no system key found for serial %d", account.Serial)
+			}
+			privateKeySecret = SystemKeyToSecret(connectKey)
 		}
-		if connectKey == nil {
-			return nil, 0, "", fmt.Errorf("db inconsistency: no system key found for serial %d", account.Serial)
-		}
-		privateKeySecret = db.SecretFromModelSystemKey(connectKey)
 	}
 
 	passphrase := state.PasswordCache.Get()
@@ -77,12 +83,12 @@ func ImportRemoteKeys(account model.Account) (importedKeys []model.PublicKey, sk
 			continue
 		}
 
-		km := db.DefaultKeyManager()
-		if km == nil {
+		ki := DefaultKeyImporter()
+		if ki == nil {
 			skippedCount++
 			continue
 		}
-		newKey, dbErr := km.AddPublicKeyAndGetModel(alg, keyData, comment, false, time.Time{})
+		newKey, dbErr := ki.AddPublicKeyAndGetModel(alg, keyData, comment, false, time.Time{})
 		if dbErr != nil {
 			skippedCount++
 			continue

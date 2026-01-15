@@ -7,7 +7,11 @@
 // allow core to remain DB-agnostic. Implementations live in `internal/db`.
 package core
 
-import "github.com/toeirei/keymaster/internal/model"
+import (
+	"time"
+
+	"github.com/toeirei/keymaster/internal/model"
+)
 
 // KeyLister exposes read-only public key access used by generators and other core helpers.
 type KeyLister interface {
@@ -25,4 +29,15 @@ type KeyLister interface {
 // to update the serial on an account after successful deployment.
 type AccountSerialUpdater interface {
 	UpdateAccountSerial(accountID int, serial int) error
+}
+
+// KeyImporter exposes a minimal write API for importing public keys from
+// remote hosts. This keeps core decoupled from DB-specific managers.
+type KeyImporter interface {
+	AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) (*model.PublicKey, error)
+}
+
+// AccountManager exposes minimal account write operations used by core facades.
+type AccountManager interface {
+	DeleteAccount(id int) error
 }
