@@ -567,7 +567,7 @@ func (m deployModel) updateEnterFilename(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			err := os.WriteFile(filename, []byte(m.authorizedKeys), 0644)
+			err := WriteKeyFile(filename, []byte(m.authorizedKeys))
 			if err != nil {
 				m.state = deployStateComplete
 				m.status = fmt.Sprintf(i18n.T("deploy.status.write_failed"), err.Error())
