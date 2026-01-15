@@ -30,6 +30,8 @@ require (
 )
 
 require (
+	github.com/charmbracelet/log v0.4.2 // indirect
+	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect

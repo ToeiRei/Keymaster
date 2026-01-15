@@ -4,32 +4,31 @@
 
 package logging
 
-import "log"
+import log "github.com/charmbracelet/log"
 
-var debugEnabled bool
-
-// SetDebug enables or disables debug logging for the application.
-// SetDebug controls whether calls to Debugf will emit output.
+// SetDebug enables or disables debug logging for the application by adjusting
+// the global charmbracelet logger level.
 func SetDebug(enabled bool) {
-	debugEnabled = enabled
+	if enabled {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.InfoLevel)
+	}
 }
 
-// Debugf logs a formatted debug message when debug is enabled.
-// Debugf is a no-op when debug is disabled.
+// Debugf logs a formatted debug message.
 func Debugf(format string, v ...any) {
-	if debugEnabled {
-		log.Printf(format, v...)
-	}
+	log.Debugf(format, v...)
 }
 
 // Infof logs an informational formatted message.
 func Infof(format string, v ...any) {
-	log.Printf(format, v...)
+	log.Infof(format, v...)
 }
 
 // Errorf logs an error formatted message.
 func Errorf(format string, v ...any) {
-	log.Printf(format, v...)
+	log.Errorf(format, v...)
 }
 
 // Printf is a convenience alias for Infof.

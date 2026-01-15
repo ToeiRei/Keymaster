@@ -7,9 +7,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strings"
+
+	log "github.com/charmbracelet/log"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"

@@ -4,13 +4,21 @@
 
 package db
 
-import "github.com/toeirei/keymaster/internal/logging"
+import (
+	"fmt"
+
+	log "github.com/charmbracelet/log"
+)
+
+var dbDebugEnabled bool
 
 // SetDebug enables or disables DB debug logging. Disabled by default.
 func SetDebug(enabled bool) {
-	logging.SetDebug(enabled)
+	dbDebugEnabled = enabled
 }
 
 func dbLogf(format string, v ...any) {
-	logging.Debugf(format, v...)
+	if dbDebugEnabled {
+		log.Debug(fmt.Sprintf(format, v...))
+	}
 }

@@ -7,9 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
+
+	log "github.com/charmbracelet/log"
 
 	"github.com/spf13/cobra"
 	"github.com/toeirei/keymaster/internal/core"

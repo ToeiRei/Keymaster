@@ -15,7 +15,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -36,6 +35,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 
 	// DB init/inspection delegated to internal/core facades
+	log "github.com/charmbracelet/log"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
@@ -165,7 +165,7 @@ func main() {
 		if err := core.CleanupAllActiveSessions(); err != nil {
 			log.Printf("Error during final cleanup: %v", err)
 		} else {
-			log.Println("Bootstrap cleanup complete.")
+			log.Info("Bootstrap cleanup complete.")
 		}
 	}()
 
