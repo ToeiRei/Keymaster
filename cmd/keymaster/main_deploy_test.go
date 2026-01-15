@@ -14,8 +14,8 @@ import (
 
 func TestRunDeploymentForAccount_NoActiveSystemKey_ReturnsError(t *testing.T) {
 	i18n.Init("en")
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	acct := model.Account{ID: 1, Username: "u", Hostname: "h", Serial: 0}
@@ -27,8 +27,8 @@ func TestRunDeploymentForAccount_NoActiveSystemKey_ReturnsError(t *testing.T) {
 
 func TestRunDeploymentForAccount_MissingSerialKey_ReturnsError(t *testing.T) {
 	i18n.Init("en")
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	acct := model.Account{ID: 1, Username: "u", Hostname: "h", Serial: 999}

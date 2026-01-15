@@ -61,8 +61,8 @@ func TestNewRootCmd_RegistersSubcommandsAndVersion(t *testing.T) {
 func TestRunParallelTasks_PrintsResultsAndLogs(t *testing.T) {
 	// Initialize i18n and in-memory DB so logging doesn't fail
 	i18n.Init("en")
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	// Prepare accounts

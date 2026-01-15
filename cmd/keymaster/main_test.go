@@ -39,7 +39,7 @@ func setupTestDB(t *testing.T) {
 
 	// Initialize i18n and the database
 	i18n.Init("en")
-	if err := db.InitDB("sqlite", dsn); err != nil {
+	if _, err := db.New("sqlite", dsn); err != nil {
 		t.Fatalf("Failed to initialize test database: %v", err)
 	}
 }
