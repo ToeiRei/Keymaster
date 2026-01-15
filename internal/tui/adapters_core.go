@@ -34,6 +34,10 @@ func (coreKeyReader) GetAllPublicKeys() ([]model.PublicKey, error) {
 
 func (coreKeyReader) GetActiveSystemKey() (*model.SystemKey, error) { return db.GetActiveSystemKey() }
 
+func (coreKeyReader) GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
+	return db.GetSystemKeyBySerial(serial)
+}
+
 // coreAuditReader adapts UI audit helpers to core.AuditReader.
 type coreAuditReader struct{}
 
@@ -124,6 +128,47 @@ func (coreKeysContentBuilder) Generate(accountID int) (string, error) {
 		return "", err
 	}
 	return keys.BuildAuthorizedKeysContent(sk, globalKeys, accountKeys)
+}
+
+// accountSerialUpdater adapts UpdateAccountSerial to core.AccountSerialUpdater.
+type accountSerialUpdater struct{}
+
+func (accountSerialUpdater) UpdateAccountSerial(accountID int, serial int) error {
+	return db.UpdateAccountSerial(accountID, serial)
+}
+
+// keyImporter adapts the db.KeyManager AddPublicKeyAndGetModel to core.KeyImporter.
+type keyImporter struct{}
+
+func (keyImporter) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) (*model.PublicKey, error) {
+	km := db.DefaultKeyManager()
+	if km == nil {
+		return nil, fmt.Errorf("no KeyManager available")
+	}
+	return km.AddPublicKeyAndGetModel(algorithm, keyData, comment, isGlobal, expiresAt)
+}
+
+type coreKeyListerAdapter struct{}
+
+func (coreKeyListerAdapter) GetGlobalPublicKeys() ([]model.PublicKey, error) {
+	return coreKeyStore{}.GetGlobalPublicKeys()
+}
+func (coreKeyListerAdapter) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
+	return coreKeyStore{}.GetKeysForAccount(accountID)
+}
+func (coreKeyListerAdapter) GetAllPublicKeys() ([]model.PublicKey, error) {
+	return coreKeyReader{}.GetAllPublicKeys()
+}
+
+func init() {
+	core.SetDefaultKeyReader(coreKeyReader{})
+	core.SetDefaultKeyLister(coreKeyListerAdapter{})
+	core.SetDefaultAccountSerialUpdater(accountSerialUpdater{})
+	core.SetDefaultKeyImporter(keyImporter{})
+	core.SetDefaultAuditWriter(coreAuditor{})
+	core.SetDefaultAccountManager(coreAccountStore{})
+	core.SetDefaultDBInit(db.InitDB)
+	core.SetDefaultDBIsInitialized(db.IsInitialized)
 }
 
 // coreBootstrapDeployerFactory adapts core bootstrap factory to a simple type used by TUI.
