@@ -23,6 +23,7 @@ import (
 
 	"github.com/pkg/sftp"
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/logging"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -329,7 +330,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 			// Save the host key for future connections
 			presentedKey := string(ssh.MarshalAuthorizedKey(key))
 			if err := db.AddKnownHostKey(canonical, presentedKey); err != nil {
-				fmt.Printf("Warning: failed to save known host key for %s: %v\n", canonical, err)
+				logging.Warnf("failed to save known host key for %s: %v", canonical, err)
 			}
 
 			return nil // Accept the key for bootstrap
@@ -416,7 +417,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 				return &Deployer{client: client, sftp: &sftpClientAdapter{client: sftpClient}, config: config}, nil
 			} else {
 				// Classify the error for better debugging (log it); we'll fall back to ssh-agent.
-				fmt.Printf("Info: system key connection attempt failed for %s: %v\n", host, err)
+				logging.Infof("system key connection attempt failed for %s: %v", host, err)
 			}
 			// If we provided a key and it failed, we will fall through to try the agent.
 		}
@@ -474,7 +475,7 @@ func newDeployerWithExpectedHostKey(host, user, privateKey string, config *Conne
 
 		// Save the verified host key to database
 		if err := db.AddKnownHostKey(hostOnly, presentedKey); err != nil {
-			fmt.Printf("Warning: failed to save verified host key for %s: %v\n", hostOnly, err)
+			logging.Warnf("failed to save verified host key for %s: %v", hostOnly, err)
 		}
 
 		return nil

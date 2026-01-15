@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/logging"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
 )
@@ -93,7 +94,7 @@ func DecommissionAccount(account model.Account, systemKey string, options Decomm
 	}
 	if err := logAction(auditAction, auditDetails); err != nil {
 		// Log the error but continue - audit logging shouldn't block decommission
-		fmt.Printf("Warning: Failed to log audit entry: %v\n", err)
+		logging.Warnf("Failed to log audit entry: %v", err)
 	}
 
 	if options.DryRun {
@@ -282,14 +283,14 @@ func removeSelectiveKeymasterContent(deployer *Deployer, result *DecommissionRes
 		}
 	} else if len(excludeKeyIDs) > 0 || removeSystemKey {
 		// Regenerate Keymaster section without excluded keys and/or without system key
-		fmt.Printf("\n\nDEBUG decommission: removeSystemKey=%v, excludeKeyIDs=%v, accountID=%d\n", removeSystemKey, excludeKeyIDs, accountID)
+		logging.Debugf("DEBUG decommission: removeSystemKey=%v, excludeKeyIDs=%v, accountID=%d", removeSystemKey, excludeKeyIDs, accountID)
 		keymasterContent, err := GenerateSelectiveKeysContent(accountID, 0, excludeKeyIDs, removeSystemKey)
 		if err != nil {
 			return fmt.Errorf("failed to generate selective keys content: %w", err)
 		}
-		fmt.Printf("DEBUG decommission: Generated keymaster content length=%d\n", len(keymasterContent))
-		fmt.Printf("DEBUG decommission: Keymaster content:\n%s\n", keymasterContent)
-		fmt.Printf("DEBUG decommission: Non-Keymaster content:\n%s\n\n", nonKeymasterContent)
+		logging.Debugf("DEBUG decommission: Generated keymaster content length=%d", len(keymasterContent))
+		logging.Debugf("DEBUG decommission: Keymaster content (truncated): %s", keymasterContent)
+		logging.Debugf("DEBUG decommission: Non-Keymaster content (truncated): %s", nonKeymasterContent)
 		// Check if content is empty, but don't trim (to preserve trailing newlines)
 		hasKeymasterContent := strings.TrimSpace(keymasterContent) != ""
 		hasNonKeymasterContent := strings.TrimSpace(nonKeymasterContent) != ""
@@ -304,7 +305,7 @@ func removeSelectiveKeymasterContent(deployer *Deployer, result *DecommissionRes
 			// No Keymaster keys remain, only non-Keymaster content
 			finalContent = nonKeymasterContent
 		}
-		fmt.Printf("DEBUG decommission: Final content:\n%s\n\n", finalContent)
+		logging.Debugf("DEBUG decommission: Final content (truncated): %s", finalContent)
 	} else {
 		// Remove entire Keymaster-managed section
 		finalContent = nonKeymasterContent
@@ -380,13 +381,13 @@ func BulkDecommissionAccounts(accounts []model.Account, systemKey string, option
 	results := make([]DecommissionResult, 0, len(accounts))
 
 	for i, account := range accounts {
-		fmt.Printf("Decommissioning account %d/%d: %s\n", i+1, len(accounts), account.String())
+		logging.Infof("Decommissioning account %d/%d: %s", i+1, len(accounts), account.String())
 
 		result := DecommissionAccount(account, systemKey, options)
 		results = append(results, result)
 
 		// Print immediate result
-		fmt.Printf("  → %s\n", result.String())
+		logging.Infof("  → %s", result.String())
 	}
 
 	return results

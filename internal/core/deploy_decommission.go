@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/logging"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
 )
@@ -97,13 +98,12 @@ func BulkDecommissionAccounts(accounts []model.Account, systemKey string, option
 	results := make([]DecommissionResult, 0, len(accounts))
 
 	for i, account := range accounts {
-		fmtStr := fmt.Sprintf("Decommissioning account %d/%d: %s\n", i+1, len(accounts), account.String())
-		fmt.Print(fmtStr)
+		logging.Infof("Decommissioning account %d/%d: %s", i+1, len(accounts), account.String())
 
 		result := DecommissionAccount(account, systemKey, options)
 		results = append(results, result)
 
-		fmt.Printf("  → %s\n", result.AccountString)
+		logging.Infof("  → %s", result.AccountString)
 	}
 
 	return results

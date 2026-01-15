@@ -19,6 +19,7 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
+	"github.com/toeirei/keymaster/internal/logging"
 	"github.com/toeirei/keymaster/internal/model"
 	tuidbg "github.com/toeirei/keymaster/internal/tui/debug"
 )
@@ -675,7 +676,7 @@ func Run() {
 	}
 
 	if _, err := tea.NewProgram(initialModel()).Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
+		logging.Errorf("TUI run error: %v", err)
 		os.Exit(1)
 	}
 }

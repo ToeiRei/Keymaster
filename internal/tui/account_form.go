@@ -18,6 +18,7 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
+	"github.com/toeirei/keymaster/internal/logging"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -181,7 +182,7 @@ func newAccountFormModelWithSuggester(accountToEdit *model.Account, ts TagSugges
 	// Fallback: scan for tags (keeps previous behavior if suggester unavailable)
 	allAccounts, err := db.GetAllAccounts()
 	if err != nil {
-		fmt.Printf("Warning: failed to load accounts for tag autocomplete: %v\n", err)
+		logging.Warnf("failed to load accounts for tag autocomplete: %v", err)
 	}
 	tagSet := make(map[string]struct{})
 	for _, acc := range allAccounts {
