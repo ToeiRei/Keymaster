@@ -13,8 +13,8 @@ import (
 // initTestDBT initializes an in-memory sqlite DB for tests and registers cleanup.
 func initTestDBT(t *testing.T) {
 	t.Helper()
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("initTestDBT: db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("initTestDBT: db.New failed: %v", err)
 	}
 	t.Cleanup(func() {
 		// Reset the package-level DB state if needed. The db package does not

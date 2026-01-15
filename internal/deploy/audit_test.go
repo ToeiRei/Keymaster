@@ -15,8 +15,8 @@ import (
 )
 
 func TestAuditAccountSerial_Errors(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 	i18n.Init("en")
 
@@ -46,8 +46,8 @@ func TestAuditAccountSerial_Errors(t *testing.T) {
 }
 
 func TestAuditAccountStrict_DriftDetected(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 	i18n.Init("en")
 

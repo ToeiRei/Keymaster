@@ -12,8 +12,8 @@ import (
 
 func TestBootstrapSession_SaveAndDelete(t *testing.T) {
 	dsn := "file:test_" + t.Name() + "?mode=memory&cache=shared"
-	if err := db.InitDB("sqlite", dsn); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+	if _, err := db.New("sqlite", dsn); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	s, err := NewBootstrapSession("alice", "example.com", "lbl", "tags")

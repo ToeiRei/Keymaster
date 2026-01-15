@@ -16,8 +16,8 @@ import (
 func newTestDB(t *testing.T) string {
 	t.Helper()
 	dsn := "file:test_" + t.Name() + "?mode=memory&cache=shared"
-	if err := InitDB("sqlite", dsn); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+	if _, err := New("sqlite", dsn); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 	return dsn
 }

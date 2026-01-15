@@ -18,8 +18,8 @@ import (
 // TestCleanupSession_LogsStructuredAudit ensures cleanupSession emits a
 // structured BOOTSTRAP_FAILED audit entry (contains session=..., account=... and reason=interrupted_by_signal).
 func TestCleanupSession_LogsStructuredAudit(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	// Create an in-memory bootstrap session and persist it so UpdateStatus works.

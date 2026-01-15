@@ -24,8 +24,8 @@ func WithTestStore(t *testing.T, fn func(s *SqliteStore)) {
 
 	// Initialize in-memory sqlite DB for this test
 	dsn := "file:" + t.Name() + "?mode=memory&cache=shared"
-	if err := InitDB("sqlite", dsn); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+	if _, err := New("sqlite", dsn); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 	s, ok := store.(*SqliteStore)
 	if !ok {

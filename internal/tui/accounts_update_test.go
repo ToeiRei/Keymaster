@@ -94,5 +94,6 @@ func TestAccounts_Update_FilterToggleAndVerify(t *testing.T) {
 
 func initTestDB() error {
 	// Use sqlite in-memory for fast test DB with migrations applied.
-	return db.InitDB("sqlite", ":memory:")
+	_, err := db.New("sqlite", ":memory:")
+	return err
 }

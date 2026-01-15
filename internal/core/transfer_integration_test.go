@@ -15,8 +15,8 @@ import (
 
 // Test core-level transfer end-to-end: build package and accept it using DB-backed deps.
 func TestCoreTransfer_EndToEnd(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	fake := &testutil.FakeAuditWriter{}

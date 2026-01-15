@@ -14,7 +14,7 @@ import (
 func main() {
 	dsn := "file:debprobe?mode=memory&cache=shared"
 	i18n.Init("en")
-	if err := db.InitDB("sqlite", dsn); err != nil {
+	if _, err := db.New("sqlite", dsn); err != nil {
 		panic(err)
 	}
 

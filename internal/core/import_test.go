@@ -20,8 +20,8 @@ func (l *localFakeDeployer) GetAuthorizedKeys() ([]byte, error)        { return 
 func (l *localFakeDeployer) Close()                                    {}
 
 func TestImportRemoteKeys_AddsKey(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	mgr := db.DefaultAccountManager()

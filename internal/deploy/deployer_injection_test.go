@@ -20,8 +20,8 @@ import (
 // via core.NewDeployerFactory to avoid real network connections during deployment.
 func TestRunDeploymentWithInjectedDeployer(t *testing.T) {
 	// Init DB and create account via DefaultAccountManager
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	mgr := db.DefaultAccountManager()

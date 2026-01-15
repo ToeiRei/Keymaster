@@ -32,8 +32,8 @@ func TestRemoveLine_Basic(t *testing.T) {
 }
 
 func TestCleanupAllActiveSessions_ClearsRegistry(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	s1 := &BootstrapSession{ID: "a", TempKeyPair: &TemporaryKeyPair{privateKey: []byte("a"), publicKey: "p1"}}
@@ -61,8 +61,8 @@ func TestCleanupAllActiveSessions_ClearsRegistry(t *testing.T) {
 }
 
 func TestCleanupOrphanedAndExpiredModel(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	id := "orphan-1"
@@ -106,8 +106,8 @@ func TestCleanupOrphanedAndExpiredModel(t *testing.T) {
 }
 
 func TestRecoverFromCrash_RemovesOrphanedSessions(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	id := "recover-1"
@@ -130,8 +130,8 @@ func TestRecoverFromCrash_RemovesOrphanedSessions(t *testing.T) {
 }
 
 func TestCleanupExpiredSessions_RemovesExpired(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	id := "cleanup-exp-1"
@@ -154,8 +154,8 @@ func TestCleanupExpiredSessions_RemovesExpired(t *testing.T) {
 }
 
 func TestCleanupSession_UpdatesStatus(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	s, err := NewBootstrapSession("tmpuser", "example.invalid", "lbl", "")
@@ -193,8 +193,8 @@ func TestRemoveTempKeyFromRemoteHost_NoTempKey(t *testing.T) {
 }
 
 func TestStartSessionReaper_CleansExpired(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	// create an expired session

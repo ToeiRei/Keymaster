@@ -15,8 +15,8 @@ import (
 // TestCleanupOrphanedSession_LogsAudit verifies that cleaning up an orphaned
 // bootstrap session emits a BOOTSTRAP_FAILED audit entry.
 func TestCleanupOrphanedSession_LogsAudit(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	// Save a bootstrap session record to exercise deletion path

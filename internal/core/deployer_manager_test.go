@@ -21,8 +21,8 @@ func (f *fakeGetterDeployer) GetAuthorizedKeys() ([]byte, error)        { return
 func (f *fakeGetterDeployer) Close()                                    {}
 
 func TestBuiltinDeployerManager_FetchAuthorizedKeys(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 	// create active system key
 	if _, err := db.CreateSystemKey("pubdata", "privdata"); err != nil {

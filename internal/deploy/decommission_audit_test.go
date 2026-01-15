@@ -17,8 +17,8 @@ import (
 // TestDecommissionAccount_LogsAuditActions verifies that DecommissionAccount
 // writes audit log entries via the DB AuditWriter when one is injected.
 func TestDecommissionAccount_LogsAuditActions(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	// Create a simple account to operate on.

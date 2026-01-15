@@ -37,8 +37,8 @@ func TestRemoveAuthorizedKeysFile_NoFile(t *testing.T) {
 
 func TestRemoveSelectiveKeymasterContent_RemoveSystemKeyOnly(t *testing.T) {
 	// Init in-memory DB and create system key
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	mgr := db.DefaultAccountManager()

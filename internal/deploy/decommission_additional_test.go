@@ -15,8 +15,8 @@ import (
 
 func TestRemoveSelectiveKeymasterContent_RemovesExcludedKey(t *testing.T) {
 	// Init in-memory DB
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 
 	// Create account and keys

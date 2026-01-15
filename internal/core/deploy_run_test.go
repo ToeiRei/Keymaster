@@ -23,8 +23,8 @@ func (f *fakeDeployer) GetAuthorizedKeys() ([]byte, error)        { return []byt
 func (f *fakeDeployer) Close()                                    {}
 
 func TestRunDeploymentForAccount_SetsSerial(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 	// ensure i18n is initialized for messages
 	i18n.Init("en")
@@ -77,8 +77,8 @@ func TestRunDeploymentForAccount_SetsSerial(t *testing.T) {
 }
 
 func TestRunDeploymentForAccount_ConnectionError(t *testing.T) {
-	if err := db.InitDB("sqlite", ":memory:"); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 	i18n.Init("en")
 
