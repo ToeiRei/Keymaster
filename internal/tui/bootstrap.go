@@ -397,7 +397,7 @@ func (m *bootstrapModel) handleGenerateKeyKeys(msg tea.KeyMsg) (tea.Model, tea.C
 				KeyStore:             coreKeyStore{},
 				GenerateKeysContent:  coreKeysContentBuilder{}.Generate,
 				NewBootstrapDeployer: coreBootstrapDeployerFactory{}.New,
-				GetActiveSystemKey:   ui.GetActiveSystemKey,
+				GetActiveSystemKey:   db.GetActiveSystemKey,
 				LogAudit: func(e core.BootstrapAuditEvent) error {
 					return logAction(e.Action, e.Details)
 				},
@@ -1287,7 +1287,7 @@ func (m *bootstrapModel) executeDeployment() tea.Cmd {
 			KeyStore:             coreKeyStore{},
 			GenerateKeysContent:  coreKeysContentBuilder{}.Generate,
 			NewBootstrapDeployer: coreBootstrapDeployerFactory{}.New,
-			GetActiveSystemKey:   ui.GetActiveSystemKey,
+			GetActiveSystemKey:   db.GetActiveSystemKey,
 			LogAudit: func(e core.BootstrapAuditEvent) error {
 				return logAction(e.Action, e.Details)
 			},

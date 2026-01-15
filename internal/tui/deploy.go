@@ -397,7 +397,7 @@ func (m deployModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.state = deployStateShowAuthorizedKeys
 				// Build authorized_keys using core plan builder (pure helper).
 				// Fetch system key and public keys, then build a deterministic plan.
-				sk, err := ui.GetActiveSystemKey()
+				sk, err := db.GetActiveSystemKey()
 				if err != nil {
 					m.err = err
 					return m, nil

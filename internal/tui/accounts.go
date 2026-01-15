@@ -1012,7 +1012,7 @@ func importTransferCmd(account model.Account) tea.Cmd {
 				KeyStore:             coreKeyStore{},
 				GenerateKeysContent:  coreKeysContentBuilder{}.Generate,
 				NewBootstrapDeployer: coreBootstrapDeployerFactory{}.New,
-				GetActiveSystemKey:   ui.GetActiveSystemKey,
+				GetActiveSystemKey:   db.GetActiveSystemKey,
 				LogAudit:             func(e core.BootstrapAuditEvent) error { return logAction(e.Action, e.Details) },
 				Auditor:              coreAuditor{},
 			}
@@ -1029,7 +1029,7 @@ func importTransferCmd(account model.Account) tea.Cmd {
 			KeyStore:             coreKeyStore{},
 			GenerateKeysContent:  coreKeysContentBuilder{}.Generate,
 			NewBootstrapDeployer: coreBootstrapDeployerFactory{}.New,
-			GetActiveSystemKey:   ui.GetActiveSystemKey,
+			GetActiveSystemKey:   db.GetActiveSystemKey,
 			LogAudit:             func(e core.BootstrapAuditEvent) error { return logAction(e.Action, e.Details) },
 			Auditor:              coreAuditor{},
 		}
