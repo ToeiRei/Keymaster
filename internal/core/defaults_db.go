@@ -82,10 +82,6 @@ func DefaultIsDBInitialized() bool {
 // SetDefaultDBIsInitialized registers a function used to check DB init state.
 func SetDefaultDBIsInitialized(fn func() bool) { defaultDBIsInitialized = fn }
 
-// Deprecated helper kept for small convenience: convert model.SystemKey to a
-// secret-like type. Implementations are intentionally left to callers.
-func SystemKeyExists(sk *model.SystemKey) bool { return sk != nil }
-
 // SystemKeyToSecret converts a stored `model.SystemKey` into a `security.Secret`.
 // This mirrors the helper placed in `internal/db` but keeps conversion available
 // to core callers without importing `internal/db` directly.
