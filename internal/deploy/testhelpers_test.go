@@ -1,4 +1,4 @@
-// Copyright (c) 2025 ToeiRei
+// Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
@@ -24,3 +24,4 @@ func (f *fakeDeployer) Close()                                    {}
 
 // bytesFromString is a small helper used by tests to create buffers.
 func bytesFromString(s string) *bytes.Buffer { return testutil.BytesFromString(s) }
+

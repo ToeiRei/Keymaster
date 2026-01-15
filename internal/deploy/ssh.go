@@ -1,4 +1,4 @@
-// Copyright (c) 2025 ToeiRei
+// Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
@@ -719,3 +719,4 @@ func GetRemoteHostKeyWithTimeout(host string, timeout time.Duration) (ssh.Public
 	// This case should ideally not be reached if the callback returns an error.
 	return nil, fmt.Errorf("ssh.Dial succeeded unexpectedly, could not retrieve key")
 }
+

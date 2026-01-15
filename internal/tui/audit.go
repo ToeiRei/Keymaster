@@ -1,4 +1,4 @@
-// Copyright (c) 2025 ToeiRei
+// Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
@@ -584,3 +584,4 @@ func performAuditCmd(account model.Account, mode auditModeType) tea.Cmd {
 		return auditResultMsg{account: account, err: err}
 	}
 }
+

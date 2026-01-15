@@ -1,7 +1,7 @@
 //go:build tools_probe
 // +build tools_probe
 
-// Copyright (c) 2025 ToeiRei
+// Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
@@ -14,3 +14,4 @@ func main() {
 	// `tools_probe` build tag. Keeps the tools package parseable.
 	fmt.Println("bun_probe: noop")
 }
+

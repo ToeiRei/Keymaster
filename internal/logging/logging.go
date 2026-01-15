@@ -35,3 +35,4 @@ func Errorf(format string, v ...any) {
 func Printf(format string, v ...any) {
 	Infof(format, v...)
 }
+

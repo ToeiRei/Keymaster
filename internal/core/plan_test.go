@@ -1,4 +1,4 @@
-// Copyright (c) 2025 ToeiRei
+// Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
@@ -39,3 +39,4 @@ func TestBuildBootstrapDeploymentPlan_Basic(t *testing.T) {
 		t.Fatalf("expected authorized keys content, got empty string")
 	}
 }
+

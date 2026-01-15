@@ -1,4 +1,4 @@
-// Copyright (c) 2025 ToeiRei
+// Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
@@ -459,3 +459,4 @@ func (fp *FilePicker) renderInfoBar() string {
 	info := "Selected: " + selected + " | j/k navigate | enter select | u go up"
 	return infoStyle.Render(info)
 }
+

@@ -1,4 +1,4 @@
-// Copyright (c) 2025 ToeiRei
+// Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
@@ -45,3 +45,4 @@ func WithTx(ctx context.Context, db *bun.DB, fn func(ctx context.Context, tx bun
 	}
 	return tx.Commit()
 }
+

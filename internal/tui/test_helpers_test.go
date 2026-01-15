@@ -1,4 +1,4 @@
-// Copyright (c) 2025 ToeiRei
+// Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
@@ -22,3 +22,4 @@ func initTestDBT(t *testing.T) {
 		// rely on process exit and the in-memory database scoping.
 	})
 }
+

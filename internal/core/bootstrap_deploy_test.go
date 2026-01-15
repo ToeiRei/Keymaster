@@ -1,4 +1,4 @@
-// Copyright (c) 2025 ToeiRei
+// Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
@@ -147,3 +147,4 @@ func TestPerformBootstrapDeployment_DeployFailUpdatesSession(t *testing.T) {
 		t.Fatalf("did not expect session status update on early return; got %q", updated)
 	}
 }
+

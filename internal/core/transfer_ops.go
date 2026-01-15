@@ -1,4 +1,4 @@
-// Copyright (c) 2025 ToeiRei
+// Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
@@ -30,3 +30,4 @@ func CreateTransferBootstrap(username, hostname, label, tags string) (sessionID 
 	// Return session id and private key PEM for out-of-band transfer.
 	return s.ID, string(s.TempKeyPair.GetPrivateKeyPEM()), nil
 }
+

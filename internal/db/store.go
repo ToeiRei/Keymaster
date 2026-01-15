@@ -1,4 +1,4 @@
-// Copyright (c) 2025 ToeiRei
+// Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
@@ -71,3 +71,4 @@ type Store interface {
 	// BunDB exposes the underlying *bun.DB for advanced operations or diagnostics.
 	BunDB() *bun.DB
 }
+

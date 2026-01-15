@@ -1,4 +1,4 @@
-// Copyright (c) 2025 ToeiRei
+// Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
@@ -87,3 +87,4 @@ func TestSystemKey_CreateRotateAndActive(t *testing.T) {
 		t.Fatalf("expected to find system key for serial %d", s2)
 	}
 }
+

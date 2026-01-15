@@ -1,4 +1,4 @@
-// Copyright (c) 2025 ToeiRei
+// Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
@@ -42,3 +42,4 @@ func TestDebugScreen_FooterWidth120(t *testing.T) {
 		t.Fatalf("footer width mismatch: want=120 got=%d footer=%q", got, footer)
 	}
 }
+

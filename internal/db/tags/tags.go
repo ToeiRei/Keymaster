@@ -179,3 +179,4 @@ func SplitTagsSafe(tag string) []string {
 func JoinTags(tags []string) string {
 	return tagDelimiterChar + strings.Join(tags, tagDelimiterChar) + tagDelimiterChar
 }
+

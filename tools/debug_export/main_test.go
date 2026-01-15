@@ -60,3 +60,4 @@ func TestMainRuns(t *testing.T) {
 		t.Fatalf("expected output to contain 'all accounts:', got %q", out)
 	}
 }
+

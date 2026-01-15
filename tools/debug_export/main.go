@@ -56,3 +56,4 @@ func main() {
 
 	// Direct SQL probe removed — use package-level helpers above.
 }
+
