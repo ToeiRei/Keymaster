@@ -11,6 +11,7 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 // reuse fakeDeployer defined in other tests (same package)
@@ -40,7 +41,7 @@ func TestRunDeploymentWithInjectedDeployer(t *testing.T) {
 	// Override core factory
 	orig := core.NewDeployerFactory
 	fake := &fakeDeployer{}
-	core.NewDeployerFactory = func(host, user, privateKey string, passphrase []byte) (core.RemoteDeployer, error) {
+	core.NewDeployerFactory = func(host, user string, privateKey security.Secret, passphrase []byte) (core.RemoteDeployer, error) {
 		return fake, nil
 	}
 	defer func() { core.NewDeployerFactory = orig }()

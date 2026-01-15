@@ -12,6 +12,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 	"github.com/toeirei/keymaster/internal/sshkey"
 	"github.com/toeirei/keymaster/internal/state"
 )
@@ -38,7 +39,7 @@ func AuditAccountStrict(account model.Account) error {
 		}
 	}()
 
-	deployer, err := NewDeployerFactory(account.Hostname, account.Username, connectKey.PrivateKey, passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, security.FromString(connectKey.PrivateKey), passphrase)
 	if err != nil {
 		return fmt.Errorf(i18n.T("audit.error_connection_failed"), account.Serial, err)
 	}
@@ -89,7 +90,7 @@ func AuditAccountSerial(account model.Account) error {
 		}
 	}()
 
-	deployer, err := NewDeployerFactory(account.Hostname, account.Username, connectKey.PrivateKey, passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, security.FromString(connectKey.PrivateKey), passphrase)
 	if err != nil {
 		return fmt.Errorf(i18n.T("audit.error_connection_failed"), account.Serial, err)
 	}

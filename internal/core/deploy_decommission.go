@@ -11,6 +11,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/logging"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 	"github.com/toeirei/keymaster/internal/state"
 )
 
@@ -118,7 +119,7 @@ func cleanupRemoteAuthorizedKeys(account model.Account, systemKey string, keepFi
 		}
 	}()
 
-	deployer, err := NewDeployerFactory(account.Hostname, account.Username, systemKey, passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, security.FromString(systemKey), passphrase)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s@%s: %w", account.Username, account.Hostname, err)
 	}
@@ -145,7 +146,7 @@ func cleanupRemoteAuthorizedKeysSelective(account model.Account, systemKey strin
 		}
 	}()
 
-	deployer, err := NewDeployerFactory(account.Hostname, account.Username, systemKey, passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, security.FromString(systemKey), passphrase)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s@%s: %w", account.Username, account.Hostname, err)
 	}

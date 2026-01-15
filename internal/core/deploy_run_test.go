@@ -11,6 +11,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 type fakeDeployer struct {
@@ -45,7 +46,7 @@ func TestRunDeploymentForAccount_SetsSerial(t *testing.T) {
 
 	// Override deployer factory with a fake that records content.
 	orig := NewDeployerFactory
-	NewDeployerFactory = func(host, user, privateKey string, passphrase []byte) (RemoteDeployer, error) {
+	NewDeployerFactory = func(host, user string, privateKey security.Secret, passphrase []byte) (RemoteDeployer, error) {
 		return &fakeDeployer{}, nil
 	}
 	defer func() { NewDeployerFactory = orig }()
@@ -92,7 +93,7 @@ func TestRunDeploymentForAccount_ConnectionError(t *testing.T) {
 
 	// Override factory to return an error simulating connection failure.
 	orig := NewDeployerFactory
-	NewDeployerFactory = func(host, user, privateKey string, passphrase []byte) (RemoteDeployer, error) {
+	NewDeployerFactory = func(host, user string, privateKey security.Secret, passphrase []byte) (RemoteDeployer, error) {
 		return nil, errors.New("connect failed")
 	}
 	defer func() { NewDeployerFactory = orig }()

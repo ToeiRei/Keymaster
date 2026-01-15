@@ -6,6 +6,8 @@ package core
 
 import (
 	"fmt"
+
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 // RemoteDeployer is a minimal interface used by core to interact with remote
@@ -19,7 +21,7 @@ type RemoteDeployer interface {
 // NewDeployerFactory creates a RemoteDeployer for a host/user/privateKey and
 // passphrase. Production code in `internal/deploy` will register a working
 // factory at init time. Tests may override this variable to inject fakes.
-var NewDeployerFactory = func(host, user, privateKey string, passphrase []byte) (RemoteDeployer, error) {
+var NewDeployerFactory = func(host, user string, privateKey security.Secret, passphrase []byte) (RemoteDeployer, error) {
 	return nil, fmt.Errorf("no deployer factory configured")
 }
 

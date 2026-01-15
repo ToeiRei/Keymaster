@@ -10,6 +10,7 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 type localFakeDeployer struct{ content []byte }
@@ -34,7 +35,7 @@ func TestImportRemoteKeys_AddsKey(t *testing.T) {
 
 	// Override factory to return the fake deployer with one public key line.
 	orig := core.NewDeployerFactory
-	core.NewDeployerFactory = func(host, user, privateKey string, passphrase []byte) (core.RemoteDeployer, error) {
+	core.NewDeployerFactory = func(host, user string, privateKey security.Secret, passphrase []byte) (core.RemoteDeployer, error) {
 		return &localFakeDeployer{content: []byte("ssh-ed25519 AAAAB3NzaC1lZDI1NTE5AAAAITestKey comment@example.com\n")}, nil
 	}
 	defer func() { core.NewDeployerFactory = orig }()

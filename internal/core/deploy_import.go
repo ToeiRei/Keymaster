@@ -13,6 +13,7 @@ import (
 
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 	"github.com/toeirei/keymaster/internal/sshkey"
 	"github.com/toeirei/keymaster/internal/state"
 )
@@ -52,7 +53,7 @@ func ImportRemoteKeys(account model.Account) (importedKeys []model.PublicKey, sk
 		}
 	}()
 
-	deployer, err := NewDeployerFactory(account.Hostname, account.Username, privateKey, passphrase)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, security.FromString(privateKey), passphrase)
 	if err != nil {
 		return nil, 0, warning, fmt.Errorf("connection failed: %w", err)
 	}

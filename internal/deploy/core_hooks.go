@@ -14,7 +14,7 @@ import (
 
 func init() {
 	// Wire the core.NewDeployerFactory to produce adapters over *deploy.Deployer.
-	core.NewDeployerFactory = func(host, user, privateKey string, passphrase []byte) (core.RemoteDeployer, error) {
+	core.NewDeployerFactory = func(host, user string, privateKey security.Secret, passphrase []byte) (core.RemoteDeployer, error) {
 		d, err := NewDeployerFunc(host, user, privateKey, passphrase)
 		if err != nil {
 			return nil, err
@@ -24,26 +24,22 @@ func init() {
 
 	// Wire bootstrap deployer creation hooks.
 	core.NewBootstrapDeployerFunc = func(hostname, username string, privateKey interface{}, expectedHostKey string) (core.BootstrapDeployer, error) {
-		// Accept either string (legacy) or security.Secret
-		var pkStr string
+		// Normalize to security.Secret when possible.
+		var sk security.Secret
 		switch v := privateKey.(type) {
-		case string:
-			pkStr = v
 		case security.Secret:
-			// Copy bytes into a string for the existing deployer API.
-			b := v.Bytes()
-			pkStr = string(b)
-			// zero the temporary copy
-			for i := range b {
-				b[i] = 0
-			}
+			sk = v
+		case string:
+			sk = security.FromString(v)
+		case []byte:
+			sk = security.FromBytes(v)
 		default:
-			pkStr = ""
+			sk = nil
 		}
 		if expectedHostKey != "" {
-			return NewBootstrapDeployerWithExpectedKey(hostname, username, pkStr, expectedHostKey)
+			return NewBootstrapDeployerWithExpectedKey(hostname, username, sk, expectedHostKey)
 		}
-		return NewBootstrapDeployer(hostname, username, pkStr)
+		return NewBootstrapDeployer(hostname, username, sk)
 	}
 
 	// Network helper passthroughs.

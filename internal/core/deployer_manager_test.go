@@ -9,6 +9,7 @@ import (
 
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 type fakeGetterDeployer struct {
@@ -30,7 +31,7 @@ func TestBuiltinDeployerManager_FetchAuthorizedKeys(t *testing.T) {
 
 	// override NewDeployerFactory to return a fake deployer
 	orig := NewDeployerFactory
-	NewDeployerFactory = func(host, user, privateKey string, passphrase []byte) (RemoteDeployer, error) {
+	NewDeployerFactory = func(host, user string, privateKey security.Secret, passphrase []byte) (RemoteDeployer, error) {
 		return &fakeGetterDeployer{content: []byte("authorized-keys-content")}, nil
 	}
 	defer func() { NewDeployerFactory = orig }()

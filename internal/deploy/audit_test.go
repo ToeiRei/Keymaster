@@ -11,6 +11,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
 )
 
 func TestAuditAccountSerial_Errors(t *testing.T) {
@@ -69,7 +70,7 @@ func TestAuditAccountStrict_DriftDetected(t *testing.T) {
 
 	// Remote content differs from generated expected content -- override core factory
 	origFactory := core.NewDeployerFactory
-	core.NewDeployerFactory = func(host, user, privateKey string, passphrase []byte) (core.RemoteDeployer, error) {
+	core.NewDeployerFactory = func(host, user string, privateKey security.Secret, passphrase []byte) (core.RemoteDeployer, error) {
 		return &fakeDeployer{content: []byte("some other content")}, nil
 	}
 	defer func() { core.NewDeployerFactory = origFactory }()

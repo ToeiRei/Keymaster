@@ -103,7 +103,8 @@ func (builtinDeployerManager) FetchAuthorizedKeys(account model.Account) ([]byte
 		}
 	}()
 
-	deployer, err := NewDeployerFactory(account.Hostname, account.Username, privateKey, passphrase)
+	skSecret := security.FromString(privateKey)
+	deployer, err := NewDeployerFactory(account.Hostname, account.Username, skSecret, passphrase)
 	if err != nil {
 		return nil, err
 	}

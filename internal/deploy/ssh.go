@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/sftp"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/logging"
+	"github.com/toeirei/keymaster/internal/security"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -239,7 +240,7 @@ type Deployer struct {
 
 // NewDeployerFunc is a overridable factory used to create Deployers. Tests may
 // replace this with a fake implementation to avoid real network connections.
-var NewDeployerFunc = func(host, user, privateKey string, passphrase []byte) (*Deployer, error) {
+var NewDeployerFunc = func(host, user string, privateKey security.Secret, passphrase []byte) (*Deployer, error) {
 	return NewDeployerWithConfig(host, user, privateKey, passphrase, DefaultConnectionConfig(), false)
 }
 
@@ -295,30 +296,30 @@ var sshAgentGetter = getSSHAgent
 
 // NewDeployer creates a new SSH connection and returns a Deployer.
 // For bootstrap connections, use NewBootstrapDeployer instead.
-func NewDeployer(host, user, privateKey string, passphrase []byte) (*Deployer, error) {
+func NewDeployer(host, user string, privateKey security.Secret, passphrase []byte) (*Deployer, error) {
 	return NewDeployerWithConfig(host, user, privateKey, passphrase, DefaultConnectionConfig(), false)
 }
 
 // NewBootstrapDeployer creates a new SSH connection for bootstrap operations.
 // It accepts any host key and saves it to the database for future connections.
-func NewBootstrapDeployer(host, user, privateKey string) (*Deployer, error) {
+func NewBootstrapDeployer(host, user string, privateKey security.Secret) (*Deployer, error) {
 	return NewDeployerWithConfig(host, user, privateKey, nil, DefaultConnectionConfig(), true)
 }
 
 // NewBootstrapDeployerWithExpectedKey creates a new SSH connection for bootstrap operations
 // that only accepts the specific expected host key. This is used when the host key has been
 // manually verified by the user.
-func NewBootstrapDeployerWithExpectedKey(host, user, privateKey, expectedHostKey string) (*Deployer, error) {
+func NewBootstrapDeployerWithExpectedKey(host, user string, privateKey security.Secret, expectedHostKey string) (*Deployer, error) {
 	return newDeployerWithExpectedHostKey(host, user, privateKey, DefaultConnectionConfig(), expectedHostKey)
 }
 
 // NewDeployerWithConfig creates a new SSH connection with custom timeout configuration.
-func NewDeployerWithConfig(host, user, privateKey string, passphrase []byte, config *ConnectionConfig, isBootstrap bool) (*Deployer, error) {
+func NewDeployerWithConfig(host, user string, privateKey security.Secret, passphrase []byte, config *ConnectionConfig, isBootstrap bool) (*Deployer, error) {
 	return newDeployerInternal(host, user, privateKey, passphrase, config, isBootstrap)
 }
 
 // newDeployerInternal is the internal implementation for creating deployers.
-func newDeployerInternal(host, user, privateKey string, passphrase []byte, config *ConnectionConfig, isBootstrap bool) (*Deployer, error) {
+func newDeployerInternal(host, user string, privateKey security.Secret, passphrase []byte, config *ConnectionConfig, isBootstrap bool) (*Deployer, error) {
 	// Define the host key callback based on bootstrap mode.
 	var hostKeyCallback ssh.HostKeyCallback
 
@@ -382,15 +383,15 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 
 	// If a private key is provided, use it exclusively. This is the standard path
 	// for deployment and auditing with a Keymaster system key.
-	if privateKey != "" {
-		signer, err := ssh.ParsePrivateKey([]byte(privateKey))
+	if len(privateKey) != 0 {
+		signer, err := ssh.ParsePrivateKey(privateKey.Bytes())
 		if err != nil {
 			// Check if the error is because the key is encrypted.
 			var pme *ssh.PassphraseMissingError
 			if errors.As(err, &pme) {
 				// If it's encrypted and we have a passphrase, try to parse it again.
 				if len(passphrase) > 0 {
-					signer, err = ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), passphrase)
+					signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey.Bytes(), passphrase)
 				} else {
 					// Key is encrypted, but we have no passphrase. Signal to the caller.
 					return nil, ErrPassphraseRequired
@@ -459,7 +460,7 @@ func newDeployerInternal(host, user, privateKey string, passphrase []byte, confi
 }
 
 // newDeployerWithExpectedHostKey creates a deployer that only accepts a specific host key
-func newDeployerWithExpectedHostKey(host, user, privateKey string, config *ConnectionConfig, expectedHostKey string) (*Deployer, error) {
+func newDeployerWithExpectedHostKey(host, user string, privateKey security.Secret, config *ConnectionConfig, expectedHostKey string) (*Deployer, error) {
 	// Create a host key callback that only accepts the expected key
 	hostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 		presentedKey := string(ssh.MarshalAuthorizedKey(key))
@@ -485,7 +486,7 @@ func newDeployerWithExpectedHostKey(host, user, privateKey string, config *Conne
 	addr := CanonicalizeHostPort(host)
 
 	// Parse the private key
-	signer, err := ssh.ParsePrivateKey([]byte(privateKey))
+	signer, err := ssh.ParsePrivateKey(privateKey.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
