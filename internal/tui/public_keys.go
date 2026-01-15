@@ -19,6 +19,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
 	internalkey "github.com/toeirei/keymaster/internal/crypto/ssh"
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
@@ -82,7 +83,7 @@ func newPublicKeysModelWithSearcher(s ui.KeySearcher) publicKeysModel {
 	ei.Prompt = "Expires: "
 	m.expireInput = ei
 	var err error
-	km := ui.DefaultKeyManager()
+	km := db.DefaultKeyManager()
 	if km == nil {
 		m.err = fmt.Errorf("no key manager available")
 		return m
