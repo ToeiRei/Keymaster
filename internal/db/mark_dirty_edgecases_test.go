@@ -100,9 +100,7 @@ func TestMarkDirty_DeleteAssignedKeyMarksAssignedOnly(t *testing.T) {
 			t.Fatalf("clear dirty a2 failed: %v", err)
 		}
 
-		// Inspect state before delete
-		aBefore, _ := GetAccountByIDBun(s.bun, a1)
-		bBefore, _ := GetAccountByIDBun(s.bun, a2)
+		// capture key_hash values for comparison after delete
 		var kh1, kh2 sql.NullString
 		if err := QueryRawInto(context.Background(), s.bun, &kh1, "SELECT key_hash FROM accounts WHERE id = ?", a1); err != nil {
 			t.Fatalf("read key_hash a1 failed: %v", err)
@@ -110,36 +108,12 @@ func TestMarkDirty_DeleteAssignedKeyMarksAssignedOnly(t *testing.T) {
 		if err := QueryRawInto(context.Background(), s.bun, &kh2, "SELECT key_hash FROM accounts WHERE id = ?", a2); err != nil {
 			t.Fatalf("read key_hash a2 failed: %v", err)
 		}
-		t.Logf("before delete: a1 is_dirty=%v key_hash=%v", aBefore.IsDirty, kh1.String)
-		t.Logf("before delete: a2 is_dirty=%v key_hash=%v", bBefore.IsDirty, kh2.String)
-		var akCount1, akCount2 int
-		if err := QueryRawInto(context.Background(), s.bun, &akCount1, "SELECT COUNT(*) FROM account_keys WHERE account_id = ?", a1); err != nil {
-			t.Fatalf("count account_keys a1 failed: %v", err)
-		}
-		if err := QueryRawInto(context.Background(), s.bun, &akCount2, "SELECT COUNT(*) FROM account_keys WHERE account_id = ?", a2); err != nil {
-			t.Fatalf("count account_keys a2 failed: %v", err)
-		}
-		t.Logf("account_keys counts before delete: a1=%d a2=%d", akCount1, akCount2)
-		// dump accounts table rows for debugging
-		type row struct {
-			ID      int
-			IsDirty bool           `db:"is_dirty"`
-			KeyHash sql.NullString `db:"key_hash"`
-		}
-		var rowsBefore []row
-		if err := QueryRawInto(context.Background(), s.bun, &rowsBefore, "SELECT id, is_dirty, key_hash FROM accounts ORDER BY id"); err != nil {
-			t.Fatalf("select accounts before failed: %v", err)
-		}
-		for _, r := range rowsBefore {
-			t.Logf("accounts before: id=%d is_dirty=%v key_hash=%v", r.ID, r.IsDirty, r.KeyHash.String)
-		}
 
 		if err := km.DeletePublicKey(pk.ID); err != nil {
 			t.Fatalf("DeletePublicKey failed: %v", err)
 		}
 
 		a, _ := GetAccountByIDBun(s.bun, a1)
-		b, _ := GetAccountByIDBun(s.bun, a2)
 		var kh1a, kh2a sql.NullString
 		if err := QueryRawInto(context.Background(), s.bun, &kh1a, "SELECT key_hash FROM accounts WHERE id = ?", a1); err != nil {
 			t.Fatalf("read key_hash a1 after failed: %v", err)
@@ -147,15 +121,7 @@ func TestMarkDirty_DeleteAssignedKeyMarksAssignedOnly(t *testing.T) {
 		if err := QueryRawInto(context.Background(), s.bun, &kh2a, "SELECT key_hash FROM accounts WHERE id = ?", a2); err != nil {
 			t.Fatalf("read key_hash a2 after failed: %v", err)
 		}
-		t.Logf("after delete: a1 is_dirty=%v key_hash=%v", a.IsDirty, kh1a.String)
-		t.Logf("after delete: a2 is_dirty=%v key_hash=%v", b.IsDirty, kh2a.String)
-		var rowsAfter []row
-		if err := QueryRawInto(context.Background(), s.bun, &rowsAfter, "SELECT id, is_dirty, key_hash FROM accounts ORDER BY id"); err != nil {
-			t.Fatalf("select accounts after failed: %v", err)
-		}
-		for _, r := range rowsAfter {
-			t.Logf("accounts after: id=%d is_dirty=%v key_hash=%v", r.ID, r.IsDirty, r.KeyHash.String)
-		}
+		// done: assert assigned account marked dirty; non-assigned key_hash unchanged
 		if !a.IsDirty {
 			t.Fatalf("expected a1 dirty after deleting assigned key")
 		}
