@@ -1,5 +1,4 @@
 //go:build windows
-// +build windows
 
 // Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
