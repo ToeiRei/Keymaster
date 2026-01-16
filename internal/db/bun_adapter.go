@@ -637,9 +637,9 @@ func AddPublicKeyBun(bdb *bun.DB, algorithm, keyData, comment string, isGlobal b
 	if _, err := ExecRaw(ctx, bdb, "INSERT INTO public_keys(algorithm, key_data, comment, is_global, expires_at) VALUES(?, ?, ?, ?, ?)", algorithm, keyData, comment, isGlobal, exp); err != nil {
 		return MapDBError(err)
 	}
-	// If the key is global, mark all accounts dirty
+	// If the key is global, mark affected accounts dirty (all accounts)
 	if isGlobal {
-		if _, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_dirty = ?", true); err != nil {
+		if err := markAccountsDirtyForKey(ctx, bdb, 0, true); err != nil {
 			return MapDBError(err)
 		}
 	}
@@ -672,17 +672,9 @@ func AddPublicKeyAndGetModelBun(bdb *bun.DB, algorithm, keyData, comment string,
 	if err != nil {
 		return nil, err
 	}
-	// If the key is global, mark accounts dirty where fingerprint changes
-	if isGlobal {
-		var am []AccountModel
-		if err := bdb.NewSelect().Model(&am).Scan(ctx); err != nil {
-			return nil, MapDBError(err)
-		}
-		for _, a := range am {
-			if err := MaybeMarkAccountDirtyTx(ctx, bdb, a.ID); err != nil {
-				return nil, MapDBError(err)
-			}
-		}
+	// Mark affected accounts dirty depending on global/assigned status
+	if err := markAccountsDirtyForKey(ctx, bdb, int(id), isGlobal); err != nil {
+		return nil, MapDBError(err)
 	}
 	return &model.PublicKey{ID: int(id), Algorithm: algorithm, KeyData: keyData, Comment: comment, IsGlobal: isGlobal}, nil
 }
@@ -693,15 +685,9 @@ func TogglePublicKeyGlobalBun(bdb *bun.DB, id int) error {
 	if _, err := ExecRaw(ctx, bdb, "UPDATE public_keys SET is_global = NOT is_global WHERE id = ?", id); err != nil {
 		return MapDBError(err)
 	}
-	// Toggling global status affects authorized_keys for many accounts; recompute per-account fingerprint
-	var am []AccountModel
-	if err := bdb.NewSelect().Model(&am).Scan(ctx); err != nil {
+	// Toggling global status can affect all accounts; recompute for all accounts.
+	if err := markAccountsDirtyForKey(ctx, bdb, 0, true); err != nil {
 		return MapDBError(err)
-	}
-	for _, a := range am {
-		if err := MaybeMarkAccountDirtyTx(ctx, bdb, a.ID); err != nil {
-			return MapDBError(err)
-		}
 	}
 	return nil
 }
@@ -727,27 +713,9 @@ func SetPublicKeyExpiryBun(bdb *bun.DB, id int, expiresAt time.Time) error {
 	if pk == nil {
 		return nil
 	}
-	if pk.IsGlobal {
-		var am []AccountModel
-		if err := bdb.NewSelect().Model(&am).Scan(ctx); err != nil {
-			return MapDBError(err)
-		}
-		for _, a := range am {
-			if err := MaybeMarkAccountDirtyTx(ctx, bdb, a.ID); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	// Non-global: mark accounts that have this key
-	accs, err := GetAccountsForKeyBun(bdb, id)
-	if err != nil {
+	// Mark affected accounts: global -> all accounts, non-global -> assigned accounts
+	if err := markAccountsDirtyForKey(ctx, bdb, id, pk.IsGlobal); err != nil {
 		return err
-	}
-	for _, a := range accs {
-		if err := UpdateAccountIsDirtyBun(bdb, a.ID, true); err != nil {
-			return MapDBError(err)
-		}
 	}
 	return nil
 }
@@ -774,11 +742,13 @@ func DeletePublicKeyBun(bdb *bun.DB, id int) error {
 	if err != nil {
 		return err
 	}
+	// delete key
 	if _, err := ExecRaw(ctx, bdb, "DELETE FROM public_keys WHERE id = ?", id); err != nil {
 		return MapDBError(err)
 	}
+	// mark previously-affected accounts as dirty (do not recompute key_hash here)
 	for _, a := range accs {
-		if err := MaybeMarkAccountDirtyTx(ctx, bdb, a.ID); err != nil {
+		if err := UpdateAccountIsDirtyBun(bdb, a.ID, true); err != nil {
 			return MapDBError(err)
 		}
 	}
@@ -968,6 +938,50 @@ func UpdateAccountIsDirtyBun(bdb *bun.DB, id int, dirty bool) error {
 	ctx := context.Background()
 	_, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_dirty = ? WHERE id = ?", dirty, id)
 	return err
+}
+
+// markAccountsDirtyForKey centralizes logic to mark affected accounts dirty
+// when a public key changes. If isGlobal is true, all accounts are considered
+// affected; otherwise only accounts assigned the given keyID are affected.
+func markAccountsDirtyForKey(ctx context.Context, bdb *bun.DB, keyID int, isGlobal bool) error {
+	if isGlobal {
+		var am []AccountModel
+		if err := bdb.NewSelect().Model(&am).Scan(ctx); err != nil {
+			return MapDBError(err)
+		}
+		for _, a := range am {
+			if err := MaybeMarkAccountDirtyTx(ctx, bdb, a.ID); err != nil {
+				return MapDBError(err)
+			}
+		}
+		return nil
+	}
+	// Non-global: mark accounts assigned the key
+	var am []AccountModel
+	if err := bdb.NewSelect().Model(&am).
+		TableExpr("accounts AS a").
+		Join("JOIN account_keys ak ON a.id = ak.account_id").
+		Where("ak.key_id = ?", keyID).
+		Scan(ctx); err != nil {
+		return MapDBError(err)
+	}
+	for _, a := range am {
+		if err := MaybeMarkAccountDirtyTx(ctx, bdb, a.ID); err != nil {
+			return MapDBError(err)
+		}
+	}
+	return nil
+}
+
+// markAccountsDirtyByIDs marks the provided account IDs dirty using the
+// deterministic fingerprint check.
+func markAccountsDirtyByIDs(ctx context.Context, bdb *bun.DB, ids []int) error {
+	for _, id := range ids {
+		if err := MaybeMarkAccountDirtyTx(ctx, bdb, id); err != nil {
+			return MapDBError(err)
+		}
+	}
+	return nil
 }
 
 // --- System key helpers ---
