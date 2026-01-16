@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -141,7 +142,7 @@ func TestAuditAccounts_StrictMatch_NoDirty(t *testing.T) {
 	aw := &spyAuditWriter{}
 	SetDefaultAuditWriter(aw)
 
-	res, err := AuditAccounts(nil, store, dm, "strict", nil)
+	res, err := AuditAccounts(context.TODO(), store, dm, "strict", nil)
 	if err != nil {
 		t.Fatalf("AuditAccounts returned err: %v", err)
 	}
@@ -170,7 +171,7 @@ func TestAuditAccounts_StrictMismatch_LogsAndMarksDirty(t *testing.T) {
 	aw := &spyAuditWriter{}
 	SetDefaultAuditWriter(aw)
 
-	res, err := AuditAccounts(nil, store, dm, "strict", nil)
+	res, err := AuditAccounts(context.TODO(), store, dm, "strict", nil)
 	if err != nil {
 		t.Fatalf("AuditAccounts returned err: %v", err)
 	}
@@ -201,7 +202,7 @@ func TestDeployDirtyAccounts_ClearsDirtyOnSuccess(t *testing.T) {
 	store := &simpleFakeStore{accounts: []model.Account{acct1, acct2}}
 
 	simple := &simpleDM{}
-	results, err := DeployDirtyAccounts(nil, store, simple, nil)
+	results, err := DeployDirtyAccounts(context.TODO(), store, simple, nil)
 	if err != nil {
 		t.Fatalf("DeployDirtyAccounts returned err: %v", err)
 	}

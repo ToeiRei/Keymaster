@@ -112,14 +112,6 @@ func (s *simpleStore) ExportDataForBackup() (*model.BackupData, error) { return 
 func (s *simpleStore) ImportDataFromBackup(*model.BackupData) error    { return nil }
 func (s *simpleStore) IntegrateDataFromBackup(*model.BackupData) error { return nil }
 
-type hfOK struct{ key string }
-
-func (h hfOK) FetchHostKey(canonicalHost string) (string, error) { return h.key, nil }
-
-type hfErr struct{}
-
-func (hfErr) FetchHostKey(canonicalHost string) (string, error) { return "", errors.New("no host") }
-
 func TestDeployAccounts_AllAndIdentifier(t *testing.T) {
 	i18n.Init("en")
 	acct1 := model.Account{ID: 1, Username: "alice", Hostname: "a.example.com", Label: ""}
