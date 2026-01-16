@@ -11,7 +11,7 @@ import (
 
 // Test that various mutators mark accounts as dirty when they affect authorized_keys.
 func TestIsDirtyFlags(t *testing.T) {
-	WithTestStore(t, func(s *SqliteStore) {
+	WithTestStore(t, func(s *BunStore) {
 		bdb := s.bun
 
 		// Create two accounts

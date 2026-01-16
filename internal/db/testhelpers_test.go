@@ -10,7 +10,7 @@ import (
 
 // WithTestStore initializes an in-memory sqlite Store for the duration of the
 // provided function and restores package-level globals afterwards.
-func WithTestStore(t *testing.T, fn func(s *SqliteStore)) {
+func WithTestStore(t *testing.T, fn func(s *BunStore)) {
 	t.Helper()
 
 	// Save previous globals
@@ -27,9 +27,9 @@ func WithTestStore(t *testing.T, fn func(s *SqliteStore)) {
 	if _, err := New("sqlite", dsn); err != nil {
 		t.Fatalf("db.New failed: %v", err)
 	}
-	s, ok := store.(*SqliteStore)
+	s, ok := store.(*BunStore)
 	if !ok {
-		t.Fatalf("store is not *SqliteStore")
+		t.Fatalf("store is not *BunStore")
 	}
 
 	// Ensure restoration of globals after fn completes

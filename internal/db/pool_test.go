@@ -21,9 +21,9 @@ func TestDBPoolDefaultsSQLite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewStoreFromDSN returned error: %v", err)
 	}
-	ss, ok := s.(*SqliteStore)
+	ss, ok := s.(*BunStore)
 	if !ok {
-		t.Fatalf("expected *SqliteStore, got %T", s)
+		t.Fatalf("expected *BunStore, got %T", s)
 	}
 	// The default in NewStoreFromDSN is 25. Check that the sql.DB Stats reflects that.
 	stats := ss.BunDB().DB.Stats()

@@ -10,7 +10,7 @@ import (
 )
 
 func TestAccountHelpers(t *testing.T) {
-	WithTestStore(t, func(s *SqliteStore) {
+	WithTestStore(t, func(s *BunStore) {
 		bdb := s.bun
 
 		// Add an account
@@ -64,7 +64,7 @@ func TestAccountHelpers(t *testing.T) {
 }
 
 func TestBootstrapSessionHelpers(t *testing.T) {
-	WithTestStore(t, func(s *SqliteStore) {
+	WithTestStore(t, func(s *BunStore) {
 		bdb := s.bun
 
 		id := "sess-1"
@@ -107,7 +107,7 @@ func TestBootstrapSessionHelpers(t *testing.T) {
 }
 
 func TestKnownHostHelpers(t *testing.T) {
-	WithTestStore(t, func(s *SqliteStore) {
+	WithTestStore(t, func(s *BunStore) {
 		bdb := s.bun
 
 		host := "git.example"
@@ -126,7 +126,7 @@ func TestKnownHostHelpers(t *testing.T) {
 }
 
 func TestSystemKeyHelpers(t *testing.T) {
-	WithTestStore(t, func(s *SqliteStore) {
+	WithTestStore(t, func(s *BunStore) {
 		bdb := s.bun
 
 		have, err := HasSystemKeysBun(bdb)

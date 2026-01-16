@@ -10,7 +10,7 @@ import (
 )
 
 func TestBunKeyWrappers_GetAllAndQuery(t *testing.T) {
-	WithTestStore(t, func(s *SqliteStore) {
+	WithTestStore(t, func(s *BunStore) {
 		bdb := s.bun
 
 		_, err := AddPublicKeyAndGetModelBun(bdb, "ssh-ed25519", "D1", "k1", false, time.Time{})

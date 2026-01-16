@@ -10,7 +10,7 @@ import (
 )
 
 func TestBunDefaultManagers_KeyAndAccountFlow(t *testing.T) {
-	WithTestStore(t, func(s *SqliteStore) {
+	WithTestStore(t, func(s *BunStore) {
 		bdb := s.bun
 
 		// Account add/delete via DefaultAccountManager

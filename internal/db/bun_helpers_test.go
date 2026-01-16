@@ -23,7 +23,7 @@ func TestBeginTx_WithTx_IsInitialized_GetAllAuditLogEntries(t *testing.T) {
 	}
 
 	// Initialize a test DB
-	WithTestStore(t, func(s *SqliteStore) {
+	WithTestStore(t, func(s *BunStore) {
 		bdb := s.bun
 
 		if !IsInitialized() {

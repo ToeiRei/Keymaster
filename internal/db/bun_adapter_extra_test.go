@@ -10,7 +10,7 @@ import (
 )
 
 func TestGetAllAccounts_Delete_Update_Search(t *testing.T) {
-	WithTestStore(t, func(s *SqliteStore) {
+	WithTestStore(t, func(s *BunStore) {
 		bdb := s.bun
 
 		// Create accounts
@@ -73,7 +73,7 @@ func TestGetAllAccounts_Delete_Update_Search(t *testing.T) {
 }
 
 func TestPublicKeys_List_Toggle_Search_Delete_Assignments(t *testing.T) {
-	WithTestStore(t, func(s *SqliteStore) {
+	WithTestStore(t, func(s *BunStore) {
 		bdb := s.bun
 
 		// Create accounts and keys

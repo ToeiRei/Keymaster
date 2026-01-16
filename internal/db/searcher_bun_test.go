@@ -12,7 +12,7 @@ import (
 // Tests that exercise Bun-backed searcher wrappers and helpers using an
 // in-memory sqlite DB initialized via InitDB.
 func TestBunAccountKeyAndAuditSearchers(t *testing.T) {
-	WithTestStore(t, func(s *SqliteStore) {
+	WithTestStore(t, func(s *BunStore) {
 		bdb := s.bun
 
 		// Add accounts

@@ -209,16 +209,10 @@ func NewStoreFromDSN(dbType, dsn string) (Store, error) {
 	dbLogf("db: migrations for %s completed in %s", dbType, time.Since(migStart))
 	// Create a Bun DB wrapper for the sql.DB based on dialect
 	bunDB := createBunDB(sqlDB, dbType)
-	switch dbType {
-	case "sqlite":
-		return &SqliteStore{bun: bunDB}, nil
-	case "postgres":
-		return &PostgresStore{bun: bunDB}, nil
-	case "mysql":
-		return &MySQLStore{bun: bunDB}, nil
-	default:
-		return nil, fmt.Errorf("unsupported database type for store creation: '%s'", dbType)
-	}
+	// Return a consolidated BunStore for all backends. The concrete per-engine
+	// types were consolidated into BunStore to reduce duplication and simplify
+	// maintenance. Keep behavior identical by delegating to the same Bun helpers.
+	return &BunStore{bun: bunDB}, nil
 }
 
 // createBunDB constructs a *bun.DB for the provided *sql.DB and dbType.
