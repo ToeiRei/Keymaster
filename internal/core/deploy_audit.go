@@ -5,6 +5,7 @@
 package core
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
@@ -129,4 +130,19 @@ func AuditAccountSerial(account model.Account) error {
 		return errors.New(i18n.T("audit.error_drift_detected"))
 	}
 	return nil
+}
+
+// HashAuthorizedKeysContent normalizes raw authorized_keys content and returns
+// a SHA256 hex fingerprint. Normalization mirrors what we use when
+// constructing authorized_keys to make comparisons robust across platforms.
+func HashAuthorizedKeysContent(raw []byte) string {
+	s := string(raw)
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	lines := strings.Split(s, "\n")
+	for i := range lines {
+		lines[i] = strings.TrimRight(lines[i], " \t")
+	}
+	norm := strings.Join(lines, "\n")
+	sum := sha256.Sum256([]byte(norm))
+	return fmt.Sprintf("%x", sum[:])
 }

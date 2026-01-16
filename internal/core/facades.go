@@ -21,6 +21,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"github.com/toeirei/keymaster/internal/bootstrap"
 	"github.com/toeirei/keymaster/internal/config"
+	"github.com/toeirei/keymaster/internal/i18n"
 
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
@@ -111,7 +112,26 @@ func AuditAccounts(ctx context.Context, st Store, dm DeployerManager, mode strin
 		case "serial":
 			aerr = dm.AuditSerial(acc)
 		case "strict", "":
-			aerr = dm.AuditStrict(acc)
+			// Strict mode: fetch remote authorized_keys and compare deterministic hash
+			if acc.Serial == 0 {
+				aerr = fmt.Errorf("%s", i18n.T("audit.error_not_deployed"))
+				break
+			}
+			remote, ferr := dm.FetchAuthorizedKeys(acc)
+			if ferr != nil {
+				aerr = fmt.Errorf("%s", i18n.T("audit.error_read_remote_file", ferr))
+				break
+			}
+			expected, gerr := GenerateKeysContent(acc.ID)
+			if gerr != nil {
+				aerr = fmt.Errorf("%s", i18n.T("audit.error_generate_expected", gerr))
+				break
+			}
+			remoteHash := HashAuthorizedKeysContent(remote)
+			expectedHash := HashAuthorizedKeysContent([]byte(expected))
+			if remoteHash != expectedHash {
+				aerr = fmt.Errorf("%s", i18n.T("audit.error_drift_detected"))
+			}
 		default:
 			return nil, fmt.Errorf("invalid audit mode: %s", mode)
 		}
