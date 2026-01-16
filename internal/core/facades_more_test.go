@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
@@ -29,6 +30,22 @@ func (f *fakeStoreForMigrate) GetActiveSystemKey() (*model.SystemKey, error) {
 
 // implement minimal Store methods used by facades tests
 func (f *fakeStoreForMigrate) GetAllActiveAccounts() ([]model.Account, error) { return nil, nil }
+
+// fake KeyManager for ImportAuthorizedKeys (minimal)
+type fmKeyManager struct {
+	added   []string
+	failFor map[string]error
+}
+
+func (f *fmKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) error {
+	if f.failFor != nil {
+		if e, ok := f.failFor[comment]; ok {
+			return e
+		}
+	}
+	f.added = append(f.added, comment)
+	return nil
+}
 
 func (f *fmKeyManager) GetGlobalPublicKeys() ([]model.PublicKey, error)            { return nil, nil }
 func (f *fmKeyManager) GetKeysForAccount(accountID int) ([]model.PublicKey, error) { return nil, nil }
