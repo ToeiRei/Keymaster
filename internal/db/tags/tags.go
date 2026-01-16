@@ -31,24 +31,46 @@ func reducex[T any, S ~[]T, U any](s S, f func(T, U) (U, error)) (U, error) {
 }
 
 func parseTagMatcher(expr string, qb bun.QueryBuilder, mode bool, negate bool) (bun.QueryBuilder, error) {
+	return parseTagMatcherColumn(expr, qb, mode, negate, "tag")
+}
+
+// parseTagMatcherColumn behaves like parseTagMatcher but targets the provided
+// column expression (for example: "tags" or "a.tags"). This keeps the
+// generated SQL join-compatible when callers supply a table alias.
+func parseTagMatcherColumn(expr string, qb bun.QueryBuilder, mode bool, negate bool, column string) (bun.QueryBuilder, error) {
 	var err error
+
+	// If qb is nil this function is being used only for validation (no SQL
+	// rendering). In that case, avoid calling QueryBuilder methods which may
+	// panic on mock or zero-value implementations.
+	validationOnly := qb == nil
 
 	expr = strings.TrimSpace(expr)
 
 	// and
 	if exprs := splitOnTopLevelChar(expr, '&'); len(exprs) > 1 {
-		// TODO test & comment
-		return reducex(exprs, func(expr string, qb bun.QueryBuilder) (bun.QueryBuilder, error) {
-			return parseTagMatcher(expr, qb, !negate, negate)
-		})
+		// AND: apply each expression in sequence, threading the QueryBuilder
+		for _, e := range exprs {
+			var err error
+			qb, err = parseTagMatcherColumn(e, qb, !negate, negate, column)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return qb, nil
 	}
 
 	// or
 	if exprs := splitOnTopLevelChar(expr, '|'); len(exprs) > 1 {
-		// TODO test & comment
-		return reducex(exprs, func(expr string, qb bun.QueryBuilder) (bun.QueryBuilder, error) {
-			return parseTagMatcher(expr, qb, negate, negate)
-		})
+		// OR: apply each expression in sequence, threading the QueryBuilder
+		for _, e := range exprs {
+			var err error
+			qb, err = parseTagMatcherColumn(e, qb, negate, negate, column)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return qb, nil
 	}
 
 	// negation
@@ -75,9 +97,17 @@ func parseTagMatcher(expr string, qb bun.QueryBuilder, mode bool, negate bool) (
 			// well, i think i got an idea ^^
 			negate = !negate
 		}
-		// apply WhereGroup to query builder
+		// apply WhereGroup to query builder (or validate recursively)
+		if validationOnly {
+			// validate nested expression without invoking QueryBuilder methods
+			_, err = parseTagMatcherColumn(expr, nil, !negate, negate, column)
+			if err != nil {
+				return nil, err
+			}
+			return nil, nil
+		}
 		qb = qb.WhereGroup(operator, func(qb bun.QueryBuilder) bun.QueryBuilder {
-			qb, err = parseTagMatcher(expr, qb, !negate, negate)
+			qb, err = parseTagMatcherColumn(expr, qb, !negate, negate, column)
 			return qb
 		})
 		// handle error from WhereGroup callback using global err variable
@@ -100,14 +130,18 @@ func parseTagMatcher(expr string, qb bun.QueryBuilder, mode bool, negate bool) (
 		// enable wildcards
 		expr = strings.ReplaceAll(expr, "**", "%")
 		expr = strings.ReplaceAll(expr, "*", "_")
-		// add delimiters
+		// add delimiters and allow substring matching within the tags field
 		expr = JoinTags([]string{expr})
-		// construct query
+		expr = "%" + expr + "%"
+		// construct query using provided column expression
 		query := map[bool]string{
-			true:  "tag NOT LIKE ? ESCAPE '" + sqlEscapeChar + "'",
-			false: "tag     LIKE ? ESCAPE '" + sqlEscapeChar + "'",
+			true:  column + " NOT LIKE ? ESCAPE '" + sqlEscapeChar + "'",
+			false: column + "     LIKE ? ESCAPE '" + sqlEscapeChar + "'",
 		}[negated != negate]
-		// apply to query builder
+		// apply to query builder (or validate)
+		if validationOnly {
+			return nil, nil
+		}
 		if mode {
 			return qb.Where(query, expr), nil
 		} else {
@@ -141,7 +175,7 @@ func splitOnTopLevelChar(expr string, op rune) []string {
 func ValidateTagMatcher(tag_matcher string) error {
 	// create mock QueryBuilder (fine for validation, but panics when used to render sql as it has no underlying formatter!)
 	qb := (&bun.SelectQuery{}).QueryBuilder()
-	_, err := parseTagMatcher(tag_matcher, qb, true, false)
+	_, err := parseTagMatcherColumn(tag_matcher, qb, true, false, "tag")
 	return err
 }
 
@@ -152,7 +186,22 @@ func QueryBuilderFromTagMatcher(tag_matcher string) (func(bun.QueryBuilder) bun.
 	}
 	// return QueryBuilder with safe callback
 	return func(qb bun.QueryBuilder) bun.QueryBuilder {
-		qb, _ = parseTagMatcher(tag_matcher, qb, true, false)
+		qb, _ = parseTagMatcherColumn(tag_matcher, qb, true, false, "tag")
+		return qb
+	}, nil
+}
+
+// QueryBuilderFromTagMatcherColumn returns a QueryBuilder callback that targets
+// the provided column expression (for example "tags" or "a.tags"). This
+// allows callers to supply table aliases so the generated WHERE fragments are
+// join-compatible.
+func QueryBuilderFromTagMatcherColumn(column, tag_matcher string) (func(bun.QueryBuilder) bun.QueryBuilder, error) {
+	// validate using the default column because validation does not depend on column name
+	if err := ValidateTagMatcher(tag_matcher); err != nil {
+		return nil, err
+	}
+	return func(qb bun.QueryBuilder) bun.QueryBuilder {
+		qb, _ = parseTagMatcherColumn(tag_matcher, qb, true, false, column)
 		return qb
 	}, nil
 }
