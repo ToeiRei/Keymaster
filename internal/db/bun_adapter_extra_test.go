@@ -9,6 +9,128 @@ import (
 	"time"
 )
 
+// Test GetActiveSystemKeyBun / RotateSystemKeyBun behavior and account dirty marking.
+func TestSystemKeyRotateAndActive(t *testing.T) {
+	WithTestStore(t, func(s *BunStore) {
+		bdb := s.BunDB()
+
+		// Initially no system keys
+		sk, err := GetActiveSystemKeyBun(bdb)
+		if err != nil {
+			t.Fatalf("GetActiveSystemKeyBun initial: %v", err)
+		}
+		if sk != nil {
+			t.Fatalf("expected no active system key initially")
+		}
+
+		// Ensure we have an account to observe dirty flag
+		aid, err := AddAccountBun(bdb, "u2", "h2", "lbl2", "")
+		if err != nil {
+			t.Fatalf("AddAccountBun: %v", err)
+		}
+
+		// Create initial system key
+		sserial, err := CreateSystemKeyBun(bdb, "pub1", "priv1")
+		if err != nil {
+			t.Fatalf("CreateSystemKeyBun: %v", err)
+		}
+		if sserial <= 0 {
+			t.Fatalf("invalid serial from CreateSystemKeyBun: %d", sserial)
+		}
+
+		// Active key should be present
+		sk2, err := GetActiveSystemKeyBun(bdb)
+		if err != nil {
+			t.Fatalf("GetActiveSystemKeyBun after create: %v", err)
+		}
+		if sk2 == nil || sk2.Serial != sserial {
+			t.Fatalf("unexpected active key: %+v", sk2)
+		}
+
+		// Rotate key
+		newSerial, err := RotateSystemKeyBun(bdb, "pub2", "priv2")
+		if err != nil {
+			t.Fatalf("RotateSystemKeyBun: %v", err)
+		}
+		if newSerial == sserial {
+			t.Fatalf("expected new serial different from previous")
+		}
+
+		// Active key should reflect new serial
+		sk3, err := GetActiveSystemKeyBun(bdb)
+		if err != nil {
+			t.Fatalf("GetActiveSystemKeyBun after rotate: %v", err)
+		}
+		if sk3 == nil || sk3.Serial != newSerial {
+			t.Fatalf("active key did not update: %+v", sk3)
+		}
+
+		// Accounts should have been marked dirty by rotation
+		acc, err := GetAccountByIDBun(bdb, aid)
+		if err != nil {
+			t.Fatalf("GetAccountByIDBun: %v", err)
+		}
+		if acc == nil || !acc.IsDirty {
+			t.Fatalf("expected account dirty after rotate: %+v", acc)
+		}
+	})
+}
+
+// Test AddPublicKeyAndGetModelBun returns nil on duplicate and marks accounts dirty when global.
+func TestAddPublicKeyAndImportIntegrate(t *testing.T) {
+	WithTestStore(t, func(s *BunStore) {
+		bdb := s.BunDB()
+
+		// Add a public key via AddPublicKeyAndGetModelBun
+		pk, err := AddPublicKeyAndGetModelBun(bdb, "ssh-ed25519", "dataX", "dup-key", false, time.Time{})
+		if err != nil {
+			t.Fatalf("AddPublicKeyAndGetModelBun: %v", err)
+		}
+		if pk == nil {
+			t.Fatalf("expected pk model on first insert")
+		}
+
+		// Duplicate insert should return (nil, nil)
+		dup, err := AddPublicKeyAndGetModelBun(bdb, "ssh-ed25519", "dataX", "dup-key", false, time.Time{})
+		if err != nil {
+			t.Fatalf("duplicate AddPublicKeyAndGetModelBun error: %v", err)
+		}
+		if dup != nil {
+			t.Fatalf("expected nil for duplicate insert")
+		}
+
+		// Make the key global and ensure accounts are marked dirty when toggled/expiry set
+		// Add an account
+		aid, err := AddAccountBun(bdb, "u3", "h3", "lbl3", "")
+		if err != nil {
+			t.Fatalf("AddAccountBun: %v", err)
+		}
+
+		// Mark the existing key global using TogglePublicKeyGlobalBun
+		if err := TogglePublicKeyGlobalBun(bdb, pk.ID); err != nil {
+			t.Fatalf("TogglePublicKeyGlobalBun: %v", err)
+		}
+		acc, _ := GetAccountByIDBun(bdb, aid)
+		if acc == nil || !acc.IsDirty {
+			t.Fatalf("expected account dirty after toggling global: %+v", acc)
+		}
+
+		// Export backup and then import into same DB (round-trip)
+		backup, err := ExportDataForBackupBun(bdb)
+		if err != nil {
+			t.Fatalf("ExportDataForBackupBun: %v", err)
+		}
+		if err := ImportDataFromBackupBun(bdb, backup); err != nil {
+			t.Fatalf("ImportDataForBackupBun: %v", err)
+		}
+
+		// Integrate should be idempotent (no error)
+		if err := IntegrateDataFromBackupBun(bdb, backup); err != nil {
+			t.Fatalf("IntegrateDataFromBackupBun: %v", err)
+		}
+	})
+}
+
 func TestGetAllAccounts_Delete_Update_Search(t *testing.T) {
 	WithTestStore(t, func(s *BunStore) {
 		bdb := s.bun
