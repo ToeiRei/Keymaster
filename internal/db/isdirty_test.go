@@ -5,6 +5,7 @@
 package db
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -28,8 +29,15 @@ func TestIsDirtyFlags(t *testing.T) {
 		if err := UpdateAccountIsDirtyBun(bdb, a1, false); err != nil {
 			t.Fatalf("clear dirty a1 failed: %v", err)
 		}
+		// Ensure fingerprint starts empty so subsequent operations deterministically mark dirty
+		if _, err := ExecRaw(context.Background(), bdb, "UPDATE accounts SET key_hash = NULL WHERE id = ?", a1); err != nil {
+			t.Fatalf("clear key_hash a1 failed: %v", err)
+		}
 		if err := UpdateAccountIsDirtyBun(bdb, a2, false); err != nil {
 			t.Fatalf("clear dirty a2 failed: %v", err)
+		}
+		if _, err := ExecRaw(context.Background(), bdb, "UPDATE accounts SET key_hash = NULL WHERE id = ?", a2); err != nil {
+			t.Fatalf("clear key_hash a2 failed: %v", err)
 		}
 
 		// Add a public key (non-global) and assign to a1
@@ -57,6 +65,9 @@ func TestIsDirtyFlags(t *testing.T) {
 		if err := UpdateAccountIsDirtyBun(bdb, a1, false); err != nil {
 			t.Fatalf("clear dirty a1 failed: %v", err)
 		}
+		if _, err := ExecRaw(context.Background(), bdb, "UPDATE accounts SET key_hash = NULL WHERE id = ?", a1); err != nil {
+			t.Fatalf("clear key_hash a1 failed: %v", err)
+		}
 		if err := UnassignKeyFromAccountBun(bdb, pk.ID, a1); err != nil {
 			t.Fatalf("UnassignKeyFromAccountBun failed: %v", err)
 		}
@@ -72,6 +83,9 @@ func TestIsDirtyFlags(t *testing.T) {
 		if err := UpdateAccountIsDirtyBun(bdb, a2, false); err != nil {
 			t.Fatalf("clear dirty a2 failed: %v", err)
 		}
+		if _, err := ExecRaw(context.Background(), bdb, "UPDATE accounts SET key_hash = NULL WHERE id = ?", a2); err != nil {
+			t.Fatalf("clear key_hash a2 failed: %v", err)
+		}
 		if err := AddPublicKeyBun(bdb, "ed25519", "GGGG", "gk", true, time.Time{}); err != nil {
 			t.Fatalf("AddPublicKeyBun global failed: %v", err)
 		}
@@ -85,8 +99,14 @@ func TestIsDirtyFlags(t *testing.T) {
 		if err := UpdateAccountIsDirtyBun(bdb, a1, false); err != nil {
 			t.Fatalf("clear dirty a1 failed: %v", err)
 		}
+		if _, err := ExecRaw(context.Background(), bdb, "UPDATE accounts SET key_hash = NULL WHERE id = ?", a1); err != nil {
+			t.Fatalf("clear key_hash a1 failed: %v", err)
+		}
 		if err := UpdateAccountIsDirtyBun(bdb, a2, false); err != nil {
 			t.Fatalf("clear dirty a2 failed: %v", err)
+		}
+		if _, err := ExecRaw(context.Background(), bdb, "UPDATE accounts SET key_hash = NULL WHERE id = ?", a2); err != nil {
+			t.Fatalf("clear key_hash a2 failed: %v", err)
 		}
 		// Create a non-global key then toggle it to global
 		if err := AddPublicKeyBun(bdb, "ed25519", "HHHH", "tk", false, time.Time{}); err != nil {
@@ -108,6 +128,9 @@ func TestIsDirtyFlags(t *testing.T) {
 		// Clear and test expiry marking for assigned accounts
 		if err := UpdateAccountIsDirtyBun(bdb, a1, false); err != nil {
 			t.Fatalf("clear dirty a1 failed: %v", err)
+		}
+		if _, err := ExecRaw(context.Background(), bdb, "UPDATE accounts SET key_hash = NULL WHERE id = ?", a1); err != nil {
+			t.Fatalf("clear key_hash a1 failed: %v", err)
 		}
 		if err := UpdateAccountIsDirtyBun(bdb, a2, false); err != nil {
 			t.Fatalf("clear dirty a2 failed: %v", err)

@@ -5,6 +5,7 @@
 package db
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -34,8 +35,14 @@ func TestToggleAndDeleteMarkDirtyViaManagers(t *testing.T) {
 		if err := UpdateAccountIsDirty(a1, false); err != nil {
 			t.Fatalf("clear dirty a1 failed: %v", err)
 		}
+		if _, err := ExecRaw(context.Background(), s.bun, "UPDATE accounts SET key_hash = NULL WHERE id = ?", a1); err != nil {
+			t.Fatalf("clear key_hash a1 failed: %v", err)
+		}
 		if err := UpdateAccountIsDirty(a2, false); err != nil {
 			t.Fatalf("clear dirty a2 failed: %v", err)
+		}
+		if _, err := ExecRaw(context.Background(), s.bun, "UPDATE accounts SET key_hash = NULL WHERE id = ?", a2); err != nil {
+			t.Fatalf("clear key_hash a2 failed: %v", err)
 		}
 
 		// Add non-global key, assign to a1
@@ -51,8 +58,14 @@ func TestToggleAndDeleteMarkDirtyViaManagers(t *testing.T) {
 		if err := UpdateAccountIsDirty(a1, false); err != nil {
 			t.Fatalf("clear dirty a1 failed: %v", err)
 		}
+		if _, err := ExecRaw(context.Background(), s.bun, "UPDATE accounts SET key_hash = NULL WHERE id = ?", a1); err != nil {
+			t.Fatalf("clear key_hash a1 failed: %v", err)
+		}
 		if err := UpdateAccountIsDirty(a2, false); err != nil {
 			t.Fatalf("clear dirty a2 failed: %v", err)
+		}
+		if _, err := ExecRaw(context.Background(), s.bun, "UPDATE accounts SET key_hash = NULL WHERE id = ?", a2); err != nil {
+			t.Fatalf("clear key_hash a2 failed: %v", err)
 		}
 		if err := km.TogglePublicKeyGlobal(pk.ID); err != nil {
 			t.Fatalf("TogglePublicKeyGlobal failed: %v", err)
@@ -66,6 +79,9 @@ func TestToggleAndDeleteMarkDirtyViaManagers(t *testing.T) {
 		// Clear both, add a key assigned to a1 then delete via manager -> a1 dirty
 		if err := UpdateAccountIsDirty(a1, false); err != nil {
 			t.Fatalf("clear dirty a1 failed: %v", err)
+		}
+		if _, err := ExecRaw(context.Background(), s.bun, "UPDATE accounts SET key_hash = NULL WHERE id = ?", a1); err != nil {
+			t.Fatalf("clear key_hash a1 failed: %v", err)
 		}
 		if err := UpdateAccountIsDirty(a2, false); err != nil {
 			t.Fatalf("clear dirty a2 failed: %v", err)
