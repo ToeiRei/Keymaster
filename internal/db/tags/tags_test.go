@@ -2,8 +2,27 @@ package tags
 
 import (
 	"testing"
-	// "github.com/toeirei/keymaster/internal/db/tags"
+
+	"github.com/uptrace/bun"
 )
+
+func TestQueryBuilderFromTagMatcherColumn_And_SplitTagsSafe(t *testing.T) {
+	qbFunc, err := QueryBuilderFromTagMatcherColumn("tags", "env:prod")
+	if err != nil {
+		t.Fatalf("QueryBuilderFromTagMatcherColumn error: %v", err)
+	}
+	qb := (&bun.SelectQuery{}).QueryBuilder()
+	_ = qbFunc(qb)
+
+	out := SplitTagsSafe("|a|b|")
+	if len(out) != 2 || out[0] != "a" || out[1] != "b" {
+		t.Fatalf("SplitTagsSafe valid returned unexpected: %#v", out)
+	}
+	out2 := SplitTagsSafe("no-delims")
+	if len(out2) != 0 {
+		t.Fatalf("SplitTagsSafe invalid should return empty slice, got: %#v", out2)
+	}
+}
 
 // Test Split/Join roundtrip and validation behavior.
 func TestSplitJoinValidate(t *testing.T) {
