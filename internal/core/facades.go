@@ -137,6 +137,12 @@ func AuditAccounts(ctx context.Context, st Store, dm DeployerManager, mode strin
 				if aw := DefaultAuditWriter(); aw != nil {
 					_ = aw.LogAction("AUDIT_HASH_MISMATCH", fmt.Sprintf("account:%d stored:%s computed:%s", acc.ID, expectedHash, remoteHash))
 				}
+				// Mark the account dirty so other systems know the host state changed.
+				if err := st.UpdateAccountIsDirty(acc.ID, true); err != nil {
+					if aw := DefaultAuditWriter(); aw != nil {
+						_ = aw.LogAction("AUDIT_HASH_MARK_DIRTY_FAILED", fmt.Sprintf("account:%d err:%v", acc.ID, err))
+					}
+				}
 			}
 		default:
 			return nil, fmt.Errorf("invalid audit mode: %s", mode)
