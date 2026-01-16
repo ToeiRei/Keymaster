@@ -30,6 +30,7 @@ This release brings major improvements to reliability, performance, and day‑to
 - **Cleaner internal architecture**  
   Deterministic logic consolidated into a shared core for long‑term maintainability.
 - **Updated dependencies to keep the toolchain current and secure.**
+- **Unified** the database layers to be all under bun now.
   
 ### Fixed — Unreleased
 
