@@ -84,9 +84,15 @@ func RotateSystemKeyBun(bdb *bun.DB, publicKey, privateKey string) (int, error) 
 		return 0, fmt.Errorf("failed to insert new system key: %w", err)
 	}
 
-	// Mark all accounts dirty because system key rotation changes authorized_keys
-	if _, err := ExecRaw(ctx, tx, "UPDATE accounts SET is_dirty = ?", true); err != nil {
-		return 0, fmt.Errorf("failed to mark accounts dirty after rotation: %w", err)
+	// Mark accounts dirty if their computed key fingerprint changed.
+	var am []AccountModel
+	if err := tx.NewSelect().Model(&am).Scan(ctx); err != nil {
+		return 0, fmt.Errorf("failed to select accounts for dirty check: %w", err)
+	}
+	for _, a := range am {
+		if err := MaybeMarkAccountDirtyTx(ctx, tx, a.ID); err != nil {
+			return 0, fmt.Errorf("failed to maybe-mark account dirty: %w", err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -666,10 +672,16 @@ func AddPublicKeyAndGetModelBun(bdb *bun.DB, algorithm, keyData, comment string,
 	if err != nil {
 		return nil, err
 	}
-	// If the key is global, mark all accounts dirty
+	// If the key is global, mark accounts dirty where fingerprint changes
 	if isGlobal {
-		if _, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_dirty = ?", true); err != nil {
+		var am []AccountModel
+		if err := bdb.NewSelect().Model(&am).Scan(ctx); err != nil {
 			return nil, MapDBError(err)
+		}
+		for _, a := range am {
+			if err := MaybeMarkAccountDirtyTx(ctx, bdb, a.ID); err != nil {
+				return nil, MapDBError(err)
+			}
 		}
 	}
 	return &model.PublicKey{ID: int(id), Algorithm: algorithm, KeyData: keyData, Comment: comment, IsGlobal: isGlobal}, nil
@@ -681,9 +693,15 @@ func TogglePublicKeyGlobalBun(bdb *bun.DB, id int) error {
 	if _, err := ExecRaw(ctx, bdb, "UPDATE public_keys SET is_global = NOT is_global WHERE id = ?", id); err != nil {
 		return MapDBError(err)
 	}
-	// Toggling global status affects authorized_keys for many accounts; mark all dirty
-	if _, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_dirty = ?", true); err != nil {
+	// Toggling global status affects authorized_keys for many accounts; recompute per-account fingerprint
+	var am []AccountModel
+	if err := bdb.NewSelect().Model(&am).Scan(ctx); err != nil {
 		return MapDBError(err)
+	}
+	for _, a := range am {
+		if err := MaybeMarkAccountDirtyTx(ctx, bdb, a.ID); err != nil {
+			return MapDBError(err)
+		}
 	}
 	return nil
 }
@@ -710,8 +728,14 @@ func SetPublicKeyExpiryBun(bdb *bun.DB, id int, expiresAt time.Time) error {
 		return nil
 	}
 	if pk.IsGlobal {
-		if _, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_dirty = ?", true); err != nil {
+		var am []AccountModel
+		if err := bdb.NewSelect().Model(&am).Scan(ctx); err != nil {
 			return MapDBError(err)
+		}
+		for _, a := range am {
+			if err := MaybeMarkAccountDirtyTx(ctx, bdb, a.ID); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
@@ -754,7 +778,7 @@ func DeletePublicKeyBun(bdb *bun.DB, id int) error {
 		return MapDBError(err)
 	}
 	for _, a := range accs {
-		if err := UpdateAccountIsDirtyBun(bdb, a.ID, true); err != nil {
+		if err := MaybeMarkAccountDirtyTx(ctx, bdb, a.ID); err != nil {
 			return MapDBError(err)
 		}
 	}
