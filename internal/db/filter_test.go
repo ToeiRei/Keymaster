@@ -1,7 +1,3 @@
-// Copyright (c) 2026 Keymaster Team
-// Keymaster - SSH key management system
-// This source code is licensed under the MIT license found in the LICENSE file.
-
 package db
 
 import (
@@ -10,6 +6,60 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
+func TestFilterPublicKeysByTokens_Basics(t *testing.T) {
+	keys := []model.PublicKey{
+		{ID: 1, Algorithm: "ssh-ed25519", KeyData: "AAAAB3NzaC1lZDI1NTE5", Comment: "alice@host"},
+		{ID: 2, Algorithm: "ssh-rsa", KeyData: "AAAAB3NzaC1yc2E", Comment: "bob@example"},
+		{ID: 3, Algorithm: "ssh-ed25519", KeyData: "XYZDATA", Comment: "service-key"},
+	}
+
+	// empty tokens returns original slice
+	out := FilterPublicKeysByTokens(keys, nil)
+	if len(out) != len(keys) {
+		t.Fatalf("expected original slice when tokens nil")
+	}
+
+	out = FilterPublicKeysByTokens(keys, []string{})
+	if len(out) != len(keys) {
+		t.Fatalf("expected original slice when tokens empty")
+	}
+
+	// match by comment (case-insensitive)
+	res := FilterPublicKeysByTokens(keys, []string{"ALICE"})
+	if len(res) != 1 || res[0].ID != 1 {
+		t.Fatalf("expected single match for ALICE, got %+v", res)
+	}
+
+	// match by algorithm
+	res = FilterPublicKeysByTokens(keys, []string{"rsa"})
+	if len(res) != 1 || res[0].ID != 2 {
+		t.Fatalf("expected single match for rsa, got %+v", res)
+	}
+
+	// match by key data substring
+	res = FilterPublicKeysByTokens(keys, []string{"XYZ"})
+	if len(res) != 1 || res[0].ID != 3 {
+		t.Fatalf("expected single match for XYZ, got %+v", res)
+	}
+
+	// multiple tokens must all match (AND semantics)
+	res = FilterPublicKeysByTokens(keys, []string{"ssh-ed25519", "alice"})
+	if len(res) != 1 || res[0].ID != 1 {
+		t.Fatalf("expected single match for ed25519+alice, got %+v", res)
+	}
+
+	// token that doesn't match yields empty
+	res = FilterPublicKeysByTokens(keys, []string{"no-match"})
+	if len(res) != 0 {
+		t.Fatalf("expected no matches for no-match, got %+v", res)
+	}
+
+	// tokens with whitespace are trimmed
+	res = FilterPublicKeysByTokens(keys, []string{"  bob@exAMPle  "})
+	if len(res) != 1 || res[0].ID != 2 {
+		t.Fatalf("expected match for trimmed token, got %+v", res)
+	}
+}
 func TestFilterAccountsByTokens_Basic(t *testing.T) {
 	accounts := []model.Account{
 		{ID: 1, Username: "deploy", Hostname: "prod-01.example.com", Label: "Prod Web"},
