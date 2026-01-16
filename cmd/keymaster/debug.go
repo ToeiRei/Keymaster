@@ -4,6 +4,9 @@
 
 package main
 
+// TODO: consider removal — OWNER_APPROVAL_REQUIRED
+// Candidate: CLI debug command used for local diagnostics. Confirm owner before deleting.
+
 import (
 	"encoding/json"
 	"os"

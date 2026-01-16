@@ -4,6 +4,9 @@
 
 package main
 
+// TODO: consider removal — OWNER_APPROVAL_REQUIRED
+// Candidate: local DB-backed debug test; keep only if owner confirms it's useful.
+
 import (
 	"fmt"
 	"testing"
