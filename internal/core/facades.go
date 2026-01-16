@@ -131,6 +131,12 @@ func AuditAccounts(ctx context.Context, st Store, dm DeployerManager, mode strin
 			expectedHash := HashAuthorizedKeysContent([]byte(expected))
 			if remoteHash != expectedHash {
 				aerr = fmt.Errorf("%s", i18n.T("audit.error_drift_detected"))
+				// Record an audit event for detected drift (host change). Do not
+				// write audit entries for matches — auditing is meant for host changes,
+				// not verbose debug logging.
+				if aw := DefaultAuditWriter(); aw != nil {
+					_ = aw.LogAction("AUDIT_HASH_MISMATCH", fmt.Sprintf("account:%d stored:%s computed:%s", acc.ID, expectedHash, remoteHash))
+				}
 			}
 		default:
 			return nil, fmt.Errorf("invalid audit mode: %s", mode)

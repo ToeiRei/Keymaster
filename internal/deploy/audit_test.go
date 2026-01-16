@@ -81,4 +81,46 @@ func TestAuditAccountStrict_DriftDetected(t *testing.T) {
 	}
 }
 
+func TestAuditAccountStrict_Match(t *testing.T) {
+	if _, err := db.New("sqlite", ":memory:"); err != nil {
+		t.Fatalf("db.New failed: %v", err)
+	}
+	i18n.Init("en")
+
+	mgr := db.DefaultAccountManager()
+	if mgr == nil {
+		t.Fatal("no account manager")
+	}
+	acctID, err := mgr.AddAccount("u3", "host3.local", "lbl", "")
+	if err != nil {
+		t.Fatalf("AddAccount failed: %v", err)
+	}
+
+	serial, err := db.CreateSystemKey("sys-pub-audit3", "sys-priv-audit3")
+	if err != nil {
+		t.Fatalf("CreateSystemKey failed: %v", err)
+	}
+	if err := db.UpdateAccountSerial(acctID, serial); err != nil {
+		t.Fatalf("UpdateAccountSerial failed: %v", err)
+	}
+
+	// Generate expected content using core helper
+	expectedContent, err := core.GenerateKeysContent(acctID)
+	if err != nil {
+		t.Fatalf("GenerateKeysContent failed: %v", err)
+	}
+
+	// Override deployer factory to return the expected content
+	origFactory := core.NewDeployerFactory
+	core.NewDeployerFactory = func(host, user string, privateKey security.Secret, passphrase []byte) (core.RemoteDeployer, error) {
+		return &fakeDeployer{content: []byte(expectedContent)}, nil
+	}
+	defer func() { core.NewDeployerFactory = origFactory }()
+
+	acct := model.Account{ID: acctID, Username: "u3", Hostname: "host3.local", Serial: serial}
+	if err := core.AuditAccountStrict(acct); err != nil {
+		t.Fatalf("expected AuditAccountStrict to succeed with matching content, but got error: %v", err)
+	}
+}
+
 // bytesFromString is provided by testhelpers_test.go
