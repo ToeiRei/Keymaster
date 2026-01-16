@@ -167,7 +167,10 @@ func init() {
 	core.SetDefaultKeyImporter(keyImporter{})
 	core.SetDefaultAuditWriter(coreAuditor{})
 	core.SetDefaultAccountManager(coreAccountStore{})
-	core.SetDefaultDBInit(db.InitDB)
+	core.SetDefaultDBInit(func(dbType, dsn string) error {
+		_, err := db.New(dbType, dsn)
+		return err
+	})
 	core.SetDefaultDBIsInitialized(db.IsInitialized)
 }
 

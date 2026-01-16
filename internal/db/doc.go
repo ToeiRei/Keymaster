@@ -11,7 +11,7 @@
 //
 // DI helpers
 //   - `Default*` functions return a sensible default implementation when the
-//     package-level `store` has been initialized (via `InitDB`) or when a
+//     package-level `store` has been initialized (via `db.New`) or when a
 //     package-level override has been set by tests.
 //   - `SetDefault*` and `ClearDefault*` functions allow tests to inject simple
 //     fakes that implement the same small interface (`AccountManager`,
@@ -37,7 +37,7 @@
 //     and are intended to be used by the `KeyManager` adapter.
 //
 // Testing notes
-//   - Prefer `db.InitDB("sqlite", ":memory:")` in tests that need real DB
+//   - Prefer `db.New("sqlite", ":memory:")` in tests that need real DB
 //     semantics and migrations.
 //   - For fast unit tests that don't need a DB, inject `testutil.FakeKeyManager` or
 //     `testutil.FakeAccountManager` (from `internal/testutil`) via
