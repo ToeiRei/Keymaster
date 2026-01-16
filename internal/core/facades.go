@@ -460,11 +460,3 @@ func CleanupAllActiveSessions() error {
 func IsDBInitialized() bool {
 	return DefaultIsDBInitialized()
 }
-
-// InitDB initializes the database using the configured default initializer.
-//
-// Deprecated: prefer `db.New(dbType, dsn)` (or wiring `core.SetDefaultDBInit` to
-// `db.New`) — this facade will remain for compatibility during migration.
-func InitDB(dbType, dsn string) error {
-	return DefaultInitDB(dbType, dsn)
-}

@@ -16,16 +16,16 @@ func TestInitCompatibility(t *testing.T) {
 		t.Fatalf("CreateSystemKey failed after db.New: %v", err)
 	}
 
-	// Reinitialize via the legacy InitDB path (should behave equivalently)
+	// Reinitialize via the canonical db.New path (should behave equivalently)
 	dsn2 := "file:TestInitCompat2?mode=memory&cache=shared"
-	if err := InitDB("sqlite", dsn2); err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+	if _, err := New("sqlite", dsn2); err != nil {
+		t.Fatalf("db.New failed: %v", err)
 	}
 	if !IsInitialized() {
-		t.Fatalf("db not initialized after InitDB")
+		t.Fatalf("db not initialized after db.New")
 	}
 
 	if _, err := CreateSystemKey("pub2", "priv2"); err != nil {
-		t.Fatalf("CreateSystemKey failed after InitDB: %v", err)
+		t.Fatalf("CreateSystemKey failed after db.New: %v", err)
 	}
 }

@@ -139,7 +139,7 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 
 	// Initialize the database if not already initialized by tests or earlier setup.
 	if !core.IsDBInitialized() {
-		if err := core.InitDB(appConfig.Database.Type, appConfig.Database.Dsn); err != nil {
+		if _, err := db.New(appConfig.Database.Type, appConfig.Database.Dsn); err != nil {
 			return errors.New(i18n.T("config.error_init_db", err))
 		}
 	}

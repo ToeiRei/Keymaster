@@ -46,18 +46,6 @@ var (
 	sqlOpenFunc = sql.Open
 )
 
-// InitDB initializes the database connection based on the provided type and DSN.
-// It sets the global `store` variable to the appropriate database implementation
-// and runs any pending database migrations.
-//
-// Deprecated: Use `db.New(dbType, dsn)` which is the canonical bun-first
-// initializer. `InitDB` will continue to delegate to `db.New` for a short
-// deprecation window to preserve backwards compatibility.
-func InitDB(dbType, dsn string) error {
-	_, err := New(dbType, dsn)
-	return err
-}
-
 // IsInitialized reports whether the package-level store has been set.
 func IsInitialized() bool {
 	return store != nil
