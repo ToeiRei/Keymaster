@@ -1,7 +1,3 @@
-// Copyright (c) 2026 Keymaster Team
-// Keymaster - SSH key management system
-// This source code is licensed under the MIT license found in the LICENSE file.
-
 package core
 
 import (
@@ -10,27 +6,29 @@ import (
 	"errors"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
 )
 
-// fake KeyManager for ImportAuthorizedKeys
-type fmKeyManager struct {
-	added   []string
-	failFor map[string]error
+// fake store that returns an active system key and records import calls
+type fakeStoreForMigrate struct {
+	imported bool
 }
 
-func (f *fmKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) error {
-	if f.failFor != nil {
-		if e, ok := f.failFor[comment]; ok {
-			return e
-		}
-	}
-	f.added = append(f.added, comment)
+func (f *fakeStoreForMigrate) ExportDataForBackup() (*model.BackupData, error) {
+	return &model.BackupData{}, nil
+}
+func (f *fakeStoreForMigrate) ImportDataFromBackup(*model.BackupData) error {
+	f.imported = true
 	return nil
 }
+func (f *fakeStoreForMigrate) GetActiveSystemKey() (*model.SystemKey, error) {
+	return &model.SystemKey{Serial: 1, PublicKey: "p", PrivateKey: "priv", IsActive: true}, nil
+}
+
+// implement minimal Store methods used by facades tests
+func (f *fakeStoreForMigrate) GetAllActiveAccounts() ([]model.Account, error) { return nil, nil }
 
 func (f *fmKeyManager) GetGlobalPublicKeys() ([]model.PublicKey, error)            { return nil, nil }
 func (f *fmKeyManager) GetKeysForAccount(accountID int) ([]model.PublicKey, error) { return nil, nil }
