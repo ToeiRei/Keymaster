@@ -20,10 +20,18 @@ func TestQueryBuilderRendering_TagMatchers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open sqlite: %v", err)
 	}
-	defer sqldb.Close()
+	defer func() {
+		if err := sqldb.Close(); err != nil {
+			t.Fatalf("failed to close sqlite: %v", err)
+		}
+	}()
 
 	bdb := bun.NewDB(sqldb, sqlitedialect.New())
-	defer bdb.Close()
+	defer func() {
+		if err := bdb.Close(); err != nil {
+			t.Fatalf("failed to close bun DB: %v", err)
+		}
+	}()
 
 	cases := []struct {
 		matcher       string

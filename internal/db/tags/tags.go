@@ -17,18 +17,6 @@ const sqlEscapedChars string = `%_[]^-{}`
 var tagMatcherPattern = regexp.MustCompile(tagMatcherPatternExp)
 
 // TODO vendor out to seperate package
-func reducex[T any, S ~[]T, U any](s S, f func(T, U) (U, error)) (U, error) {
-	var zero U
-	var result U
-	for _, t := range s {
-		var err error
-		result, err = f(t, result)
-		if err != nil {
-			return zero, err
-		}
-	}
-	return result, nil
-}
 
 func parseTagMatcher(expr string, qb bun.QueryBuilder, mode bool, negate bool) (bun.QueryBuilder, error) {
 	return parseTagMatcherColumn(expr, qb, mode, negate, "tag")

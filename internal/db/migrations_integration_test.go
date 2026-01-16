@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -45,7 +44,11 @@ func TestRunMigrations_Idempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open sqlite file: %v", err)
 	}
-	defer sqlDB.Close()
+	defer func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Fatalf("failed to close sqlite: %v", err)
+		}
+	}()
 	var count int
 	if err := sqlDB.QueryRow("SELECT COUNT(version) FROM schema_migrations").Scan(&count); err != nil {
 		t.Fatalf("failed to query schema_migrations: %v", err)
@@ -67,12 +70,12 @@ func TestRunMigrations_RollbackOnError(t *testing.T) {
 	}
 	// Write a valid migration that creates a table
 	good := filepath.Join(migDir, "000010_create_tmp_table.up.sql")
-	if err := ioutil.WriteFile(good, []byte("CREATE TABLE tmp_test(id INTEGER PRIMARY KEY);"), 0o644); err != nil {
+	if err := os.WriteFile(good, []byte("CREATE TABLE tmp_test(id INTEGER PRIMARY KEY);"), 0o644); err != nil {
 		t.Fatalf("write good migration failed: %v", err)
 	}
 	// Write a failing migration that has SQL syntax error
 	bad := filepath.Join(migDir, "000011_broken.up.sql")
-	if err := ioutil.WriteFile(bad, []byte("CREAT BROKEN_SYNTAX"), 0o644); err != nil {
+	if err := os.WriteFile(bad, []byte("CREAT BROKEN_SYNTAX"), 0o644); err != nil {
 		t.Fatalf("write bad migration failed: %v", err)
 	}
 
@@ -84,7 +87,11 @@ func TestRunMigrations_RollbackOnError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open sqlite: %v", err)
 	}
-	defer sqlDB.Close()
+	defer func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Fatalf("failed to close sqlite: %v", err)
+		}
+	}()
 
 	// ensure schema_migrations table exists
 	if err := ensureSchemaMigrationsTable(sqlDB, "sqlite"); err != nil {
@@ -109,8 +116,8 @@ func TestRunMigrations_RollbackOnError(t *testing.T) {
 	}
 
 	// Validate that tmp_test still exists and no schema_migrations record for the bad migration
-	var exists int
+	var exists string
 	if err := sqlDB.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='tmp_test'").Scan(&exists); err != nil && err != sql.ErrNoRows {
-		// ok
+		t.Fatalf("unexpected error checking tmp_test existence: %v", err)
 	}
 }

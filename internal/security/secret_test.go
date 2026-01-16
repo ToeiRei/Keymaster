@@ -25,12 +25,14 @@ func TestSecretZero(t *testing.T) {
 	// Zero the underlying secret
 	(&s).Zero()
 	// Inspect the underlying bytes using Use to avoid creating copies.
-	s.Use(func(b []byte) error {
+	if err := s.Use(func(b []byte) error {
 		for i := range b {
 			if b[i] != 0 {
 				t.Fatalf("expected zeroed byte at index %d, got %d", i, b[i])
 			}
 		}
 		return nil
-	})
+	}); err != nil {
+		t.Fatalf("s.Use failed: %v", err)
+	}
 }

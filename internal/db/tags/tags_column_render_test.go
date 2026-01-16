@@ -17,10 +17,18 @@ func TestQueryBuilderRendering_ColumnAware(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open sqlite: %v", err)
 	}
-	defer sqldb.Close()
+	defer func() {
+		if err := sqldb.Close(); err != nil {
+			t.Fatalf("failed to close sqlite: %v", err)
+		}
+	}()
 
 	bdb := bun.NewDB(sqldb, sqlitedialect.New())
-	defer bdb.Close()
+	defer func() {
+		if err := bdb.Close(); err != nil {
+			t.Fatalf("failed to close bun DB: %v", err)
+		}
+	}()
 
 	sel := bdb.NewSelect().TableExpr("accounts AS a")
 	qb := sel.QueryBuilder()

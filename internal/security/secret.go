@@ -20,7 +20,11 @@ type Secret []byte
 func (s Secret) String() string { return "[SECRET]" }
 
 // Format implements fmt.Formatter to ensure `%v`, `%#v` and friends are redacted.
-func (s Secret) Format(f fmt.State, c rune) { io.WriteString(f, "[SECRET]") }
+func (s Secret) Format(f fmt.State, c rune) {
+	if _, err := io.WriteString(f, "[SECRET]"); err != nil {
+		_ = err // intentionally ignore write error when formatting secrets for logs
+	}
+}
 
 // Bytes returns a copy of the underlying bytes. Callers are responsible for
 // zeroing sensitive copies when done.
