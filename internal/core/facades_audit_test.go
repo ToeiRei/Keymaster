@@ -1,0 +1,143 @@
+package core_test
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	core "github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/i18n"
+	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/security"
+)
+
+// minimal fake Store implementing methods used by AuditAccounts and satisfying the Store interface.
+type fakeStoreForAudit struct {
+	accounts []model.Account
+}
+
+func (f *fakeStoreForAudit) GetAccounts() ([]model.Account, error)          { return nil, nil }
+func (f *fakeStoreForAudit) GetAllActiveAccounts() ([]model.Account, error) { return f.accounts, nil }
+func (f *fakeStoreForAudit) GetAllAccounts() ([]model.Account, error)       { return nil, nil }
+func (f *fakeStoreForAudit) GetAccount(id int) (*model.Account, error) {
+	for _, a := range f.accounts {
+		if a.ID == id {
+			return &a, nil
+		}
+	}
+	return nil, nil
+}
+func (f *fakeStoreForAudit) AddAccount(username, hostname, label, tags string) (int, error) {
+	return 0, nil
+}
+func (f *fakeStoreForAudit) DeleteAccount(accountID int) error                         { return nil }
+func (f *fakeStoreForAudit) AssignKeyToAccount(keyID, accountID int) error             { return nil }
+func (f *fakeStoreForAudit) UpdateAccountIsDirty(id int, dirty bool) error             { return nil }
+func (f *fakeStoreForAudit) CreateSystemKey(publicKey, privateKey string) (int, error) { return 0, nil }
+func (f *fakeStoreForAudit) RotateSystemKey(publicKey, privateKey string) (int, error) { return 0, nil }
+func (f *fakeStoreForAudit) GetActiveSystemKey() (*model.SystemKey, error)             { return nil, nil }
+func (f *fakeStoreForAudit) AddKnownHostKey(hostname, key string) error                { return nil }
+func (f *fakeStoreForAudit) ExportDataForBackup() (*model.BackupData, error)           { return nil, nil }
+func (f *fakeStoreForAudit) ImportDataFromBackup(*model.BackupData) error              { return nil }
+func (f *fakeStoreForAudit) IntegrateDataFromBackup(*model.BackupData) error           { return nil }
+
+// fake KeyReader used by GenerateKeysContent
+type auditTestKeyReader struct{}
+
+func (t auditTestKeyReader) GetAllPublicKeys() ([]model.PublicKey, error) { return nil, nil }
+func (t auditTestKeyReader) GetActiveSystemKey() (*model.SystemKey, error) {
+	return &model.SystemKey{Serial: 1, PublicKey: "ssh-ed25519 AAAA"}, nil
+}
+func (t auditTestKeyReader) GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
+	return &model.SystemKey{Serial: serial, PublicKey: "ssh-ed25519 AAAA"}, nil
+}
+
+// fake KeyLister used by GenerateKeysContent
+type auditTestKeyLister struct{}
+
+func (t auditTestKeyLister) GetGlobalPublicKeys() ([]model.PublicKey, error) { return nil, nil }
+func (t auditTestKeyLister) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
+	return nil, nil
+}
+func (t auditTestKeyLister) GetAllPublicKeys() ([]model.PublicKey, error) { return nil, nil }
+
+// fake DeployerManager that returns predetermined payload for FetchAuthorizedKeys.
+type fakeDeployerForAudit struct {
+	payload []byte
+	fail    bool
+}
+
+func (f fakeDeployerForAudit) DeployForAccount(account model.Account, keepFile bool) error {
+	return nil
+}
+func (f fakeDeployerForAudit) AuditSerial(account model.Account) error { return nil }
+func (f fakeDeployerForAudit) AuditStrict(account model.Account) error { return nil }
+func (f fakeDeployerForAudit) DecommissionAccount(account model.Account, systemPrivateKey security.Secret, options interface{}) (core.DecommissionResult, error) {
+	return core.DecommissionResult{}, nil
+}
+func (f fakeDeployerForAudit) BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey security.Secret, options interface{}) ([]core.DecommissionResult, error) {
+	return nil, nil
+}
+func (f fakeDeployerForAudit) CanonicalizeHostPort(host string) string { return host }
+func (f fakeDeployerForAudit) ParseHostPort(host string) (string, string, error) {
+	return host, "22", nil
+}
+func (f fakeDeployerForAudit) GetRemoteHostKey(host string) (string, error) { return "", nil }
+func (f fakeDeployerForAudit) FetchAuthorizedKeys(account model.Account) ([]byte, error) {
+	if f.fail {
+		return nil, errors.New("fetch failed")
+	}
+	return f.payload, nil
+}
+func (f fakeDeployerForAudit) ImportRemoteKeys(account model.Account) ([]model.PublicKey, int, string, error) {
+	return nil, 0, "", nil
+}
+func (f fakeDeployerForAudit) IsPassphraseRequired(err error) bool { return false }
+
+func TestAuditAccounts_StrictMatchAndMismatch(t *testing.T) {
+	// init translations used by AuditAccounts
+	i18n.Init("en")
+	// preserve defaults
+	oldKR := core.DefaultKeyReader()
+	oldKL := core.DefaultKeyLister()
+	defer core.SetDefaultKeyReader(oldKR)
+	defer core.SetDefaultKeyLister(oldKL)
+
+	core.SetDefaultKeyReader(auditTestKeyReader{})
+	core.SetDefaultKeyLister(auditTestKeyLister{})
+
+	acc := model.Account{ID: 1, Username: "u", Hostname: "h", Serial: 1, IsActive: true}
+	st := &fakeStoreForAudit{accounts: []model.Account{acc}}
+
+	// expected content generated by core helper
+	expected, err := core.GenerateKeysContent(acc.ID)
+	if err != nil {
+		t.Fatalf("GenerateKeysContent failed: %v", err)
+	}
+
+	// Case: matching remote payload -> no error
+	fdMatch := fakeDeployerForAudit{payload: []byte(expected), fail: false}
+	res, err := core.AuditAccounts(context.Background(), st, fdMatch, "strict", nil)
+	if err != nil {
+		t.Fatalf("AuditAccounts returned error: %v", err)
+	}
+	if len(res) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(res))
+	}
+	if res[0].Error != nil {
+		t.Fatalf("expected match (nil error), got: %v", res[0].Error)
+	}
+
+	// Case: differing remote payload -> error reported
+	fdBad := fakeDeployerForAudit{payload: []byte("bad content"), fail: false}
+	res2, err := core.AuditAccounts(context.Background(), st, fdBad, "strict", nil)
+	if err != nil {
+		t.Fatalf("AuditAccounts returned error: %v", err)
+	}
+	if len(res2) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(res2))
+	}
+	if res2[0].Error == nil {
+		t.Fatalf("expected drift error, got nil")
+	}
+}
