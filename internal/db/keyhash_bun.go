@@ -10,10 +10,11 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/toeirei/keymaster/internal/model"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/toeirei/keymaster/internal/model"
 )
 
 // computeAccountKeyHashTx computes a deterministic fingerprint of the authorized_keys
@@ -136,6 +137,30 @@ func MaybeMarkAccountDirtyTx(ctx context.Context, q execRawProvider, accountID i
 		if _, err := ExecRaw(ctx, q, "UPDATE accounts SET key_hash = ?, is_dirty = ? WHERE id = ?", newHash, true, accountID); err != nil {
 			return MapDBError(err)
 		}
+		// Record audit entry with the new fingerprint instead of storing/printing full authorized_keys
+		details := fmt.Sprintf("account:%d key_hash:%s", accountID, newHash)
+		if _, err := ExecRaw(ctx, q, "INSERT INTO audit_log (username, action, details) VALUES (?, ?, ?)", "system", "ACCOUNT_KEY_HASH_UPDATED", details); err != nil {
+			return MapDBError(err)
+		}
 	}
 	return nil
+}
+
+// HashAuthorizedKeysContent normalizes a raw authorized_keys payload and
+// returns the SHA256 hex fingerprint using the same basic normalization
+// rules we expect on-disk: normalize CRLF to LF and trim trailing whitespace
+// on each line so hashes computed from files transferred between platforms
+// remain stable.
+func HashAuthorizedKeysContent(raw []byte) string {
+	s := string(raw)
+	// Normalize CRLF -> LF
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	// Trim trailing spaces/tabs per-line
+	lines := strings.Split(s, "\n")
+	for i := range lines {
+		lines[i] = strings.TrimRight(lines[i], " \t")
+	}
+	norm := strings.Join(lines, "\n")
+	sum := sha256.Sum256([]byte(norm))
+	return fmt.Sprintf("%x", sum[:])
 }

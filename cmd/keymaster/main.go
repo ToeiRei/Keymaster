@@ -12,9 +12,11 @@ package main
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -342,6 +344,7 @@ Running without a subcommand will launch the interactive TUI.`,
 		deployCmd,
 		rotateKeyCmd,
 		auditCmd,
+		auditCompareCmd,
 		importCmd,
 		transferCmd,
 		trustHostCmd,
@@ -508,6 +511,73 @@ Use --mode=serial to only verify the Keymaster header serial number on the remot
 			} else {
 				fmt.Printf("%s\n", i18n.T("parallel_task.audit_success_message", r.Account.String()))
 			}
+		}
+	},
+}
+
+// auditCompareCmd compares a local or fetched authorized_keys file against
+// the stored `accounts.key_hash` for a single account.
+var auditCompareCmd = &cobra.Command{
+	Use:     "audit-compare <account-identifier> [file]",
+	Short:   "Compare an authorized_keys file to account key_hash",
+	Long:    "Provide an account identifier and a local file (or omit the file to fetch from the host).",
+	Args:    cobra.RangeArgs(1, 2),
+	PreRunE: setupDefaultServices,
+	Run: func(cmd *cobra.Command, args []string) {
+		identifier := args[0]
+		var fileArg string
+		if len(args) > 1 {
+			fileArg = args[1]
+		}
+
+		st := &cliStoreAdapter{}
+		accounts, err := st.GetAllAccounts()
+		if err != nil {
+			log.Fatalf("error fetching accounts: %v", err)
+		}
+		accPtr, err := core.FindAccountByIdentifier(identifier, accounts)
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+		account := *accPtr
+
+		var content []byte
+		if fileArg != "" {
+			if fileArg == "-" {
+				content, err = io.ReadAll(os.Stdin)
+				if err != nil {
+					log.Fatalf("read stdin: %v", err)
+				}
+			} else {
+				content, err = os.ReadFile(fileArg)
+				if err != nil {
+					log.Fatalf("open file: %v", err)
+				}
+			}
+		} else {
+			dm := &cliDeployerManager{}
+			content, err = dm.FetchAuthorizedKeys(account)
+			if err != nil {
+				log.Fatalf("fetch remote authorized_keys: %v", err)
+			}
+		}
+
+		gotHash := db.HashAuthorizedKeysContent(content)
+
+		// Read stored hash from DB
+		var stored sql.NullString
+		if err := db.QueryRawInto(context.Background(), db.BunDB(), &stored, "SELECT key_hash FROM accounts WHERE id = ?", account.ID); err != nil {
+			log.Fatalf("query key_hash: %v", err)
+		}
+		if !stored.Valid || stored.String == "" {
+			fmt.Printf("Account %s (id=%d) has no stored key_hash; computed=%s\n", account.String(), account.ID, gotHash)
+			return
+		}
+
+		if stored.String == gotHash {
+			fmt.Printf("MATCH: account=%s id=%d key_hash=%s\n", account.String(), account.ID, gotHash)
+		} else {
+			fmt.Printf("MISMATCH: account=%s id=%d\n  stored=%s\n  computed=%s\n", account.String(), account.ID, stored.String, gotHash)
 		}
 	},
 }
