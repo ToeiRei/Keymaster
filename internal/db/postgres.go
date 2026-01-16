@@ -3,222 +3,36 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 
 // package db provides the data access layer for Keymaster.
-// This file contains the PostgreSQL implementation of the database store.
-// Note: This implementation is considered experimental.
+// This file contains a minimal PostgreSQL compatibility wrapper.
+//
+// Copyright (c) 2026 Keymaster Team
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
 package db // import "github.com/toeirei/keymaster/internal/db"
 
 import (
 	"fmt"
-	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib" // PostgreSQL driver
-	"github.com/toeirei/keymaster/internal/model"
-	"github.com/uptrace/bun"
 )
 
-// PostgresStore is the PostgreSQL implementation of the Store interface.
-type PostgresStore struct {
-	bun *bun.DB
-}
+// PostgresStore is a compatibility alias to the consolidated BunStore.
+// This file preserves the pgx driver blank import so runtime builds that
+// expect the driver continue to work while we migrate to a single
+// bun-backed store implementation.
+type PostgresStore = BunStore
 
-// BunDB returns the underlying *bun.DB for the postgres store.
-func (s *PostgresStore) BunDB() *bun.DB {
-	return s.bun
-}
-
-// NewPostgresStore initializes the database connection and creates tables if they don't exist.
+// NewPostgresStore delegates to the canonical db.New initializer and returns
+// a PostgresStore typed pointer for compatibility with existing call sites.
 func NewPostgresStore(dataSourceName string) (*PostgresStore, error) {
-	// This function is now a placeholder. The actual initialization happens in InitDB.
-	// It's kept for potential future logic specific to the store's creation.
-	s, ok := store.(*PostgresStore)
-	if !ok {
-		return nil, fmt.Errorf("internal error: store is not a *PostgresStore")
-	}
-	return s, nil
-}
-
-// --- Stubbed Methods ---
-
-func (s *PostgresStore) GetAllAccounts() ([]model.Account, error) {
-	return GetAllAccountsBun(s.bun)
-}
-
-func (s *PostgresStore) AddAccount(username, hostname, label, tags string) (int, error) {
-	id, err := AddAccountBun(s.bun, username, hostname, label, tags)
-	if err == nil {
-		_ = s.LogAction("ADD_ACCOUNT", fmt.Sprintf("account: %s@%s", username, hostname))
-	}
-	return id, err
-}
-
-func (s *PostgresStore) DeleteAccount(id int) error {
-	details := fmt.Sprintf("id: %d", id)
-	if acc, err2 := GetAccountByIDBun(s.bun, id); err2 == nil && acc != nil {
-		details = fmt.Sprintf("account: %s@%s", acc.Username, acc.Hostname)
-	}
-	err := DeleteAccountBun(s.bun, id)
-	if err == nil {
-		_ = s.LogAction("DELETE_ACCOUNT", details)
-	}
-	return err
-}
-
-func (s *PostgresStore) UpdateAccountSerial(id, serial int) error {
-	return UpdateAccountSerialBun(s.bun, id, serial)
-}
-
-func (s *PostgresStore) ToggleAccountStatus(id int) error {
-	acc, err := GetAccountByIDBun(s.bun, id)
+	s, err := New("postgres", dataSourceName)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if acc == nil {
-		return fmt.Errorf("account not found: %d", id)
+	bs, ok := s.(*BunStore)
+	if !ok {
+		return nil, fmt.Errorf("internal error: expected *BunStore, got %T", s)
 	}
-	newStatus, err := ToggleAccountStatusBun(s.bun, id)
-	if err == nil {
-		details := fmt.Sprintf("account: %s@%s, new_status: %t", acc.Username, acc.Hostname, newStatus)
-		_ = s.LogAction("TOGGLE_ACCOUNT_STATUS", details)
-	}
-	return err
-}
-
-func (s *PostgresStore) UpdateAccountLabel(id int, label string) error {
-	err := UpdateAccountLabelBun(s.bun, id, label)
-	if err == nil {
-		_ = s.LogAction("UPDATE_ACCOUNT_LABEL", fmt.Sprintf("account_id: %d, new_label: '%s'", id, label))
-	}
-	return err
-}
-
-func (s *PostgresStore) UpdateAccountHostname(id int, hostname string) error {
-	return UpdateAccountHostnameBun(s.bun, id, hostname)
-}
-
-func (s *PostgresStore) UpdateAccountTags(id int, tags string) error {
-	err := UpdateAccountTagsBun(s.bun, id, tags)
-	if err == nil {
-		_ = s.LogAction("UPDATE_ACCOUNT_TAGS", fmt.Sprintf("account_id: %d, new_tags: '%s'", id, tags))
-	}
-	return err
-}
-
-func (s *PostgresStore) UpdateAccountIsDirty(id int, dirty bool) error {
-	err := UpdateAccountIsDirtyBun(s.bun, id, dirty)
-	if err == nil {
-		_ = s.LogAction("UPDATE_ACCOUNT_DIRTY", fmt.Sprintf("account_id: %d, is_dirty: %t", id, dirty))
-	}
-	return err
-}
-
-func (s *PostgresStore) GetAllActiveAccounts() ([]model.Account, error) {
-	return GetAllActiveAccountsBun(s.bun)
-}
-
-// Public-key CRUD is provided by KeyManager; store keeps Bun helpers.
-func (s *PostgresStore) GetKnownHostKey(hostname string) (string, error) {
-	return GetKnownHostKeyBun(s.bun, hostname)
-}
-
-func (s *PostgresStore) AddKnownHostKey(hostname, key string) error {
-	err := AddKnownHostKeyBun(s.bun, hostname, key)
-	if err == nil {
-		_ = s.LogAction("TRUST_HOST", fmt.Sprintf("hostname: %s", hostname))
-	}
-	return err
-}
-
-func (s *PostgresStore) CreateSystemKey(publicKey, privateKey string) (int, error) {
-	newSerial, err := CreateSystemKeyBun(s.bun, publicKey, privateKey)
-	if err == nil {
-		_ = s.LogAction("CREATE_SYSTEM_KEY", fmt.Sprintf("serial: %d", newSerial))
-	}
-	return newSerial, err
-}
-
-func (s *PostgresStore) RotateSystemKey(publicKey, privateKey string) (int, error) {
-	newSerial, err := RotateSystemKeyBun(s.bun, publicKey, privateKey)
-	if err == nil {
-		_ = s.LogAction("ROTATE_SYSTEM_KEY", fmt.Sprintf("new_serial: %d", newSerial))
-	}
-	return newSerial, err
-}
-
-func (s *PostgresStore) GetActiveSystemKey() (*model.SystemKey, error) {
-	return GetActiveSystemKeyBun(s.bun)
-}
-
-func (s *PostgresStore) GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
-	return GetSystemKeyBySerialBun(s.bun, serial)
-}
-
-func (s *PostgresStore) HasSystemKeys() (bool, error) {
-	return HasSystemKeysBun(s.bun)
-}
-
-// Key<->Account assignment methods are now provided by the `KeyManager`.
-// Store implementations keep Bun helpers in `bun_adapter.go` for use by
-// the KeyManager adapter.
-
-// SearchAccounts performs a fuzzy search for accounts using the centralized Bun helper.
-func (s *PostgresStore) SearchAccounts(query string) ([]model.Account, error) {
-	// Delegate via AccountSearcher to decouple callers from Bun specifics.
-	return NewBunAccountSearcher(s.bun).SearchAccounts(query)
-}
-
-func (s *PostgresStore) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
-	return GetAllAuditLogEntriesBun(s.bun)
-}
-
-func (s *PostgresStore) LogAction(action string, details string) error {
-	// Delegate to Bun-backed helper which also derives current OS user.
-	return LogActionBun(s.bun, action, details)
-}
-
-// SaveBootstrapSession saves a bootstrap session to the database.
-func (s *PostgresStore) SaveBootstrapSession(id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error {
-	return SaveBootstrapSessionBun(s.bun, id, username, hostname, label, tags, tempPublicKey, expiresAt, status)
-}
-
-// GetBootstrapSession retrieves a bootstrap session by ID.
-func (s *PostgresStore) GetBootstrapSession(id string) (*model.BootstrapSession, error) {
-	return GetBootstrapSessionBun(s.bun, id)
-}
-
-// DeleteBootstrapSession removes a bootstrap session from the database.
-func (s *PostgresStore) DeleteBootstrapSession(id string) error {
-	return DeleteBootstrapSessionBun(s.bun, id)
-}
-
-// UpdateBootstrapSessionStatus updates the status of a bootstrap session.
-func (s *PostgresStore) UpdateBootstrapSessionStatus(id string, status string) error {
-	return UpdateBootstrapSessionStatusBun(s.bun, id, status)
-}
-
-// GetExpiredBootstrapSessions returns all expired bootstrap sessions.
-func (s *PostgresStore) GetExpiredBootstrapSessions() ([]*model.BootstrapSession, error) {
-	return GetExpiredBootstrapSessionsBun(s.bun)
-}
-
-// GetOrphanedBootstrapSessions returns all orphaned bootstrap sessions.
-func (s *PostgresStore) GetOrphanedBootstrapSessions() ([]*model.BootstrapSession, error) {
-	return GetOrphanedBootstrapSessionsBun(s.bun)
-}
-
-// ExportDataForBackup retrieves all data from the database for a backup.
-// It uses a transaction to ensure a consistent snapshot of the data.
-func (s *PostgresStore) ExportDataForBackup() (*model.BackupData, error) {
-	return ExportDataForBackupBun(s.bun)
-}
-
-// ImportDataFromBackup restores the database from a backup data structure.
-// It performs a full wipe-and-replace within a single transaction to ensure atomicity.
-func (s *PostgresStore) ImportDataFromBackup(backup *model.BackupData) error {
-	return ImportDataFromBackupBun(s.bun, backup)
-}
-
-// IntegrateDataFromBackup restores data from a backup in a non-destructive way,
-// skipping entries that already exist.
-func (s *PostgresStore) IntegrateDataFromBackup(backup *model.BackupData) error {
-	return IntegrateDataFromBackupBun(s.bun, backup)
+	return (*PostgresStore)(bs), nil
 }
