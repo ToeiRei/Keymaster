@@ -18,6 +18,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/tui/adapters"
 )
 
 // Risk-based color styles for audit log actions.
@@ -64,8 +65,8 @@ func newAuditLogModelWithSearcher(searcher db.AuditSearcher) *auditLogModel {
 	if searcher != nil {
 		entries, err = searcher.GetAllAuditLogEntries()
 	} else {
-		// Fallback to the direct DB helper when no searcher is provided.
-		entries, err = db.GetAllAuditLogEntries()
+		// Fallback to the adapters-provided reader when no searcher is provided.
+		entries, err = adapters.AuditReader.GetAllAuditLogEntries()
 	}
 	if err != nil {
 		m.err = err
