@@ -10,6 +10,7 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/uiadapters"
 )
 
 // tuiStoreAdapter removed: TUI now uses internal/uiadapters.NewStoreAdapter() for store operations.
@@ -17,7 +18,13 @@ import (
 // tuiAccountReader adapts db helpers to core.AccountReader.
 type tuiAccountReader struct{}
 
-func (r *tuiAccountReader) GetAllAccounts() ([]model.Account, error) { return db.GetAllAccounts() }
+func (r *tuiAccountReader) GetAllAccounts() ([]model.Account, error) {
+	// Prefer the canonical store adapter when available.
+	if s := uiadapters.NewStoreAdapter(); s != nil {
+		return s.GetAllAccounts()
+	}
+	return db.GetAllAccounts()
+}
 
 var _ core.AccountReader = (*tuiAccountReader)(nil)
 
@@ -25,14 +32,25 @@ var _ core.AccountReader = (*tuiAccountReader)(nil)
 type tuiKeyReader struct{}
 
 func (r *tuiKeyReader) GetAllPublicKeys() ([]model.PublicKey, error) {
+	if kr := core.DefaultKeyReader(); kr != nil {
+		return kr.GetAllPublicKeys()
+	}
 	km := db.DefaultKeyManager()
 	if km == nil {
 		return nil, fmt.Errorf("no key manager available")
 	}
 	return km.GetAllPublicKeys()
 }
-func (r *tuiKeyReader) GetActiveSystemKey() (*model.SystemKey, error) { return db.GetActiveSystemKey() }
+func (r *tuiKeyReader) GetActiveSystemKey() (*model.SystemKey, error) {
+	if kr := core.DefaultKeyReader(); kr != nil {
+		return kr.GetActiveSystemKey()
+	}
+	return db.GetActiveSystemKey()
+}
 func (r *tuiKeyReader) GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
+	if kr := core.DefaultKeyReader(); kr != nil {
+		return kr.GetSystemKeyBySerial(serial)
+	}
 	return db.GetSystemKeyBySerial(serial)
 }
 
@@ -51,6 +69,9 @@ var _ core.AuditReader = (*tuiAuditReader)(nil)
 type tuiKeyLister struct{}
 
 func (k *tuiKeyLister) GetGlobalPublicKeys() ([]model.PublicKey, error) {
+	if kl := core.DefaultKeyLister(); kl != nil {
+		return kl.GetGlobalPublicKeys()
+	}
 	km := db.DefaultKeyManager()
 	if km == nil {
 		return nil, fmt.Errorf("no key manager available")
@@ -58,6 +79,9 @@ func (k *tuiKeyLister) GetGlobalPublicKeys() ([]model.PublicKey, error) {
 	return km.GetGlobalPublicKeys()
 }
 func (k *tuiKeyLister) GetKeysForAccount(accountID int) ([]model.PublicKey, error) {
+	if kl := core.DefaultKeyLister(); kl != nil {
+		return kl.GetKeysForAccount(accountID)
+	}
 	km := db.DefaultKeyManager()
 	if km == nil {
 		return nil, fmt.Errorf("no key manager available")
@@ -65,6 +89,9 @@ func (k *tuiKeyLister) GetKeysForAccount(accountID int) ([]model.PublicKey, erro
 	return km.GetKeysForAccount(accountID)
 }
 func (k *tuiKeyLister) GetAllPublicKeys() ([]model.PublicKey, error) {
+	if kl := core.DefaultKeyLister(); kl != nil {
+		return kl.GetAllPublicKeys()
+	}
 	km := db.DefaultKeyManager()
 	if km == nil {
 		return nil, fmt.Errorf("no key manager available")

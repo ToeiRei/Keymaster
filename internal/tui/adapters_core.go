@@ -14,6 +14,7 @@ import (
 	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
+	_ "github.com/toeirei/keymaster/internal/ui"
 )
 
 // coreAccountReader adapts UI helpers to core.AccountReader.
