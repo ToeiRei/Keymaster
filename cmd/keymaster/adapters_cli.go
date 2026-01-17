@@ -116,19 +116,32 @@ type dbStoreWrapper struct{ inner db.Store }
 
 func (w *dbStoreWrapper) GetAccounts() ([]model.Account, error) { return w.inner.GetAllAccounts() }
 func (w *dbStoreWrapper) GetAllActiveAccounts() ([]model.Account, error) {
+	if w == nil || w.inner == nil {
+		return nil, fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
 	return w.inner.GetAllActiveAccounts()
 }
 func (w *dbStoreWrapper) GetAllAccounts() ([]model.Account, error) { return w.inner.GetAllAccounts() }
 func (w *dbStoreWrapper) GetAccount(id int) (*model.Account, error) {
-	ac, _ := w.inner.GetAllAccounts()
+	if w == nil || w.inner == nil {
+		return nil, fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
+	ac, err := w.inner.GetAllAccounts()
+	if err != nil {
+		return nil, err
+	}
 	for _, a := range ac {
 		if a.ID == id {
-			return &a, nil
+			aa := a
+			return &aa, nil
 		}
 	}
 	return nil, fmt.Errorf("not found")
 }
 func (w *dbStoreWrapper) AddAccount(username, hostname, label, tags string) (int, error) {
+	if w == nil || w.inner == nil {
+		return 0, fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
 	return w.inner.AddAccount(username, hostname, label, tags)
 }
 func (w *dbStoreWrapper) DeleteAccount(accountID int) error { return w.inner.DeleteAccount(accountID) }
@@ -140,27 +153,51 @@ func (w *dbStoreWrapper) AssignKeyToAccount(keyID, accountID int) error {
 	return km.AssignKeyToAccount(keyID, accountID)
 }
 func (w *dbStoreWrapper) UpdateAccountIsDirty(id int, dirty bool) error {
+	if w == nil || w.inner == nil {
+		return fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
 	return w.inner.UpdateAccountIsDirty(id, dirty)
 }
 func (w *dbStoreWrapper) CreateSystemKey(publicKey, privateKey string) (int, error) {
+	if w == nil || w.inner == nil {
+		return 0, fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
 	return w.inner.CreateSystemKey(publicKey, privateKey)
 }
 func (w *dbStoreWrapper) RotateSystemKey(publicKey, privateKey string) (int, error) {
+	if w == nil || w.inner == nil {
+		return 0, fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
 	return w.inner.RotateSystemKey(publicKey, privateKey)
 }
 func (w *dbStoreWrapper) GetActiveSystemKey() (*model.SystemKey, error) {
+	if w == nil || w.inner == nil {
+		return nil, fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
 	return w.inner.GetActiveSystemKey()
 }
 func (w *dbStoreWrapper) AddKnownHostKey(hostname, key string) error {
+	if w == nil || w.inner == nil {
+		return fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
 	return w.inner.AddKnownHostKey(hostname, key)
 }
 func (w *dbStoreWrapper) ExportDataForBackup() (*model.BackupData, error) {
+	if w == nil || w.inner == nil {
+		return nil, fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
 	return w.inner.ExportDataForBackup()
 }
 func (w *dbStoreWrapper) ImportDataFromBackup(d *model.BackupData) error {
+	if w == nil || w.inner == nil {
+		return fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
 	return w.inner.ImportDataFromBackup(d)
 }
 func (w *dbStoreWrapper) IntegrateDataFromBackup(d *model.BackupData) error {
+	if w == nil || w.inner == nil {
+		return fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
 	return w.inner.IntegrateDataFromBackup(d)
 }
 
