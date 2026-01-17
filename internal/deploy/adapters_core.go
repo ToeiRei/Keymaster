@@ -81,6 +81,25 @@ func (coreAccountManager) DeleteAccount(id int) error {
 }
 
 func init() {
+	// NOTE: Deploy package init registers deploy-focused adapters into core.
+	// These defaults are set for programs or tests that import
+	// `internal/deploy` and expect deploy-specific behavior wired into
+	// `internal/core`.
+	//
+	// Defaults registered by Deploy init():
+	// - KeyReader (coreKeyReader)
+	// - KeyLister (coreKeyLister)
+	// - AccountSerialUpdater (accountSerialUpdater)
+	// - KeyImporter (keyImporter)
+	// - AuditWriter (coreAuditWriter)
+	//
+	// Subsystems depending on these: deploy logic, bootstrap helpers, and
+	// tests that rely on deploy semantics.
+	//
+	// TODO: consider centralizing documentation about which package's init()
+	// registers which `core` defaults to make it easier to reason about
+	// global wiring and to avoid import-domain surprises.
+
 	core.SetDefaultKeyReader(coreKeyReader{})
 	core.SetDefaultKeyLister(coreKeyLister{})
 	core.SetDefaultAccountSerialUpdater(accountSerialUpdater{})

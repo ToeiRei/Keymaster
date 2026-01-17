@@ -161,7 +161,9 @@ func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_c
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	// cli
-	// TODO maybe needs to trigger additional parsing beferohand (most likely nots)
+	// TODO: consider whether flag/env parsing should run earlier for special
+	// cases (e.g., test harnesses or explicit pre-processing). Current flow
+	// binds CLI flags here and then unmarshals into the config object.
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return c, err
 	}

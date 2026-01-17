@@ -179,7 +179,6 @@ func (s *storeAdapter) GenerateAuthorizedKeysContent(ctx context.Context, accoun
 // Keep this unexported wrapper to provide a single place to add future
 // variants (headers, signing metadata) without changing the higher-level
 // control flow in `GenerateAuthorizedKeysContent`.
-// Resolved: centralized `BuildAuthorizedKeysContent` variants via this wrapper.
 func (s *storeAdapter) buildAuthorizedKeysContent(sk *model.SystemKey, gks, aks []model.PublicKey) (string, error) {
 	return keys.BuildAuthorizedKeysContent(sk, gks, aks)
 }
