@@ -8,12 +8,6 @@ import (
 	"github.com/toeirei/keymaster/internal/security"
 )
 
-type failFactoryDeployer struct{}
-
-func (f *failFactoryDeployer) DeployAuthorizedKeys(content string) error { return nil }
-func (f *failFactoryDeployer) GetAuthorizedKeys() ([]byte, error)        { return nil, nil }
-func (f *failFactoryDeployer) Close()                                    {}
-
 func TestCleanupRemoteAuthorizedKeysSelective_FactoryError(t *testing.T) {
 	orig := NewDeployerFactory
 	defer func() { NewDeployerFactory = orig }()

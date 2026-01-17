@@ -12,24 +12,7 @@ import (
 	"github.com/toeirei/keymaster/internal/security"
 )
 
-// fake store that returns an active system key and records import calls
-type fakeStoreForMigrate struct {
-	imported bool
-}
-
-func (f *fakeStoreForMigrate) ExportDataForBackup() (*model.BackupData, error) {
-	return &model.BackupData{}, nil
-}
-func (f *fakeStoreForMigrate) ImportDataFromBackup(*model.BackupData) error {
-	f.imported = true
-	return nil
-}
-func (f *fakeStoreForMigrate) GetActiveSystemKey() (*model.SystemKey, error) {
-	return &model.SystemKey{Serial: 1, PublicKey: "p", PrivateKey: "priv", IsActive: true}, nil
-}
-
-// implement minimal Store methods used by facades tests
-func (f *fakeStoreForMigrate) GetAllActiveAccounts() ([]model.Account, error) { return nil, nil }
+// fake store used elsewhere removed to avoid unused helper warning
 
 // fake KeyManager for ImportAuthorizedKeys (minimal)
 type fmKeyManager struct {

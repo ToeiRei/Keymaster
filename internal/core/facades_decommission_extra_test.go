@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/security"
 )
 
 // reuse fakeStoreForDecom and fakeDMForFacades from facades_decommission_test.go
@@ -48,7 +47,4 @@ func TestDecommissionAccounts_Single_DeployerError(t *testing.T) {
 	}
 }
 
-// ensure DeployerManager implementation still satisfies interface (compile-time check)
-type _checkDeployerManager interface {
-	BulkDecommissionAccounts(accounts []model.Account, systemPrivateKey security.Secret, options interface{}) ([]DecommissionResult, error)
-}
+// (no unused compile-time-only check needed here)
