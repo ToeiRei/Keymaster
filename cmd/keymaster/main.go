@@ -28,7 +28,8 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	_ "github.com/toeirei/keymaster/internal/deploy" // ensure deploy init registers core hooks
+	"github.com/toeirei/keymaster/internal/deploy"
+	"github.com/toeirei/keymaster/internal/ui"
 
 	// bootstrap lifecycle is delegated to internal/core facades now
 
@@ -160,6 +161,12 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 
 // main is the entry point of the application.
 func main() {
+	// Explicitly register package defaults into `core` to avoid relying on
+	// import-order side-effects. This preserves previous behavior while
+	// making wiring explicit for tests and alternative bootstraps.
+	deploy.InitializeDefaults()
+	ui.InitializeDefaults()
+	tui.InitializeDefaults()
 	// Install signal handler for graceful shutdown of bootstrap sessions
 	core.InstallSignalHandler()
 
