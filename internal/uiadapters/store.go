@@ -12,6 +12,7 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/keys"
+	"github.com/toeirei/keymaster/internal/logging"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -150,6 +151,11 @@ func (s *storeAdapter) GenerateAuthorizedKeysContent(ctx context.Context, accoun
 	// Any future refactor that changes the content format must be validated
 	// against existing deployments and tests.
 	sk, _ := db.GetActiveSystemKey()
+	if sk == nil {
+		// Warn but continue: existing callers expect content generation to
+		// succeed even when no system key is present (e.g., during bootstrap).
+		logging.Warnf("GenerateAuthorizedKeysContent: no active system key found for account %d", accountID)
+	}
 	km := db.DefaultKeyManager()
 	if km == nil {
 		return "", fmt.Errorf("no key manager available")
@@ -162,9 +168,19 @@ func (s *storeAdapter) GenerateAuthorizedKeysContent(ctx context.Context, accoun
 	if err != nil {
 		return "", err
 	}
-	// TODO: Consider centralizing BuildAuthorizedKeysContent variants
-	// (e.g., adding signing headers) behind a stable facade if further
-	// customization is required by different UI surfaces.
+	// Centralize call via a single unexported helper to make it easier to
+	// extend or variant-implement the authorized_keys generation in one
+	// place without duplicating call sites. This is a mechanical consolidation
+	// only and does not change behavior.
+	return s.buildAuthorizedKeysContent(sk, gks, aks)
+}
+
+// buildAuthorizedKeysContent centralizes the call to `keys.BuildAuthorizedKeysContent`.
+// Keep this unexported wrapper to provide a single place to add future
+// variants (headers, signing metadata) without changing the higher-level
+// control flow in `GenerateAuthorizedKeysContent`.
+// Resolved: centralized `BuildAuthorizedKeysContent` variants via this wrapper.
+func (s *storeAdapter) buildAuthorizedKeysContent(sk *model.SystemKey, gks, aks []model.PublicKey) (string, error) {
 	return keys.BuildAuthorizedKeysContent(sk, gks, aks)
 }
 
