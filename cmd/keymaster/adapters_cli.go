@@ -172,7 +172,6 @@ func (c *cliKeyGenerator) GenerateAndMarshalEd25519Key(comment, passphrase strin
 }
 
 // ensure adapters satisfy core interfaces at compile time
-var _ core.DeployerManager = (*cliDeployerManager)(nil)
 var _ core.DBMaintainer = (*cliDBMaintainer)(nil)
 var _ core.StoreFactory = (*cliStoreFactory)(nil)
 var _ core.KeyGenerator = (*cliKeyGenerator)(nil)
@@ -186,14 +185,6 @@ func (r *cliReporter) Reportf(format string, args ...any) {
 
 var _ core.Reporter = (*cliReporter)(nil)
 
-// cliAuditWriter adapts the package-level DB AuditWriter to core.AuditWriter.
-type cliAuditWriter struct{}
+// cliReporter removed; pass nil Reporter where appropriate.
 
-func (a *cliAuditWriter) LogAction(action, details string) error {
-	if w := db.DefaultAuditWriter(); w != nil {
-		return w.LogAction(action, details)
-	}
-	return nil
-}
-
-var _ core.AuditWriter = (*cliAuditWriter)(nil)
+// cliAuditWriter removed; use db.DefaultAuditWriter() where needed.

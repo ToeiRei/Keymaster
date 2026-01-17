@@ -636,7 +636,7 @@ step before Keymaster can manage a new host.`,
 		} else {
 			hostname = target
 		}
-		dm := &cliDeployerManager{}
+		dm := core.DefaultDeployerManager
 		canonicalHost := dm.CanonicalizeHostPort(hostname)
 
 		fmt.Printf("Attempting to retrieve host key from %s…\n", canonicalHost)
@@ -907,7 +907,7 @@ Use --tag to decommission all accounts with specific tags (e.g., --tag env:stagi
 		}
 
 		// Execute decommission via core facade
-		aw := &cliAuditWriter{}
+		var aw core.AuditWriter = nil
 		summary, derr := core.RunDecommissionCmd(cmd.Context(), targetAccounts, options, dm, st, aw)
 		if derr != nil {
 			log.Fatalf("Decommission failed: %v", derr)

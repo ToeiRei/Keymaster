@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
@@ -215,7 +216,10 @@ func init() {
 				},
 				GetActiveSystemKey: func() (*model.SystemKey, error) { return uiadapters.NewStoreAdapter().GetActiveSystemKey() },
 				LogAudit: func(e core.BootstrapAuditEvent) error {
-					return (&cliAuditWriter{}).LogAction(e.Action, e.Details)
+					if w := db.DefaultAuditWriter(); w != nil {
+						return w.LogAction(e.Action, e.Details)
+					}
+					return nil
 				},
 			}
 

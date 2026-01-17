@@ -89,7 +89,7 @@ func TestCliStoreAdapter_AddDeleteAssign(t *testing.T) {
 
 // Fake deployer functions used to test cliDeployerManager adapters
 func TestCliDeployerManager_DeployAndAudit_Decommission(t *testing.T) {
-	dm := &cliDeployerManager{}
+	dm := core.DefaultDeployerManager
 
 	// Use a simple account value
 	acct := model.Account{ID: 1, Username: "u", Hostname: "h", Label: "l"}
