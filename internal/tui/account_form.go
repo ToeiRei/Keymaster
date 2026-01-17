@@ -20,6 +20,7 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/logging"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/uiadapters"
 )
 
 // focusedStyle is a simple style for focused text inputs.
@@ -167,10 +168,25 @@ func newAccountFormModelWithSuggester(accountToEdit *model.Account, ts TagSugges
 		}
 		// Fall through to fallback DB scan on error
 	}
-	// If no suggester provided, use DB-backed suggester.
+	// If no suggester provided, try the canonical store adapter first.
 	if ts == nil {
-		// Do not set a TagSuggester here: prefer to populate m.allTags and
-		// leave m.tagSuggester nil so tests that override m.allTags get used.
+		if s := uiadapters.NewStoreAdapter(); s != nil {
+			if accts, err := s.GetAllAccounts(); err == nil {
+				tagSet := make(map[string]struct{})
+				for _, acc := range accts {
+					for _, tag := range SplitTags(acc.Tags) {
+						tagSet[tag] = struct{}{}
+					}
+				}
+				m.allTags = make([]string, 0, len(tagSet))
+				for tag := range tagSet {
+					m.allTags = append(m.allTags, tag)
+				}
+				sort.Strings(m.allTags)
+				return m
+			}
+		}
+		// Fallback to DB-backed suggester if adapter not available
 		d := dbTagSuggester{}
 		if tags, err := d.AllTags(); err == nil {
 			m.allTags = tags
@@ -179,7 +195,7 @@ func newAccountFormModelWithSuggester(accountToEdit *model.Account, ts TagSugges
 		}
 	}
 
-	// Fallback: scan for tags (keeps previous behavior if suggester unavailable)
+	// Final fallback: scan DB directly to preserve legacy behavior
 	allAccounts, err := db.GetAllAccounts()
 	if err != nil {
 		logging.Warnf("failed to load accounts for tag autocomplete: %v", err)
