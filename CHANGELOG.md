@@ -6,31 +6,36 @@ _All notable changes to Keymaster are documented here. This project follows [Kee
 
 ## **[Unreleased] – Future Release**
 
-This release brings major improvements to reliability, performance, and day‑to‑day usability across Keymaster. It includes expanded test coverage, internal stability work, and several new features that make managing SSH keys and deployments smoother.
+This update focuses on making Keymaster faster, clearer, and easier to use in everyday operations. It improves performance across the board, adds several highly requested features, and strengthens the reliability of deployments and database handling.
 
 ### Added — Unreleased
 
 - **Export `authorized_keys` to disk**  
-  Allows offline or air‑gapped updates using local files.
+  Useful for offline environments, air‑gapped systems, or manual review before deployment.
 - **Public‑key expiration support**  
-  Keys can now expire, be filtered by status, and be reactivated or deactivated.
+  Keys can now expire automatically. You can filter by status, reactivate expired keys, or deactivate them with one action.
 - **Improved search and filtering**  
-  Faster, more accurate matching with better tag suggestions.
+  Faster lookups, better matching, and improved tag suggestions make large installations easier to navigate.
 - **Deployment planning**  
-  Keymaster now builds a structured deployment plan before applying changes.
+  Keymaster now has a structured plan before applying changes, making updates more predictable and auditable.
 
 ### Changed — Unreleased
 
 - **Faster TUI performance**  
-  Noticeably improved filtering and autocompletion responsiveness.
+  Smoother navigation, quicker filtering, and more responsive autocompletion.
 - **More consistent database behavior**  
-  Unified handling across SQLite, PostgreSQL, and MySQL.
+  Unified handling across SQLite, PostgreSQL, and MySQL for fewer surprises and more predictable performance.
 - **Improved CI reliability**  
-  Broader test coverage and more stable test environments.
+  Broader test coverage and more stable test environments reduce noise and false failures.
 - **Cleaner internal architecture**  
-  Deterministic logic consolidated into a shared core for long‑term maintainability.
+  Keymaster’s internals were streamlined to reduce duplication and improve long‑term maintainability.
+- **Adapter unification & cleanup (internal)**  
+  Keymaster’s internals were streamlined to reduce duplication and improve long‑term maintainability.
+  (This includes unifying the UI adapter layer — no user‑visible changes.)
 - **Updated dependencies to keep the toolchain current and secure.**
-- **Unified** the database layers to be all under bun now.
+  Keeps the toolchain current, secure, and compatible with modern environments.
+**Unified** the database layers to be all under bun now.
+  All database operations now run through Bun for consistency and improved performance.
   
 ### Fixed — Unreleased
 
