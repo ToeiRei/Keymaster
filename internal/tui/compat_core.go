@@ -1,12 +1,11 @@
-// Copyright (c) 2026 Keymaster Team
-// Keymaster - SSH key management system
-// This source code is licensed under the MIT license found in the LICENSE file.
+//go:build ignore
+// +build ignore
+
+// This file is intentionally excluded from normal builds. It used to provide a
+// backward-compatible wrapper `containsIgnoreCase` for tests; tests now call
+// `core.ContainsIgnoreCase` directly and this file is kept only as a
+// non-building artifact to avoid deleting history during phased migration.
 
 package tui
 
-import "github.com/toeirei/keymaster/internal/core"
-
-// containsIgnoreCase kept for backward-compatible tests and callers.
-func containsIgnoreCase(s, substr string) bool {
-	return core.ContainsIgnoreCase(s, substr)
-}
+// intentionally empty

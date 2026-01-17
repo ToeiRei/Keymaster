@@ -7,6 +7,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
@@ -14,13 +15,13 @@ import (
 )
 
 func TestContainsIgnoreCase(t *testing.T) {
-	if !containsIgnoreCase("HelloWorld", "hell") {
+	if !core.ContainsIgnoreCase("HelloWorld", "hell") {
 		t.Fatalf("expected containsIgnoreCase to find substring ignoring case")
 	}
-	if !containsIgnoreCase("abc", "") {
+	if !core.ContainsIgnoreCase("abc", "") {
 		t.Fatalf("empty substr should return true")
 	}
-	if containsIgnoreCase("abc", "z") {
+	if core.ContainsIgnoreCase("abc", "z") {
 		t.Fatalf("expected false for non-matching substring")
 	}
 }
