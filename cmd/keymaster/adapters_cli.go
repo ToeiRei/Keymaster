@@ -5,160 +5,18 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"strconv"
 
 	log "github.com/charmbracelet/log"
 
 	"github.com/toeirei/keymaster/internal/core"
 	crypto_ssh "github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
-	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
 )
 
-// cliStoreAdapter adapts package-level db helpers to core.Store.
-type cliStoreAdapter struct{}
-
-func (c *cliStoreAdapter) GetAccounts() ([]model.Account, error) {
-	return db.GetAllAccounts()
-}
-func (c *cliStoreAdapter) GetAllActiveAccounts() ([]model.Account, error) {
-	return db.GetAllActiveAccounts()
-}
-func (c *cliStoreAdapter) GetAllAccounts() ([]model.Account, error) {
-	return db.GetAllAccounts()
-}
-func (c *cliStoreAdapter) GetAccount(id int) (*model.Account, error) {
-	accts, err := db.GetAllAccounts()
-	if err != nil {
-		return nil, err
-	}
-	for _, a := range accts {
-		if a.ID == id {
-			return &a, nil
-		}
-	}
-	return nil, fmt.Errorf("account not found: %d", id)
-}
-
-// FindByIdentifier finds an account by numeric id or "user@host" identifier.
-func (c *cliStoreAdapter) FindByIdentifier(ctx context.Context, identifier string) (*model.Account, error) {
-	if identifier == "" {
-		return nil, fmt.Errorf("empty identifier")
-	}
-	// numeric id
-	if id, err := strconv.Atoi(identifier); err == nil {
-		if a, err := c.GetAccount(id); err == nil {
-			return a, nil
-		}
-	}
-	// user@host
-	accts, err := db.GetAllAccounts()
-	if err != nil {
-		return nil, err
-	}
-	for _, a := range accts {
-		if a.Username+"@"+a.Hostname == identifier {
-			aa := a
-			return &aa, nil
-		}
-	}
-	return nil, fmt.Errorf("account not found: %s", identifier)
-}
-
-// SetAccountActiveState sets or clears the IsActive flag for an account.
-func (c *cliStoreAdapter) SetAccountActiveState(ctx context.Context, accountID int, active bool) error {
-	accts, err := db.GetAllAccounts()
-	if err != nil {
-		return err
-	}
-	var found *model.Account
-	for _, a := range accts {
-		if a.ID == accountID {
-			aa := a
-			found = &aa
-			break
-		}
-	}
-	if found == nil {
-		return fmt.Errorf("account not found: %d", accountID)
-	}
-	if found.IsActive == active {
-		return nil
-	}
-	return db.ToggleAccountStatus(accountID)
-}
-
-// GetAll returns all accounts.
-func (c *cliStoreAdapter) GetAll(ctx context.Context) ([]model.Account, error) {
-	return db.GetAllAccounts()
-}
-
-// GenerateAuthorizedKeysContent builds authorized_keys content for an account.
-func (c *cliStoreAdapter) GenerateAuthorizedKeysContent(ctx context.Context, accountID int) (string, error) {
-	sk, _ := db.GetActiveSystemKey()
-	km := db.DefaultKeyManager()
-	if km == nil {
-		return "", fmt.Errorf("no key manager available")
-	}
-	gks, err := km.GetGlobalPublicKeys()
-	if err != nil {
-		return "", err
-	}
-	aks, err := km.GetKeysForAccount(accountID)
-	if err != nil {
-		return "", err
-	}
-	return keys.BuildAuthorizedKeysContent(sk, gks, aks)
-}
-func (c *cliStoreAdapter) AddAccount(username, hostname, label, tags string) (int, error) {
-	mgr := db.DefaultAccountManager()
-	if mgr == nil {
-		return 0, fmt.Errorf("no account manager available")
-	}
-	return mgr.AddAccount(username, hostname, label, tags)
-}
-func (c *cliStoreAdapter) DeleteAccount(accountID int) error {
-	mgr := db.DefaultAccountManager()
-	if mgr == nil {
-		return fmt.Errorf("no account manager available")
-	}
-	return mgr.DeleteAccount(accountID)
-}
-func (c *cliStoreAdapter) AssignKeyToAccount(keyID, accountID int) error {
-	km := db.DefaultKeyManager()
-	if km == nil {
-		return fmt.Errorf("no key manager available")
-	}
-	return km.AssignKeyToAccount(keyID, accountID)
-}
-func (c *cliStoreAdapter) UpdateAccountIsDirty(id int, dirty bool) error {
-	return db.UpdateAccountIsDirty(id, dirty)
-}
-func (c *cliStoreAdapter) CreateSystemKey(publicKey, privateKey string) (int, error) {
-	return db.CreateSystemKey(publicKey, privateKey)
-}
-func (c *cliStoreAdapter) RotateSystemKey(publicKey, privateKey string) (int, error) {
-	return db.RotateSystemKey(publicKey, privateKey)
-}
-func (c *cliStoreAdapter) GetActiveSystemKey() (*model.SystemKey, error) {
-	return db.GetActiveSystemKey()
-}
-func (c *cliStoreAdapter) AddKnownHostKey(hostname, key string) error {
-	return db.AddKnownHostKey(hostname, key)
-}
-func (c *cliStoreAdapter) ExportDataForBackup() (*model.BackupData, error) {
-	return db.ExportDataForBackup()
-}
-func (c *cliStoreAdapter) ImportDataFromBackup(d *model.BackupData) error {
-	return db.ImportDataFromBackup(d)
-}
-func (c *cliStoreAdapter) IntegrateDataFromBackup(d *model.BackupData) error {
-	return db.IntegrateDataFromBackup(d)
-}
+// (cliStoreAdapter removed; CLI now uses internal/uiadapters.NewStoreAdapter())
 
 // cliDeployerManager adapts deploy package helpers to core.DeployerManager.
 type cliDeployerManager struct{}
@@ -313,8 +171,7 @@ func (c *cliKeyGenerator) GenerateAndMarshalEd25519Key(comment, passphrase strin
 	return crypto_ssh.GenerateAndMarshalEd25519Key(comment, passphrase)
 }
 
-// ensure cliStoreAdapter satisfies core.Store at compile time
-var _ core.Store = (*cliStoreAdapter)(nil)
+// ensure adapters satisfy core interfaces at compile time
 var _ core.DeployerManager = (*cliDeployerManager)(nil)
 var _ core.DBMaintainer = (*cliDBMaintainer)(nil)
 var _ core.StoreFactory = (*cliStoreFactory)(nil)

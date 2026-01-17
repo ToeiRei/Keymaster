@@ -12,6 +12,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
+	"github.com/toeirei/keymaster/internal/uiadapters"
 )
 
 // Test cliKeyGenerator delegates to crypto/ssh generator
@@ -68,7 +69,7 @@ func TestCliStoreAdapter_AddDeleteAssign(t *testing.T) {
 	defer db.SetDefaultAccountManager(prevAcct)
 	defer db.SetDefaultKeyManager(prevKey)
 
-	a := &cliStoreAdapter{}
+	a := uiadapters.NewStoreAdapter()
 	id, err := a.AddAccount("u", "h", "l", "t")
 	if err != nil {
 		t.Fatalf("AddAccount failed: %v", err)

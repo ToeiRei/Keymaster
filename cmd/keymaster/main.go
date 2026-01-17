@@ -42,6 +42,7 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
 	"github.com/toeirei/keymaster/internal/tui"
+	"github.com/toeirei/keymaster/internal/uiadapters"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
 )
@@ -430,7 +431,7 @@ If no account is specified, deploys to all active accounts in the database.`,
 	PreRunE: setupDefaultServices,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Build adapters for core facades
-		st := &cliStoreAdapter{}
+		st := uiadapters.NewStoreAdapter()
 		dm := &cliDeployerManager{}
 
 		var identifier *string
@@ -478,7 +479,7 @@ The previous key is kept for accessing hosts that have not yet been updated.`,
 			}
 		}
 
-		st := &cliStoreAdapter{}
+		st := uiadapters.NewStoreAdapter()
 		serial, err := core.RunRotateKeyCmd(cmd.Context(), &cliKeyGenerator{}, st, passphrase)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("rotate_key.cli_error_save", err))
@@ -499,7 +500,7 @@ var auditCmd = &cobra.Command{
 Use --mode=serial to only verify the Keymaster header serial number on the remote host matches the account's last deployed serial (useful during staged rotations).`,
 	PreRunE: setupDefaultServices,
 	Run: func(cmd *cobra.Command, args []string) {
-		st := &cliStoreAdapter{}
+		st := uiadapters.NewStoreAdapter()
 		dm := &cliDeployerManager{}
 		results, err := core.RunAuditCmd(cmd.Context(), st, dm, auditMode, nil)
 		if err != nil {
@@ -530,7 +531,7 @@ var auditCompareCmd = &cobra.Command{
 			fileArg = args[1]
 		}
 
-		st := &cliStoreAdapter{}
+		st := uiadapters.NewStoreAdapter()
 		accounts, err := st.GetAllAccounts()
 		if err != nil {
 			log.Fatalf("error fetching accounts: %v", err)
@@ -640,7 +641,7 @@ step before Keymaster can manage a new host.`,
 
 		fmt.Printf("Attempting to retrieve host key from %s…\n", canonicalHost)
 		// Fetch key via core facade (do not save yet)
-		keyStr, err := core.RunTrustHostCmd(cmd.Context(), canonicalHost, dm, &cliStoreAdapter{}, false)
+		keyStr, err := core.RunTrustHostCmd(cmd.Context(), canonicalHost, dm, uiadapters.NewStoreAdapter(), false)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("trust_host.error_get_key", err))
 		}
@@ -661,7 +662,7 @@ step before Keymaster can manage a new host.`,
 			return
 		}
 		// Save the retrieved key into the store
-		st := &cliStoreAdapter{}
+		st := uiadapters.NewStoreAdapter()
 		if err := st.AddKnownHostKey(canonicalHost, keyStr); err != nil {
 			log.Fatalf("%s", i18n.T("trust_host.error_get_key", err))
 		}
@@ -686,7 +687,7 @@ Each account with a label will use the label as the Host alias.`,
 	Args:    cobra.MaximumNArgs(1),
 	PreRunE: setupDefaultServices,
 	Run: func(cmd *cobra.Command, args []string) {
-		st := &cliStoreAdapter{}
+		st := uiadapters.NewStoreAdapter()
 		out, err := core.RunExportSSHConfigCmd(cmd.Context(), st)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("export_ssh_config.error_get_accounts", err))
@@ -759,7 +760,7 @@ func promptForConfirmation(prompt string) string {
 // runDeploymentFunc is a package-level variable so tests can inject a mock
 // implementation. By default it calls into the core deploy facade with CLI mode.
 var runDeploymentFunc = func(account model.Account) error {
-	st := &cliStoreAdapter{}
+	st := uiadapters.NewStoreAdapter()
 	dm := &cliDeployerManager{}
 	identifier := fmt.Sprintf("%s@%s", account.Username, account.Hostname)
 	rep := &cliReporter{}
@@ -808,7 +809,7 @@ Use --tag to decommission all accounts with specific tags (e.g., --tag env:stagi
 		}
 
 		// Prepare store and deployer adapters
-		st := &cliStoreAdapter{}
+		st := uiadapters.NewStoreAdapter()
 		dm := &cliDeployerManager{}
 
 		// Get active system key
@@ -946,7 +947,7 @@ Example (Full Restore):
 			log.Fatalf("%s", i18n.T("restore.cli_error_read", err))
 		}
 		defer func() { _ = f.Close() }()
-		if err := core.RunRestoreCmd(cmd.Context(), f, core.RestoreOptions{Full: fullRestore}, &cliStoreAdapter{}); err != nil {
+		if err := core.RunRestoreCmd(cmd.Context(), f, core.RestoreOptions{Full: fullRestore}, uiadapters.NewStoreAdapter()); err != nil {
 			log.Fatalf("%s", i18n.T("restore.cli_error_import", err))
 		}
 		fmt.Println(i18n.T("restore.cli_success"))
@@ -1007,7 +1008,7 @@ Examples:
 			}
 		}
 		fmt.Println(i18n.T("backup.cli_starting"))
-		st := &cliStoreAdapter{}
+		st := uiadapters.NewStoreAdapter()
 		data, err := core.RunBackupCmd(cmd.Context(), st)
 		if err != nil {
 			log.Fatalf("%s", i18n.T("backup.cli_error_export", err))
@@ -1073,7 +1074,7 @@ Example:
 			log.Fatalf("%s", i18n.T("migrate.cli_error_flags"))
 		}
 		fmt.Println(i18n.T("migrate.cli_starting_backup"))
-		st := &cliStoreAdapter{}
+		st := uiadapters.NewStoreAdapter()
 		factory := &cliStoreFactory{}
 		if err := core.RunMigrateCmd(cmd.Context(), factory, st, targetType, targetDsn); err != nil {
 			log.Fatalf("%s", i18n.T("migrate.cli_error_backup", err))

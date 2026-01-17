@@ -17,6 +17,7 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
+	"github.com/toeirei/keymaster/internal/uiadapters"
 )
 
 // transferCmd is the root `transfer` command.
@@ -89,7 +90,7 @@ var transferCreateCmd = &cobra.Command{
 		}
 
 		// Attempt to deactivate the account if it exists and is active
-		st := &cliStoreAdapter{}
+		st := uiadapters.NewStoreAdapter()
 		accts, aerr := st.GetAllAccounts()
 		if aerr == nil {
 			if acc, ferr := core.FindAccountByIdentifier(fmt.Sprintf("%s@%s", user, host), accts); ferr == nil {
@@ -193,11 +194,11 @@ func init() {
 
 			// Prepare deps using CLI adapters (reuse existing helpers)
 			deps := core.BootstrapDeps{
-				AddAccount:    func(u, h, l, t string) (int, error) { return (&cliStoreAdapter{}).AddAccount(u, h, l, t) },
-				DeleteAccount: func(id int) error { return (&cliStoreAdapter{}).DeleteAccount(id) },
-				AssignKey:     func(kid, aid int) error { return (&cliStoreAdapter{}).AssignKeyToAccount(kid, aid) },
+				AddAccount:    func(u, h, l, t string) (int, error) { return uiadapters.NewStoreAdapter().AddAccount(u, h, l, t) },
+				DeleteAccount: func(id int) error { return uiadapters.NewStoreAdapter().DeleteAccount(id) },
+				AssignKey:     func(kid, aid int) error { return uiadapters.NewStoreAdapter().AssignKeyToAccount(kid, aid) },
 				GenerateKeysContent: func(accountID int) (string, error) {
-					return (&cliStoreAdapter{}).GenerateAuthorizedKeysContent(cmd.Context(), accountID)
+					return uiadapters.NewStoreAdapter().GenerateAuthorizedKeysContent(cmd.Context(), accountID)
 				},
 				NewBootstrapDeployer: func(hostname, username string, privateKey interface{}, expectedHostKey string) (core.BootstrapDeployer, error) {
 					// Normalize to security.Secret for core
@@ -212,7 +213,7 @@ func init() {
 						return core.NewBootstrapDeployer(hostname, username, nil, expectedHostKey)
 					}
 				},
-				GetActiveSystemKey: func() (*model.SystemKey, error) { return (&cliStoreAdapter{}).GetActiveSystemKey() },
+				GetActiveSystemKey: func() (*model.SystemKey, error) { return uiadapters.NewStoreAdapter().GetActiveSystemKey() },
 				LogAudit: func(e core.BootstrapAuditEvent) error {
 					return (&cliAuditWriter{}).LogAction(e.Action, e.Details)
 				},

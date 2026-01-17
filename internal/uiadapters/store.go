@@ -158,4 +158,4 @@ var _ core.Store = (*storeAdapter)(nil)
 // delegates to package-level `internal/db` helpers. Consumers should call the
 // constructor and use the returned `core.Store` rather than relying on a
 // package-level instance.
-func NewStoreAdapter() core.Store { return &storeAdapter{} }
+func NewStoreAdapter() *storeAdapter { return &storeAdapter{} }
