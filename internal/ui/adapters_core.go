@@ -106,6 +106,27 @@ func (coreAccountManager) DeleteAccount(id int) error {
 }
 
 func init() {
+	// NOTE: This `init()` wires UI-facing defaults into `internal/core`.
+	// Defaults set here are intended for programs that import `internal/ui`.
+	//
+	// Defaults registered:
+	// - KeyReader (DefaultCoreKeyReader)
+	// - KeyLister (DefaultCoreKeyLister)
+	// - AccountSerialUpdater (DefaultAccountSerialUpdater)
+	// - KeyImporter (coreKeyImporter)
+	// - AuditWriter (coreAuditWriter)
+	// - AccountManager (coreAccountManager)
+	// - DBInit (func -> db.New)
+	// - DBIsInitialized (db.IsInitialized)
+	//
+	// Importers/users: any package that imports `internal/ui` (UIs, CLIs,
+	// and higher-level components) rely on these defaults being present.
+	//
+	// TODO: consider providing an explicit initialization function (e.g.,
+	// `ui.InitializeDefaults()`) to make wiring explicit and easier to test.
+	// For now, do not change call sites or ordering — these defaults are
+	// intentionally registered during package init.
+
 	core.SetDefaultKeyReader(DefaultCoreKeyReader())
 	core.SetDefaultKeyLister(DefaultCoreKeyLister())
 	core.SetDefaultAccountSerialUpdater(DefaultAccountSerialUpdater())

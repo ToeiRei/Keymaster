@@ -174,6 +174,26 @@ func (coreKeyListerAdapter) GetAllPublicKeys() ([]model.PublicKey, error) {
 }
 
 func init() {
+	// NOTE: TUI package init registers TUI-specific adapters as `core` defaults.
+	// These defaults are intended for consumers that import `internal/tui`.
+	//
+	// Defaults registered by TUI init():
+	// - KeyReader (coreKeyReader)
+	// - KeyLister (coreKeyListerAdapter)
+	// - AccountSerialUpdater (accountSerialUpdater)
+	// - KeyImporter (keyImporter)
+	// - AuditWriter (coreAuditor)
+	// - AccountManager (coreAccountStore)
+	// - DBInit (func -> db.New)
+	// - DBIsInitialized (db.IsInitialized)
+	//
+	// Subsystems relying on these defaults: TUI components and tests that
+	// import `internal/tui` and expect `core` behavior to be present.
+	//
+	// TODO: Consider documenting the import-domain boundaries (ui vs tui vs
+	// deploy) and whether explicit initialization would be preferable to
+	// implicit init-time wiring.
+
 	core.SetDefaultKeyReader(coreKeyReader{})
 	core.SetDefaultKeyLister(coreKeyListerAdapter{})
 	core.SetDefaultAccountSerialUpdater(accountSerialUpdater{})
