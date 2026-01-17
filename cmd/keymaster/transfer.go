@@ -14,9 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
-	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
 )
@@ -96,7 +94,7 @@ var transferCreateCmd = &cobra.Command{
 		if aerr == nil {
 			if acc, ferr := core.FindAccountByIdentifier(fmt.Sprintf("%s@%s", user, host), accts); ferr == nil {
 				if acc.IsActive {
-					if derr := db.ToggleAccountStatus(acc.ID); derr != nil {
+					if derr := st.SetAccountActiveState(cmd.Context(), acc.ID, false); derr != nil {
 						if verbose {
 							log.Warnf("warning: failed to deactivate account %s: %v", acc.String(), derr)
 						}
@@ -199,14 +197,7 @@ func init() {
 				DeleteAccount: func(id int) error { return (&cliStoreAdapter{}).DeleteAccount(id) },
 				AssignKey:     func(kid, aid int) error { return (&cliStoreAdapter{}).AssignKeyToAccount(kid, aid) },
 				GenerateKeysContent: func(accountID int) (string, error) {
-					sk, _ := db.GetActiveSystemKey()
-					km := db.DefaultKeyManager()
-					if km == nil {
-						return "", fmt.Errorf("no key manager")
-					}
-					gks, _ := km.GetGlobalPublicKeys()
-					aks, _ := km.GetKeysForAccount(accountID)
-					return keys.BuildAuthorizedKeysContent(sk, gks, aks)
+					return (&cliStoreAdapter{}).GenerateAuthorizedKeysContent(cmd.Context(), accountID)
 				},
 				NewBootstrapDeployer: func(hostname, username string, privateKey interface{}, expectedHostKey string) (core.BootstrapDeployer, error) {
 					// Normalize to security.Secret for core
@@ -221,12 +212,9 @@ func init() {
 						return core.NewBootstrapDeployer(hostname, username, nil, expectedHostKey)
 					}
 				},
-				GetActiveSystemKey: func() (*model.SystemKey, error) { return db.GetActiveSystemKey() },
+				GetActiveSystemKey: func() (*model.SystemKey, error) { return (&cliStoreAdapter{}).GetActiveSystemKey() },
 				LogAudit: func(e core.BootstrapAuditEvent) error {
-					if w := db.DefaultAuditWriter(); w != nil {
-						return w.LogAction(e.Action, e.Details)
-					}
-					return nil
+					return (&cliAuditWriter{}).LogAction(e.Action, e.Details)
 				},
 			}
 
