@@ -21,8 +21,8 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/logging"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/tui/adapters"
 	tuidbg "github.com/toeirei/keymaster/internal/tui/debug"
+	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // viewState represents which part of the UI is currently active.
@@ -130,7 +130,7 @@ func initialModelWithSearchers(a db.AccountSearcher, k db.KeySearcher, au db.Aud
 }
 
 func initialModel() mainModel {
-	return initialModelWithSearchers(adapters.DefaultAccountSearcher(), adapters.DefaultKeySearcher(), adapters.DefaultAuditSearcher())
+	return initialModelWithSearchers(ui.DefaultAccountSearcher(), ui.DefaultKeySearcher(), ui.DefaultAuditSearcher())
 }
 
 // Init is the first function that will be called by the Bubble Tea runtime.

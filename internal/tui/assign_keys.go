@@ -16,7 +16,7 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/tui/adapters"
+	"github.com/toeirei/keymaster/internal/ui"
 	"github.com/toeirei/keymaster/internal/uiadapters"
 )
 
@@ -71,7 +71,7 @@ func newAssignKeysModel() *assignKeysModel {
 		return m
 	}
 	// We also fetch all keys now, so we don't have to do it later.
-	km := adapters.DefaultKeyManager()
+	km := ui.DefaultKeyManager()
 	if km == nil {
 		m.err = fmt.Errorf("no key manager available")
 		return m
@@ -188,7 +188,7 @@ func (m *assignKeysModel) updateAccountSelection(msg tea.Msg) (tea.Model, tea.Cm
 			m.hasInteracted = true
 
 			// Refresh the key list to ensure we have the latest data
-			km := adapters.DefaultKeyManager()
+			km := ui.DefaultKeyManager()
 			if km == nil {
 				m.err = fmt.Errorf("no key manager available")
 				return m, nil
@@ -287,7 +287,7 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if _, assigned := m.assignedKeys[selectedKey.ID]; assigned {
 				// Unassign
 				m.status = i18n.T("assign_keys.status.unassign_attempt", selectedKey.Comment)
-				km := adapters.DefaultKeyManager()
+				km := ui.DefaultKeyManager()
 				if km == nil {
 					m.err = fmt.Errorf("no key manager available")
 					m.status = i18n.T("assign_keys.status.unassign_error", m.err)
@@ -306,7 +306,7 @@ func (m *assignKeysModel) updateKeySelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				// Assign
 				m.status = i18n.T("assign_keys.status.assign_attempt", selectedKey.Comment)
-				km := adapters.DefaultKeyManager()
+				km := ui.DefaultKeyManager()
 				if km == nil {
 					m.err = fmt.Errorf("no key manager available")
 					m.status = i18n.T("assign_keys.status.assign_error", m.err)

@@ -15,8 +15,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
-	"github.com/toeirei/keymaster/internal/tui/adapters"
 )
 
 // rotateState represents the current view within the key rotation workflow.
@@ -75,7 +75,7 @@ func newRotateKeyModel() *rotateKeyModel {
 		passphraseInput: pi,
 	}
 
-	hasKey, err := adapters.HasSystemKeys()
+	hasKey, err := db.HasSystemKeys()
 	if err != nil {
 		m.err = err
 		return m

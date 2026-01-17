@@ -17,7 +17,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/sshkey"
-	"github.com/toeirei/keymaster/internal/tui/adapters"
+	"github.com/toeirei/keymaster/internal/ui"
 )
 
 // publicKeyCreatedMsg is a message to signal that a key was created successfully
@@ -121,7 +121,7 @@ func (m publicKeyFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				expiresAt = t
 			}
 
-			mgr := adapters.DefaultKeyManager()
+			mgr := ui.DefaultKeyManager()
 			if mgr == nil {
 				m.err = fmt.Errorf("no key manager available")
 				return m, nil

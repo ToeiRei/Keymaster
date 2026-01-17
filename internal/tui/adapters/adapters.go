@@ -82,11 +82,7 @@ var (
 	KeyLister     = &tuiKeyLister{}
 )
 
-// Exported helpers that mirror package-level db helpers but keep the runtime
-// files free of direct `internal/db` imports. These are thin delegators.
-func DefaultKeyManager() db.KeyManager           { return db.DefaultKeyManager() }
-func DefaultKeySearcher() db.KeySearcher         { return db.DefaultKeySearcher() }
-func ToggleAccountStatus(accountID int) error    { return db.ToggleAccountStatus(accountID) }
-func DefaultAccountSearcher() db.AccountSearcher { return db.DefaultAccountSearcher() }
-func DefaultAuditSearcher() db.AuditSearcher     { return db.DefaultAuditSearcher() }
-func HasSystemKeys() (bool, error)               { return db.HasSystemKeys() }
+// Note: small db delegators (DefaultKeyManager, DefaultKeySearcher, ToggleAccountStatus,
+// DefaultAccountSearcher, DefaultAuditSearcher, HasSystemKeys) were removed
+// from this package in Phase G5. Callers should use the shared helpers in
+// `internal/ui` or call `internal/db` directly where appropriate.

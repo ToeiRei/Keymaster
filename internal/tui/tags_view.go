@@ -9,7 +9,7 @@ import (
 
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
-	"github.com/toeirei/keymaster/internal/tui/adapters"
+	"github.com/toeirei/keymaster/internal/ui"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -44,7 +44,7 @@ func newTagsViewModelWithSearcher(s db.AccountSearcher) tagsViewModel {
 	var err error
 	if s != nil {
 		accounts, err = s.SearchAccounts("")
-	} else if def := adapters.DefaultAccountSearcher(); def != nil {
+	} else if def := ui.DefaultAccountSearcher(); def != nil {
 		accounts, err = def.SearchAccounts("")
 	}
 	if err != nil {
