@@ -80,26 +80,12 @@ func (coreAccountManager) DeleteAccount(id int) error {
 	return fmt.Errorf("no account manager available")
 }
 
-func init() {
-	// NOTE: Deploy package init registers deploy-focused adapters into core.
-	// These defaults are set for programs or tests that import
-	// `internal/deploy` and expect deploy-specific behavior wired into
-	// `internal/core`.
-	//
-	// Defaults registered by Deploy init():
-	// - KeyReader (coreKeyReader)
-	// - KeyLister (coreKeyLister)
-	// - AccountSerialUpdater (accountSerialUpdater)
-	// - KeyImporter (keyImporter)
-	// - AuditWriter (coreAuditWriter)
-	//
-	// Subsystems depending on these: deploy logic, bootstrap helpers, and
-	// tests that rely on deploy semantics.
-	//
-	// TODO: consider centralizing documentation about which package's init()
-	// registers which `core` defaults to make it easier to reason about
-	// global wiring and to avoid import-domain surprises.
-
+// InitializeDefaults registers deploy-specific default implementations into
+// `internal/core`. This makes wiring explicit for tests and allows callers to
+// opt-in to deploy wiring without relying on package init.
+//
+// InitializeDefaults is safe to call multiple times.
+func InitializeDefaults() {
 	core.SetDefaultKeyReader(coreKeyReader{})
 	core.SetDefaultKeyLister(coreKeyLister{})
 	core.SetDefaultAccountSerialUpdater(accountSerialUpdater{})
@@ -111,4 +97,9 @@ func init() {
 		return err
 	})
 	core.SetDefaultDBIsInitialized(db.IsInitialized)
+}
+
+// Preserve existing init-time wiring for backward compatibility.
+func init() {
+	InitializeDefaults()
 }

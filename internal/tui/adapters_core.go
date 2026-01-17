@@ -173,27 +173,13 @@ func (coreKeyListerAdapter) GetAllPublicKeys() ([]model.PublicKey, error) {
 	return coreKeyReader{}.GetAllPublicKeys()
 }
 
-func init() {
-	// NOTE: TUI package init registers TUI-specific adapters as `core` defaults.
-	// These defaults are intended for consumers that import `internal/tui`.
-	//
-	// Defaults registered by TUI init():
-	// - KeyReader (coreKeyReader)
-	// - KeyLister (coreKeyListerAdapter)
-	// - AccountSerialUpdater (accountSerialUpdater)
-	// - KeyImporter (keyImporter)
-	// - AuditWriter (coreAuditor)
-	// - AccountManager (coreAccountStore)
-	// - DBInit (func -> db.New)
-	// - DBIsInitialized (db.IsInitialized)
-	//
-	// Subsystems relying on these defaults: TUI components and tests that
-	// import `internal/tui` and expect `core` behavior to be present.
-	//
-	// TODO: Consider documenting the import-domain boundaries (ui vs tui vs
-	// deploy) and whether explicit initialization would be preferable to
-	// implicit init-time wiring.
-
+// InitializeDefaults registers TUI-specific default implementations into
+// `internal/core`. This makes wiring explicit for tests and alternative
+// consumers. Calling it from package `init()` preserves existing implicit
+// behavior.
+//
+// InitializeDefaults is safe to call multiple times.
+func InitializeDefaults() {
 	core.SetDefaultKeyReader(coreKeyReader{})
 	core.SetDefaultKeyLister(coreKeyListerAdapter{})
 	core.SetDefaultAccountSerialUpdater(accountSerialUpdater{})
@@ -205,6 +191,11 @@ func init() {
 		return err
 	})
 	core.SetDefaultDBIsInitialized(db.IsInitialized)
+}
+
+// Preserve existing init-time wiring for backward compatibility.
+func init() {
+	InitializeDefaults()
 }
 
 // coreBootstrapDeployerFactory adapts core bootstrap factory to a simple type used by TUI.
