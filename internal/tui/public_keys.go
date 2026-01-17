@@ -22,6 +22,7 @@ import (
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/tui/adapters"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -82,7 +83,7 @@ func newPublicKeysModelWithSearcher(s db.KeySearcher) publicKeysModel {
 	ei.Prompt = "Expires: "
 	m.expireInput = ei
 	var err error
-	km := db.DefaultKeyManager()
+	km := adapters.DefaultKeyManager()
 	if km == nil {
 		m.err = fmt.Errorf("no key manager available")
 		return m
@@ -121,7 +122,7 @@ func (m *publicKeysModel) rebuildDisplayedKeys() {
 		if m.searcher != nil {
 			searcher = m.searcher
 		} else {
-			searcher = db.DefaultKeySearcher()
+			searcher = adapters.DefaultKeySearcher()
 		}
 
 		if searcher != nil {
@@ -170,7 +171,7 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if _, ok := msg.(publicKeyCreatedMsg); ok {
 			m.state = publicKeysListView
 			m.status = i18n.T("public_keys.status.add_success")
-			km := db.DefaultKeyManager()
+			km := adapters.DefaultKeyManager()
 			if km == nil {
 				m.err = fmt.Errorf("no key manager available")
 			} else {
@@ -228,7 +229,7 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, nil
 					}
 				}
-				km := db.DefaultKeyManager()
+				km := adapters.DefaultKeyManager()
 				if km == nil {
 					m.err = fmt.Errorf("no key manager available")
 					return m, nil
@@ -266,7 +267,7 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "enter":
 				if m.confirmCursor == 1 { // Yes is selected
-					km := db.DefaultKeyManager()
+					km := adapters.DefaultKeyManager()
 					if km == nil {
 						m.err = fmt.Errorf("no key manager available")
 					} else if err := km.DeletePublicKey(m.keyToDelete.ID); err != nil {
@@ -353,7 +354,7 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "g": // Toggle global status
 			if len(m.displayedKeys) > 0 {
 				keyToToggle := m.displayedKeys[m.cursor]
-				km := db.DefaultKeyManager()
+				km := adapters.DefaultKeyManager()
 				if km == nil {
 					m.err = fmt.Errorf("no key manager available")
 				} else if err := km.TogglePublicKeyGlobal(keyToToggle.ID); err != nil {
@@ -370,7 +371,7 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "e": // Deactivate/reactivate via epoch-0 toggle
 			if len(m.displayedKeys) > 0 {
 				keyToToggle := m.displayedKeys[m.cursor]
-				km := db.DefaultKeyManager()
+				km := adapters.DefaultKeyManager()
 				if km == nil {
 					m.err = fmt.Errorf("no key manager available")
 				} else {
@@ -415,7 +416,7 @@ func (m *publicKeysModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "u": // Usage report
 			if len(m.displayedKeys) > 0 {
 				m.usageReportKey = m.displayedKeys[m.cursor]
-				km := db.DefaultKeyManager()
+				km := adapters.DefaultKeyManager()
 				if km == nil {
 					m.err = fmt.Errorf("no key manager available")
 					return m, nil

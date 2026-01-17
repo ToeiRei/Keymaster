@@ -18,6 +18,7 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/sshkey"
+	"github.com/toeirei/keymaster/internal/tui/adapters"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -601,14 +602,14 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "t":
 			if len(m.displayedAccounts) > 0 {
 				accToToggle := m.displayedAccounts[m.cursor]
-				if err := db.ToggleAccountStatus(accToToggle.ID); err != nil {
+				if err := adapters.ToggleAccountStatus(accToToggle.ID); err != nil {
 					m.err = err
 				} else {
 					// Refresh the list after toggling.
 					m.status = i18n.T("accounts.status.toggle_success", accToToggle.String())
 					if m.searcher != nil {
 						m.accounts, m.err = m.searcher.SearchAccounts("")
-					} else if def := db.DefaultAccountSearcher(); def != nil {
+					} else if def := adapters.DefaultAccountSearcher(); def != nil {
 						m.accounts, m.err = def.SearchAccounts("")
 					}
 					m.rebuildDisplayedAccounts()

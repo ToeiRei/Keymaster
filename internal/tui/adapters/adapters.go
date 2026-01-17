@@ -2,7 +2,7 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-package tui
+package adapters
 
 import (
 	"context"
@@ -211,3 +211,21 @@ func (k *tuiKeyLister) GetAllPublicKeys() ([]model.PublicKey, error) {
 }
 
 var _ core.KeyLister = (*tuiKeyLister)(nil)
+
+// package-level adapter instances and helpers used by TUI runtime files.
+var (
+	StoreAdapter  = &tuiStoreAdapter{}
+	AccountReader = &tuiAccountReader{}
+	KeyReader     = &tuiKeyReader{}
+	AuditReader   = &tuiAuditReader{}
+	KeyLister     = &tuiKeyLister{}
+)
+
+// Exported helpers that mirror package-level db helpers but keep the runtime
+// files free of direct `internal/db` imports. These are thin delegators.
+func DefaultKeyManager() db.KeyManager           { return db.DefaultKeyManager() }
+func DefaultKeySearcher() db.KeySearcher         { return db.DefaultKeySearcher() }
+func ToggleAccountStatus(accountID int) error    { return db.ToggleAccountStatus(accountID) }
+func DefaultAccountSearcher() db.AccountSearcher { return db.DefaultAccountSearcher() }
+func DefaultAuditSearcher() db.AuditSearcher     { return db.DefaultAuditSearcher() }
+func HasSystemKeys() (bool, error)               { return db.HasSystemKeys() }
