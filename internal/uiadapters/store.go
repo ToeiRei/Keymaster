@@ -168,9 +168,18 @@ func (s *storeAdapter) GenerateAuthorizedKeysContent(ctx context.Context, accoun
 	if err != nil {
 		return "", err
 	}
-	// TODO: Consider centralizing BuildAuthorizedKeysContent variants
-	// (e.g., adding signing headers) behind a stable facade if further
-	// customization is required by different UI surfaces.
+	// Centralize call via a single unexported helper to make it easier to
+	// extend or variant-implement the authorized_keys generation in one
+	// place without duplicating call sites. This is a mechanical consolidation
+	// only and does not change behavior.
+	return s.buildAuthorizedKeysContent(sk, gks, aks)
+}
+
+// buildAuthorizedKeysContent centralizes the call to `keys.BuildAuthorizedKeysContent`.
+// Keep this unexported wrapper to provide a single place to add future
+// variants (headers, signing metadata) without changing the higher-level
+// control flow in `GenerateAuthorizedKeysContent`.
+func (s *storeAdapter) buildAuthorizedKeysContent(sk *model.SystemKey, gks, aks []model.PublicKey) (string, error) {
 	return keys.BuildAuthorizedKeysContent(sk, gks, aks)
 }
 
