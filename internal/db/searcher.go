@@ -5,6 +5,7 @@
 package db
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -205,6 +206,69 @@ func (b *bunAccountManager) AddAccount(username, hostname, label, tags string) (
 
 func (b *bunAccountManager) DeleteAccount(id int) error {
 	return b.bStore.DeleteAccount(id)
+}
+
+// FindByIdentifier locates an account by an identifier string. The identifier
+// can be either an integer ID (as string) or a `user@host` form. This helper
+// mirrors the lookup behavior needed by higher layers and is provided here so
+// adapters can satisfy the core AccountManager contract without importing core.
+func (b *bunAccountManager) FindByIdentifier(ctx context.Context, identifier string) (*model.Account, error) {
+	if identifier == "" {
+		return nil, fmt.Errorf("empty identifier")
+	}
+	// Try numeric ID first
+	// Avoid importing strconv at package top if not needed elsewhere
+	var id int
+	if n, err := fmt.Sscanf(identifier, "%d", &id); err == nil && n == 1 {
+		if acc, err := GetAccountByIDBun(b.bStore.BunDB(), id); err == nil && acc != nil {
+			return acc, nil
+		}
+	}
+
+	// Try user@host form
+	for _, a := range mustGetAllAccounts(b.bStore) {
+		if a.Username+"@"+a.Hostname == identifier {
+			aa := a
+			return &aa, nil
+		}
+	}
+	return nil, fmt.Errorf("account not found: %s", identifier)
+}
+
+// SetActive sets the account's active flag to the provided state. It will
+// toggle the stored status only when a change is required.
+func (b *bunAccountManager) SetActive(ctx context.Context, accountID int, active bool) error {
+	acc, err := GetAccountByIDBun(b.bStore.BunDB(), accountID)
+	if err != nil {
+		return err
+	}
+	if acc == nil {
+		return fmt.Errorf("account not found: %d", accountID)
+	}
+	if acc.IsActive == active {
+		return nil
+	}
+	// ToggleAccountStatus flips the value; call it to change state.
+	return ToggleAccountStatus(accountID)
+}
+
+// GetAll returns all accounts from the underlying store.
+func (b *bunAccountManager) GetAll(ctx context.Context) ([]model.Account, error) {
+	return b.bStore.GetAllAccounts()
+}
+
+// mustGetAllAccounts is a small helper that attempts to fetch all accounts
+// and returns an empty slice on error to simplify callers where absence is
+// handled upstream.
+func mustGetAllAccounts(s Store) []model.Account {
+	if s == nil {
+		return nil
+	}
+	accts, err := s.GetAllAccounts()
+	if err != nil {
+		return nil
+	}
+	return accts
 }
 
 // package-level override used primarily by tests to inject a fake account manager.
