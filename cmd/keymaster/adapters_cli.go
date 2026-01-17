@@ -5,13 +5,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"strconv"
 
 	log "github.com/charmbracelet/log"
 
 	"github.com/toeirei/keymaster/internal/core"
 	crypto_ssh "github.com/toeirei/keymaster/internal/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
 )
@@ -39,6 +42,77 @@ func (c *cliStoreAdapter) GetAccount(id int) (*model.Account, error) {
 		}
 	}
 	return nil, fmt.Errorf("account not found: %d", id)
+}
+
+// FindByIdentifier finds an account by numeric id or "user@host" identifier.
+func (c *cliStoreAdapter) FindByIdentifier(ctx context.Context, identifier string) (*model.Account, error) {
+	if identifier == "" {
+		return nil, fmt.Errorf("empty identifier")
+	}
+	// numeric id
+	if id, err := strconv.Atoi(identifier); err == nil {
+		if a, err := c.GetAccount(id); err == nil {
+			return a, nil
+		}
+	}
+	// user@host
+	accts, err := db.GetAllAccounts()
+	if err != nil {
+		return nil, err
+	}
+	for _, a := range accts {
+		if a.Username+"@"+a.Hostname == identifier {
+			aa := a
+			return &aa, nil
+		}
+	}
+	return nil, fmt.Errorf("account not found: %s", identifier)
+}
+
+// SetAccountActiveState sets or clears the IsActive flag for an account.
+func (c *cliStoreAdapter) SetAccountActiveState(ctx context.Context, accountID int, active bool) error {
+	accts, err := db.GetAllAccounts()
+	if err != nil {
+		return err
+	}
+	var found *model.Account
+	for _, a := range accts {
+		if a.ID == accountID {
+			aa := a
+			found = &aa
+			break
+		}
+	}
+	if found == nil {
+		return fmt.Errorf("account not found: %d", accountID)
+	}
+	if found.IsActive == active {
+		return nil
+	}
+	return db.ToggleAccountStatus(accountID)
+}
+
+// GetAll returns all accounts.
+func (c *cliStoreAdapter) GetAll(ctx context.Context) ([]model.Account, error) {
+	return db.GetAllAccounts()
+}
+
+// GenerateAuthorizedKeysContent builds authorized_keys content for an account.
+func (c *cliStoreAdapter) GenerateAuthorizedKeysContent(ctx context.Context, accountID int) (string, error) {
+	sk, _ := db.GetActiveSystemKey()
+	km := db.DefaultKeyManager()
+	if km == nil {
+		return "", fmt.Errorf("no key manager available")
+	}
+	gks, err := km.GetGlobalPublicKeys()
+	if err != nil {
+		return "", err
+	}
+	aks, err := km.GetKeysForAccount(accountID)
+	if err != nil {
+		return "", err
+	}
+	return keys.BuildAuthorizedKeysContent(sk, gks, aks)
 }
 func (c *cliStoreAdapter) AddAccount(username, hostname, label, tags string) (int, error) {
 	mgr := db.DefaultAccountManager()
