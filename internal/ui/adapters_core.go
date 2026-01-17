@@ -105,28 +105,13 @@ func (coreAccountManager) DeleteAccount(id int) error {
 	return fmt.Errorf("no account manager available")
 }
 
-func init() {
-	// NOTE: This `init()` wires UI-facing defaults into `internal/core`.
-	// Defaults set here are intended for programs that import `internal/ui`.
-	//
-	// Defaults registered:
-	// - KeyReader (DefaultCoreKeyReader)
-	// - KeyLister (DefaultCoreKeyLister)
-	// - AccountSerialUpdater (DefaultAccountSerialUpdater)
-	// - KeyImporter (coreKeyImporter)
-	// - AuditWriter (coreAuditWriter)
-	// - AccountManager (coreAccountManager)
-	// - DBInit (func -> db.New)
-	// - DBIsInitialized (db.IsInitialized)
-	//
-	// Importers/users: any package that imports `internal/ui` (UIs, CLIs,
-	// and higher-level components) rely on these defaults being present.
-	//
-	// TODO: consider providing an explicit initialization function (e.g.,
-	// `ui.InitializeDefaults()`) to make wiring explicit and easier to test.
-	// For now, do not change call sites or ordering — these defaults are
-	// intentionally registered during package init.
-
+// InitializeDefaults registers UI-facing default implementations into
+// `internal/core`. This function makes the wiring explicit so callers and
+// tests can choose to invoke it directly. Calling it from package `init()`
+// preserves existing implicit behavior.
+//
+// InitializeDefaults is safe to call multiple times.
+func InitializeDefaults() {
 	core.SetDefaultKeyReader(DefaultCoreKeyReader())
 	core.SetDefaultKeyLister(DefaultCoreKeyLister())
 	core.SetDefaultAccountSerialUpdater(DefaultAccountSerialUpdater())
@@ -138,4 +123,9 @@ func init() {
 		return err
 	})
 	core.SetDefaultDBIsInitialized(db.IsInitialized)
+}
+
+// Preserve existing init-time wiring for backward compatibility.
+func init() {
+	InitializeDefaults()
 }
