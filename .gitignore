@@ -26,5 +26,5 @@ coverage
 coverage.out
 keymaster.exe
 
-// TODO.md is for tracking local tasks and should not be committed
-TODO.md
+// CLIPBOARD.md is for tracking local tasks and should not be committed
+CLIPBOARD.md
