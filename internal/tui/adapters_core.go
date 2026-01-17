@@ -5,6 +5,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -15,12 +16,19 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
 	_ "github.com/toeirei/keymaster/internal/ui"
+	"github.com/toeirei/keymaster/internal/uiadapters"
 )
 
 // coreAccountReader adapts UI helpers to core.AccountReader.
 type coreAccountReader struct{}
 
-func (coreAccountReader) GetAllAccounts() ([]model.Account, error) { return db.GetAllAccounts() }
+func (coreAccountReader) GetAllAccounts() ([]model.Account, error) {
+	// Delegate to canonical store adapter when available.
+	if s := uiadapters.NewStoreAdapter(); s != nil {
+		return s.GetAllAccounts()
+	}
+	return db.GetAllAccounts()
+}
 
 // coreKeyReader adapts UI key manager to core.KeyReader.
 type coreKeyReader struct{}
@@ -115,6 +123,10 @@ func (coreKeyStore) AssignKeyToAccount(keyID, accountID int) error {
 type coreKeysContentBuilder struct{}
 
 func (coreKeysContentBuilder) Generate(accountID int) (string, error) {
+	// Use canonical store adapter's builder to keep logic centralized.
+	if s := uiadapters.NewStoreAdapter(); s != nil {
+		return s.GenerateAuthorizedKeysContent(context.Background(), accountID)
+	}
 	sk, _ := db.GetActiveSystemKey()
 	km := db.DefaultKeyManager()
 	if km == nil {
