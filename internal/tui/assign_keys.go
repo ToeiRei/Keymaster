@@ -17,6 +17,7 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/tui/adapters"
+	"github.com/toeirei/keymaster/internal/uiadapters"
 )
 
 // filterStyle was removed as it was unused; styles are created inline where needed.
@@ -64,7 +65,7 @@ func newAssignKeysModel() *assignKeysModel {
 
 	var err error
 	// Only show active accounts for assignment.
-	m.accounts, err = adapters.StoreAdapter.GetAllActiveAccounts()
+	m.accounts, err = uiadapters.NewStoreAdapter().GetAllActiveAccounts()
 	if err != nil {
 		m.err = err
 		return m

@@ -20,6 +20,7 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
 	"github.com/toeirei/keymaster/internal/tui/adapters"
+	"github.com/toeirei/keymaster/internal/uiadapters"
 	"golang.org/x/term"
 )
 
@@ -169,7 +170,7 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// If this individual deployment succeeded, clear the dirty flag.
 			if res.err == nil {
-				_ = adapters.StoreAdapter.UpdateAccountIsDirty(res.account.ID, false)
+				_ = uiadapters.NewStoreAdapter().UpdateAccountIsDirty(res.account.ID, false)
 			}
 
 			if len(m.fleetResults) == len(m.accountsInFleet) {
@@ -231,7 +232,7 @@ func (m deployModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				// Clear is_dirty for the account on successful deploy
-				_ = adapters.StoreAdapter.UpdateAccountIsDirty(m.selectedAccount.ID, false)
+				_ = uiadapters.NewStoreAdapter().UpdateAccountIsDirty(m.selectedAccount.ID, false)
 			}
 		}
 		// Don't process other input while deployment is running
@@ -266,7 +267,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.wasFleetDeploy = true
 				m.state = deployStateFleetInProgress
 				var err error
-				m.accountsInFleet, err = adapters.StoreAdapter.GetAllActiveAccounts()
+				m.accountsInFleet, err = uiadapters.NewStoreAdapter().GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -286,7 +287,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.wasFleetDeploy = false
 				m.action = actionDeploySingle
 				var err error
-				m.accounts, err = adapters.StoreAdapter.GetAllActiveAccounts()
+				m.accounts, err = uiadapters.NewStoreAdapter().GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -298,7 +299,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 2: // Deploy to Tag
 				m.wasFleetDeploy = true // Deploying to a tag is a fleet operation
 				m.state = deployStateSelectTag
-				allAccounts, err := adapters.StoreAdapter.GetAllAccounts()
+				allAccounts, err := uiadapters.NewStoreAdapter().GetAllAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -313,7 +314,7 @@ func (m deployModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.action = actionGetKeys
 				var err error
 				// Only allow deploying to or viewing keys for active accounts.
-				m.accounts, err = adapters.StoreAdapter.GetAllActiveAccounts()
+				m.accounts, err = uiadapters.NewStoreAdapter().GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -489,7 +490,7 @@ func (m deployModel) updateSelectTag(msg tea.Msg) (tea.Model, tea.Cmd) {
 			selectedTag := m.tags[m.tagCursor]
 
 			// Filter accounts by this tag
-			allAccounts, err := adapters.StoreAdapter.GetAllActiveAccounts()
+			allAccounts, err := uiadapters.NewStoreAdapter().GetAllActiveAccounts()
 			if err != nil {
 				m.err = err
 				return m, nil
@@ -546,7 +547,7 @@ func (m deployModel) updateShowAuthorizedKeys(msg tea.Msg) (tea.Model, tea.Cmd) 
 			return m, textinput.Blink
 		case "x":
 			// Clear the is_dirty flag for this account (user-confirmed).
-			if err := adapters.StoreAdapter.UpdateAccountIsDirty(m.selectedAccount.ID, false); err != nil {
+			if err := uiadapters.NewStoreAdapter().UpdateAccountIsDirty(m.selectedAccount.ID, false); err != nil {
 				m.status = fmt.Sprintf("clear failed: %v", err)
 			} else {
 				m.status = i18n.T("deploy.status.cleared")
@@ -609,7 +610,7 @@ func (m deployModel) updateComplete(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "x":
 			// Allow user to clear the is_dirty flag from the completion screen.
-			if err := adapters.StoreAdapter.UpdateAccountIsDirty(m.selectedAccount.ID, false); err != nil {
+			if err := uiadapters.NewStoreAdapter().UpdateAccountIsDirty(m.selectedAccount.ID, false); err != nil {
 				m.status = fmt.Sprintf("clear failed: %v", err)
 			} else {
 				m.status = i18n.T("deploy.status.cleared")

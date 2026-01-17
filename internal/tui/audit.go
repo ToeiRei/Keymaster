@@ -17,7 +17,7 @@ import (
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/state"
-	"github.com/toeirei/keymaster/internal/tui/adapters"
+	"github.com/toeirei/keymaster/internal/uiadapters"
 )
 
 // auditModeType represents the comparison mode for the audit.
@@ -170,7 +170,7 @@ func (m auditModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 0: // Audit Fleet
 				m.wasFleetDeploy = true
 				var err error
-				m.accountsInFleet, err = adapters.StoreAdapter.GetAllActiveAccounts()
+				m.accountsInFleet, err = uiadapters.NewStoreAdapter().GetAllActiveAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -189,14 +189,14 @@ func (m auditModel) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(cmds...)
 			case 1: // Audit Single
 				m.wasFleetDeploy = false
-				m.accounts, _ = adapters.StoreAdapter.GetAllActiveAccounts()
+				m.accounts, _ = uiadapters.NewStoreAdapter().GetAllActiveAccounts()
 				m.state = auditStateSelectAccount
 				m.accountCursor = 0
 				m.status = ""
 				return m, nil
 			case 2: // Audit Tag
 				m.wasFleetDeploy = true
-				allAccounts, err := adapters.StoreAdapter.GetAllAccounts()
+				allAccounts, err := uiadapters.NewStoreAdapter().GetAllAccounts()
 				if err != nil {
 					m.err = err
 					return m, nil
@@ -358,7 +358,7 @@ func (m auditModel) updateSelectTag(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			selected := m.tags[m.tagCursor]
-			all, err := adapters.StoreAdapter.GetAllActiveAccounts()
+			all, err := uiadapters.NewStoreAdapter().GetAllActiveAccounts()
 			if err != nil {
 				m.err = err
 				return m, nil

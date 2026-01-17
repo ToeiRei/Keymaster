@@ -5,152 +5,14 @@
 package adapters
 
 import (
-	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/db"
-	"github.com/toeirei/keymaster/internal/keys"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
-// tuiStoreAdapter adapts package-level db helpers to core.Store for the TUI.
-// Keep this adapter thin: direct delegation with minimal plumbing.
-type tuiStoreAdapter struct{}
-
-func (t *tuiStoreAdapter) GetAccounts() ([]model.Account, error) { return db.GetAllAccounts() }
-func (t *tuiStoreAdapter) GetAllActiveAccounts() ([]model.Account, error) {
-	return db.GetAllActiveAccounts()
-}
-func (t *tuiStoreAdapter) GetAllAccounts() ([]model.Account, error) { return db.GetAllAccounts() }
-func (t *tuiStoreAdapter) GetAccount(id int) (*model.Account, error) {
-	accts, err := db.GetAllAccounts()
-	if err != nil {
-		return nil, err
-	}
-	for _, a := range accts {
-		if a.ID == id {
-			aa := a
-			return &aa, nil
-		}
-	}
-	return nil, fmt.Errorf("account not found: %d", id)
-}
-func (t *tuiStoreAdapter) AddAccount(username, hostname, label, tags string) (int, error) {
-	mgr := db.DefaultAccountManager()
-	if mgr == nil {
-		return 0, fmt.Errorf("no account manager available")
-	}
-	return mgr.AddAccount(username, hostname, label, tags)
-}
-func (t *tuiStoreAdapter) DeleteAccount(accountID int) error {
-	mgr := db.DefaultAccountManager()
-	if mgr == nil {
-		return fmt.Errorf("no account manager available")
-	}
-	return mgr.DeleteAccount(accountID)
-}
-func (t *tuiStoreAdapter) AssignKeyToAccount(keyID, accountID int) error {
-	km := db.DefaultKeyManager()
-	if km == nil {
-		return fmt.Errorf("no key manager available")
-	}
-	return km.AssignKeyToAccount(keyID, accountID)
-}
-func (t *tuiStoreAdapter) UpdateAccountIsDirty(id int, dirty bool) error {
-	return db.UpdateAccountIsDirty(id, dirty)
-}
-func (t *tuiStoreAdapter) CreateSystemKey(publicKey, privateKey string) (int, error) {
-	return db.CreateSystemKey(publicKey, privateKey)
-}
-func (t *tuiStoreAdapter) RotateSystemKey(publicKey, privateKey string) (int, error) {
-	return db.RotateSystemKey(publicKey, privateKey)
-}
-func (t *tuiStoreAdapter) GetActiveSystemKey() (*model.SystemKey, error) {
-	return db.GetActiveSystemKey()
-}
-func (t *tuiStoreAdapter) AddKnownHostKey(hostname, key string) error {
-	return db.AddKnownHostKey(hostname, key)
-}
-func (t *tuiStoreAdapter) ExportDataForBackup() (*model.BackupData, error) {
-	return db.ExportDataForBackup()
-}
-func (t *tuiStoreAdapter) ImportDataFromBackup(d *model.BackupData) error {
-	return db.ImportDataFromBackup(d)
-}
-func (t *tuiStoreAdapter) IntegrateDataFromBackup(d *model.BackupData) error {
-	return db.IntegrateDataFromBackup(d)
-}
-
-// FindByIdentifier mirrors the lookup helper behavior used by other adapters.
-func (t *tuiStoreAdapter) FindByIdentifier(ctx context.Context, identifier string) (*model.Account, error) {
-	if identifier == "" {
-		return nil, fmt.Errorf("empty identifier")
-	}
-	// numeric id
-	if id, err := strconv.Atoi(identifier); err == nil {
-		if a, err := t.GetAccount(id); err == nil {
-			return a, nil
-		}
-	}
-	// user@host
-	accts, err := db.GetAllAccounts()
-	if err != nil {
-		return nil, err
-	}
-	for _, a := range accts {
-		if a.Username+"@"+a.Hostname == identifier {
-			aa := a
-			return &aa, nil
-		}
-	}
-	return nil, fmt.Errorf("account not found: %s", identifier)
-}
-
-// SetAccountActiveState sets or clears the IsActive flag for an account.
-func (t *tuiStoreAdapter) SetAccountActiveState(ctx context.Context, accountID int, active bool) error {
-	accts, err := db.GetAllAccounts()
-	if err != nil {
-		return err
-	}
-	var found *model.Account
-	for _, a := range accts {
-		if a.ID == accountID {
-			aa := a
-			found = &aa
-			break
-		}
-	}
-	if found == nil {
-		return fmt.Errorf("account not found: %d", accountID)
-	}
-	if found.IsActive == active {
-		return nil
-	}
-	return db.ToggleAccountStatus(accountID)
-}
-
-// GenerateAuthorizedKeysContent builds authorized_keys content for an account.
-func (t *tuiStoreAdapter) GenerateAuthorizedKeysContent(ctx context.Context, accountID int) (string, error) {
-	sk, _ := db.GetActiveSystemKey()
-	km := db.DefaultKeyManager()
-	if km == nil {
-		return "", fmt.Errorf("no key manager available")
-	}
-	gks, err := km.GetGlobalPublicKeys()
-	if err != nil {
-		return "", err
-	}
-	aks, err := km.GetKeysForAccount(accountID)
-	if err != nil {
-		return "", err
-	}
-	return keys.BuildAuthorizedKeysContent(sk, gks, aks)
-}
-
-// ensure tuiStoreAdapter satisfies core.Store at compile time
-var _ core.Store = (*tuiStoreAdapter)(nil)
+// tuiStoreAdapter removed: TUI now uses internal/uiadapters.NewStoreAdapter() for store operations.
 
 // tuiAccountReader adapts db helpers to core.AccountReader.
 type tuiAccountReader struct{}
@@ -214,7 +76,6 @@ var _ core.KeyLister = (*tuiKeyLister)(nil)
 
 // package-level adapter instances and helpers used by TUI runtime files.
 var (
-	StoreAdapter  = &tuiStoreAdapter{}
 	AccountReader = &tuiAccountReader{}
 	KeyReader     = &tuiKeyReader{}
 	AuditReader   = &tuiAuditReader{}
