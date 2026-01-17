@@ -15,6 +15,16 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
+// Package uiadapters provides thin, canonical adapters that adapt package-level
+// `internal/db` helpers to `core` interfaces used by UI layers (TUI/CLI/UI).
+//
+// Notes:
+// - These adapters are intentionally thin delegators: behavior remains in
+//   `internal/db` and other authoritative packages.
+// - This file contains no `init()` registrations and introduces no global
+//   state. It is considered low-risk to update for clarity; avoid changing
+//   exported signatures without explicit approval.
+
 // uiStoreAdapter is a canonical, thin adapter that adapts package-level db
 // helpers to the `core.Store` interface. This file intentionally mirrors the
 // existing CLI/TUI adapters without behavioral changes so UIs can migrate to a
@@ -135,6 +145,10 @@ func (s *storeAdapter) SetAccountActiveState(ctx context.Context, accountID int,
 
 // GenerateAuthorizedKeysContent builds authorized_keys content for an account.
 func (s *storeAdapter) GenerateAuthorizedKeysContent(ctx context.Context, accountID int) (string, error) {
+	// Note: This builds authorized_keys content by combining the active
+	// system key, global keys, and account keys via `keys.BuildAuthorizedKeysContent`.
+	// Any future refactor that changes the content format must be validated
+	// against existing deployments and tests.
 	sk, _ := db.GetActiveSystemKey()
 	km := db.DefaultKeyManager()
 	if km == nil {
@@ -148,6 +162,9 @@ func (s *storeAdapter) GenerateAuthorizedKeysContent(ctx context.Context, accoun
 	if err != nil {
 		return "", err
 	}
+	// TODO: Consider centralizing BuildAuthorizedKeysContent variants
+	// (e.g., adding signing headers) behind a stable facade if further
+	// customization is required by different UI surfaces.
 	return keys.BuildAuthorizedKeysContent(sk, gks, aks)
 }
 
