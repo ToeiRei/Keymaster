@@ -20,7 +20,10 @@
             "mode": "auto",
             "program": "${workspaceFolder}/ui/tui/maintest",
             "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "buildFlags": [
+                "-ldflags=-X github.com/toeirei/keymaster/buildvars.Version=development"
+            ]
         },
         {
             "name": "CLI: deploy",
