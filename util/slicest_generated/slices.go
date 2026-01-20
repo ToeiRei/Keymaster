@@ -1,6 +1,11 @@
+// Copyright (c) 2026 Keymaster Team
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
 package slicestgenerated
 
 import "slices"
+
+// WARNING this file is completely llm generated based on a few implementations of generic slice helpers and is not safe to be used in production!
 
 // Get
 func Get[T any, S ~[]T](s S, idx int) T {
