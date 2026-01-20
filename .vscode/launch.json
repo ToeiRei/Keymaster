@@ -14,6 +14,15 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Launch Keymaster TUI",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/ui/tui/maintest",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
             "name": "CLI: deploy",
             "type": "go",
             "request": "launch",
