@@ -1,0 +1,71 @@
+package footer
+
+import (
+	"github.com/charmbracelet/bubbles/help"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/tui/models/components/keyhelp"
+	"github.com/toeirei/keymaster/ui/tui/util"
+)
+
+type Model struct {
+	baseKeyMap help.KeyMap
+	size       util.Size
+	help       *keyhelp.Model
+}
+
+func New(baseKeyMap help.KeyMap) *Model {
+	return &Model{
+		baseKeyMap: baseKeyMap,
+		help:       keyhelp.New(),
+	}
+}
+
+func (m Model) Init() tea.Cmd {
+	return nil
+}
+
+func (m *Model) Update(msg tea.Msg) tea.Cmd {
+	// catch AnnounceFocusMsg and inject baseKeyMap
+	if msg, ok := msg.(util.AnnounceKeyMapMsg); ok {
+		keyMap := util.MergeKeyMaps(msg.KeyMap, m.baseKeyMap)
+		return (*m.help).Update(util.AnnounceKeyMapMsg{KeyMap: keyMap})
+	}
+
+	m.size.Update(msg)
+	return (*m.help).Update(msg)
+}
+
+func (m Model) view() string {
+	return m.help.View()
+}
+
+func (m Model) View() string {
+	h_pos := lipgloss.Left
+	if m.help.Expanded {
+		h_pos = lipgloss.Center
+	}
+
+	return lipgloss.
+		NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderTop(true).
+		Render(lipgloss.Place(
+			m.size.Width, m.size.Height,
+			h_pos, lipgloss.Top,
+			m.view(),
+		))
+}
+
+func (m *Model) Focus() (tea.Cmd, help.KeyMap) {
+	return nil, nil
+}
+
+func (m *Model) Blur() {}
+
+// *Model implements util.Model
+var _ util.Model = (*Model)(nil)
+
+func (m *Model) ToggleExpanded() {
+	m.help.ToggleExpanded()
+}

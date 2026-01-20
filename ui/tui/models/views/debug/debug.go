@@ -1,0 +1,49 @@
+package debug
+
+import (
+	"fmt"
+	"slices"
+
+	"github.com/charmbracelet/bubbles/help"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/util/slicest"
+)
+
+type Model struct {
+	msgs []tea.Msg
+}
+
+func New() *Model {
+	return &Model{}
+}
+
+func (m Model) Init() tea.Cmd {
+	return nil
+}
+
+func (m *Model) Update(msg tea.Msg) tea.Cmd {
+	m.msgs = append(m.msgs, msg)
+	return nil
+}
+
+func (m Model) View() string {
+	lines := slicest.Map(m.msgs, func(msg tea.Msg) string {
+		if msg, ok := msg.(tea.KeyMsg); ok {
+			return fmt.Sprintf(`- Key Press: "%s"`, msg.String())
+		}
+		return fmt.Sprintf("- %#v", msg)
+	})
+	slices.Reverse(lines)
+	return lipgloss.JoinVertical(lipgloss.Left, lines...)
+}
+
+func (m *Model) Focus() (tea.Cmd, help.KeyMap) {
+	return nil, nil
+}
+
+func (m *Model) Blur() {}
+
+// *Model implements util.Model
+var _ util.Model = (*Model)(nil)
