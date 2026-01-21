@@ -1,0 +1,14 @@
+{
+    "Keymaster Workspace Header": {
+        "scope": "go",
+        "prefix": "kmheader",
+        "body": [
+            "// Copyright (c) ${CURRENT_YEAR} Keymaster Team",
+            "// Keymaster - SSH key management system",
+            "// This source code is licensed under the MIT license found in the LICENSE file.",
+            "package ${TM_DIRECTORY/.*[\\/\\\\](\\w+)/$1/}$0",
+            ""
+        ],
+        "description": "Project-specific header for Keymaster"
+    }
+}

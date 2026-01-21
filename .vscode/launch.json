@@ -21,6 +21,7 @@
             "program": "${workspaceFolder}/ui/tui/maintest",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
+            "hideSystemGoroutines": true,
             "buildFlags": [
                 "-ldflags=-X github.com/toeirei/keymaster/buildvars.Version=development"
             ]

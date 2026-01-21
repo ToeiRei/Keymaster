@@ -14,25 +14,26 @@ import (
 )
 
 type Focusable interface {
+	// TODO consider passing baseKeyMap instead of recieving one
 	Focus() (tea.Cmd, help.KeyMap)
 	Blur()
 }
 
-func TryFocusModel(m *Model) (tea.Cmd, help.KeyMap, error) {
+func TryFocusTeaModel(m *tea.Model) (tea.Cmd, help.KeyMap, error) {
 	_m := *m
 	if focusable, ok := _m.(Focusable); ok {
 		cmd, keyMap := focusable.Focus()
-		*m = focusable.(Model)
+		*m = focusable.(tea.Model)
 		return cmd, keyMap, nil
 	} else {
 		return nil, nil, fmt.Errorf("type %T does not implement Focusable interface", m)
 	}
 }
-func TryBlurModel(m *Model) error {
+func TryBlurTeaModel(m *tea.Model) error {
 	_m := *m
 	if focusable, ok := _m.(Focusable); ok {
 		focusable.Blur()
-		*m = focusable.(Model)
+		*m = focusable.(tea.Model)
 		return nil
 	} else {
 		return fmt.Errorf("type %T does not implement Focusable interface", m)
@@ -43,6 +44,7 @@ type AnnounceKeyMapMsg struct {
 	KeyMap help.KeyMap
 }
 
+// TODO consider only using it when reaching the deepest point in the Model tree
 func AnnounceKeyMapCmd(k help.KeyMap) tea.Cmd {
 	return func() tea.Msg {
 		return AnnounceKeyMapMsg{KeyMap: k}
