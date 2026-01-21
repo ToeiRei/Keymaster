@@ -5,19 +5,22 @@ package router
 
 // TODO rewrite with util.Model in mind
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/ui/tui/util"
+)
 
 type RouterControll struct {
 	rid int
 }
 
-func (rc *RouterControll) PushCmd(model tea.Model) tea.Cmd {
+func (rc *RouterControll) Push(model *util.Model) tea.Cmd {
 	return func() tea.Msg { return PushMsg{rid: rc.rid, Model: model} }
 }
-func (rc *RouterControll) PopCmd(count int) tea.Cmd {
+func (rc *RouterControll) Pop(count int) tea.Cmd {
 	return func() tea.Msg { return PopMsg{rid: rc.rid, Count: count} }
 }
-func (rc *RouterControll) ChangeCmd(model tea.Model) tea.Cmd {
+func (rc *RouterControll) Change(model *util.Model) tea.Cmd {
 	return func() tea.Msg { return ChangeMsg{rid: rc.rid, Model: model} }
 }
 

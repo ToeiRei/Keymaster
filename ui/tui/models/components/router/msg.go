@@ -6,27 +6,22 @@ package router
 // TODO rewrite with util.Model in mind
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
 // Router invoked messages
+// Router -> Model
+
 type InitMsg struct {
 	RouterControll RouterControll
 }
-type SuspendMsg struct {
-	rid int
-}
-type ResumeMsg struct {
-	rid int
-}
-type DestroyMsg struct {
-	rid int
-}
 
 // RouterControll invoked messages
+// Model-RouterControll -> Router
+
 type PushMsg struct {
 	rid   int
-	Model tea.Model
+	Model *util.Model
 }
 type PopMsg struct {
 	rid   int
@@ -34,22 +29,14 @@ type PopMsg struct {
 }
 type ChangeMsg struct {
 	rid   int
-	Model tea.Model
+	Model *util.Model
 }
 
-func (m InitMsg) routerId() int    { return m.RouterControll.rid }
-func (m SuspendMsg) routerId() int { return m.rid }
-func (m ResumeMsg) routerId() int  { return m.rid }
-func (m DestroyMsg) routerId() int { return m.rid }
-func (m PushMsg) routerId() int    { return m.rid }
-func (m PopMsg) routerId() int     { return m.rid }
-func (m ChangeMsg) routerId() int  { return m.rid }
+func (m InitMsg) routerId() int   { return m.RouterControll.rid }
+func (m PushMsg) routerId() int   { return m.rid }
+func (m PopMsg) routerId() int    { return m.rid }
+func (m ChangeMsg) routerId() int { return m.rid }
 
 type RouterMsg interface {
 	routerId() int
-}
-
-func IsRouterMsg(msg tea.Msg) bool {
-	_, ok := msg.(RouterMsg)
-	return ok
 }
