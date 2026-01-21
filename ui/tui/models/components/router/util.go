@@ -8,34 +8,34 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
-func (r *Router) activeModelGet() *util.Model {
-	return r.model_stack[len(r.model_stack)-1]
+func (m *Model) activeModelGet() *util.Model {
+	return m.model_stack[len(m.model_stack)-1]
 }
 
-func (r *Router) activeModelSet(model *util.Model) {
-	r.model_stack[len(r.model_stack)-1] = model
+func (m *Model) activeModelSet(model *util.Model) {
+	m.model_stack[len(m.model_stack)-1] = model
 }
 
-func (r *Router) activeModelPop() *util.Model {
-	model := r.activeModelGet()
-	r.model_stack = r.model_stack[:len(r.model_stack)-1]
+func (m *Model) activeModelPop() *util.Model {
+	model := m.activeModelGet()
+	m.model_stack = m.model_stack[:len(m.model_stack)-1]
 	return model
 }
 
-func (r *Router) activeModelUpdate(msg tea.Msg) tea.Cmd {
-	return (*r.activeModelGet()).Update(msg)
+func (m *Model) activeModelUpdate(msg tea.Msg) tea.Cmd {
+	return (*m.activeModelGet()).Update(msg)
 }
 
-func (r *Router) activeModelFocus() tea.Cmd {
-	cmd, keyMap := (*r.activeModelGet()).Focus()
+func (m *Model) activeModelFocus() tea.Cmd {
+	cmd, keyMap := (*m.activeModelGet()).Focus()
 	return tea.Batch(cmd, util.AnnounceKeyMapCmd(keyMap))
 }
 
-func (r *Router) activeModelInit() tea.Cmd {
+func (m *Model) activeModelInit() tea.Cmd {
 	return tea.Sequence(
-		(*r.activeModelGet()).Init(),
-		r.activeModelUpdate(InitMsg{RouterControll: RouterControll{rid: r.id}}),
-		r.activeModelUpdate(tea.WindowSizeMsg(r.size)),
-		r.activeModelFocus(),
+		(*m.activeModelGet()).Init(),
+		m.activeModelUpdate(InitMsg{RouterControll: Controll{rid: m.id}}),
+		m.activeModelUpdate(tea.WindowSizeMsg(m.size)),
+		m.activeModelFocus(),
 	)
 }

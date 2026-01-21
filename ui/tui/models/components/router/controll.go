@@ -3,28 +3,26 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package router
 
-// TODO rewrite with util.Model in mind
-
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
-type RouterControll struct {
+type Controll struct {
 	rid int
 }
 
-func (rc *RouterControll) Push(model *util.Model) tea.Cmd {
-	return func() tea.Msg { return PushMsg{rid: rc.rid, Model: model} }
+func (c *Controll) Push(model *util.Model) tea.Cmd {
+	return func() tea.Msg { return PushMsg{rid: c.rid, Model: model} }
 }
-func (rc *RouterControll) Pop(count int) tea.Cmd {
-	return func() tea.Msg { return PopMsg{rid: rc.rid, Count: count} }
+func (c *Controll) Pop(count int) tea.Cmd {
+	return func() tea.Msg { return PopMsg{rid: c.rid, Count: count} }
 }
-func (rc *RouterControll) Change(model *util.Model) tea.Cmd {
-	return func() tea.Msg { return ChangeMsg{rid: rc.rid, Model: model} }
+func (c *Controll) Change(model *util.Model) tea.Cmd {
+	return func() tea.Msg { return ChangeMsg{rid: c.rid, Model: model} }
 }
 
-// func (rc *RouterControll) IsMsgOwner(msg tea.Msg) bool {
+// func (c *RouterControll) IsMsgOwner(msg tea.Msg) bool {
 // 	rmsg, ok := msg.(RouterMsg)
-// 	return ok && rmsg.routerId() == rc.rid
+// 	return ok && rmsg.routerId() == c.rid
 // }

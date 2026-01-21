@@ -8,34 +8,34 @@ import (
 )
 
 // handle PushMsg
-func (r *Router) handlePush(msg PushMsg) tea.Cmd {
+func (m *Model) handlePush(msg PushMsg) tea.Cmd {
 	// blur recent model
-	(*r.activeModelGet()).Blur()
+	(*m.activeModelGet()).Blur()
 	// push new model
-	r.model_stack = append(r.model_stack, msg.Model)
+	m.model_stack = append(m.model_stack, msg.Model)
 	// initialize pushed model
-	return r.activeModelInit()
+	return m.activeModelInit()
 }
 
 // handle PopMsg
-func (r *Router) handlePop(msg PopMsg) tea.Cmd {
+func (m *Model) handlePop(msg PopMsg) tea.Cmd {
 	// pop and blur old models
 	for range msg.Count {
-		if len(r.model_stack) <= 1 {
+		if len(m.model_stack) <= 1 {
 			break
 		}
-		(*r.activeModelPop()).Blur()
+		(*m.activeModelPop()).Blur()
 	}
 	// focus active model
-	return r.activeModelFocus()
+	return m.activeModelFocus()
 }
 
 // handle ChangeMsg
-func (r *Router) handleChange(msg ChangeMsg) tea.Cmd {
+func (m *Model) handleChange(msg ChangeMsg) tea.Cmd {
 	// destroy recent model
-	(*r.activeModelGet()).Blur()
+	(*m.activeModelGet()).Blur()
 	// set new model
-	r.activeModelSet(msg.Model)
+	m.activeModelSet(msg.Model)
 	// initialize set model
-	return r.activeModelInit()
+	return m.activeModelInit()
 }

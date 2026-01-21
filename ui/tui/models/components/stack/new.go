@@ -61,3 +61,9 @@ func WithFocus(focus Focus) NewOpt {
 		stack.focussedIndex = focus
 	}
 }
+
+func WithFocusNext() NewOpt {
+	return func(stack *Model) {
+		stack.focussedIndex = Focus(len(stack.items))
+	}
+}

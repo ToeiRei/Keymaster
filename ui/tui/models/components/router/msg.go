@@ -3,8 +3,6 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package router
 
-// TODO rewrite with util.Model in mind
-
 import (
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
@@ -13,7 +11,7 @@ import (
 // Router -> Model
 
 type InitMsg struct {
-	RouterControll RouterControll
+	RouterControll Controll
 }
 
 // RouterControll invoked messages

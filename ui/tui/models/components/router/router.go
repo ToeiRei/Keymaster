@@ -3,88 +3,86 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package router
 
-// TODO rewrite with util.Model in mind
-
 import (
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
-var routerId = 1
+var routerId = 1 // TODO change to atomic int... just to be sure
 
-type Router struct {
+type Model struct {
 	id          int
 	size        util.Size
 	model_stack []*util.Model
 }
 
-func New(initial_model *util.Model) (Router, RouterControll) {
+func New(initial_model *util.Model) (*Model, Controll) {
 	routerId++
-	return Router{
+	return &Model{
 			id:          routerId - 1,
 			model_stack: []*util.Model{initial_model},
-		}, RouterControll{
+		}, Controll{
 			rid: routerId - 1,
 		}
 }
 
-func (r Router) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return tea.Batch(
-		(*r.activeModelGet()).Init(),
-		r.activeModelUpdate(InitMsg{RouterControll: RouterControll{rid: r.id}}),
-		r.activeModelUpdate(tea.WindowSizeMsg(r.size)),
+		(*m.activeModelGet()).Init(),
+		m.activeModelUpdate(InitMsg{RouterControll: Controll{rid: m.id}}),
+		m.activeModelUpdate(tea.WindowSizeMsg(m.size)),
 	)
 }
 
-func (r *Router) Update(msg tea.Msg) tea.Cmd {
+func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 
-	if r.size.Update(msg) {
+	if m.size.Update(msg) {
 		// pass window size messages
-		cmd = r.activeModelUpdate(msg)
-	} else if r.isMsgOwner(msg) {
+		cmd = m.activeModelUpdate(msg)
+	} else if m.isMsgOwner(msg) {
 		// handle controll messages meant for this router
 		switch msg := msg.(type) {
 		case PushMsg:
-			cmd = r.handlePush(msg)
+			cmd = m.handlePush(msg)
 		case PopMsg:
-			cmd = r.handlePop(msg)
+			cmd = m.handlePop(msg)
 		case ChangeMsg:
-			cmd = r.handleChange(msg)
+			cmd = m.handleChange(msg)
 		}
 	} else if IsRouterMsg(msg) {
 		// do not pass init messages, to prevent childs from obtaining parent routers RouterControll
 		if _, ok := msg.(InitMsg); !ok {
 			// pass other controll messages for child routers
-			cmd = r.activeModelUpdate(msg)
+			cmd = m.activeModelUpdate(msg)
 		}
 	} else {
 		// pass other messages
-		cmd = r.activeModelUpdate(msg)
+		cmd = m.activeModelUpdate(msg)
 	}
 
 	return cmd
 }
 
-func (r Router) View() string {
-	return (*r.activeModelGet()).View()
+func (m Model) View() string {
+	return (*m.activeModelGet()).View()
 }
 
-func (r *Router) Focus() (tea.Cmd, help.KeyMap) {
-	return (*r.activeModelGet()).Focus()
+func (m *Model) Focus() (tea.Cmd, help.KeyMap) {
+	return (*m.activeModelGet()).Focus()
 }
 
-func (r *Router) Blur() {
-	(*r.activeModelGet()).Blur()
+func (m *Model) Blur() {
+	(*m.activeModelGet()).Blur()
 }
 
 // *Model implements util.Model
-var _ util.Model = (*Router)(nil)
+var _ util.Model = (*Model)(nil)
 
-func (r *Router) isMsgOwner(msg tea.Msg) bool {
+func (m *Model) isMsgOwner(msg tea.Msg) bool {
 	rmsg, ok := msg.(RouterMsg)
-	return ok && rmsg.routerId() == r.id
+	return ok && rmsg.routerId() == m.id
 }
 
 func IsRouterMsg(msg tea.Msg) bool {
