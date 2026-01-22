@@ -12,6 +12,7 @@ func Run() error {
 	_, err := tea.NewProgram(
 		root.New(),
 		tea.WithAltScreen(),
+		// tea.WithMouseCellMotion(),
 	).Run()
 	return err
 }
