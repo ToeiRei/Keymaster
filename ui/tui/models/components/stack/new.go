@@ -40,6 +40,28 @@ func WithGap(gap int) NewOpt {
 	}
 }
 
+// WARNING not implemented yet (does nothing when used)
+func WithBorder(border lipgloss.Border, sides ...bool) NewOpt {
+	return func(stack *Model) {
+		stack.Border = border
+		stack.BorderSides = sides
+	}
+}
+
+// WARNING not implemented yet (does nothing when used)
+func WithPadding(i ...int) NewOpt {
+	return func(stack *Model) {
+		stack.Padding = i
+	}
+}
+
+// WARNING not implemented yet (does nothing when used)
+func WithMargin(i ...int) NewOpt {
+	return func(stack *Model) {
+		stack.Margin = i
+	}
+}
+
 func WithItem(model *util.Model, sizeConfig SizeConfig, msgFilters ...MsgFilter) NewOpt {
 	return func(stack *Model) {
 		stack.items = append(stack.items, Item{

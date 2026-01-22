@@ -22,8 +22,15 @@ type Orientation bool
 type Model struct {
 	Orientation Orientation
 	Align       lipgloss.Position
-	Gap         int
 	MsgFilters  []MsgFilter
+
+	// TODO faze out
+	Gap int
+	// TODO implement new Styling options
+	Border      lipgloss.Border
+	BorderSides []bool
+	Padding     []int
+	Margin      []int
 
 	items         []Item
 	size          util.Size
