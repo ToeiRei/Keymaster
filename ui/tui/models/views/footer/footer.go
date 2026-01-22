@@ -21,6 +21,7 @@ func New(baseKeyMap help.KeyMap) *Model {
 	return &Model{
 		baseKeyMap: baseKeyMap,
 		help:       keyhelp.New(),
+		// TODO implement and add status component
 	}
 }
 

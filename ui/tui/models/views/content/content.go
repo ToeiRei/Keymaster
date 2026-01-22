@@ -16,13 +16,13 @@ import (
 )
 
 type Model struct {
-	router         *router.Model
+	stack          *stack.Model
 	routerControll router.Controll
 }
 
 func New() *Model {
-	// router {
-	// 	 stack {
+	// stack {
+	//   router {
 	// 	   menu
 	// 	   debug // TODO replace with dashboard later
 	// 	 }
@@ -103,23 +103,23 @@ func New() *Model {
 		menu.WithItem("feedback", "User Feedback"),
 	))
 	_debug := util.ModelPointer(debug.New())
-	_stack := util.ModelPointer(stack.New(
+	_router, routerControll := router.New(_debug)
+	_stack := stack.New(
 		stack.WithOrientation(stack.Horizontal),
 		stack.WithFocusNext(),
 		stack.WithItem(_menu, menu.SizeConfig),
 		// TODO replace with dashboard when ready
-		stack.WithItem(_debug, stack.VariableSize(1)),
-	))
-	_router, routerControll := router.New(_stack)
+		stack.WithItem(util.ModelPointer(_router), stack.VariableSize(1)),
+	)
 
 	return &Model{
-		router:         _router,
+		stack:          _stack,
 		routerControll: routerControll,
 	}
 }
 
 func (m *Model) Init() tea.Cmd {
-	return m.router.Init()
+	return m.stack.Init()
 }
 
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
@@ -133,19 +133,19 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	}
 
 	// pass other messages to stack
-	return m.router.Update(msg)
+	return m.stack.Update(msg)
 }
 
 func (m *Model) View() string {
-	return m.router.View()
+	return m.stack.View()
 }
 
 func (m *Model) Focus() (tea.Cmd, help.KeyMap) {
-	return m.router.Focus()
+	return m.stack.Focus()
 }
 
 func (m *Model) Blur() {
-	m.router.Blur()
+	m.stack.Blur()
 }
 
 // *Model implements util.Model
