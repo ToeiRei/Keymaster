@@ -32,11 +32,11 @@ type Form[T any] struct {
 	OnSubmit         func(result T, err error) tea.Cmd
 	OnCancel         func() tea.Cmd
 	ResetAfterSubmit bool
-	BaseKeyMap       help.KeyMap
 
 	items       []formItem
 	activeIndex int
 	focused     bool
+	baseKeyMap  help.KeyMap
 	size        util.Size
 }
 
@@ -88,14 +88,13 @@ func (f Form[T]) View() string {
 // *Model implements util.Focusable
 // var _ util.Model = (*Form[any])(nil) // Update with self return
 
-func (f *Form[T]) Focus() (tea.Cmd, help.KeyMap) {
-	f.focused = true
-	cmd, keyMap := f.items[f.activeIndex].input.Focus()
-	return cmd, util.MergeKeyMaps(f.BaseKeyMap, DefaultKeyMap, keyMap)
+func (f *Form[T]) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+	f.focused, f.baseKeyMap = true, baseKeyMap
+	return f.items[f.activeIndex].input.Focus(util.MergeKeyMaps(f.baseKeyMap, DefaultKeyMap))
 }
 
 func (f *Form[T]) Blur() {
-	f.focused = false
+	f.focused, f.baseKeyMap = false, nil
 	f.items[f.activeIndex].input.Blur()
 }
 
@@ -163,11 +162,7 @@ func (f *Form[T]) changeActiveIndex(index int) tea.Cmd {
 		f.items[oldActiveIndex].input.Blur()
 	}
 
-	cmd, keyMap := f.items[f.activeIndex].input.Focus()
-	return tea.Batch(
-		cmd,
-		util.AnnounceKeyMapCmd(util.MergeKeyMaps(f.BaseKeyMap, DefaultKeyMap, keyMap)),
-	)
+	return f.items[f.activeIndex].input.Focus(util.MergeKeyMaps(f.baseKeyMap, DefaultKeyMap))
 }
 
 func (f *Form[T]) Get() (T, error) {

@@ -18,7 +18,7 @@ func New(opts ...NewOpt) *Model {
 	for _, opt := range opts {
 		opt(&stack)
 	}
-	stack.focussedIndex = util.Clamp(Focus(-1), stack.focussedIndex, Focus(len(stack.items)-1))
+	stack.focussedIndex = util.Clamp(0, stack.focussedIndex, len(stack.items)-1)
 	return &stack
 }
 
@@ -78,14 +78,14 @@ func WithMsgFilter(msgFilter MsgFilter) NewOpt {
 	}
 }
 
-func WithFocus(focus Focus) NewOpt {
+func WithFocus(i int) NewOpt {
 	return func(stack *Model) {
-		stack.focussedIndex = focus
+		stack.focussedIndex = i
 	}
 }
 
 func WithFocusNext() NewOpt {
 	return func(stack *Model) {
-		stack.focussedIndex = Focus(len(stack.items))
+		stack.focussedIndex = len(stack.items)
 	}
 }

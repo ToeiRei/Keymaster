@@ -54,12 +54,11 @@ func New() *Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	titleCmd := m.titleHandler.Init()
-	initCmd := m.stack.Init()
-	focusCmd, keyMap := m.stack.Focus()
-	keyMapCmd := util.AnnounceKeyMapCmd(keyMap)
-
-	return tea.Sequence(titleCmd, initCmd, focusCmd, keyMapCmd)
+	return tea.Sequence(
+		m.titleHandler.Init(),
+		m.stack.Init(),
+		m.stack.Focus(BaseKeyMap),
+	)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

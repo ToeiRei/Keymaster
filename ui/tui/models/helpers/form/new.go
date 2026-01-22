@@ -4,7 +4,6 @@
 package form
 
 import (
-	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -42,12 +41,6 @@ func WithResetAfterSubmit[T any]() NewOpt[T] {
 	}
 }
 
-func WithKeyMap[T any](keyMap help.KeyMap) NewOpt[T] {
-	return func(form *Form[T]) {
-		form.BaseKeyMap = keyMap
-	}
-}
-
 func WithInput[T any](id string, input FormInput) NewOpt[T] {
 	return func(form *Form[T]) {
 		form.items = append(form.items, formItem{
@@ -56,9 +49,3 @@ func WithInput[T any](id string, input FormInput) NewOpt[T] {
 		})
 	}
 }
-
-// func With[T any]() NewOpt[T] {
-// 	return func(form *Form[T]) {
-// 		form. =
-// 	}
-// }

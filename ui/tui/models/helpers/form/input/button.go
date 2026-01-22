@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
+	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
 type Button struct {
@@ -61,13 +62,13 @@ func NewButton(label string, disabled bool) form.FormInput {
 	}
 }
 
-func (b *Button) Blur() {
-	b.focused = false
+func (b *Button) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+	b.focused = true
+	return util.AnnounceKeyMapCmd(baseKeyMap, b.KeyMap)
 }
 
-func (b *Button) Focus() (tea.Cmd, help.KeyMap) {
-	b.focused = true
-	return nil, b.KeyMap
+func (b *Button) Blur() {
+	b.focused = false
 }
 
 func (b *Button) Update(msg tea.Msg) (tea.Cmd, form.Action) {

@@ -24,9 +24,10 @@ type popup struct {
 }
 
 type Injector struct {
-	child  *util.Model
-	popups []popup
-	size   util.Size
+	child      *util.Model
+	popups     []popup
+	size       util.Size
+	baseKeyMap help.KeyMap
 }
 
 func NewInjector(child *util.Model) *Injector {
@@ -102,17 +103,15 @@ func (m Injector) View() string {
 
 	childView = lipgloss.
 		NewStyle().
-		Foreground(lipgloss.AdaptiveColor{
-			Light: "#DDDADA",
-			Dark:  "#3C3C3C",
-		}).
+		Foreground(lipgloss.AdaptiveColor{Light: "#DDDADA", Dark: "#3C3C3C"}).
 		Render(ansi.Strip(childView))
 
 	return m.applyView(childView, popupView)
 }
 
-func (m *Injector) Focus() (tea.Cmd, help.KeyMap) {
-	return (*m.activeModel()).Focus()
+func (m *Injector) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+	m.baseKeyMap = baseKeyMap
+	return (*m.activeModel()).Focus(baseKeyMap)
 }
 func (m *Injector) Blur() {
 	(*m.activeModel()).Blur()
@@ -162,8 +161,7 @@ func (m *Injector) activeModel() *util.Model {
 	}
 }
 func (m *Injector) focusActiveModel() tea.Cmd {
-	cmd, keyMap := m.Focus()
-	return tea.Batch(cmd, util.AnnounceKeyMapCmd(keyMap))
+	return m.Focus(m.baseKeyMap)
 }
 func (m *Injector) blurActiveModel() {
 	m.Blur()

@@ -140,8 +140,8 @@ func (m *Model) View() string {
 	return m.stack.View()
 }
 
-func (m *Model) Focus() (tea.Cmd, help.KeyMap) {
-	return m.stack.Focus()
+func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+	return m.stack.Focus(baseKeyMap)
 }
 
 func (m *Model) Blur() {

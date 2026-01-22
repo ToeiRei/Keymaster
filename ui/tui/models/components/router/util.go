@@ -27,8 +27,7 @@ func (m *Model) activeModelUpdate(msg tea.Msg) tea.Cmd {
 }
 
 func (m *Model) activeModelFocus() tea.Cmd {
-	cmd, keyMap := (*m.activeModelGet()).Focus()
-	return tea.Batch(cmd, util.AnnounceKeyMapCmd(keyMap))
+	return (*m.activeModelGet()).Focus(m.baseKeyMap)
 }
 
 func (m *Model) activeModelInit() tea.Cmd {

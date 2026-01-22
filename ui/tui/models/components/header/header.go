@@ -45,8 +45,8 @@ func (m Model) View() string {
 		))
 }
 
-func (m *Model) Focus() (tea.Cmd, help.KeyMap) {
-	return nil, nil
+func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+	return util.AnnounceKeyMapCmd(baseKeyMap)
 }
 
 func (m *Model) Blur() {}
