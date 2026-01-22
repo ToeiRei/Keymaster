@@ -4,9 +4,18 @@
 package popup
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/toeirei/keymaster/ui/tui/util"
+)
+
+const (
+	reservedHeight int = 2
+	reservedWidth  int = 6
 )
 
 type popup struct {
@@ -31,7 +40,18 @@ func (m Injector) Init() tea.Cmd {
 }
 
 func (m *Injector) Update(msg tea.Msg) tea.Cmd {
-	m.size.Update(msg)
+	if m.size.Update(msg) {
+		if len(m.popups) > 0 {
+			return tea.Batch(
+				(*m.activeModel()).Update(tea.WindowSizeMsg{
+					Width:  m.size.Width - reservedWidth,
+					Height: m.size.Height - reservedHeight,
+				}),
+				(*m.child).Update(msg),
+			)
+		}
+		return (*m.child).Update(msg)
+	}
 
 	switch msg := msg.(type) {
 	case openMsg:
@@ -46,21 +66,54 @@ func (m *Injector) Update(msg tea.Msg) tea.Cmd {
 	return (*m.activeModel()).Update(msg)
 }
 
-func (m Injector) View() string {
-	// maybe use when rendering is delegated to the popups model
-	return (*m.activeModel()).View()
+func (m *Injector) applyView(v1, v2 string) string {
+	v1_width, v1_height := lipgloss.Size(v1)
+	// limit v2 dimensions to v1
+	v2 = lipgloss.NewStyle().MaxWidth(v1_width).MaxHeight(v1_height).Render(v2)
+	v2_width, v2_height := lipgloss.Size(v2)
 
-	// if len(m.popups) > 0 {
-	// 	return lipgloss.
-	// 		NewStyle().
-	// 		Render(lipgloss.Place(
-	// 			m.size.Width, m.size.Height,
-	// 			lipgloss.Center, lipgloss.Center,
-	// 			(*m.popups[len(m.popups)-1].model).View(),
-	// 			lipgloss.WithWhitespaceChars("."),
-	// 		))
-	// }
-	// return (*m.child).View()
+	offset_left := (v1_width - v2_width) / 2
+	offset_top := (v1_height - v2_height) / 2
+
+	v1_lines := strings.Split(v1, "\n")
+	v2_lines := strings.Split(v2, "\n")
+
+	for i := range v2_lines {
+		v1_left := ansi.Truncate(v1_lines[i+offset_top], offset_left, "")
+		v1_right := ansi.TruncateLeft(v1_lines[i+offset_top], offset_left+v2_width, "")
+		v1_lines[i+offset_top] = v1_left + v2_lines[i] + v1_right
+	}
+
+	return strings.Join(v1_lines, "\n")
+}
+
+func (m Injector) View() string {
+	childView := (*m.child).View()
+
+	if len(m.popups) > 0 {
+		popupView := lipgloss.
+			NewStyle().
+			Padding(0, 1).
+			Border(lipgloss.NormalBorder()).
+			Margin(0, 1).
+			Render((*m.activeModel()).View())
+
+		childView = lipgloss.
+			NewStyle().
+			Foreground(lipgloss.AdaptiveColor{
+				Light: "#DDDADA",
+				Dark:  "#3C3C3C",
+			}).
+			Render(ansi.Strip(childView))
+
+		return m.applyView(childView, popupView)
+		// return lipgloss.
+		// 	NewStyle().
+		// 	MaxWidth(m.size.Width).
+		// 	MaxHeight(m.size.Height).
+		// 	Render(m.applyView(childView, popupView))
+	}
+	return childView
 }
 
 func (m *Injector) Focus() (tea.Cmd, help.KeyMap) {

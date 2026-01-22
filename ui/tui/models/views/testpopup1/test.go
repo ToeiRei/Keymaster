@@ -6,6 +6,7 @@ package testpopup1
 import (
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/components/popup"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	forminput "github.com/toeirei/keymaster/ui/tui/models/helpers/form/input"
@@ -47,7 +48,9 @@ func (m *Model) Update(msg tea.Msg) (cmd tea.Cmd) {
 }
 
 func (m Model) View() string {
-	return m.form.View()
+	// TODO only for testing... size of form needs to be made non greedy
+	return lipgloss.NewStyle().MaxWidth(40).Render(m.form.View())
+	// return m.form.View()
 }
 
 func (m *Model) Focus() (tea.Cmd, help.KeyMap) {

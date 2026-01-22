@@ -19,10 +19,11 @@ type openMsg struct {
 
 type closeMsg struct{}
 
+// TODO add possibility to pass title
+// TODO add option parameters for title callback and other popup extensions
 func Open(m *util.Model) tea.Cmd {
 	return func() tea.Msg { return openMsg{Model: m} }
 }
-
 func OpenWithCallback(m *util.Model, cb func(*util.Model) tea.Cmd) tea.Cmd {
 	return func() tea.Msg { return openMsg{Model: m, OnClose: cb} }
 }
