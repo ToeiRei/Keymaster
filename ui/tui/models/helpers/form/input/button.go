@@ -18,6 +18,7 @@ type Button struct {
 	Label    string
 	Disabled bool
 	KeyMap   ButtonKeyMap
+	OnClick  func() (tea.Cmd, form.Action)
 
 	DisabledStyle lipgloss.Style
 	BlurredStyle  lipgloss.Style
@@ -34,7 +35,7 @@ func (k ButtonKeyMap) ShortHelp() []key.Binding { return []key.Binding{k.Click} 
 
 func (k ButtonKeyMap) FullHelp() [][]key.Binding { return [][]key.Binding{{k.Click}} }
 
-func NewButton(label string, disabled bool) form.FormInput {
+func NewButton(label string, disabled bool, onClick func() (tea.Cmd, form.Action)) form.FormInput {
 	return &Button{
 		Label: label,
 		KeyMap: ButtonKeyMap{
@@ -43,6 +44,7 @@ func NewButton(label string, disabled bool) form.FormInput {
 				key.WithHelp("enter", strings.ToLower(label)),
 			),
 		},
+		OnClick: onClick,
 		DisabledStyle: lipgloss.NewStyle().
 			Padding(0, 2).
 			Border(lipgloss.RoundedBorder()).
@@ -72,8 +74,8 @@ func (b *Button) Blur() {
 }
 
 func (b *Button) Update(msg tea.Msg) (tea.Cmd, form.Action) {
-	if msg, ok := msg.(tea.KeyMsg); ok && !b.Disabled && key.Matches(msg, b.KeyMap.Click) {
-		return nil, form.ActionSubmit
+	if msg, ok := msg.(tea.KeyMsg); ok && !b.Disabled && key.Matches(msg, b.KeyMap.Click) && b.OnClick != nil {
+		return b.OnClick()
 	}
 	return nil, form.ActionNone
 }

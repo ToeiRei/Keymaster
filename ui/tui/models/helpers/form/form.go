@@ -28,12 +28,17 @@ type formItem struct {
 	input FormInput
 }
 
+type formRow struct {
+	items []int
+}
+
 type Form[T any] struct {
 	OnSubmit         func(result T, err error) tea.Cmd
 	OnCancel         func() tea.Cmd
 	ResetAfterSubmit bool
 
 	items       []formItem
+	rows        []formRow
 	activeIndex int
 	focused     bool
 	baseKeyMap  help.KeyMap
@@ -79,8 +84,16 @@ func (f Form[T]) View() string {
 	// TODO refine (this is only a basic implementation)
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		slicest.Map(f.items, func(item formItem) string {
-			return item.input.View(f.size.Width)
+		// slicest.Map(f.items, func(item formItem) string {
+		// 	return item.input.View(f.size.Width)
+		// })...,
+		slicest.Map(f.rows, func(row formRow) string {
+			return lipgloss.JoinHorizontal(
+				lipgloss.Center,
+				slicest.Map(row.items, func(item_index int) string {
+					return f.items[item_index].input.View(f.size.Width / len(row.items))
+				})...,
+			)
 		})...,
 	)
 }

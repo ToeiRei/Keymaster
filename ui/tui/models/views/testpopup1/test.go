@@ -27,12 +27,24 @@ func New() *Model {
 		form: form.New(
 			form.WithInput[formData]("firstname", forminput.NewText("Vorname", "Max")),
 			form.WithInput[formData]("lastname", forminput.NewText("Nachname", "Mustermann")),
-			form.WithInput[formData]("", forminput.NewButton("Submit", false)),
+			form.WithInput[formData]("", forminput.NewButton(
+				"Cancel",
+				false,
+				func() (tea.Cmd, form.Action) { return nil, form.ActionCancel },
+			)),
+			form.WithInputInline[formData]("", forminput.NewButton(
+				"Submit",
+				false,
+				func() (tea.Cmd, form.Action) { return nil, form.ActionSubmit },
+			)),
 			form.WithOnSubmit(func(result formData, err error) tea.Cmd {
 				return tea.Sequence(
 					popup.Close(),
 					func() tea.Msg { return result },
 				)
+			}),
+			form.WithOnCancel[formData](func() tea.Cmd {
+				return popup.Close()
 			}),
 		),
 	}

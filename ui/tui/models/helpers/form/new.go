@@ -9,6 +9,8 @@ import (
 
 type NewOpt[T any] = func(form *Form[T])
 
+// type RowOpt[T any] = func(form *Form[T])
+
 func New[T any](opts ...NewOpt[T]) Form[T] {
 	form := Form[T]{}
 	for _, opt := range opts {
@@ -29,12 +31,6 @@ func WithOnCancel[T any](fn func() tea.Cmd) NewOpt[T] {
 	}
 }
 
-func WithOnCancel2(fn func() tea.Cmd) NewOpt[any] {
-	return func(form *Form[any]) {
-		form.OnCancel = fn
-	}
-}
-
 func WithResetAfterSubmit[T any]() NewOpt[T] {
 	return func(form *Form[T]) {
 		form.ResetAfterSubmit = true
@@ -43,9 +39,18 @@ func WithResetAfterSubmit[T any]() NewOpt[T] {
 
 func WithInput[T any](id string, input FormInput) NewOpt[T] {
 	return func(form *Form[T]) {
-		form.items = append(form.items, formItem{
-			id:    id,
-			input: input,
-		})
+		form.rows = append(form.rows, formRow{items: []int{len(form.items)}})
+		form.items = append(form.items, formItem{id: id, input: input})
+	}
+}
+
+func WithInputInline[T any](id string, input FormInput) NewOpt[T] {
+	return func(form *Form[T]) {
+		if len(form.rows) > 0 {
+			form.rows[len(form.rows)-1].items = append(form.rows[len(form.rows)-1].items, len(form.items))
+		} else {
+			form.rows = append(form.rows, formRow{items: []int{len(form.items)}})
+		}
+		form.items = append(form.items, formItem{id: id, input: input})
 	}
 }
