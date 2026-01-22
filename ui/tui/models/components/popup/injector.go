@@ -89,31 +89,26 @@ func (m *Injector) applyView(v1, v2 string) string {
 
 func (m Injector) View() string {
 	childView := (*m.child).View()
-
-	if len(m.popups) > 0 {
-		popupView := lipgloss.
-			NewStyle().
-			Padding(0, 1).
-			Border(lipgloss.NormalBorder()).
-			Margin(0, 1).
-			Render((*m.activeModel()).View())
-
-		childView = lipgloss.
-			NewStyle().
-			Foreground(lipgloss.AdaptiveColor{
-				Light: "#DDDADA",
-				Dark:  "#3C3C3C",
-			}).
-			Render(ansi.Strip(childView))
-
-		return m.applyView(childView, popupView)
-		// return lipgloss.
-		// 	NewStyle().
-		// 	MaxWidth(m.size.Width).
-		// 	MaxHeight(m.size.Height).
-		// 	Render(m.applyView(childView, popupView))
+	if len(m.popups) == 0 {
+		return childView
 	}
-	return childView
+
+	popupView := lipgloss.
+		NewStyle().
+		Padding(0, 1).
+		Border(lipgloss.NormalBorder()).
+		Margin(0, 1).
+		Render((*m.activeModel()).View())
+
+	childView = lipgloss.
+		NewStyle().
+		Foreground(lipgloss.AdaptiveColor{
+			Light: "#DDDADA",
+			Dark:  "#3C3C3C",
+		}).
+		Render(ansi.Strip(childView))
+
+	return m.applyView(childView, popupView)
 }
 
 func (m *Injector) Focus() (tea.Cmd, help.KeyMap) {
