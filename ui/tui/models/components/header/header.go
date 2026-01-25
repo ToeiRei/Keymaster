@@ -16,6 +16,10 @@ const logo2 string = "" +
 	"╩ ╩└─┘ ┴ ┴ ┴┴ ┴└─┘ ┴ └─┘┴└─"
 const logo string = "🗝️ Master 🔑"
 
+// Keep `logo2` available for the TUI rewrite. Reference it so linters
+// don't flag it as unused while the new UI consumes it.
+var _ = logo2
+
 type Model struct {
 	size util.Size
 }

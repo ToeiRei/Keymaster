@@ -57,6 +57,7 @@ var fullRestore bool // Flag for the restore command
 
 var password string // Flag for rotate-key password
 var verbose bool
+var showVersionFlag bool
 
 // TODO should be moved to project root
 var appConfig config.Config
@@ -237,6 +238,18 @@ version-control access. A database becomes the source of truth.
 
 Running without a subcommand will launch the interactive TUI.`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if showVersionFlag {
+				v, c, d := resolveBuildVersion(nil)
+				compositeVersion := v
+				if c != "" && c != "dev" {
+					compositeVersion = compositeVersion + " (" + c + ")"
+				}
+				if d != "" {
+					compositeVersion = compositeVersion + " built: " + d
+				}
+				fmt.Printf("%s\n", compositeVersion)
+				os.Exit(0)
+			}
 			if verbose {
 				db.SetDebug(true)
 			}
@@ -264,6 +277,7 @@ Running without a subcommand will launch the interactive TUI.`,
 
 	// Define flags
 	cmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output (sets -v for DB logs)")
+	cmd.PersistentFlags().BoolVarP(&showVersionFlag, "version", "V", false, "Print version and exit")
 	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
 	cmd.PersistentFlags().String("language", "en", `TUI language ("en", "de")`)
 	applyDefaultFlags(cmd)
