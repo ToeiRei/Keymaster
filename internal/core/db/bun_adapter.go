@@ -337,12 +337,13 @@ func UnassignKeyFromAccountBun(bdb *bun.DB, keyID, accountID int) error {
 func GetKeysForAccountBun(bdb *bun.DB, accountID int) ([]model.PublicKey, error) {
 	ctx := context.Background()
 	var pks []PublicKeyModel
-	// Use raw query since BUN's Model + Join was not properly applying the WHERE clause
-	query := `SELECT pk.* FROM public_keys pk
-	          INNER JOIN account_keys ak ON pk.id = ak.key_id
-	          WHERE ak.account_id = ?
-	          ORDER BY pk.comment`
-	err := bdb.NewRaw(query, accountID).Scan(ctx, &pks)
+	// Use BUN's proper join syntax with unqualified column names in the join condition
+	err := bdb.NewSelect().
+		Model(&pks).
+		Join("INNER JOIN account_keys ON id = account_keys.key_id").
+		Where("account_keys.account_id = ?", accountID).
+		OrderExpr("comment").
+		Scan(ctx)
 	if err != nil {
 		return nil, err
 	}
