@@ -735,15 +735,15 @@ func refreshDashboardCmd() tea.Cmd {
 		data.accountCount = coreData.AccountCount
 		data.activeAccountCount = coreData.ActiveAccountCount
 		// Note: PublicKeyCount and GlobalKeyCount are commented out in core.DashboardData
-		data.publicKeyCount = 0  // Field commented out in core
-		data.globalKeyCount = 0  // Field commented out in core
+		data.publicKeyCount = 0 // Field commented out in core
+		data.globalKeyCount = 0 // Field commented out in core
 		data.hostsUpToDate = coreData.HostsUpToDate
 		data.hostsOutdated = coreData.HostsOutdated
 		data.systemKeySerial = coreData.SystemKeySerial
 		data.recentLogs = coreData.RecentLogs
 
 		// Note: AlgoCounts is commented out in core.DashboardData
-		data.keyAlgoBreakdown = ""  // Field commented out in core
+		data.keyAlgoBreakdown = "" // Field commented out in core
 
 		return dashboardDataMsg{data: data}
 	}
