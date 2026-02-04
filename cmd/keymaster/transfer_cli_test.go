@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/core/db"
 )
 
 type testDeployer struct{}

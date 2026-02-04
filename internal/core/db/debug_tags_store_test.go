@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/db/tags"
+	"github.com/toeirei/keymaster/internal/core/db/tags"
 )
 
 func TestDebugStoredTags(t *testing.T) {

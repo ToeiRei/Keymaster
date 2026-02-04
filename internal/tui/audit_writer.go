@@ -5,7 +5,7 @@
 package tui
 
 import (
-	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/core/db"
 )
 
 // package-level audit writer override for tui tests

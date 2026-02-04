@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/model"
 )
 

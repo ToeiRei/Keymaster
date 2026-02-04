@@ -5,7 +5,7 @@
 package ui
 
 import (
-	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/model"
 )
 

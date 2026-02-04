@@ -4,7 +4,7 @@
 
 package ui
 
-import "github.com/toeirei/keymaster/internal/db"
+import "github.com/toeirei/keymaster/internal/core/db"
 
 // NOTE: Most thin passthrough adapters were removed — callers should import
 // `internal/db` directly. This file preserves only the small `AuditWriter`

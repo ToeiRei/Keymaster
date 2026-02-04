@@ -7,7 +7,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/core/db"
 )
 
 // initTestDBT initializes an in-memory sqlite DB for tests and registers cleanup.

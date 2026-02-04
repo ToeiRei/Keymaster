@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/pkg/sftp"
-	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/logging"
 	"github.com/toeirei/keymaster/internal/security"
 	"golang.org/x/crypto/ssh"

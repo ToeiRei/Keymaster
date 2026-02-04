@@ -7,7 +7,7 @@ package bootstrap
 import (
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/core/db"
 )
 
 func TestBootstrapSession_SaveAndDelete(t *testing.T) {

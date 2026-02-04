@@ -6,7 +6,7 @@
 // It abstracts the underlying database (e.g., SQLite, PostgreSQL) behind a
 // consistent interface, allowing the rest of the application to interact with
 // the database in a uniform way.
-package db // import "github.com/toeirei/keymaster/internal/db"
+package db // import "github.com/toeirei/keymaster/internal/core/db"
 
 import (
 	"database/sql"

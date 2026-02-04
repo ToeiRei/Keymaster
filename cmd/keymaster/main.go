@@ -35,7 +35,7 @@ import (
 
 	"github.com/toeirei/keymaster/internal/config"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/core/db"
 
 	// DB init/inspection delegated to internal/core facades
 	log "github.com/charmbracelet/log"

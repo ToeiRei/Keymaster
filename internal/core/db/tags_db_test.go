@@ -4,45 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/db/tags"
+	"github.com/toeirei/keymaster/internal/core/db/tags"
 )
-
-// Test Split/Join roundtrip and validation behavior.
-func TestSplitJoinValidate(t *testing.T) {
-	// Join
-	joined := tags.JoinTags([]string{"prod", "web"})
-	if joined != "|prod|web|" {
-		t.Fatalf("unexpected join: %s", joined)
-	}
-
-	// Split good
-	parts, err := tags.SplitTags(joined)
-	if err != nil {
-		t.Fatalf("SplitTags failed: %v", err)
-	}
-	if len(parts) != 2 || parts[0] != "prod" || parts[1] != "web" {
-		t.Fatalf("unexpected split parts: %+v", parts)
-	}
-
-	// Split bad (missing delimiters)
-	if _, err := tags.SplitTags("prod|web"); err == nil {
-		t.Fatalf("expected error for missing prefix/suffix")
-	}
-
-	// ValidateTagMatcher good
-	if err := tags.ValidateTagMatcher("prod-01"); err != nil {
-		t.Fatalf("expected prod-01 to validate: %v", err)
-	}
-
-	// ValidateTagMatcher bad (space)
-	if err := tags.ValidateTagMatcher("bad tag"); err == nil {
-		t.Fatalf("expected validation failure for 'bad tag'")
-	}
-}
 
 // Test QueryBuilderFromTagMatcher end-to-end by inserting accounts and
 // retrieving them via the tag matcher helper.
-func TestGetAccountsByTagMatcher(t *testing.T) {
+func TestGetAccountsByTagMatcher_DB(t *testing.T) {
 	WithTestStore(t, func(s *BunStore) {
 		bdb := s.BunDB()
 

@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/db"
+	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
 	"github.com/toeirei/keymaster/internal/sshkey"

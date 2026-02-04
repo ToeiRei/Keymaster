@@ -4,7 +4,7 @@
 
 package deploy
 
-import "github.com/toeirei/keymaster/internal/db"
+import "github.com/toeirei/keymaster/internal/core/db"
 
 // package-level audit writer override for tests
 var auditWriter db.AuditWriter
