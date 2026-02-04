@@ -17,7 +17,7 @@ import (
 // to simulate a handshake that returns the host key via the HostKeyCallback.
 func TestGetRemoteHostKey_WithInjectedDial(t *testing.T) {
 	// Load a known public key from testdata
-	data, err := os.ReadFile("../../testdata/ssh_host_ed25519_key.pub")
+	data, err := os.ReadFile("../../../testdata/ssh_host_ed25519_key.pub")
 	if err != nil {
 		t.Fatalf("failed to read public key testdata: %v", err)
 	}

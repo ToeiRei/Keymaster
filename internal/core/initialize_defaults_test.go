@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	core "github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/deploy"
+	"github.com/toeirei/keymaster/internal/core/deploy"
 	"github.com/toeirei/keymaster/internal/tui"
 	"github.com/toeirei/keymaster/internal/ui"
 )

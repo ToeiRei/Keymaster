@@ -6,7 +6,7 @@
 // and managing their authorized_keys files. This file contains the logic for
 // importing public keys from a remote host's authorized_keys file into the
 // Keymaster database.
-package deploy // import "github.com/toeirei/keymaster/internal/deploy"
+package deploy // import "github.com/toeirei/keymaster/internal/core/deploy"
 
 import (
 	"bufio"

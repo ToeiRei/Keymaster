@@ -8,7 +8,7 @@
 //
 // It includes configurable timeout support and enhanced error classification
 // to provide better user feedback when connections fail.
-package deploy // import "github.com/toeirei/keymaster/internal/deploy"
+package deploy // import "github.com/toeirei/keymaster/internal/core/deploy"
 
 import (
 	"errors"

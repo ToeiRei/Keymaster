@@ -4,7 +4,7 @@
 
 // Package deploy provides functionality for decommissioning accounts by
 // removing their authorized_keys files before deleting from the database.
-package deploy // import "github.com/toeirei/keymaster/internal/deploy"
+package deploy // import "github.com/toeirei/keymaster/internal/core/deploy"
 
 import (
 	"fmt"

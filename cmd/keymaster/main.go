@@ -28,7 +28,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/toeirei/keymaster/internal/deploy"
+	"github.com/toeirei/keymaster/internal/core/deploy"
 	"github.com/toeirei/keymaster/internal/ui"
 
 	// bootstrap lifecycle is delegated to internal/core facades now

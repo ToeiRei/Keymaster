@@ -5,7 +5,7 @@
 // package deploy provides functionality for connecting to remote hosts via SSH
 // and managing their authorized_keys files. This file contains the logic for
 // generating the content of an authorized_keys file from database records.
-package deploy // import "github.com/toeirei/keymaster/internal/deploy"
+package deploy // import "github.com/toeirei/keymaster/internal/core/deploy"
 
 import (
 	"fmt"

@@ -8,7 +8,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/deploy"
+	"github.com/toeirei/keymaster/internal/core/deploy"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
 )
