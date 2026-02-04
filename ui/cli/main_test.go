@@ -31,6 +31,8 @@ func setupTestDB(t *testing.T) {
 
 	// Ensure tests are isolated from any previously loaded configuration.
 	viper.Reset()
+	// Disable background session reaper during tests.
+	t.Setenv("KEYMASTER_DISABLE_SESSION_REAPER", "1")
 
 	// Use a unique on-disk database per test to avoid cross-test contamination.
 	// TempDir ensures isolation and avoids collisions in parallel or repeated runs.

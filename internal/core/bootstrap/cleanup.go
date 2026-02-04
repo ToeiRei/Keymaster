@@ -179,6 +179,9 @@ func CleanupExpiredSessions() error {
 // StartSessionReaper launches a background goroutine that periodically cleans up
 // expired bootstrap sessions. This helps prevent database accumulation.
 func StartSessionReaper() {
+	if os.Getenv("KEYMASTER_DISABLE_SESSION_REAPER") == "1" {
+		return
+	}
 	ticker := time.NewTicker(sessionReaperInterval)
 	// store reference so tests can stop the ticker
 	currentReaperTicker = ticker
