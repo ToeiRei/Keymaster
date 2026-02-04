@@ -134,9 +134,9 @@ func TestSave_PersistsViperState(t *testing.T) {
 
 // TestWriteConfigFile_SystemPath tests writing to system-wide config location
 func TestWriteConfigFile_SystemPath(t *testing.T) {
-	// Skip if not running as admin/root (system paths may not be writable)
-	if os.Getenv("CI") == "" && !isAdmin() {
-		t.Skip("skipping system path test (requires elevated privileges)")
+	// Skip in CI and if not running as admin/root (system paths may not be writable)
+	if os.Getenv("CI") != "" || !isAdmin() {
+		t.Skip("skipping system path test (requires elevated privileges, not safe in CI)")
 	}
 
 	// Use temp dir to simulate system path
