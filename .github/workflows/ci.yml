@@ -49,7 +49,7 @@ jobs:
         with:
           version: v2.1.0
           # Use colored-line-number output. Excludes should be configured in .golangci.yml
-          args: run ./... --out-format=colored-line-number
+          args: run ./...
       - name: Static vet
         run: go vet ./...
       - name: Run tests (race on Linux)
