@@ -6,10 +6,12 @@ _All notable changes to Keymaster are documented here. This project follows [Kee
 
 ## **[Unreleased] – Future Release**
 
-This update focuses on making Keymaster faster, clearer, and easier to use in everyday operations. It improves performance across the board, adds several highly requested features, and strengthens the reliability of deployments and database handling.
+This update focuses on making Keymaster faster, clearer, and easier to use in everyday operations. It improves performance across the board, adds several highly requested features, and strengthens the reliability of deployments and database handling. Significant architectural improvements centralize core business logic, and the CLI is elevated to a first-class citizen UI with deterministic state management.
 
 ### Added — Unreleased
 
+- **New TUI framework (in progress)**  
+  A modern TUI redesign is underway, replacing the legacy implementation with a cleaner, more maintainable codebase.
 - **Export `authorized_keys` to disk**  
   Useful for offline environments, air‑gapped systems, or manual review before deployment.
 - **Public‑key expiration support**  
@@ -26,15 +28,21 @@ This update focuses on making Keymaster faster, clearer, and easier to use in ev
 - **More consistent database behavior**  
   Unified handling across SQLite, PostgreSQL, and MySQL for fewer surprises and more predictable performance.
 - **Improved CI reliability**  
-  Broader test coverage and more stable test environments reduce noise and false failures.
+  Broader test coverage and more stable test environments reduce noise and false failures. Tests now run reliably with race detection enabled.
 - **Cleaner internal architecture**  
   Keymaster’s internals were streamlined to reduce duplication and improve long‑term maintainability.
 - **Adapter unification & cleanup (internal)**  
   Keymaster’s internals were streamlined to reduce duplication and improve long‑term maintainability.
   (This includes unifying the UI adapter layer — no user‑visible changes.)
-- **Updated dependencies to keep the toolchain current and secure.**
+- **Updated dependencies to keep the toolchain current and secure.**  
   Keeps the toolchain current, secure, and compatible with modern environments.
-**Unified** the database layers to be all under bun now.
+- **Core refactored for consolidation**  
+  Database, cryptographic operations, SSH key handling, key management, and deployment functions are now centralized in `internal/core`, establishing a single source of truth for business logic. This improves consistency, testability, and reduces duplication across layers.
+- **CLI elevated to first-class UI**  
+  The CLI package now implements definite state management and command execution patterns, establishing it as a fully supported UI layer alongside the TUI. Improves consistency, clarity, and maintenance.
+- **Legacy TUI officially deprecated**  
+  The original TUI implementation (`internal/tui`) is now marked for deprecation. No new features will be added; the codebase is maintained for stability only. The new TUI framework is the recommended path forward.
+- **Unified database layers to Bun**  
   All database operations now run through Bun for consistency and improved performance.
   
 ### Fixed — Unreleased
@@ -44,7 +52,7 @@ This update focuses on making Keymaster faster, clearer, and easier to use in ev
 - **Bootstrap command input**  
   The command field now renders at the correct height.
 - **More reliable database tests**  
-  Eliminated several intermittent failures in CI.
+  Eliminated several intermittent failures in CI through improved test isolation and background goroutine management.
 
 ---
 
