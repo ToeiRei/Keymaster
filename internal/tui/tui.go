@@ -39,6 +39,7 @@ const (
 	auditLogView
 	auditView
 	tagsView
+	hostsView
 	bootstrapView
 	languageView
 )
@@ -78,6 +79,7 @@ type mainModel struct {
 	accounts   *accountsModel
 	auditLog   *auditLogModel
 	tags       tagsViewModel
+	hosts      hostsViewModel
 	bootstrap  *bootstrapModel
 	language   languageModel
 	dashboard  dashboardData
@@ -119,8 +121,7 @@ func initialModelWithSearchers(a db.AccountSearcher, k db.KeySearcher, au db.Aud
 				i18n.T("menu.deploy_to_fleet"),
 				i18n.T("menu.view_audit_log"),
 				i18n.T("menu.audit_hosts"),
-				i18n.T("menu.view_accounts_by_tag"),
-				i18n.T("menu.language"),
+				i18n.T("menu.view_accounts_by_tag"), i18n.T("menu.view_accounts_by_host"), i18n.T("menu.language"),
 			},
 		},
 		accountSearcher: a,
@@ -263,6 +264,15 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newTagsModel, cmd = m.tags.Update(msg)
 		m.tags = newTagsModel.(tagsViewModel)
 
+	case hostsView:
+		if _, ok := msg.(backToMenuMsg); ok {
+			m.state = menuView
+			return m, refreshDashboardCmd()
+		}
+		var newHostsModel tea.Model
+		newHostsModel, cmd = m.hosts.Update(msg)
+		m.hosts = newHostsModel.(hostsViewModel)
+
 	case bootstrapView:
 		// Handle back message or account completion
 		if _, ok := msg.(backToListMsg); ok {
@@ -390,7 +400,11 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.state = tagsView
 					m.tags = newTagsViewModelWithSearcher(m.accountSearcher)
 					return m, nil
-				case 8: // Language
+				case 8: // View Accounts by Host
+					m.state = hostsView
+					m.hosts = newHostsViewModelWithSearcher(m.accountSearcher)
+					return m, nil
+				case 9: // Language
 					m.state = languageView
 					m.language = newLanguageModel()
 					return m, nil
@@ -434,6 +448,8 @@ func (m mainModel) View() string {
 		return m.auditor.View()
 	case tagsView:
 		return m.tags.View()
+	case hostsView:
+		return m.hosts.View()
 	case bootstrapView:
 		return m.bootstrap.View()
 	case languageView:
