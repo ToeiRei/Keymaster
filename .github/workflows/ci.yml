@@ -47,7 +47,7 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         continue-on-error: true
         with:
-          version: v2.0.0
+          version: v2.1.0
           # Use colored-line-number output. Excludes should be configured in .golangci.yml
           args: run ./... --out-format=colored-line-number
       - name: Static vet
