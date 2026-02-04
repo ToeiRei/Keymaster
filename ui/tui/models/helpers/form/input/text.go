@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
+	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
 type Text struct {
@@ -43,14 +44,17 @@ func NewText(label, placeholder string) form.FormInput {
 	}
 }
 
-func (t *Text) Blur() {
-	t.input.Blur()
-	t.focused = false
+func (t *Text) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+	t.focused = true
+	return tea.Batch(
+		t.input.Focus(),
+		util.AnnounceKeyMapCmd(baseKeyMap, t.KeyMap),
+	)
 }
 
-func (t *Text) Focus() (tea.Cmd, help.KeyMap) {
-	t.focused = true
-	return t.input.Focus(), t.KeyMap
+func (t *Text) Blur() {
+	t.focused = false
+	t.input.Blur()
 }
 
 func (t *Text) Get() any {

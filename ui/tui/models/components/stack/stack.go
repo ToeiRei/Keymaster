@@ -22,12 +22,20 @@ type Orientation bool
 type Model struct {
 	Orientation Orientation
 	Align       lipgloss.Position
-	Gap         int
 	MsgFilters  []MsgFilter
+
+	// TODO faze out
+	Gap int
+	// TODO implement new Styling options
+	Border      lipgloss.Border
+	BorderSides []bool
+	Padding     []int
+	Margin      []int
 
 	items         []Item
 	size          util.Size
-	focussedIndex Focus
+	focussedIndex int
+	baseKeyMap    help.KeyMap
 }
 
 type Item struct {
@@ -116,41 +124,37 @@ func (s Model) View() string {
 	)
 }
 
-func (m *Model) Focus() (tea.Cmd, help.KeyMap) {
-	if m.focussedIndex == Focus(-1) {
-		cmds := make([]tea.Cmd, len(m.items))
-		keyMaps := make([]help.KeyMap, len(m.items))
+func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+	m.baseKeyMap = baseKeyMap
+	// if m.focussedIndex == Focus(-1) {
+	// 	cmds := make([]tea.Cmd, len(m.items))
+	// 	keyMaps := make([]help.KeyMap, len(m.items))
 
-		for i, item := range m.items {
-			cmds[i], keyMaps[i] = (*item.Model).Focus()
-		}
+	// 	for i, item := range m.items {
+	// 		cmds[i], keyMaps[i] = (*item.Model).Focus()
+	// 	}
 
-		return tea.Batch(cmds...), util.MergeKeyMaps(keyMaps...)
-	} else {
-		return (*m.items[m.focussedIndex].Model).Focus()
-	}
+	// 	return tea.Batch(cmds...), util.MergeKeyMaps(keyMaps...)
+	// } else {
+	return (*m.items[m.focussedIndex].Model).Focus(baseKeyMap)
+	// }
 }
 
 func (m *Model) Blur() {
-	if m.focussedIndex == Focus(-1) {
-		for _, item := range m.items {
-			(*item.Model).Blur()
-		}
-	} else {
-		(*m.items[m.focussedIndex].Model).Blur()
-	}
+	// if m.focussedIndex == Focus(-1) {
+	// 	for _, item := range m.items {
+	// 		(*item.Model).Blur()
+	// 	}
+	// } else {
+	(*m.items[m.focussedIndex].Model).Blur()
+	// }
 }
 
 // *Model implements util.Model
 var _ util.Model = (*Model)(nil)
 
-type Focus int
-
-func FocusAll() Focus        { return -1 }
-func FocusIndex(i int) Focus { return Focus(i) }
-
-func (m *Model) SetFocus(focus Focus) (tea.Cmd, help.KeyMap) {
+func (m *Model) SetFocus(focus int) tea.Cmd {
 	m.Blur()
-	m.focussedIndex = util.Clamp(Focus(-1), focus, Focus(len(m.items)-1))
-	return m.Focus()
+	m.focussedIndex = util.Clamp(0, focus, len(m.items)-1)
+	return m.Focus(m.baseKeyMap)
 }

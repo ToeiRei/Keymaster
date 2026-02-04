@@ -42,11 +42,14 @@ func (m Model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
 }
 
-func (m *Model) Focus() (tea.Cmd, help.KeyMap) {
-	return nil, nil
+func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+	m.msgs = append(m.msgs, tea.Msg("i got focussed bitch!"))
+	return nil
 }
 
-func (m *Model) Blur() {}
+func (m *Model) Blur() {
+	m.msgs = append(m.msgs, tea.Msg("i got blurred bitch!"))
+}
 
 // *Model implements util.Model
 var _ util.Model = (*Model)(nil)

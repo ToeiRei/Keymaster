@@ -14,19 +14,18 @@ import (
 )
 
 type Focusable interface {
-	// TODO consider passing baseKeyMap instead of recieving one
-	Focus() (tea.Cmd, help.KeyMap)
+	Focus(help.KeyMap) tea.Cmd
 	Blur()
 }
 
-func TryFocusTeaModel(m *tea.Model) (tea.Cmd, help.KeyMap, error) {
+func TryFocusTeaModel(m *tea.Model, baseKeyMap help.KeyMap) (tea.Cmd, error) {
 	_m := *m
 	if focusable, ok := _m.(Focusable); ok {
-		cmd, keyMap := focusable.Focus()
+		cmd := focusable.Focus(baseKeyMap)
 		*m = focusable.(tea.Model)
-		return cmd, keyMap, nil
+		return cmd, nil
 	} else {
-		return nil, nil, fmt.Errorf("type %T does not implement Focusable interface", m)
+		return nil, fmt.Errorf("type %T does not implement Focusable interface", m)
 	}
 }
 func TryBlurTeaModel(m *tea.Model) error {
@@ -45,14 +44,17 @@ type AnnounceKeyMapMsg struct {
 }
 
 // TODO consider only using it when reaching the deepest point in the Model tree
-func AnnounceKeyMapCmd(k help.KeyMap) tea.Cmd {
+func AnnounceKeyMapCmd(keyMaps ...help.KeyMap) tea.Cmd {
 	return func() tea.Msg {
-		return AnnounceKeyMapMsg{KeyMap: k}
+		return AnnounceKeyMapMsg{KeyMap: MergeKeyMaps(keyMaps...)}
 	}
 }
 
-func MergeKeyMaps(keymaps ...help.KeyMap) help.KeyMap {
-	return MergedKeyMaps{KeyMaps: keymaps}
+func MergeKeyMaps(keyMaps ...help.KeyMap) help.KeyMap {
+	if len(keyMaps) == 1 {
+		return keyMaps[0]
+	}
+	return MergedKeyMaps{KeyMaps: keyMaps}
 }
 
 type MergedKeyMaps struct {

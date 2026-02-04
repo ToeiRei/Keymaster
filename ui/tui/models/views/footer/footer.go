@@ -21,6 +21,7 @@ func New(baseKeyMap help.KeyMap) *Model {
 	return &Model{
 		baseKeyMap: baseKeyMap,
 		help:       keyhelp.New(),
+		// TODO implement and add status component
 	}
 }
 
@@ -60,11 +61,13 @@ func (m Model) View() string {
 		))
 }
 
-func (m *Model) Focus() (tea.Cmd, help.KeyMap) {
-	return nil, nil
+func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+	return m.help.Focus(baseKeyMap)
 }
 
-func (m *Model) Blur() {}
+func (m *Model) Blur() {
+	m.help.Blur()
+}
 
 // *Model implements util.Model
 var _ util.Model = (*Model)(nil)

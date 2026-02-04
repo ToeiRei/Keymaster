@@ -15,6 +15,7 @@ type Model struct {
 	id          int
 	size        util.Size
 	model_stack []*util.Model
+	baseKeyMap  help.KeyMap
 }
 
 func New(initial_model *util.Model) (*Model, Controll) {
@@ -69,8 +70,9 @@ func (m Model) View() string {
 	return (*m.activeModelGet()).View()
 }
 
-func (m *Model) Focus() (tea.Cmd, help.KeyMap) {
-	return (*m.activeModelGet()).Focus()
+func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+	m.baseKeyMap = baseKeyMap
+	return (*m.activeModelGet()).Focus(baseKeyMap)
 }
 
 func (m *Model) Blur() {

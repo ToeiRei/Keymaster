@@ -21,8 +21,3 @@ func (c *Controll) Pop(count int) tea.Cmd {
 func (c *Controll) Change(model *util.Model) tea.Cmd {
 	return func() tea.Msg { return ChangeMsg{rid: c.rid, Model: model} }
 }
-
-// func (c *RouterControll) IsMsgOwner(msg tea.Msg) bool {
-// 	rmsg, ok := msg.(RouterMsg)
-// 	return ok && rmsg.routerId() == c.rid
-// }

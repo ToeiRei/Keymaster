@@ -13,11 +13,11 @@ type KeyMap struct {
 	Help key.Binding
 }
 
-func (km *KeyMap) ShortHelp() []key.Binding {
+func (km KeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{km.Exit, km.Help}
 }
 
-func (km *KeyMap) FullHelp() [][]key.Binding {
+func (km KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{{km.Help, km.Exit}}
 }
 
