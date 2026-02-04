@@ -7,6 +7,7 @@ package core
 import (
 	"sort"
 
+	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
@@ -14,13 +15,13 @@ import (
 type DashboardData struct {
 	AccountCount       int
 	ActiveAccountCount int
-	PublicKeyCount     int
-	GlobalKeyCount     int
-	HostsUpToDate      int
-	HostsOutdated      int
-	AlgoCounts         map[string]int
-	SystemKeySerial    int
-	RecentLogs         []model.AuditLogEntry
+	// PublicKeyCount     int
+	// GlobalKeyCount     int
+	// AlgoCounts         map[string]int
+	HostsUpToDate   int
+	HostsOutdated   int
+	SystemKeySerial int
+	RecentLogs      []model.AuditLogEntry
 }
 
 // BuildDashboardData collects accounts, keys, system key and recent audit logs,
@@ -30,39 +31,43 @@ type AccountReader interface {
 	GetAllAccounts() ([]model.Account, error)
 }
 
-// KeyReader exposes key reads required by the dashboard.
-type KeyReader interface {
-	GetAllPublicKeys() ([]model.PublicKey, error)
-	GetActiveSystemKey() (*model.SystemKey, error)
-	GetSystemKeyBySerial(serial int) (*model.SystemKey, error)
-}
+// // KeyReader exposes key reads required by the dashboard.
+// type KeyReader interface {
+// 	GetAllPublicKeys() ([]model.PublicKey, error)
+// 	GetActiveSystemKey() (*model.SystemKey, error)
+// 	GetSystemKeyBySerial(serial int) (*model.SystemKey, error)
+// }
 
 // AuditReader exposes audit log reads required by the dashboard.
 type AuditReader interface {
 	GetAllAuditLogEntries() ([]model.AuditLogEntry, error)
 }
 
+var _ AccountReader = (db.Store)(nil) // db.Store implements AccountReader
+// var _ KeyReader = (db.Store)(nil)     // db.Store implements KeyReader
+var _ AuditReader = (db.Store)(nil) // db.Store implements AuditReader
+
 // BuildDashboardData computes metrics using provided readers. Core no longer
 // depends on DB packages directly; callers must supply implementations.
-func BuildDashboardData(accounts AccountReader, keys KeyReader, audits AuditReader) (DashboardData, error) {
+func BuildDashboardData(store db.Store) (DashboardData, error) {
 	var out DashboardData
 
-	accs, err := accounts.GetAllAccounts()
+	accs, err := store.GetAllAccounts()
 	if err != nil {
 		return out, err
 	}
 
-	klist, err := keys.GetAllPublicKeys()
+	// klist, err := store. GetAllPublicKeys()
+	// if err != nil {
+	// 	return out, err
+	// }
+
+	sysKey, err := store.GetActiveSystemKey()
 	if err != nil {
 		return out, err
 	}
 
-	sysKey, err := keys.GetActiveSystemKey()
-	if err != nil {
-		return out, err
-	}
-
-	logs, err := audits.GetAllAuditLogEntries()
+	logs, err := store.GetAllAuditLogEntries()
 	if err != nil {
 		return out, err
 	}
@@ -81,14 +86,14 @@ func BuildDashboardData(accounts AccountReader, keys KeyReader, audits AuditRead
 		}
 	}
 
-	out.PublicKeyCount = len(klist)
-	out.AlgoCounts = make(map[string]int)
-	for _, k := range klist {
-		if k.IsGlobal {
-			out.GlobalKeyCount++
-		}
-		out.AlgoCounts[k.Algorithm]++
-	}
+	// out.PublicKeyCount = len(klist)
+	// out.AlgoCounts = make(map[string]int)
+	// for _, k := range klist {
+	// 	if k.IsGlobal {
+	// 		out.GlobalKeyCount++
+	// 	}
+	// 	out.AlgoCounts[k.Algorithm]++
+	// }
 
 	if sysKey != nil {
 		out.SystemKeySerial = sysKey.Serial
