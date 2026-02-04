@@ -108,7 +108,6 @@ func New() *Model {
 		stack.WithOrientation(stack.Horizontal),
 		stack.WithFocusNext(),
 		stack.WithItem(_menu, menu.SizeConfig),
-		// TODO replace with dashboard when ready
 		stack.WithItem(util.ModelPointer(_router), stack.VariableSize(1)),
 	)
 
