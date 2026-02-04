@@ -341,12 +341,13 @@ func GetKeysForAccountBun(bdb *bun.DB, accountID int) ([]model.PublicKey, error)
 func GetAccountsForKeyBun(bdb *bun.DB, keyID int) ([]model.Account, error) {
 	ctx := context.Background()
 	var am []AccountModel
-	err := bdb.NewSelect().Model(&am).
-		TableExpr("accounts AS a").
-		Join("JOIN account_keys ak ON a.id = ak.account_id").
-		Where("ak.key_id = ?", keyID).
-		OrderExpr("a.label, a.hostname, a.username").
-		Scan(ctx)
+	// Use raw SQL to ensure WHERE clause works correctly
+	query := `SELECT DISTINCT a.id, a.username, a.hostname, a.label, a.tags, a.serial, a.is_active, a.is_dirty
+	          FROM accounts a
+	          INNER JOIN account_keys ak ON a.id = ak.account_id
+	          WHERE ak.key_id = ?
+	          ORDER BY a.label, a.hostname, a.username`
+	err := bdb.NewRaw(query, keyID).Scan(ctx, &am)
 	if err != nil {
 		return nil, err
 	}
