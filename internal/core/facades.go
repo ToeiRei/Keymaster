@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/klauspost/compress/zstd"
-	"github.com/toeirei/keymaster/internal/bootstrap"
 	"github.com/toeirei/keymaster/internal/config"
+	"github.com/toeirei/keymaster/internal/core/bootstrap"
 	"github.com/toeirei/keymaster/internal/i18n"
 
 	"github.com/toeirei/keymaster/internal/model"

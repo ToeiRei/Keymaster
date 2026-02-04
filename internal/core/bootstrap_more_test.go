@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/bootstrap"
+	"github.com/toeirei/keymaster/internal/core/bootstrap"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
