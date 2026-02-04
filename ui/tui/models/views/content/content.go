@@ -10,7 +10,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/components/popup"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
 	"github.com/toeirei/keymaster/ui/tui/models/components/stack"
-	"github.com/toeirei/keymaster/ui/tui/models/views/debug"
+	"github.com/toeirei/keymaster/ui/tui/models/views/dashboard"
 	"github.com/toeirei/keymaster/ui/tui/models/views/testpopup1"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
@@ -102,8 +102,8 @@ func New() *Model {
 		),
 		menu.WithItem("feedback", "User Feedback"),
 	))
-	_debug := util.ModelPointer(debug.New())
-	_router, routerControll := router.New(_debug)
+	_dashboard := util.ModelPointer(dashboard.New())
+	_router, routerControll := router.New(_dashboard)
 	_stack := stack.New(
 		stack.WithOrientation(stack.Horizontal),
 		stack.WithFocusNext(),
