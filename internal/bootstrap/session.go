@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"time"
 
-	internalSSH "github.com/toeirei/keymaster/internal/crypto/ssh"
+	internalSSH "github.com/toeirei/keymaster/internal/core/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 )

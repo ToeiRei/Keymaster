@@ -10,7 +10,7 @@ import (
 	log "github.com/charmbracelet/log"
 
 	"github.com/toeirei/keymaster/internal/core"
-	crypto_ssh "github.com/toeirei/keymaster/internal/crypto/ssh"
+	crypto_ssh "github.com/toeirei/keymaster/internal/core/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/db"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"

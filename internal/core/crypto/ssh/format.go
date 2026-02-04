@@ -4,7 +4,7 @@
 
 // package ssh provides convenience wrappers around the golang.org/x/crypto/ssh package
 // for handling SSH key formatting and operations.
-package ssh // import "github.com/toeirei/keymaster/internal/crypto/ssh"
+package ssh // import "github.com/toeirei/keymaster/internal/core/crypto/ssh"
 
 import (
 	"crypto/ed25519"
