@@ -13,6 +13,8 @@ menu.deploy_to_fleet: "Deploy to Fleet"
 menu.view_audit_log: "View Audit Log"
 menu.audit_hosts: "Audit Hosts"
 menu.view_accounts_by_tag: "View Accounts by Tag"
+menu.view_accounts_by_host: "View Accounts by Host"
+menu.view_keys_deployment: "View Keys Deployment"
 menu.navigation: "Navigation"
 menu.language: "Language"
 
@@ -241,6 +243,22 @@ tags_view.filtering: "Filter: %s█"
 tags_view.filter_active: "Filter: %s (press 'esc' to clear)"
 tags_view.filter_hint: "Press / to filter…"
 tags_view.footer: "(enter) expand/collapse   /: filter   esc: back   q: back"
+
+# Hosts view translations
+hosts_view.title: "Accounts by Host"
+hosts_view.empty: "No hosts or accounts found. Add accounts to see them grouped by hostname."
+hosts_view.filtering: "Filter: %s█"
+hosts_view.filter_active: "Filter: %s (press 'esc' to clear)"
+hosts_view.filter_hint: "Press / to filter…"
+hosts_view.footer: "(enter) expand/collapse   /: filter   esc: back   q: back"
+
+# Keys deployment view translations
+keys_deployment_view.title: "Keys Deployment"
+keys_deployment_view.empty: "No keys are currently deployed to any accounts."
+keys_deployment_view.filtering: "Filter: %s█"
+keys_deployment_view.filter_active: "Filter: %s (press 'esc' to clear)"
+keys_deployment_view.filter_hint: "Press / to filter…"
+keys_deployment_view.footer: "(enter) expand/collapse   /: filter   esc: back   q: back"
 
 # Deployment view translations
 deploy.menu.deploy_fleet: "Deploy to Fleet (fully automatic)"

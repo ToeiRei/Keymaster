@@ -39,6 +39,8 @@ const (
 	auditLogView
 	auditView
 	tagsView
+	hostsView
+	keysDeploymentView
 	bootstrapView
 	languageView
 )
@@ -68,22 +70,24 @@ type dashboardData struct {
 // mainModel is the top-level model for the TUI. It acts as a state machine
 // and router, delegating updates and view rendering to the currently active sub-model.
 type mainModel struct {
-	state      viewState
-	menu       menuModel
-	deployer   deployModel
-	auditor    auditModel
-	rotator    *rotateKeyModel
-	assignment *assignKeysModel
-	keys       *publicKeysModel
-	accounts   *accountsModel
-	auditLog   *auditLogModel
-	tags       tagsViewModel
-	bootstrap  *bootstrapModel
-	language   languageModel
-	dashboard  dashboardData
-	width      int
-	height     int
-	err        error
+	state          viewState
+	menu           menuModel
+	deployer       deployModel
+	auditor        auditModel
+	rotator        *rotateKeyModel
+	assignment     *assignKeysModel
+	keys           *publicKeysModel
+	accounts       *accountsModel
+	auditLog       *auditLogModel
+	tags           tagsViewModel
+	hosts          hostsViewModel
+	keysDeployment keysDeploymentViewModel
+	bootstrap      *bootstrapModel
+	language       languageModel
+	dashboard      dashboardData
+	width          int
+	height         int
+	err            error
 	// Injected searchers to propagate to sub-models for server-side search.
 	accountSearcher db.AccountSearcher
 	keySearcher     db.KeySearcher
@@ -120,6 +124,8 @@ func initialModelWithSearchers(a db.AccountSearcher, k db.KeySearcher, au db.Aud
 				i18n.T("menu.view_audit_log"),
 				i18n.T("menu.audit_hosts"),
 				i18n.T("menu.view_accounts_by_tag"),
+				i18n.T("menu.view_accounts_by_host"),
+				i18n.T("menu.view_keys_deployment"),
 				i18n.T("menu.language"),
 			},
 		},
@@ -263,6 +269,24 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newTagsModel, cmd = m.tags.Update(msg)
 		m.tags = newTagsModel.(tagsViewModel)
 
+	case hostsView:
+		if _, ok := msg.(backToMenuMsg); ok {
+			m.state = menuView
+			return m, refreshDashboardCmd()
+		}
+		var newHostsModel tea.Model
+		newHostsModel, cmd = m.hosts.Update(msg)
+		m.hosts = newHostsModel.(hostsViewModel)
+
+	case keysDeploymentView:
+		if _, ok := msg.(backToMenuMsg); ok {
+			m.state = menuView
+			return m, refreshDashboardCmd()
+		}
+		var newKeysDeploymentModel tea.Model
+		newKeysDeploymentModel, cmd = m.keysDeployment.Update(msg)
+		m.keysDeployment = newKeysDeploymentModel.(keysDeploymentViewModel)
+
 	case bootstrapView:
 		// Handle back message or account completion
 		if _, ok := msg.(backToListMsg); ok {
@@ -390,7 +414,15 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.state = tagsView
 					m.tags = newTagsViewModelWithSearcher(m.accountSearcher)
 					return m, nil
-				case 8: // Language
+				case 8: // View Accounts by Host
+					m.state = hostsView
+					m.hosts = newHostsViewModelWithSearcher(m.accountSearcher)
+					return m, nil
+				case 9: // View Keys Deployment
+					m.state = keysDeploymentView
+					m.keysDeployment = newKeysDeploymentViewModel()
+					return m, nil
+				case 10: // Language
 					m.state = languageView
 					m.language = newLanguageModel()
 					return m, nil
@@ -434,6 +466,10 @@ func (m mainModel) View() string {
 		return m.auditor.View()
 	case tagsView:
 		return m.tags.View()
+	case hostsView:
+		return m.hosts.View()
+	case keysDeploymentView:
+		return m.keysDeployment.View()
 	case bootstrapView:
 		return m.bootstrap.View()
 	case languageView:

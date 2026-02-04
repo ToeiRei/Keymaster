@@ -14,6 +14,8 @@ menu.deploy_to_fleet: "Tō Flote Sendan"
 menu.view_audit_log: "Ġesīene Gewritrǣdinge"
 menu.audit_hosts: "Ƿeardas Smeagan"
 menu.view_accounts_by_tag: "Rǣdmanna be Mearcum Sēon"
+menu.view_accounts_by_host: "Rǣdmanna be Hēafodsetle Sēon"
+menu.view_keys_deployment: "Cǣgena Ūtsendunga Sēon"
 menu.navigation: "Sīðfæt"
 menu.language: "Sprǣċ"
 
@@ -247,6 +249,22 @@ tags_view.filtering: "Sīfe: %s▮"
 tags_view.filter_active: "Sīfe: %s (cnuc 'esc' tō clǣnsiġenne)"
 tags_view.filter_hint: "Cnuc / tō sīfenne…"
 tags_view.footer: "(enter) ūtbrǣdan/tosāman   /: sīfe   esc: eftfaran   q: forlǣtan"
+
+# Hosts view translations
+hosts_view.title: "Rǣdmenn be Hēafodsetle"
+hosts_view.empty: "Nān hēafodsetla oþþe rǣdmenn ġefunden. Eċ rǣdmenn tō sēonne hīe ġegrupped be hēafodsetles naman."
+hosts_view.filtering: "Sīfe: %s▮"
+hosts_view.filter_active: "Sīfe: %s (cnuc 'esc' tō clǣnsiġenne)"
+hosts_view.filter_hint: "Cnuc / tō sīfenne…"
+hosts_view.footer: "(enter) ūtbrǣdan/tosāman   /: sīfe   esc: eftfaran   q: forlǣtan"
+
+# Keys deployment view translations
+keys_deployment_view.title: "Cǣgena Ūtsendung"
+keys_deployment_view.empty: "Nān cǣgan syndun nū ūtsended tō ǣnigum rǣdmannum."
+keys_deployment_view.filtering: "Sīfe: %s▮"
+keys_deployment_view.filter_active: "Sīfe: %s (cnuc 'esc' tō clǣnsiġenne)"
+keys_deployment_view.filter_hint: "Cnuc / tō sīfenne…"
+keys_deployment_view.footer: "(enter) ūtbrǣdan/tosāman   /: sīfe   esc: eftfaran   q: forlǣtan"
 
 # Deployment view translations
 deploy.menu.deploy_fleet: "Sendan tō Flote (fullīċe selfƿyrcend)"

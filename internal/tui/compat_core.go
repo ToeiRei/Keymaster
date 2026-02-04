@@ -1,5 +1,4 @@
 //go:build ignore
-// +build ignore
 
 // This file is intentionally excluded from normal builds. It used to provide a
 // backward-compatible wrapper `containsIgnoreCase` for tests; tests now call
