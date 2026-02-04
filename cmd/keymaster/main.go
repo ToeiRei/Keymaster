@@ -39,9 +39,9 @@ import (
 
 	// DB init/inspection delegated to internal/core facades
 	log "github.com/charmbracelet/log"
+	"github.com/toeirei/keymaster/internal/core/sshkey"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/sshkey"
 	"github.com/toeirei/keymaster/internal/tui"
 	"github.com/toeirei/keymaster/internal/uiadapters"
 	"golang.org/x/crypto/ssh"

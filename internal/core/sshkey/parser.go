@@ -5,7 +5,7 @@
 // package sshkey provides utilities for parsing and validating SSH key data.
 // It includes functions to parse authorized_keys lines, extract Keymaster-specific
 // metadata, and check for weak cryptographic algorithms.
-package sshkey // import "github.com/toeirei/keymaster/internal/sshkey"
+package sshkey // import "github.com/toeirei/keymaster/internal/core/sshkey"
 
 import (
 	"fmt"

@@ -12,7 +12,7 @@ import (
 	"github.com/toeirei/keymaster/internal/config"
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/keys"
+	"github.com/toeirei/keymaster/internal/core/keys"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
 	_ "github.com/toeirei/keymaster/internal/ui"

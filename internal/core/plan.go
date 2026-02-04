@@ -5,7 +5,7 @@
 package core
 
 import (
-	"github.com/toeirei/keymaster/internal/keys"
+	"github.com/toeirei/keymaster/internal/core/keys"
 	"github.com/toeirei/keymaster/internal/model"
 )
 
