@@ -278,6 +278,9 @@ Running without a subcommand will launch the interactive TUI.`,
 	// Register debug command
 	cmd.AddCommand(debugCmd)
 
+	// Register show-keys command
+	cmd.AddCommand(showKeysCmd)
+
 	// Define flags
 	cmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output (sets -v for DB logs)")
 	cmd.PersistentFlags().BoolVarP(&showVersionFlag, "version", "V", false, "Print version and exit")
