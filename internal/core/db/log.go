@@ -19,6 +19,6 @@ func SetDebug(enabled bool) {
 
 func dbLogf(format string, v ...any) {
 	if dbDebugEnabled {
-		log.Debug(fmt.Sprintf(format, v...))
+		log.Info(fmt.Sprintf("[DB] "+format, v...))
 	}
 }

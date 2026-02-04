@@ -291,8 +291,24 @@ func DeleteAccountBun(bdb *bun.DB, id int) error {
 }
 
 // AssignKeyToAccountBun creates an association in account_keys.
+// Global keys should not be assigned to individual accounts since they're
+// automatically deployed everywhere. This function returns an error if attempting
+// to assign a global key.
 func AssignKeyToAccountBun(bdb *bun.DB, keyID, accountID int) error {
 	ctx := context.Background()
+
+	// Check if the key is global - global keys should not be in account_keys
+	pk, err := GetPublicKeyByIDBun(bdb, keyID)
+	if err != nil {
+		return err
+	}
+	if pk == nil {
+		return fmt.Errorf("key with ID %d not found", keyID)
+	}
+	if pk.IsGlobal {
+		return fmt.Errorf("cannot assign global key '%s' to individual accounts (it's already deployed everywhere)", pk.Comment)
+	}
+
 	// Use raw insert since account_keys likely has no PK model in codebase.
 	if _, err := ExecRaw(ctx, bdb, "INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, accountID); err != nil {
 		return MapDBError(err)
@@ -321,18 +337,24 @@ func UnassignKeyFromAccountBun(bdb *bun.DB, keyID, accountID int) error {
 func GetKeysForAccountBun(bdb *bun.DB, accountID int) ([]model.PublicKey, error) {
 	ctx := context.Background()
 	var pks []PublicKeyModel
-	err := bdb.NewSelect().Model(&pks).
-		TableExpr("public_keys AS pk").
-		Join("JOIN account_keys ak ON pk.id = ak.key_id").
-		Where("ak.account_id = ?", accountID).
-		OrderExpr("pk.comment").
-		Scan(ctx)
+	// Use raw query since BUN's Model + Join was not properly applying the WHERE clause
+	query := `SELECT pk.* FROM public_keys pk
+	          INNER JOIN account_keys ak ON pk.id = ak.key_id
+	          WHERE ak.account_id = ?
+	          ORDER BY pk.comment`
+	err := bdb.NewRaw(query, accountID).Scan(ctx, &pks)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]model.PublicKey, 0, len(pks))
 	for _, p := range pks {
 		out = append(out, publicKeyModelToModel(p))
+	}
+	if dbDebugEnabled {
+		dbLogf("GetKeysForAccountBun(accountID=%d): returning %d keys", accountID, len(out))
+		for _, k := range out {
+			dbLogf("  - Key ID=%d, Comment=%s, IsGlobal=%v", k.ID, k.Comment, k.IsGlobal)
+		}
 	}
 	return out, nil
 }
@@ -731,6 +753,12 @@ func GetGlobalPublicKeysBun(bdb *bun.DB) ([]model.PublicKey, error) {
 	out := make([]model.PublicKey, 0, len(pks))
 	for _, p := range pks {
 		out = append(out, publicKeyModelToModel(p))
+	}
+	if dbDebugEnabled {
+		dbLogf("GetGlobalPublicKeysBun(): returning %d global keys", len(out))
+		for _, k := range out {
+			dbLogf("  - Key ID=%d, Comment=%s", k.ID, k.Comment)
+		}
 	}
 	return out, nil
 }

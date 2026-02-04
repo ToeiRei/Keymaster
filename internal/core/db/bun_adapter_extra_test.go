@@ -5,6 +5,7 @@
 package db
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -243,16 +244,13 @@ func TestPublicKeys_List_Toggle_Search_Delete_Assignments(t *testing.T) {
 			t.Fatalf("expected at least 2 global keys, got %d", len(globals))
 		}
 
-		// Assign pk1 to account and verify accounts for key
-		if err := AssignKeyToAccountBun(bdb, pk1.ID, accID); err != nil {
-			t.Fatalf("AssignKeyToAccountBun failed: %v", err)
+		// Try to assign pk1 (now global) to account - should fail
+		err = AssignKeyToAccountBun(bdb, pk1.ID, accID)
+		if err == nil {
+			t.Fatal("AssignKeyToAccountBun should fail when trying to assign global key")
 		}
-		accs, err := GetAccountsForKeyBun(bdb, pk1.ID)
-		if err != nil {
-			t.Fatalf("GetAccountsForKeyBun failed: %v", err)
-		}
-		if len(accs) == 0 {
-			t.Fatalf("expected account assignment to be visible for key")
+		if !strings.Contains(err.Error(), "cannot assign global key") {
+			t.Fatalf("expected error about global key assignment, got: %v", err)
 		}
 
 		// Delete public key pk2
