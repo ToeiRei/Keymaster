@@ -16,6 +16,12 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
+// Compile-time interface checks
+var (
+	_ core.Store = (*storeAdapter)(nil) // storeAdapter implements core.Store
+	_ core.Store = (*db.BunStore)(nil)  // db.BunStore implements core.Store
+)
+
 // Package uiadapters provides thin, canonical adapters that adapt package-level
 // `internal/db` helpers to `core` interfaces used by UI layers (TUI/CLI/UI).
 //

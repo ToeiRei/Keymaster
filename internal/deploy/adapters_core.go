@@ -13,6 +13,15 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
+// Compile-time interface checks
+var (
+	_ core.KeyLister            = (*coreKeyLister)(nil)        // coreKeyLister implements core.KeyLister
+	_ core.AccountSerialUpdater = (*accountSerialUpdater)(nil) // accountSerialUpdater implements core.AccountSerialUpdater
+	_ core.KeyImporter          = (*keyImporter)(nil)          // keyImporter implements core.KeyImporter
+	_ core.AccountManager       = (*coreAccountManager)(nil)   // coreAccountManager implements core.AccountManager
+	_ core.AuditWriter          = (*coreAuditWriter)(nil)      // coreAuditWriter implements core.AuditWriter
+)
+
 // Wire DB-backed adapters into core defaults for packages that import
 // internal/deploy (many programs/tests import deploy but may not import UI packages).
 

@@ -6,9 +6,10 @@ package db
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/uptrace/bun"
-	"time"
 )
 
 // BunStore is the consolidated bun-backed Store implementation used for all
@@ -22,6 +23,12 @@ type BunStore struct {
 func (s *BunStore) BunDB() *bun.DB { return s.bun }
 
 func (s *BunStore) GetAllAccounts() ([]model.Account, error) { return GetAllAccountsBun(s.bun) }
+func (s *BunStore) GetAccounts() ([]model.Account, error) {
+	return s.GetAllAccounts()
+}
+func (s *BunStore) GetAccount(id int) (*model.Account, error) {
+	return GetAccountByIDBun(s.bun, id)
+}
 func (s *BunStore) AddAccount(username, hostname, label, tags string) (int, error) {
 	id, err := AddAccountBun(s.bun, username, hostname, label, tags)
 	if err == nil {
@@ -37,6 +44,13 @@ func (s *BunStore) DeleteAccount(id int) error {
 	err := DeleteAccountBun(s.bun, id)
 	if err == nil {
 		_ = s.LogAction("DELETE_ACCOUNT", details)
+	}
+	return err
+}
+func (s *BunStore) AssignKeyToAccount(keyID, accountID int) error {
+	err := AssignKeyToAccountBun(s.bun, keyID, accountID)
+	if err == nil {
+		_ = s.LogAction("ASSIGN_KEY", fmt.Sprintf("keyID: %d, accountID: %d", keyID, accountID))
 	}
 	return err
 }
