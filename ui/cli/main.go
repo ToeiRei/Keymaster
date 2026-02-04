@@ -287,6 +287,10 @@ Running without a subcommand will launch the interactive TUI.`,
 	registerAccountCommands()
 	cmd.AddCommand(accountCmd)
 
+	// Register key management command
+	registerKeyCommands()
+	cmd.AddCommand(keyCmd)
+
 	// Define flags
 	cmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output (sets -v for DB logs)")
 	cmd.PersistentFlags().BoolVarP(&showVersionFlag, "version", "V", false, "Print version and exit")
