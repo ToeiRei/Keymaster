@@ -12,18 +12,18 @@ import (
 	"github.com/toeirei/keymaster/internal/state"
 )
 
-// fakeKeyReaderForPhase2 is a minimal test implementation of KeyReader interface
-// for Phase 2 audit edge case testing.
-type fakeKeyReaderForPhase2 struct {
+// fakeKeyReaderForAudit is a minimal test implementation of KeyReader interface
+// for audit edge case testing.
+type fakeKeyReaderForAudit struct {
 	returnNilKey bool
 	returnErr    error
 }
 
-func (f *fakeKeyReaderForPhase2) GetAllPublicKeys() ([]model.PublicKey, error) {
+func (f *fakeKeyReaderForAudit) GetAllPublicKeys() ([]model.PublicKey, error) {
 	return nil, nil
 }
 
-func (f *fakeKeyReaderForPhase2) GetActiveSystemKey() (*model.SystemKey, error) {
+func (f *fakeKeyReaderForAudit) GetActiveSystemKey() (*model.SystemKey, error) {
 	if f.returnErr != nil {
 		return nil, f.returnErr
 	}
@@ -33,7 +33,7 @@ func (f *fakeKeyReaderForPhase2) GetActiveSystemKey() (*model.SystemKey, error) 
 	return &model.SystemKey{Serial: 1}, nil
 }
 
-func (f *fakeKeyReaderForPhase2) GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
+func (f *fakeKeyReaderForAudit) GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
 	if f.returnErr != nil {
 		return nil, f.returnErr
 	}
@@ -75,7 +75,7 @@ func TestAuditAccountStrict_NoKeyReader(t *testing.T) {
 // Uses a fake reader that returns nil for missing keys.
 func TestAuditAccountStrict_SerialKeyNotFound(t *testing.T) {
 	i18n.Init("en")
-	fakeReader := &fakeKeyReaderForPhase2{returnNilKey: true}
+	fakeReader := &fakeKeyReaderForAudit{returnNilKey: true}
 	SetDefaultKeyReader(fakeReader)
 	defer SetDefaultKeyReader(nil)
 
@@ -113,7 +113,7 @@ func TestAuditAccountSerial_NoKeyReader(t *testing.T) {
 // TestAuditAccountSerial_KeyNotFound tests AuditAccountSerial when the serial key doesn't exist.
 func TestAuditAccountSerial_KeyNotFound(t *testing.T) {
 	i18n.Init("en")
-	fakeReader := &fakeKeyReaderForPhase2{returnNilKey: true}
+	fakeReader := &fakeKeyReaderForAudit{returnNilKey: true}
 	SetDefaultKeyReader(fakeReader)
 	defer SetDefaultKeyReader(nil)
 
