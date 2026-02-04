@@ -31,13 +31,6 @@ type AccountReader interface {
 	GetAllAccounts() ([]model.Account, error)
 }
 
-// KeyReader exposes key reads required by the dashboard.
-type KeyReader interface {
-	GetAllPublicKeys() ([]model.PublicKey, error)
-	GetActiveSystemKey() (*model.SystemKey, error)
-	GetSystemKeyBySerial(serial int) (*model.SystemKey, error)
-}
-
 // AuditReader exposes audit log reads required by the dashboard.
 type AuditReader interface {
 	GetAllAuditLogEntries() ([]model.AuditLogEntry, error)

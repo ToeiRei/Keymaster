@@ -20,10 +20,8 @@ func (t *testDeployer) Close()                                    {}
 
 // TestTransferCLI_CreateAndAccept runs the `transfer create` then `transfer accept` CLI paths.
 func TestTransferCLI_CreateAndAccept(t *testing.T) {
-	// Use an isolated DB per test
-	if _, err := db.New("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.New failed: %v", err)
-	}
+	// Use the standard isolated test DB setup
+	setupTestDB(t)
 
 	tmpdir := t.TempDir()
 	pkgFile := filepath.Join(tmpdir, "transfer.json")

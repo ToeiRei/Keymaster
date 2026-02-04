@@ -18,6 +18,7 @@ import (
 	log "github.com/charmbracelet/log"
 
 	"github.com/spf13/viper"
+	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"golang.org/x/crypto/ssh"
@@ -28,9 +29,13 @@ import (
 func setupTestDB(t *testing.T) {
 	t.Helper()
 
-	// Use a unique in-memory database for each test run.
-	// "cache=shared" is crucial to allow multiple connections to the same in-memory DB.
-	dsn := "file:" + t.Name() + "?mode=memory&cache=shared"
+	// Ensure tests are isolated from any previously loaded configuration.
+	viper.Reset()
+
+	// Use a unique on-disk database per test to avoid cross-test contamination.
+	// TempDir ensures isolation and avoids collisions in parallel or repeated runs.
+	tmpDir := t.TempDir()
+	dsn := filepath.Join(tmpDir, "keymaster_test.db")
 
 	// Configure viper to use our in-memory test DB
 	viper.Set("database.type", "sqlite")
@@ -42,6 +47,13 @@ func setupTestDB(t *testing.T) {
 	if _, err := db.New("sqlite", dsn); err != nil {
 		t.Fatalf("Failed to initialize test database: %v", err)
 	}
+	// Ensure core uses the package-level DB initialization state during tests.
+	core.SetDefaultDBIsInitialized(db.IsInitialized)
+	// Reset injected defaults after test to avoid cross-test pollution.
+	t.Cleanup(func() {
+		core.SetDefaultDBIsInitialized(nil)
+		db.ResetStoreForTests()
+	})
 }
 
 // executeCommand runs a cobra command with the given arguments and captures its output.

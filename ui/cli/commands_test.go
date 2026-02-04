@@ -7,10 +7,12 @@ package cli
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/i18n"
@@ -335,9 +337,23 @@ func TestRootCmd_DatabaseFlags(t *testing.T) {
 
 // TestSetupDefaultServices_DBInitialization verifies DB initialization logic
 func TestSetupDefaultServices_DBInitialization(t *testing.T) {
+	// Reset viper and config globals to avoid cross-test contamination.
+	viper.Reset()
+	cfgFile = ""
+	t.Cleanup(func() {
+		viper.Reset()
+		cfgFile = ""
+	})
+
 	// Create a temporary directory for test database
 	tmp := t.TempDir()
-	dbPath := tmp + "/test.db"
+	dbPath := filepath.Join(tmp, "test.db")
+
+	// Ensure core DB init checks are wired for this test.
+	core.SetDefaultDBIsInitialized(db.IsInitialized)
+	t.Cleanup(func() {
+		core.SetDefaultDBIsInitialized(nil)
+	})
 
 	// Set up minimal command with database flags
 	cmd := &cobra.Command{}

@@ -15,11 +15,7 @@ import (
 )
 
 func TestDebugAddAccount(t *testing.T) {
-	dbdsn := "file:TestDebugAddAccount?mode=memory&cache=shared"
-	// configure viper indirectly by calling db.New (simulate setupTestDB)
-	if _, err := db.New("sqlite", dbdsn); err != nil {
-		t.Fatalf("db.New failed: %v", err)
-	}
+	setupTestDB(t)
 	mgr := db.DefaultAccountManager()
 	if mgr == nil {
 		t.Fatalf("no account manager available")

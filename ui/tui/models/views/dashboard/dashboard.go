@@ -10,14 +10,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
 type Model struct {
-	db   db.Store
 	data core.DashboardData
 	err  error
 	size util.Size
@@ -36,7 +34,6 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		return nil
 	}
 	// wont work until db can be constructed... mock for now
-	// m.data, m.err = core.BuildDashboardData(m.db)
 	m.data = core.DashboardData{
 		AccountCount:       69,
 		ActiveAccountCount: 420,

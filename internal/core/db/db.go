@@ -58,6 +58,17 @@ func DefaultStore() Store {
 	return store
 }
 
+// ResetStoreForTests closes and clears the package-level store.
+// This is intended for tests to ensure isolation between runs.
+func ResetStoreForTests() {
+	if store != nil {
+		if bunDB := store.BunDB(); bunDB != nil {
+			_ = bunDB.DB.Close()
+		}
+	}
+	store = nil
+}
+
 // BunDB returns the underlying *bun.DB for the active Store, or nil if
 // the package-level store has not been initialized. Prefer using the
 // Store interface for most operations; this accessor is provided for code
