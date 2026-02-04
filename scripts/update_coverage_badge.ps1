@@ -4,7 +4,18 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Write-Output "Running go test to produce coverage profile (this may take a while)..."
-& go test -coverpkg=./... ./... -coverprofile=coverage.out
+$testExitCode = 0
+try {
+    $previousEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    & go test -coverpkg=./... ./... -coverprofile=coverage.out
+    $testExitCode = $LASTEXITCODE
+} finally {
+    $ErrorActionPreference = $previousEap
+}
+if ($testExitCode -ne 0) {
+    Write-Warning "go test exited with code $testExitCode; continuing to process coverage if available."
+}
 
 if ((Test-Path -Path './coverage' -PathType Leaf) -and -not (Test-Path -Path './coverage.out' -PathType Leaf)) {
     Write-Output "Normalizing 'coverage' -> 'coverage.out'"
@@ -16,11 +27,26 @@ if (-not (Test-Path -Path './coverage.out')) {
     exit 1
 }
 
-# Exclude test utility packages from coverage metrics (not part of product surface).
+# Exclude test utility packages and legacy TUI from coverage metrics (not part of product surface).
 $first = Get-Content -Path './coverage.out' -TotalCount 1
 $rest = Get-Content -Path './coverage.out' | Select-Object -Skip 1
-# Exclude internal test helper packages and any testdata paths from coverage
-$filtered = $rest | Where-Object { ($_ -notmatch '^github.com/toeirei/keymaster/internal/testutil') -and ($_ -notmatch 'testdata') }
+# Exclude internal test helper packages, legacy TUI, and any testdata paths from coverage
+$filtered = $rest | Where-Object { ($_ -notmatch '^github.com/toeirei/keymaster/internal/testutil') -and ($_ -notmatch '^github.com/toeirei/keymaster/internal/tui') -and ($_ -notmatch 'testdata') }
+
+# Drop entries that reference missing files (prevents go tool cover parse errors)
+$prefix = 'github.com/toeirei/keymaster/'
+$root = (Get-Location).Path
+$filtered = $filtered | Where-Object {
+    $line = $_
+    $filePart = ($line -split ':', 2)[0]
+    if ($filePart.StartsWith($prefix)) {
+        $rel = $filePart.Substring($prefix.Length)
+        $local = Join-Path $root $rel
+        return (Test-Path -Path $local -PathType Leaf)
+    }
+    # Keep any non-module-path entries (defensive)
+    return $true
+}
 # Write filtered coverage without a UTF-8 BOM so go tool cover can read it.
 $outLines = @()
 $outLines += $first
