@@ -130,8 +130,11 @@ func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_c
 
 	// If a config file was successfully read/merged, log it for easier debugging.
 	used := viper.ConfigFileUsed()
+	verboseFlag, _ := cmd.Flags().GetBool("verbose")
 	if used != "" {
-		log.Infof("using config %s", used)
+		if verboseFlag {
+			log.Infof("using config %s", used)
+		}
 	} else {
 		// If none was used, check whether any candidate existed but was zero-length
 		// (helpful for debugging cases where an empty file causes defaults to be used).
@@ -147,10 +150,12 @@ func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_c
 				}
 			}
 		}
-		if foundEmpty != "" {
-			log.Infof("using config none (found zero-length config %s)", foundEmpty)
-		} else {
-			log.Infof("using config none (defaults)")
+		if verboseFlag {
+			if foundEmpty != "" {
+				log.Infof("using config none (found zero-length config %s)", foundEmpty)
+			} else {
+				log.Infof("using config none (defaults)")
+			}
 		}
 	}
 

@@ -70,13 +70,15 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 	}
 
 	// Diagnostic: print current working directory and KEYMASTER-related env vars
-	if wd, wderr := os.Getwd(); wderr == nil {
-		log.Infof("startup cwd: %s", wd)
-	}
-	// Print any environment variables that might affect config discovery/parsing
-	for _, e := range os.Environ() {
-		if strings.HasPrefix(e, "KEYMASTER_") || strings.HasPrefix(e, "KEYMASTER") || strings.HasPrefix(e, "CONFIG") {
-			log.Infof("env: %s", e)
+	if verbose {
+		if wd, wderr := os.Getwd(); wderr == nil {
+			log.Infof("startup cwd: %s", wd)
+		}
+		// Print any environment variables that might affect config discovery/parsing
+		for _, e := range os.Environ() {
+			if strings.HasPrefix(e, "KEYMASTER_") || strings.HasPrefix(e, "KEYMASTER") || strings.HasPrefix(e, "CONFIG") {
+				log.Infof("env: %s", e)
+			}
 		}
 	}
 
@@ -118,7 +120,7 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 	if viper.ConfigFileUsed() == "" {
 		if writeErr := config.WriteConfigFile(&appConfig, false); writeErr != nil {
 			log.Warnf("Warning: could not write default config file: %v", writeErr)
-		} else {
+		} else if verbose {
 			log.Info("Wrote default config to user config path")
 		}
 	}
@@ -176,7 +178,7 @@ func Execute() error {
 	defer func() {
 		if err := core.CleanupAllActiveSessions(); err != nil {
 			log.Errorf("Error during final cleanup: %v", err)
-		} else {
+		} else if verbose {
 			log.Info("Bootstrap cleanup complete.")
 		}
 	}()
