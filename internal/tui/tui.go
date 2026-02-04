@@ -721,7 +721,11 @@ func Run() {
 // refreshDashboardCmd is a tea.Cmd that fetches summary data for the main menu.
 func refreshDashboardCmd() tea.Cmd {
 	return func() tea.Msg {
-		coreData, err := core.BuildDashboardData(coreAccountReader{}, coreKeyReader{}, coreAuditReader{})
+		store := db.DefaultStore()
+		if store == nil {
+			return dashboardDataMsg{data: dashboardData{err: fmt.Errorf("database not initialized")}}
+		}
+		coreData, err := core.BuildDashboardData(store)
 		if err != nil {
 			return dashboardDataMsg{data: dashboardData{err: err}}
 		}
@@ -730,29 +734,16 @@ func refreshDashboardCmd() tea.Cmd {
 		data := dashboardData{}
 		data.accountCount = coreData.AccountCount
 		data.activeAccountCount = coreData.ActiveAccountCount
-		data.publicKeyCount = coreData.PublicKeyCount
-		data.globalKeyCount = coreData.GlobalKeyCount
+		// Note: PublicKeyCount and GlobalKeyCount are commented out in core.DashboardData
+		data.publicKeyCount = 0  // Field commented out in core
+		data.globalKeyCount = 0  // Field commented out in core
 		data.hostsUpToDate = coreData.HostsUpToDate
 		data.hostsOutdated = coreData.HostsOutdated
 		data.systemKeySerial = coreData.SystemKeySerial
 		data.recentLogs = coreData.RecentLogs
 
-		// Format algorithm breakdown with UI styles
-		var sortedAlgos []string
-		for algo := range coreData.AlgoCounts {
-			sortedAlgos = append(sortedAlgos, algo)
-		}
-		sort.Strings(sortedAlgos)
-		var algoParts []string
-		for _, algo := range sortedAlgos {
-			count := coreData.AlgoCounts[algo]
-			style := successStyle
-			if algo == "ssh-rsa" || algo == "ssh-dss" {
-				style = specialStyle
-			}
-			algoParts = append(algoParts, style.Render(fmt.Sprintf("%s: %d", algo, count)))
-		}
-		data.keyAlgoBreakdown = strings.Join(algoParts, ", ")
+		// Note: AlgoCounts is commented out in core.DashboardData
+		data.keyAlgoBreakdown = ""  // Field commented out in core
 
 		return dashboardDataMsg{data: data}
 	}

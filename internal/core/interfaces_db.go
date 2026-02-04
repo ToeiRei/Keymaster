@@ -13,6 +13,18 @@ import (
 	"github.com/toeirei/keymaster/internal/model"
 )
 
+// KeyReader exposes system key reads required by deployment and generation logic.
+type KeyReader interface {
+	// GetActiveSystemKey returns the currently active system key.
+	GetActiveSystemKey() (*model.SystemKey, error)
+
+	// GetSystemKeyBySerial returns the system key with the given serial.
+	GetSystemKeyBySerial(serial int) (*model.SystemKey, error)
+
+	// GetAllPublicKeys returns all stored public keys.
+	GetAllPublicKeys() ([]model.PublicKey, error)
+}
+
 // KeyLister exposes read-only public key access used by generators and other core helpers.
 type KeyLister interface {
 	// GetGlobalPublicKeys returns public keys that are marked global.

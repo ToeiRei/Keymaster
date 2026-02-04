@@ -19,17 +19,6 @@ import (
 	"github.com/toeirei/keymaster/internal/uiadapters"
 )
 
-// coreAccountReader adapts UI helpers to core.AccountReader.
-type coreAccountReader struct{}
-
-func (coreAccountReader) GetAllAccounts() ([]model.Account, error) {
-	// Delegate to canonical store adapter when available.
-	if s := uiadapters.NewStoreAdapter(); s != nil {
-		return s.GetAllAccounts()
-	}
-	return db.GetAllAccounts()
-}
-
 // coreKeyReader adapts UI key manager to core.KeyReader.
 type coreKeyReader struct{}
 
@@ -45,13 +34,6 @@ func (coreKeyReader) GetActiveSystemKey() (*model.SystemKey, error) { return db.
 
 func (coreKeyReader) GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
 	return db.GetSystemKeyBySerial(serial)
-}
-
-// coreAuditReader adapts UI audit helpers to core.AuditReader.
-type coreAuditReader struct{}
-
-func (coreAuditReader) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
-	return db.GetAllAuditLogEntries()
 }
 
 // coreAuditor adapts the TUI package-level audit helper to core.Auditor.

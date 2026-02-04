@@ -51,6 +51,13 @@ func IsInitialized() bool {
 	return store != nil
 }
 
+// DefaultStore returns the package-level Store instance. This provides access
+// to the active database store for operations that need the full Store interface.
+// Returns nil if the store has not been initialized.
+func DefaultStore() Store {
+	return store
+}
+
 // BunDB returns the underlying *bun.DB for the active Store, or nil if
 // the package-level store has not been initialized. Prefer using the
 // Store interface for most operations; this accessor is provided for code
