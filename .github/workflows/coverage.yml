@@ -31,11 +31,11 @@ jobs:
             mv coverage coverage.out || true
           fi
           if [ -f coverage.out ]; then
-            # Exclude test utility packages from coverage metrics (not part of product surface).
-            # Keep the first 'mode:' line, filter out entries for internal/testutil, then regenerate coverage report.
+            # Exclude test utility packages and legacy TUI from coverage metrics (not part of product surface).
+            # Keep the first 'mode:' line, filter out entries for internal/testutil and internal/tui, then regenerate coverage report.
             head -n1 coverage.out > coverage.filtered.out || true
-            # Remove coverage entries for test helpers and testdata directories
-            tail -n +2 coverage.out | grep -v -E '(^github.com/toeirei/keymaster/internal/testutil|testdata)' >> coverage.filtered.out || true
+            # Remove coverage entries for test helpers, legacy TUI, and testdata directories
+            tail -n +2 coverage.out | grep -v -E '(^github.com/toeirei/keymaster/internal/testutil|^github.com/toeirei/keymaster/internal/tui|testdata)' >> coverage.filtered.out || true
             mv coverage.filtered.out coverage.out || true
             go tool cover -func=coverage.out > coverage.txt || true
           else
