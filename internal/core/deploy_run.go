@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/toeirei/keymaster/internal/core/state"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/model"
-	"github.com/toeirei/keymaster/internal/state"
 )
 
 // RunDeploymentForAccount handles the deployment logic for a single account.

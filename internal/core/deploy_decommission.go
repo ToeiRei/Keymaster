@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/toeirei/keymaster/internal/core/state"
 	"github.com/toeirei/keymaster/internal/logging"
 	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
-	"github.com/toeirei/keymaster/internal/state"
 )
 
 // DecommissionAccount removes SSH access for an account and deletes it from the database.
