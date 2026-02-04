@@ -365,9 +365,9 @@ func TestSetupDefaultServices_DBInitialization(t *testing.T) {
 	// Verify i18n was initialized (should not panic)
 	_ = i18n.T("test.key")
 
-	// Close the database to allow temp cleanup
-	if closer := db.DefaultDB(); closer != nil {
-		_ = closer.Close()
+	// Close the underlying sql.DB to allow temp cleanup on Windows
+	if bunDB := db.BunDB(); bunDB != nil {
+		_ = bunDB.DB.Close()
 	}
 }
 

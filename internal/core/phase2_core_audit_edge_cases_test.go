@@ -5,7 +5,6 @@
 package core
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/toeirei/keymaster/internal/i18n"
@@ -164,22 +163,4 @@ func TestPasswordCacheInteraction(t *testing.T) {
 	if len(cached) != 0 {
 		t.Fatalf("password cache should be empty after Clear")
 	}
-}
-
-// isErrorContaining checks if error message contains substring.
-func isErrorContaining(err error, substr string) bool {
-	if err == nil {
-		return false
-	}
-	return errors.Is(err, errors.New(substr)) || (err.Error() != "" && containsStr(err.Error(), substr))
-}
-
-// containsStr is a simple string contains helper.
-func containsStr(s, substr string) bool {
-	for i := 0; i < len(s)-len(substr)+1; i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
