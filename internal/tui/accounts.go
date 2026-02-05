@@ -76,7 +76,7 @@ type accountsModel struct {
 	isConfirmingDelete       bool
 	accountToDelete          model.Account
 	confirmCursor            int  // 0 for No, 1 for Yes, 2 for checkbox
-	withDecommission         bool // Checkbox state - whether to decommission (default true)
+	withDecommission         bool // Checkbox state - whether to decommission (default false)
 	isConfirmingKeySelection bool // True when showing key selection dialog
 	availableKeys            []model.PublicKey
 	selectedKeysToKeep       map[int]bool // Keys selected to keep
@@ -582,8 +582,8 @@ func (m *accountsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.displayedAccounts) > 0 {
 				m.accountToDelete = m.displayedAccounts[m.cursor]
 				m.isConfirmingDelete = true
-				m.withDecommission = true // Default to decommission
-				m.confirmCursor = 0       // Default to No
+				m.withDecommission = false // Default to NOT decommission
+				m.confirmCursor = 0        // Default to No
 			}
 			return m, nil
 
