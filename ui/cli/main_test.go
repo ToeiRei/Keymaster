@@ -392,6 +392,7 @@ language: de
 	})
 
 	t.Run("should display keymaster environment variables in debug output", func(t *testing.T) {
+		setupTestDB(t)
 		// Set a specific env var to trigger the loop body in debug.go
 		t.Setenv("KEYMASTER_TEST_VAR", "visible")
 		output := executeCommand(t, nil, "debug")
