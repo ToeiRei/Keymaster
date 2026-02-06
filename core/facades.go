@@ -91,6 +91,8 @@ func DeployAccounts(ctx context.Context, st Store, dm DeployerManager, identifie
 	}
 
 	var targets []model.Account
+	// RunDeployCmd runs the deploy command logic against the provided Store and
+	// DeployerManager. `identifier` may be nil to operate on all accounts.
 	if identifier != nil && *identifier != "" {
 		found := false
 		norm := strings.ToLower(*identifier)
@@ -247,6 +249,7 @@ func WriteBackup(ctx context.Context, data *model.BackupData, w io.Writer) error
 }
 
 // Restore reads a zstd-compressed JSON backup and imports it via the Store.
+// RecoverFromCrash performs recovery tasks after an unexpected process exit.
 func Restore(ctx context.Context, r io.Reader, opts RestoreOptions, st Store) error {
 	zr, err := zstd.NewReader(r)
 	if err != nil {
@@ -398,6 +401,8 @@ func ParallelRun(ctx context.Context, accounts []model.Account, worker func(mode
 
 // CLI-facing wrappers that call the core functions above. These are kept so
 // the CLI can be rewired to call these facades in P4-5.
+// RunDeployCmd runs the deploy command against the provided Store and
+// DeployerManager. `identifier` may be nil to operate on all accounts.
 func RunDeployCmd(ctx context.Context, st Store, dm DeployerManager, identifier *string, rep Reporter) ([]DeployResult, error) {
 	return DeployAccounts(ctx, st, dm, identifier, rep)
 }
@@ -490,6 +495,7 @@ func RunDecommissionCmd(ctx context.Context, targets []model.Account, opts inter
 // Bootstrap lifecycle thin wrappers — delegate to internal/bootstrap.
 // These exist so UI/CLI code can call core facades instead of importing
 // internal/bootstrap directly.
+// RecoverFromCrash performs bootstrap recovery after an unexpected exit.
 func RecoverFromCrash() error {
 	return bootstrap.RecoverFromCrash()
 }
@@ -507,6 +513,7 @@ func CleanupAllActiveSessions() error {
 }
 
 // DB init helpers (thin wrappers around internal/db) -----------------------
+// IsDBInitialized returns true when the database has been initialized.
 func IsDBInitialized() bool {
 	return DefaultIsDBInitialized()
 }

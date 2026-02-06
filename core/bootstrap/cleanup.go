@@ -2,7 +2,7 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-// package bootstrap provides cleanup and signal handling for bootstrap sessions.
+// Package bootstrap provides cleanup and signal handling for bootstrap sessions.
 // This file contains functionality to recover from crashes, handle graceful shutdown,
 // and clean up orphaned temporary keys from remote hosts.
 package bootstrap
