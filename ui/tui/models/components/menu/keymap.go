@@ -4,9 +4,6 @@
 // Package menu contains menu components used by the TUI.
 package menu
 
-// DefaultKeyMap provides the default key bindings used by the menu system.
-var DefaultKeyMap = DefaultKeyMap
-
 import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
