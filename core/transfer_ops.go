@@ -7,7 +7,7 @@ package core
 import (
 	"fmt"
 
-	"github.com/toeirei/keymaster/internal/core/bootstrap"
+	"github.com/toeirei/keymaster/core/bootstrap"
 )
 
 // CreateTransferBootstrap creates a bootstrap session for transfer/handover.

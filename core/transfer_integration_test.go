@@ -8,9 +8,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/testutil"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/testutil"
 )
 
 // Test core-level transfer end-to-end: build package and accept it using DB-backed deps.

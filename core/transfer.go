@@ -12,8 +12,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/toeirei/keymaster/internal/core/bootstrap"
-	"github.com/toeirei/keymaster/internal/core/security"
+	"github.com/toeirei/keymaster/core/bootstrap"
+	"github.com/toeirei/keymaster/core/security"
 )
 
 // TransferPackage represents the JSON transfer package format.
