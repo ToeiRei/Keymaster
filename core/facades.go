@@ -28,31 +28,49 @@ import (
 )
 
 // Option/result types (placeholders) ---------------------------------------
+// DeployResult represents the outcome of a single account deployment.
 type DeployResult struct {
+	// Account is the account that was the target of the deployment.
 	Account model.Account
-	Error   error
+	// Error is non-nil when the deployment failed for this account.
+	Error error
 }
 
+// AuditResult represents the result of auditing a single account.
 type AuditResult struct {
+	// Account is the account audited.
 	Account model.Account
-	Error   error
+	// Error is non-nil when the audit detected an error or failed.
+	Error error
 }
 
+// DecommissionSummary aggregates counts from a decommission operation.
 type DecommissionSummary struct {
+	// Successful is the number of accounts successfully decommissioned.
 	Successful int
-	Failed     int
-	Skipped    int
+	// Failed is the number of accounts that failed to be decommissioned.
+	Failed int
+	// Skipped is the number of accounts that were intentionally skipped.
+	Skipped int
 }
 
+// RestoreOptions controls restore behavior used by `Restore`.
 type RestoreOptions struct {
+	// Full indicates whether to perform a full restore (true) or an
+	// incremental/merge restore (false).
 	Full bool
 }
 
+// DBMaintenanceOptions configures database maintenance operations.
 type DBMaintenanceOptions struct {
+	// SkipIntegrity when true will skip expensive integrity checks.
 	SkipIntegrity bool
-	Timeout       time.Duration
+	// Timeout bounds the maintenance operation.
+	Timeout time.Duration
 }
 
+// ParallelResult reports the name and optional error returned by a
+// concurrently executed worker.
 type ParallelResult struct {
 	Name  string
 	Error error
