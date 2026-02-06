@@ -12,7 +12,7 @@ import (
 
 	"github.com/toeirei/keymaster/internal/core/bootstrap"
 	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/security"
+	"github.com/toeirei/keymaster/internal/core/security"
 )
 
 // BootstrapParams contains the information required to perform a bootstrap

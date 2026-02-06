@@ -17,9 +17,9 @@ import (
 
 	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/internal/core/security"
 	"github.com/toeirei/keymaster/internal/core/sshkey"
 	"github.com/toeirei/keymaster/internal/core/state"
-	"github.com/toeirei/keymaster/internal/security"
 )
 
 // ImportRemoteKeys connects to a host, reads its authorized_keys, imports new keys

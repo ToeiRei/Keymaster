@@ -14,7 +14,7 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 
 	genssh "github.com/toeirei/keymaster/internal/core/crypto/ssh"
-	"github.com/toeirei/keymaster/internal/security"
+	"github.com/toeirei/keymaster/internal/core/security"
 )
 
 // (nopReadWriteCloser removed; reuse helpers from other tests)

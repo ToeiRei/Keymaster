@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/internal/core/security"
 	"github.com/toeirei/keymaster/internal/i18n"
-	"github.com/toeirei/keymaster/internal/security"
 )
 
 type simpleFakeStore struct {

@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/security"
+	"github.com/toeirei/keymaster/internal/core/security"
 )
 
 // Package-level defaults for DB-facing readers. Tests or initialization

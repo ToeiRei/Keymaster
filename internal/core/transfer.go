@@ -13,7 +13,7 @@ import (
 	"fmt"
 
 	"github.com/toeirei/keymaster/internal/core/bootstrap"
-	"github.com/toeirei/keymaster/internal/security"
+	"github.com/toeirei/keymaster/internal/core/security"
 )
 
 // TransferPackage represents the JSON transfer package format.

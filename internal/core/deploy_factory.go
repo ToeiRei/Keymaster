@@ -7,7 +7,7 @@ package core
 import (
 	"fmt"
 
-	"github.com/toeirei/keymaster/internal/security"
+	"github.com/toeirei/keymaster/internal/core/security"
 )
 
 // RemoteDeployer is a minimal interface used by core to interact with remote

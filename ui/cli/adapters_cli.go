@@ -13,7 +13,7 @@ import (
 	crypto_ssh "github.com/toeirei/keymaster/internal/core/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/security"
+	"github.com/toeirei/keymaster/internal/core/security"
 )
 
 // (cliStoreAdapter removed; CLI now uses internal/uiadapters.NewStoreAdapter())

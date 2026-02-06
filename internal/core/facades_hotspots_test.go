@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/security"
+	"github.com/toeirei/keymaster/internal/core/security"
 )
 
 // --- fakes -----------------------------------------------------------------

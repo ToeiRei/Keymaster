@@ -24,7 +24,7 @@ import (
 	"github.com/pkg/sftp"
 	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/core/logging"
-	"github.com/toeirei/keymaster/internal/security"
+	"github.com/toeirei/keymaster/internal/core/security"
 	"golang.org/x/crypto/ssh"
 )
 

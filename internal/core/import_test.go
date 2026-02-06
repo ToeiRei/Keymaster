@@ -10,7 +10,7 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/security"
+	"github.com/toeirei/keymaster/internal/core/security"
 )
 
 type localFakeDeployer struct{ content []byte }

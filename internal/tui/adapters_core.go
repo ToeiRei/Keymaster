@@ -14,7 +14,7 @@ import (
 	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/core/keys"
 	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/security"
+	"github.com/toeirei/keymaster/internal/core/security"
 	_ "github.com/toeirei/keymaster/internal/ui"
 	"github.com/toeirei/keymaster/internal/uiadapters"
 )

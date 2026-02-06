@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/internal/core/security"
 	"github.com/toeirei/keymaster/internal/i18n"
-	"github.com/toeirei/keymaster/internal/security"
 )
 
 // retryUpdater simulates transient DB "database is locked" errors a few times

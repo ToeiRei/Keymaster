@@ -8,7 +8,7 @@ import (
 	"errors"
 
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/security"
+	"github.com/toeirei/keymaster/internal/core/security"
 	"golang.org/x/crypto/ssh"
 )
 

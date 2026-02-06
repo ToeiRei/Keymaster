@@ -14,8 +14,8 @@ import (
 	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/core/logging"
 	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/internal/core/security"
 	"github.com/toeirei/keymaster/internal/core/state"
-	"github.com/toeirei/keymaster/internal/security"
 )
 
 // DecommissionOptions configures how accounts are decommissioned
