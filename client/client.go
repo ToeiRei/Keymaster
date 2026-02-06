@@ -26,9 +26,15 @@ type Client struct {
 
 // --- Mock types that will later be imported or defined seperately ---
 type ID int
-type PublicKey struct{}
-type Target struct{}
-type Account struct{}
+type PublicKey struct {
+	// ...
+}
+type Target struct {
+	// ...
+}
+type Account struct {
+	// ...
+}
 type DeployProgress struct {
 	Done bool
 	// ...
