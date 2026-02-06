@@ -32,11 +32,8 @@ import (
 // encountered but no passphrase was provided, signaling that the caller should prompt for one.
 var ErrPassphraseRequired = errors.New("passphrase required for encrypted system key")
 
-// CanonicalizeHostPort returns a normalized host:port string.
-// - If no port is provided, :22 is assumed.
-// - IPv6 literals will be bracketed as needed (e.g., [2001:db8::1]:22).
-// - If input is of the form user@host, the user part is discarded.
-// StripIPv6Brackets removes surrounding [ ] from an IPv6 literal if present.
+// StripIPv6Brackets removes surrounding '[' and ']' from an IPv6 literal
+// if present. For non-bracketed hosts the input is returned unchanged.
 func StripIPv6Brackets(host string) string {
 	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
 		return strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
@@ -44,11 +41,10 @@ func StripIPv6Brackets(host string) string {
 	return host
 }
 
-// ParseHostPort splits an address into host and port.
-// Behavior:
-// - Accepts host, host:port, [ipv6], [ipv6]:port, ipv6, ipv6:port
-// - Returns port "" if not specified
-// - Returns host without IPv6 brackets
+// ParseHostPort splits an address into host and port. It accepts input in
+// several forms: "host", "host:port", "[ipv6]", "[ipv6]:port", and
+// unbracketed IPv6. If no port is specified, the returned port is an empty
+// string. IPv6 bracket characters are removed from the returned host.
 func ParseHostPort(addr string) (host string, port string, err error) {
 	s := strings.TrimSpace(addr)
 	if s == "" {
@@ -79,9 +75,9 @@ func ParseHostPort(addr string) (host string, port string, err error) {
 	return s, "", nil
 }
 
-// JoinHostPort joins host and port into a canonical host:port.
-// - If port is empty, defaultPort is used.
-// - IPv6 hosts will be bracketed.
+// JoinHostPort joins host and port into a canonical "host:port" string.
+// If `port` is empty the provided `defaultPort` is used. IPv6 hosts will be
+// bracketed as necessary.
 func JoinHostPort(host, port, defaultPort string) string {
 	h := StripIPv6Brackets(strings.TrimSpace(host))
 	p := strings.TrimSpace(port)
