@@ -33,7 +33,9 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
-	m.size.Update(msg)
+	if m.size.Update(msg) {
+		return nil
+	}
 
 	if m.focused {
 		if msg, ok := msg.(tea.KeyMsg); ok {

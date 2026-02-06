@@ -33,13 +33,19 @@ type Client struct {
 type ID int
 
 // PublicKey represents a public key record.
-type PublicKey struct{}
+type PublicKey struct {
+	// ...
+}
 
 // Target represents a remote host or endpoint to deploy keys to.
-type Target struct{}
+type Target struct {
+	// ...
+}
 
 // Account represents an account on a target host.
-type Account struct{}
+type Account struct {
+	// ...
+}
 
 // DeployProgress reports incremental progress for a deployment operation.
 type DeployProgress struct {

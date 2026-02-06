@@ -153,8 +153,15 @@ func (m *Model) Blur() {
 // *Model implements util.Model
 var _ util.Model = (*Model)(nil)
 
-func (m *Model) SetFocus(focus int) tea.Cmd {
+func (m *Model) SetFocus(index int) tea.Cmd {
+	// clamp provided index
+	newIndex := util.Clamp(0, index, len(m.items)-1)
+	// cancel when nothing changes
+	if m.focussedIndex == newIndex {
+		return nil
+	}
+	// blur old index and focus new one
 	m.Blur()
-	m.focussedIndex = util.Clamp(0, focus, len(m.items)-1)
+	m.focussedIndex = newIndex
 	return m.Focus(m.baseKeyMap)
 }

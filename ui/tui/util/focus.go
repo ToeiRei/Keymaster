@@ -43,7 +43,6 @@ type AnnounceKeyMapMsg struct {
 	KeyMap help.KeyMap
 }
 
-// TODO consider only using it when reaching the deepest point in the Model tree
 func AnnounceKeyMapCmd(keyMaps ...help.KeyMap) tea.Cmd {
 	return func() tea.Msg {
 		return AnnounceKeyMapMsg{KeyMap: MergeKeyMaps(keyMaps...)}
