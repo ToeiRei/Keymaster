@@ -32,8 +32,9 @@ func (m Model) Init() tea.Cmd {
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	// catch AnnounceFocusMsg and inject baseKeyMap
 	if msg, ok := msg.(util.AnnounceKeyMapMsg); ok {
-		keyMap := util.MergeKeyMaps(msg.KeyMap, m.baseKeyMap)
-		return (*m.help).Update(util.AnnounceKeyMapMsg{KeyMap: keyMap})
+		return (*m.help).Update(util.AnnounceKeyMapMsg{
+			KeyMap: util.MergeKeyMaps(msg.KeyMap, m.baseKeyMap),
+		})
 	}
 
 	m.size.Update(msg)

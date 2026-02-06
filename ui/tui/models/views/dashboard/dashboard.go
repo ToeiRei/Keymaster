@@ -79,9 +79,9 @@ func (m Model) View() string {
 	}
 }
 
-// no focus needed, as it will only be used as a basic background for the apps content
-func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd { return nil }
-func (m *Model) Blur()                                {}
+func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd { return util.AnnounceKeyMapCmd(baseKeyMap) }
+
+func (m *Model) Blur() {}
 
 // *Model implements util.Model
 var _ util.Model = (*Model)(nil)
