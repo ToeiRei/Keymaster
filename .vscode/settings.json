@@ -4,12 +4,17 @@
   },
   "search.exclude": {
     "keymaster": true
-  }
-}
-{
-    "go.formatTool": "gofmt",
-    "[go]": {
-        "editor.formatOnSave": true,
-        "editor.defaultFormatter": "golang.go"
-    },
+  },
+  "go.formatTool": "gofmt",
+  "go.lintTool": "staticcheck",
+  // "gopls.ui.diagnostics.staticcheck": false,
+  "[go]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "golang.go"
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "*.go": "${capture}_test.go"
+  },
 }
