@@ -5,7 +5,7 @@
 // package model defines the core data structures used throughout Keymaster.
 // These structs represent the entities stored in the database and used by
 // the application logic, such as accounts, keys, and audit logs.
-package model // import "github.com/toeirei/keymaster/internal/core/model"
+package model // import "github.com/toeirei/keymaster/core/model"
 
 import (
 	"fmt"

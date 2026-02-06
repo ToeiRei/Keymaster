@@ -5,7 +5,7 @@
 // package i18n handles internationalization for Keymaster.
 // It uses go-i18n to load and manage translation files, and provides
 // a simple interface for the rest of the application to get translated strings.
-package i18n // import "github.com/toeirei/keymaster/internal/i18n"
+package i18n // import "github.com/toeirei/keymaster/i18n"
 
 import (
 	"embed"

@@ -16,7 +16,7 @@ import (
 	"github.com/toeirei/keymaster/core/security"
 )
 
-// (cliStoreAdapter removed; CLI now uses internal/uiadapters.NewStoreAdapter())
+// (cliStoreAdapter removed; CLI now uses uiadapters.NewStoreAdapter())
 
 // cliDeployerManager adapts deploy package helpers to core.DeployerManager.
 type cliDeployerManager struct{}

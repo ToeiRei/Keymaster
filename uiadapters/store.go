@@ -23,11 +23,11 @@ var (
 )
 
 // Package uiadapters provides thin, canonical adapters that adapt package-level
-// `internal/db` helpers to `core` interfaces used by UI layers (TUI/CLI/UI).
+// `core/db` helpers to `core` interfaces used by UI layers (TUI/CLI/UI).
 //
 // Notes:
 // - These adapters are intentionally thin delegators: behavior remains in
-//   `internal/db` and other authoritative packages.
+//   `core/db` and other authoritative packages.
 // - This file contains no `init()` registrations and introduces no global
 //   state. It is considered low-risk to update for clarity; avoid changing
 //   exported signatures without explicit approval.
@@ -193,7 +193,7 @@ func (s *storeAdapter) buildAuthorizedKeysContent(sk *model.SystemKey, gks, aks 
 var _ core.Store = (*storeAdapter)(nil)
 
 // NewStoreAdapter returns a new thin adapter implementing `core.Store` that
-// delegates to package-level `internal/db` helpers. Consumers should call the
+// delegates to package-level `core/db` helpers. Consumers should call the
 // constructor and use the returned `core.Store` rather than relying on a
 // package-level instance.
 func NewStoreAdapter() *storeAdapter { return &storeAdapter{} }

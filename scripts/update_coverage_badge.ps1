@@ -31,7 +31,7 @@ if (-not (Test-Path -Path './coverage.out')) {
 $first = Get-Content -Path './coverage.out' -TotalCount 1
 $rest = Get-Content -Path './coverage.out' | Select-Object -Skip 1
 # Exclude internal test helper packages, legacy TUI, and any testdata paths from coverage
-$filtered = $rest | Where-Object { ($_ -notmatch '^github.com/toeirei/keymaster/internal/testutil') -and ($_ -notmatch '^github.com/toeirei/keymaster/internal/tui') -and ($_ -notmatch 'testdata') }
+$filtered = $rest | Where-Object { ($_ -notmatch '^github.com/toeirei/keymaster/testutil') -and ($_ -notmatch '^github.com/toeirei/keymaster/tui') -and ($_ -notmatch 'testdata') }
 
 # Drop entries that reference missing files (prevents go tool cover parse errors)
 $prefix = 'github.com/toeirei/keymaster/'

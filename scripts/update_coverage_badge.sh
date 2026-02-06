@@ -13,7 +13,7 @@ fi
 # Exclude test utility packages and legacy TUI from coverage metrics (not part of product surface).
 if [[ -f coverage.out ]]; then
   head -n1 coverage.out > coverage.filtered.out || true
-  tail -n +2 coverage.out | grep -v -E '(^github.com/toeirei/keymaster/internal/testutil|^github.com/toeirei/keymaster/internal/tui|testdata)' >> coverage.filtered.out || true
+  tail -n +2 coverage.out | grep -v -E '(^github.com/toeirei/keymaster/testutil|^github.com/toeirei/keymaster/tui|testdata)' >> coverage.filtered.out || true
   mv coverage.filtered.out coverage.out || true
 else
   echo "coverage.out not found" >&2
