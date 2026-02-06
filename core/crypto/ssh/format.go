@@ -2,7 +2,7 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-// package ssh provides convenience wrappers around the golang.org/x/crypto/ssh package
+// Package ssh provides convenience wrappers around the golang.org/x/crypto/ssh package
 // for handling SSH key formatting and operations.
 package ssh // import "github.com/toeirei/keymaster/core/crypto/ssh"
 

@@ -2,7 +2,7 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-// package bootstrap provides functionality for bootstrapping new hosts by creating
+// Package bootstrap provides functionality for bootstrapping new hosts by creating
 // temporary SSH keys, managing bootstrap sessions, and performing atomic account setup.
 // This package handles the complex workflow of securely adding new hosts to Keymaster
 // without requiring manual system key distribution.
