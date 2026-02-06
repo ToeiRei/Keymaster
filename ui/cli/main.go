@@ -33,17 +33,17 @@ import (
 
 	// bootstrap lifecycle is delegated to internal/core facades now
 
-	"github.com/toeirei/keymaster/internal/config"
-	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/core/db"
-
-	// DB init/inspection delegated to internal/core facades
 	log "github.com/charmbracelet/log"
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/core/sshkey"
-	"github.com/toeirei/keymaster/internal/i18n"
-	"github.com/toeirei/keymaster/internal/tui"
-	"github.com/toeirei/keymaster/internal/uiadapters"
+	"github.com/toeirei/keymaster/config"
+	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/deploy"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/sshkey"
+	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui"
+	"github.com/toeirei/keymaster/ui/tui"
+	"github.com/toeirei/keymaster/uiadapters"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
 )
