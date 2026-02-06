@@ -2,6 +2,5 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-// Package uiadapters contains adapters used to bridge core interfaces with UI
-// implementations.
-package uiadapters
+// Package router contains routing utilities for TUI components.
+package router

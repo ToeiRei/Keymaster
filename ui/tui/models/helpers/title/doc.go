@@ -2,6 +2,5 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-// Package uiadapters contains adapters used to bridge core interfaces with UI
-// implementations.
-package uiadapters
+// Package windowtitle contains helpers for window title handling in the TUI.
+package windowtitle
