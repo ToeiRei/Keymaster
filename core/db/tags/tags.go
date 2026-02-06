@@ -160,21 +160,21 @@ func splitOnTopLevelChar(expr string, op rune) []string {
 	return append(result, expr[start:])
 }
 
-func ValidateTagMatcher(tag_matcher string) error {
+func ValidateTagMatcher(tagMatcher string) error {
 	// create mock QueryBuilder (fine for validation, but panics when used to render sql as it has no underlying formatter!)
 	qb := (&bun.SelectQuery{}).QueryBuilder()
-	_, err := parseTagMatcherColumn(tag_matcher, qb, true, false, "tag")
+	_, err := parseTagMatcherColumn(tagMatcher, qb, true, false, "tag")
 	return err
 }
 
-func QueryBuilderFromTagMatcher(tag_matcher string) (func(bun.QueryBuilder) bun.QueryBuilder, error) {
+func QueryBuilderFromTagMatcher(tagMatcher string) (func(bun.QueryBuilder) bun.QueryBuilder, error) {
 	// validate before returning QueryBuilder, because errors can't be returned from the QueryBuilder callback
-	if err := ValidateTagMatcher(tag_matcher); err != nil {
+	if err := ValidateTagMatcher(tagMatcher); err != nil {
 		return nil, err
 	}
 	// return QueryBuilder with safe callback
 	return func(qb bun.QueryBuilder) bun.QueryBuilder {
-		qb, _ = parseTagMatcherColumn(tag_matcher, qb, true, false, "tag")
+		qb, _ = parseTagMatcherColumn(tagMatcher, qb, true, false, "tag")
 		return qb
 	}, nil
 }
@@ -183,22 +183,22 @@ func QueryBuilderFromTagMatcher(tag_matcher string) (func(bun.QueryBuilder) bun.
 // the provided column expression (for example "tags" or "a.tags"). This
 // allows callers to supply table aliases so the generated WHERE fragments are
 // join-compatible.
-func QueryBuilderFromTagMatcherColumn(column, tag_matcher string) (func(bun.QueryBuilder) bun.QueryBuilder, error) {
+func QueryBuilderFromTagMatcherColumn(column, tagMatcher string) (func(bun.QueryBuilder) bun.QueryBuilder, error) {
 	// validate using the default column because validation does not depend on column name
-	if err := ValidateTagMatcher(tag_matcher); err != nil {
+	if err := ValidateTagMatcher(tagMatcher); err != nil {
 		return nil, err
 	}
 	return func(qb bun.QueryBuilder) bun.QueryBuilder {
-		qb, _ = parseTagMatcherColumn(tag_matcher, qb, true, false, column)
+		qb, _ = parseTagMatcherColumn(tagMatcher, qb, true, false, column)
 		return qb
 	}, nil
 }
 
 func SplitTags(tags string) ([]string, error) {
 	// validate and strip prefix & suffix
-	tags, exists_prefix := strings.CutPrefix(tags, tagDelimiterChar)
-	tags, exists_suffix := strings.CutSuffix(tags, tagDelimiterChar)
-	if !exists_prefix || !exists_suffix {
+	tags, existsPrefix := strings.CutPrefix(tags, tagDelimiterChar)
+	tags, existsSuffix := strings.CutSuffix(tags, tagDelimiterChar)
+	if !existsPrefix || !existsSuffix {
 		return nil, errors.New("prefix or suffix is missing")
 	}
 	// split and return tags

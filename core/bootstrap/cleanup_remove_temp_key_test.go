@@ -75,10 +75,10 @@ func TestRemoveTempKeyFromRemoteHost_Success(t *testing.T) {
 
 // Test SFTP creation error path
 func TestRemoveTempKeyFromRemoteHost_SftpError(t *testing.T) {
-	origSshDial := sshDialFunc
+	origSSHDial := sshDialFunc
 	origSftpNew := sftpNewClient
 	defer func() {
-		sshDialFunc = origSshDial
+		sshDialFunc = origSSHDial
 		sftpNewClient = origSftpNew
 	}()
 
@@ -102,10 +102,10 @@ func TestRemoveTempKeyFromRemoteHost_SftpError(t *testing.T) {
 
 // Full success path: override sshDialFunc and sftpNewClient to use a fake SFTP
 func TestRemoveTempKeyFromRemoteHost_FullSuccess(t *testing.T) {
-	origSshDial := sshDialFunc
+	origSSHDial := sshDialFunc
 	origSftpNew := sftpNewClient
 	defer func() {
-		sshDialFunc = origSshDial
+		sshDialFunc = origSSHDial
 		sftpNewClient = origSftpNew
 	}()
 
@@ -162,9 +162,9 @@ type openErr struct{ *fakeSFTP }
 func (o *openErr) Open(path string) (io.ReadCloser, error) { return &errReader{}, nil }
 
 func TestRemoveTempKeyFromRemoteHost_OpenFail(t *testing.T) {
-	origSshDial := sshDialFunc
+	origSSHDial := sshDialFunc
 	origSftpNew := sftpNewClient
-	defer func() { sshDialFunc = origSshDial; sftpNewClient = origSftpNew }()
+	defer func() { sshDialFunc = origSSHDial; sftpNewClient = origSftpNew }()
 
 	tk, err := generateTemporaryKeyPair()
 	if err != nil {
@@ -184,9 +184,9 @@ func TestRemoveTempKeyFromRemoteHost_OpenFail(t *testing.T) {
 }
 
 func TestRemoveTempKeyFromRemoteHost_CreateWriteFail(t *testing.T) {
-	origSshDial := sshDialFunc
+	origSSHDial := sshDialFunc
 	origSftpNew := sftpNewClient
-	defer func() { sshDialFunc = origSshDial; sftpNewClient = origSftpNew }()
+	defer func() { sshDialFunc = origSSHDial; sftpNewClient = origSftpNew }()
 
 	tk, err := generateTemporaryKeyPair()
 	if err != nil {
@@ -207,9 +207,9 @@ func TestRemoveTempKeyFromRemoteHost_CreateWriteFail(t *testing.T) {
 }
 
 func TestRemoveTempKeyFromRemoteHost_ReadError(t *testing.T) {
-	origSshDial := sshDialFunc
+	origSSHDial := sshDialFunc
 	origSftpNew := sftpNewClient
-	defer func() { sshDialFunc = origSshDial; sftpNewClient = origSftpNew }()
+	defer func() { sshDialFunc = origSSHDial; sftpNewClient = origSftpNew }()
 
 	tk, err := generateTemporaryKeyPair()
 	if err != nil {

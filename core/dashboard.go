@@ -26,7 +26,7 @@ type DashboardData struct {
 
 // BuildDashboardData collects accounts, keys, system key and recent audit logs,
 // and computes aggregated metrics for the dashboard.
-// AccountReader exposes account read operations core needs for dashboard metrics.
+// AccountReader provides account read operations core needs for dashboard metrics.
 type AccountReader interface {
 	GetAllAccounts() ([]model.Account, error)
 }

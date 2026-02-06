@@ -37,12 +37,12 @@ func TestDebugStoredTags(t *testing.T) {
 		t.Logf("stored tags rows: %+v", rows)
 
 		// Render the select used by GetAccountsByTagBun and inspect SQL
-		tag_qb, err := tags.QueryBuilderFromTagMatcherColumn("tags", "prod")
+		tagQb, err := tags.QueryBuilderFromTagMatcherColumn("tags", "prod")
 		if err != nil {
 			t.Fatalf("QueryBuilderFromTagMatcherColumn failed: %v", err)
 		}
 		sel := bdb.NewSelect().Model((*AccountModel)(nil))
-		sel = sel.ApplyQueryBuilder(tag_qb)
+		sel = sel.ApplyQueryBuilder(tagQb)
 		t.Logf("Rendered SQL: %s", sel.String())
 
 		// Try executing the select into account models to reproduce behavior
