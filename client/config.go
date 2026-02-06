@@ -3,6 +3,8 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package client
 
+import "github.com/toeirei/keymaster/config"
+
 // LogLevel represents the logging verbosity level.
 type LogLevel int
 
@@ -15,18 +17,12 @@ const (
 	Trace
 )
 
-type Config struct {
-	// add all options needed to initialize the client and its db connection here
-	LogLevel     LogLevel
-	DatabaseType string
-	DatabaseURI  string
-	// ...
-}
-
-func NewDefaultConfig() Config {
-	return Config{
-		LogLevel:     Info,
-		DatabaseType: "sqlite",
-		DatabaseURI:  ":memory:",
+func NewDefaultConfig() config.Config {
+	return config.Config{
+		Database: config.ConfigDatabase{
+			Type: "sqlite",
+			Dsn:  ":memory:",
+		},
+		Language: "de",
 	}
 }

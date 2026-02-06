@@ -9,12 +9,14 @@ import (
 	"log"
 	"time"
 
+	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/db"
 )
 
 type Client struct {
 	//lint:ignore U1000 Placeholder for future configuration wiring.
-	config Config
+	config config.Config
 	//lint:ignore U1000 Placeholder for future store wiring.
 	store core.Store
 	// NOTE:
@@ -74,8 +76,19 @@ type DecommisionAccountProgress struct {
 // New creates and initializes a new `Client` from the provided `Config` and
 // `logger`. The implementation should connect to the backing store, run any
 // migrations and return a ready-to-use client. Currently unimplemented.
-func New(config Config, logger *log.Logger) (*Client, error) {
-	return nil, errors.New("client.New not implemented")
+func New(config config.Config, logger *log.Logger) (*Client, error) {
+	// db.New(config.Database.Type, config.Database.Dsn)
+	store, err := db.NewStoreFromDSN(config.Database.Type, config.Database.Dsn)
+	_ = store // TODO can't use store yet, as it does not implement core.Store (wich it shouldn't but hey)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Client{
+		config: config,
+		log:    logger,
+		// store:  core.Store(store),
+	}, nil
 }
 
 // Close cleans up resources held by the client and closes any open

@@ -21,11 +21,12 @@ const RuntimeOS = runtime.GOOS
 
 // Config holds the application's configuration, loaded from file/env/flags.
 type Config struct {
-	Database struct {
-		Type string `mapstructure:"type"`
-		Dsn  string `mapstructure:"dsn"`
-	} `mapstructure:"database"`
-	Language string `mapstructure:"language"`
+	Database ConfigDatabase `mapstructure:"database"`
+	Language string         `mapstructure:"language"`
+}
+type ConfigDatabase struct {
+	Type string `mapstructure:"type"`
+	Dsn  string `mapstructure:"dsn"`
 }
 
 // GetConfigPath returns the full path for the configuration file.
