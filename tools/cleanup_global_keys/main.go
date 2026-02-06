@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/toeirei/keymaster/internal/core/db"
+	"github.com/toeirei/keymaster/core/db"
 )
 
 func main() {

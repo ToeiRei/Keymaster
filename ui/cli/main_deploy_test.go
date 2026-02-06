@@ -7,9 +7,9 @@ package cli
 import (
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/i18n"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/i18n"
 )
 
 func TestRunDeploymentForAccount_NoActiveSystemKey_ReturnsError(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core/db"
+	"github.com/toeirei/keymaster/core/db"
 )
 
 // TestKeyCommands_BasicFlow tests the key management workflow: add → list → show → set-expiry → enable-global → delete.

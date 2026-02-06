@@ -13,10 +13,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/i18n"
+	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/i18n"
 )
 
 // TestRotateKeyCmd_HelpText verifies rotate-key command help text is present

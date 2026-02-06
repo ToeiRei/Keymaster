@@ -7,8 +7,8 @@ package main
 import (
 	log "github.com/charmbracelet/log"
 
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/i18n"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/i18n"
 )
 
 func main() {

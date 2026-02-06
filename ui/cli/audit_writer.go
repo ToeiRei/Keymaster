@@ -6,3 +6,7 @@ package cli
 
 // Note: audit writer helper removed — prefer calling `db.DefaultAuditWriter()`
 // directly where needed.
+import (
+	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/model"
+)

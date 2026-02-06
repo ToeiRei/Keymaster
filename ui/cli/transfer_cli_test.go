@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/core/db"
+	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/db"
 )
 
 type testDeployer struct{}

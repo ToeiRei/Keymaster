@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/core/security"
-	"github.com/toeirei/keymaster/internal/uiadapters"
+	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/security"
+	"github.com/toeirei/keymaster/uiadapters"
 )
 
 // Test cliKeyGenerator delegates to crypto/ssh generator

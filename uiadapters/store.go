@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/core/keys"
-	"github.com/toeirei/keymaster/internal/core/logging"
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/keys"
+	"github.com/toeirei/keymaster/core/logging"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 // Compile-time interface checks

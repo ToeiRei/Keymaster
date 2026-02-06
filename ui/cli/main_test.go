@@ -18,9 +18,9 @@ import (
 	log "github.com/charmbracelet/log"
 
 	"github.com/spf13/viper"
-	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/i18n"
+	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/i18n"
 	"golang.org/x/crypto/ssh"
 )
 
