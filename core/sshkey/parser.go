@@ -2,7 +2,7 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-// package sshkey provides utilities for parsing and validating SSH key data.
+// Package sshkey provides utilities for parsing and validating SSH key data.
 // It includes functions to parse authorized_keys lines, extract Keymaster-specific
 // metadata, and check for weak cryptographic algorithms.
 package sshkey // import "github.com/toeirei/keymaster/core/sshkey"

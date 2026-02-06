@@ -2,7 +2,7 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-// package ssh provides cryptographic helpers for SSH key operations.
+// Package ssh provides cryptographic helpers for SSH key operations.
 // This file contains logic for generating new SSH key pairs.
 package ssh // import "github.com/toeirei/keymaster/core/crypto/ssh"
 

@@ -8,7 +8,7 @@ import (
 	"github.com/toeirei/keymaster/core/model"
 )
 
-func TestExtractNonKeymasterContent_Simple(t *testing.T) {
+func TestExtractNonKeymasterContentSimple(t *testing.T) {
 	content := "before\n# Keymaster Managed Keys (Serial: 1)\nssh-ed25519 AAA foo@a\n# comment\nafter\n"
 	got := extractNonKeymasterContent(content)
 	if !strings.Contains(got, "before") || !strings.Contains(got, "after") {
@@ -59,7 +59,7 @@ func (k *kl3) GetAllPublicKeys() ([]model.PublicKey, error) {
 	return out, nil
 }
 
-func TestRemoveSelectiveKeymasterContent_EndToEnd(t *testing.T) {
+func TestRemoveSelectiveKeymasterContentEndToEnd(t *testing.T) {
 	auth := "pre\n# Keymaster Managed Keys (Serial: 1)\nssh-ed25519 AAA key1\n# end\npost\n"
 	deployer := &fd3{content: []byte(auth)}
 
@@ -90,7 +90,7 @@ func TestRemoveSelectiveKeymasterContent_EndToEnd(t *testing.T) {
 	}
 }
 
-func TestGenerateSelectiveKeysContent_Basic(t *testing.T) {
+func TestGenerateSelectiveKeysContentBasic(t *testing.T) {
 	sk := &model.SystemKey{Serial: 5, PublicKey: "ssh-ed25519 AAA pub"}
 	kr := &kr3{active: sk, by: map[int]*model.SystemKey{5: sk}}
 	kl := &kl3{globals: []model.PublicKey{{ID: 10, Algorithm: "ssh-ed25519", KeyData: "G", Comment: "g"}}, acc: map[int][]model.PublicKey{7: {{ID: 11, Algorithm: "ssh-ed25519", KeyData: "A", Comment: "a"}}}}

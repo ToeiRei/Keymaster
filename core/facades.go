@@ -27,7 +27,6 @@ import (
 	"github.com/toeirei/keymaster/core/sshkey"
 )
 
-// Option/result types (placeholders) ---------------------------------------
 // DeployResult represents the outcome of a single account deployment.
 type DeployResult struct {
 	// Account is the account that was the target of the deployment.

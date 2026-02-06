@@ -80,11 +80,11 @@ func (s *Secret) Scan(src interface{}) error {
 	}
 }
 
-// Helper to create a Secret from a string input (callers should zero any
-// intermediate []byte they create from user input).
+// FromString creates a Secret from a string input. Callers should zero any
+// intermediate []byte they create from user input.
 func FromString(in string) Secret { return Secret([]byte(in)) }
 
-// Helper to create a Secret from bytes (it makes a copy).
+// FromBytes creates a Secret from bytes (it makes a copy).
 func FromBytes(in []byte) Secret {
 	out := make([]byte, len(in))
 	copy(out, in)
