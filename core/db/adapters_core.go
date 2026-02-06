@@ -11,5 +11,4 @@
 // To avoid import cycles, adapters that bridge `internal/db` -> `internal/core`
 // live in `internal/ui` (which already imports both packages). Keep this file
 // as a placeholder to document that adapters live elsewhere.
-
 package db

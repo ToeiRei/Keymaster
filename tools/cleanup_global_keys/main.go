@@ -4,7 +4,6 @@
 
 // This is a one-time cleanup utility to remove global keys from the account_keys table.
 // Global keys should only exist in public_keys with is_global=1, not in account_keys.
-
 package main
 
 import (

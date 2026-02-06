@@ -6,7 +6,6 @@
 // application using the Cobra library. It defines the root command,
 // subcommands (like deploy, audit, rotate-key), flags, and the main
 // entry point for execution.
-
 package cli
 
 import (
