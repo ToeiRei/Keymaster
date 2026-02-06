@@ -4,7 +4,7 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-// package deploy provides functionality for connecting to remote hosts via SSH
+// Package deploy provides functionality for connecting to remote hosts via SSH
 // and managing their authorized_keys files. This file contains the Windows-specific
 // implementation for locating the SSH agent.
 package deploy // import "github.com/toeirei/keymaster/core/deploy"

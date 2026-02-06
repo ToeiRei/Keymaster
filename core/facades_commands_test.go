@@ -188,7 +188,8 @@ func TestRunTrustHostCmd_SaveAndNoSave(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error saving hostkey: %v", err)
 	}
-	if !strings.HasPrefix(key, "hk") && key != "hk" { /* ok */
+	if !(strings.HasPrefix(key, "hk") || key == "hk") {
+		t.Fatalf("unexpected host key: %q", key)
 	}
 	if _, ok := st.known["host"]; !ok {
 		t.Fatalf("expected known host saved")

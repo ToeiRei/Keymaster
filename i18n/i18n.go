@@ -2,7 +2,7 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-// package i18n handles internationalization for Keymaster.
+// Package i18n handles internationalization for Keymaster.
 // It uses go-i18n to load and manage translation files, and provides
 // a simple interface for the rest of the application to get translated strings.
 package i18n // import "github.com/toeirei/keymaster/i18n"

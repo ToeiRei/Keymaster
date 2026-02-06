@@ -620,6 +620,7 @@ func IntegrateDataFromBackupBun(bdb *bun.DB, backup *model.BackupData) error {
 }
 
 // --- Public key helpers ---
+
 // GetAllPublicKeysBun retrieves all public keys ordered by comment.
 func GetAllPublicKeysBun(bdb *bun.DB) ([]model.PublicKey, error) {
 	ctx := context.Background()
@@ -831,6 +832,7 @@ func SearchPublicKeysBun(bdb *bun.DB, q string) ([]model.PublicKey, error) {
 }
 
 // --- Known hosts helpers ---
+
 func GetKnownHostKeyBun(bdb *bun.DB, hostname string) (string, error) {
 	ctx := context.Background()
 	var kh KnownHostModel
@@ -851,6 +853,7 @@ func AddKnownHostKeyBun(bdb *bun.DB, hostname, key string) error {
 }
 
 // --- Bootstrap session helpers ---
+
 func SaveBootstrapSessionBun(bdb *bun.DB, id, username, hostname, label, tags, tempPublicKey string, expiresAt time.Time, status string) error {
 	ctx := context.Background()
 	_, err := ExecRaw(ctx, bdb, `INSERT INTO bootstrap_sessions (id, username, hostname, label, tags, temp_public_key, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, id, username, hostname, label, tags, tempPublicKey, expiresAt, status)
@@ -913,6 +916,7 @@ func GetOrphanedBootstrapSessionsBun(bdb *bun.DB) ([]*model.BootstrapSession, er
 }
 
 // --- Account update helpers ---
+
 func GetAccountByIDBun(bdb *bun.DB, id int) (*model.Account, error) {
 	ctx := context.Background()
 	var am AccountModel
@@ -1015,6 +1019,7 @@ func markAccountsDirtyByIDs(ctx context.Context, bdb *bun.DB, ids []int) error {
 }
 
 // --- System key helpers ---
+
 func GetSystemKeyBySerialBun(bdb *bun.DB, serial int) (*model.SystemKey, error) {
 	ctx := context.Background()
 	var sk SystemKeyModel

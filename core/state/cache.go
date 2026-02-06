@@ -2,7 +2,7 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-// package state provides a secure, in-memory cache for transient application
+// Package state provides a secure, in-memory cache for transient application
 // state, such as passwords or passphrases, that need to be shared between
 // different parts of the application (e.g., CLI flags and TUI components).
 package state
