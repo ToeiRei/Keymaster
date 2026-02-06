@@ -10,7 +10,7 @@ import (
 
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 // coreKeyReader adapts package-level DB helpers to core.KeyReader.

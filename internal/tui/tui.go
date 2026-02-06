@@ -18,9 +18,9 @@ import (
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/core/db"
+	"github.com/toeirei/keymaster/internal/core/model"
 	"github.com/toeirei/keymaster/internal/i18n"
 	"github.com/toeirei/keymaster/internal/logging"
-	"github.com/toeirei/keymaster/internal/model"
 	tuidbg "github.com/toeirei/keymaster/internal/tui/debug"
 	"github.com/toeirei/keymaster/internal/ui"
 )

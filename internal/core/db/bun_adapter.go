@@ -14,7 +14,7 @@ import (
 
 	"github.com/bobg/go-generics/v4/slices"
 	"github.com/toeirei/keymaster/internal/core/db/tags"
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 	"github.com/uptrace/bun"
 )
 

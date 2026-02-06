@@ -4,7 +4,7 @@
 
 package core
 
-import "github.com/toeirei/keymaster/internal/model"
+import "github.com/toeirei/keymaster/internal/core/model"
 
 // AccountSearcherFunc is a lightweight adapter type so core doesn't need to
 // import UI searcher interfaces. Callers may pass a function that performs

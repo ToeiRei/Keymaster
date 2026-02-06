@@ -23,8 +23,8 @@ import (
 	"github.com/toeirei/keymaster/internal/core/bootstrap"
 	"github.com/toeirei/keymaster/internal/i18n"
 
+	"github.com/toeirei/keymaster/internal/core/model"
 	"github.com/toeirei/keymaster/internal/core/sshkey"
-	"github.com/toeirei/keymaster/internal/model"
 )
 
 // Option/result types (placeholders) ---------------------------------------
