@@ -210,7 +210,7 @@ func TestGetConfigPath(t *testing.T) {
 
 	for _, tt := range cases {
 		// Only run tests that match the current OS
-		if tt.goos != cfg.GOOS_RUNTIME {
+		if tt.goos != cfg.RuntimeOS {
 			continue
 		}
 

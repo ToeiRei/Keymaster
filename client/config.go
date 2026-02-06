@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package client
 
-// TODO move into seperate package
+// LogLevel represents the logging verbosity level.
 type LogLevel int
 
 const (
@@ -19,7 +19,7 @@ type Config struct {
 	// add all options needed to initialize the client and its db connection here
 	LogLevel     LogLevel
 	DatabaseType string
-	DatabaseUri  string
+	DatabaseURI  string
 	// ...
 }
 
@@ -27,6 +27,6 @@ func NewDefaultConfig() Config {
 	return Config{
 		LogLevel:     Info,
 		DatabaseType: "sqlite",
-		DatabaseUri:  ":memory:",
+		DatabaseURI:  ":memory:",
 	}
 }

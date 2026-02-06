@@ -160,12 +160,12 @@ func TestWriteConfigFile_SystemPath(t *testing.T) {
 
 	// Verify file exists at expected path
 	expectedPath := filepath.Join(tmpSystem, "Keymaster", "keymaster.yaml")
-	if cfg.GOOS_RUNTIME != "windows" {
+	if cfg.RuntimeOS != "windows" {
 		expectedPath = "/etc/keymaster/keymaster.yaml"
 	}
 
 	// On Windows with temp dir, check the temp path
-	if cfg.GOOS_RUNTIME == "windows" {
+	if cfg.RuntimeOS == "windows" {
 		if _, err := os.Stat(expectedPath); err != nil {
 			t.Fatalf("expected system config at %s, stat error: %v", expectedPath, err)
 		}
@@ -431,7 +431,7 @@ func TestWriteConfigFile_ReadonlyDirectory(t *testing.T) {
 	// This should fail to create subdirectory in readonly parent
 	err := cfg.WriteConfigFile(&c, false)
 	// On Windows, readonly doesn't always prevent subdirectory creation, so we may get nil
-	if err == nil && cfg.GOOS_RUNTIME != "windows" {
+	if err == nil && cfg.RuntimeOS != "windows" {
 		t.Logf("expected permission error, got nil (system may allow creation)")
 	}
 	if err != nil && !strings.Contains(err.Error(), "permission") && !strings.Contains(err.Error(), "denied") {
@@ -467,7 +467,7 @@ func TestLoadConfig_EmptyDefaults(t *testing.T) {
 
 // TestGetConfigPath_UserConfigDirError simulates os.UserConfigDir() failure
 func TestGetConfigPath_UserConfigDirError(t *testing.T) {
-	if cfg.GOOS_RUNTIME == "windows" {
+	if cfg.RuntimeOS == "windows" {
 		t.Skip("difficult to simulate UserConfigDir failure on Windows")
 	}
 
@@ -492,7 +492,7 @@ func TestGetConfigPath_UserConfigDirError(t *testing.T) {
 
 // isAdmin checks if the process has elevated privileges (Windows admin or Unix root)
 func isAdmin() bool {
-	if cfg.GOOS_RUNTIME == "windows" {
+	if cfg.RuntimeOS == "windows" {
 		// On Windows, check if we can write to ProgramData
 		pd := os.Getenv("ProgramData")
 		if pd == "" {

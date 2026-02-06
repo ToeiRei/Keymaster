@@ -24,9 +24,7 @@ type Client struct {
 	log *log.Logger
 }
 
-// Package client provides a high-level client API for interacting with
-// Keymaster programmatically. The concrete implementation is currently
-// partial; most methods are placeholders and return not-implemented errors.
+// --- Mock types that will later be imported or defined seperately ---
 
 // --- Mock types that will later be imported or defined seperately ---
 // ID is a local identifier type used by the client API.

@@ -17,8 +17,8 @@ import (
 	yaml "gopkg.in/yaml.v3"
 )
 
-// GOOS_RUNTIME is the runtime OS, exposed for testing.
-const GOOS_RUNTIME = runtime.GOOS
+// RuntimeOS is the runtime OS, exposed for testing.
+const RuntimeOS = runtime.GOOS
 
 // Config holds the application's configuration, loaded from file/env/flags.
 type Config struct {
@@ -59,7 +59,7 @@ func GetConfigPath(system bool) (string, error) {
 	return filepath.Join(configDir, "keymaster.yaml"), nil
 }
 
-func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_config_file_path *string) (T, error) {
+func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additionalConfigFilePath *string) (T, error) {
 	var c T
 
 	// 1. Set defaults
@@ -81,8 +81,8 @@ func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additional_c
 
 	// Build a list of candidate config file paths to check for zero-length files.
 	var candidateFiles []string
-	if additional_config_file_path != nil {
-		candidateFiles = append(candidateFiles, *additional_config_file_path)
+	if additionalConfigFilePath != nil {
+		candidateFiles = append(candidateFiles, *additionalConfigFilePath)
 	} else {
 		if userConfigPath, err := GetConfigPath(false); err == nil {
 			candidateFiles = append(candidateFiles, userConfigPath)
