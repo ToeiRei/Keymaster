@@ -12,26 +12,29 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/components/stack"
 	"github.com/toeirei/keymaster/ui/tui/models/views/dashboard"
 	"github.com/toeirei/keymaster/ui/tui/models/views/testpopup1"
+	"github.com/toeirei/keymaster/ui/tui/models/views/testview1"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
 type Model struct {
 	stack          *stack.Model
+	router         *util.Model
 	routerControll router.Controll
 }
 
 func New() *Model {
 	// stack {
+	// 	 menu
 	//   router {
-	// 	   menu
-	// 	   debug // TODO replace with dashboard later
+	// 	   dashboard
 	// 	 }
 	// }
 
-	_menu := util.ModelPointer(menu.New(
+	menuPtr := util.ModelPointer(menu.New(
 		menu.WithItem("dashboard", "Dashboard"),
 		menu.WithItem("test", "Tests",
 			menu.WithItem("test.popup1", "Popup Test 1"),
+			menu.WithItem("test.view1", "View Test 1"),
 		),
 		menu.WithItem("projects", "Projects",
 			menu.WithItem("proj_active", "Active Projects",
@@ -102,17 +105,19 @@ func New() *Model {
 		),
 		menu.WithItem("feedback", "User Feedback"),
 	))
-	_dashboard := util.ModelPointer(dashboard.New())
-	_router, routerControll := router.New(_dashboard)
-	_stack := stack.New(
+	dashboardPtr := util.ModelPointer(dashboard.New())
+	routerModel, routerControll := router.New(dashboardPtr)
+	routerPtr := util.ModelPointer(routerModel)
+	stackModel := stack.New(
 		stack.WithOrientation(stack.Horizontal),
 		stack.WithFocusNext(),
-		stack.WithItem(_menu, menu.SizeConfig),
-		stack.WithItem(util.ModelPointer(_router), stack.VariableSize(1)),
+		stack.WithItem(menuPtr, menu.SizeConfig),
+		stack.WithItem(routerPtr, stack.VariableSize(1)),
 	)
 
 	return &Model{
-		stack:          _stack,
+		stack:          stackModel,
+		router:         routerPtr,
 		routerControll: routerControll,
 	}
 }
@@ -126,13 +131,26 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(menu.ItemSelected); ok {
 		switch msg.Id {
 		case "test.popup1":
-			// popup example
+			// popup example 1
 			return popup.Open(util.ModelPointer(testpopup1.New()))
+		case "test.view1":
+			// view example 1
+			return m.routerControll.Push(util.ModelPointer(testview1.New(m.routerControll)))
 		}
 	}
 
 	// pass other messages to stack
-	return m.stack.Update(msg)
+	cmd1 := m.stack.Update(msg)
+
+	// adjust the stacks focus if the potentially router changed
+	var cmd2 tea.Cmd
+	if router.IsRouterMsg(msg) {
+		util.BorrowModelFunc(m.router, func(r *router.Model) {
+			cmd2 = m.stack.SetFocus(min(len(r.GetStack())-1, 1))
+		})
+	}
+
+	return tea.Batch(cmd1, cmd2)
 }
 
 func (m *Model) View() string {
