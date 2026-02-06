@@ -9,7 +9,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
-var routerId = 1 // TODO change to atomic int... just to be sure
+var routerID = 1 // TODO change to atomic int... just to be sure
 
 type Model struct {
 	id         int
@@ -18,13 +18,13 @@ type Model struct {
 	baseKeyMap help.KeyMap
 }
 
-func New(initial_model *util.Model) (*Model, Controll) {
-	routerId++
+func New(initialModel *util.Model) (*Model, Controll) {
+	routerID++
 	return &Model{
-			id:         routerId - 1,
-			modelStack: []*util.Model{initial_model},
+			id:         routerID - 1,
+			modelStack: []*util.Model{initialModel},
 		}, Controll{
-			rid: routerId - 1,
+			rid: routerID - 1,
 		}
 }
 
@@ -91,7 +91,7 @@ func (m *Model) GetStack() []*util.Model {
 
 func (m *Model) isMsgOwner(msg tea.Msg) bool {
 	rmsg, ok := msg.(RouterMsg)
-	return ok && rmsg.routerId() == m.id
+	return ok && rmsg.routerID() == m.id
 }
 
 func IsRouterMsg(msg tea.Msg) bool {

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
+// Package keyhelp contains helper views used to render key help in the TUI.
 package keyhelp
 
 import (
@@ -13,6 +14,7 @@ import (
 )
 
 // FIX help.Model.ShortHelpView is bugged
+// ShortHelpView returns a compact help view for short displays.
 func ShortHelpView(m help.Model, bindings []key.Binding) string {
 	if len(bindings) == 0 {
 		return ""
@@ -75,6 +77,7 @@ func ShortHelpView(m help.Model, bindings []key.Binding) string {
 }
 
 // FIX help.Model.FullHelpView is bugged
+// FullHelpView returns the full help view content.
 func FullHelpView(m help.Model, groups [][]key.Binding) string {
 	if len(groups) == 0 {
 		return ""

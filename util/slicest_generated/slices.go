@@ -7,7 +7,7 @@ import "slices"
 
 // WARNING this file is completely llm generated based on a few implementations of generic slice helpers and is not safe to be used in production!
 
-// Get
+// Get returns the element at index idx (supports negative indexing).
 func Get[T any, S ~[]T](s S, idx int) T {
 	if idx < 0 {
 		idx += len(s)
@@ -15,7 +15,7 @@ func Get[T any, S ~[]T](s S, idx int) T {
 	return s[idx]
 }
 
-// Put
+// Put sets the element at index idx to val (supports negative indexing).
 func Put[T any, S ~[]T](s S, idx int, val T) {
 	if idx < 0 {
 		idx += len(s)
@@ -23,12 +23,12 @@ func Put[T any, S ~[]T](s S, idx int, val T) {
 	s[idx] = val
 }
 
-// Append
+// Append appends values to the slice and returns the extended slice.
 func Append[T any, S ~[]T](s S, vals ...T) S {
 	return append(s, vals...)
 }
 
-// Insert
+// Insert inserts values at idx and returns the resulting slice.
 func Insert[S ~[]E, E any](s S, idx int, vals ...E) S {
 	if idx < 0 {
 		idx += len(s)
@@ -36,17 +36,17 @@ func Insert[S ~[]E, E any](s S, idx int, vals ...E) S {
 	return slices.Insert(s, idx, vals...)
 }
 
-// Delete
+// Delete removes the range [i:j] from the slice.
 func Delete[S ~[]E, E any](s S, i, j int) S {
 	return RemoveTo(s, i, j)
 }
 
-// Replace
+// Replace replaces the range [i:j] with the provided values.
 func Replace[S ~[]E, E any](s S, i, j int, v ...E) S {
 	return ReplaceTo(s, i, j, v...)
 }
 
-// ReplaceN
+// ReplaceN replaces n elements starting at idx with vals and returns the new slice.
 func ReplaceN[T any, S ~[]T](s S, idx, n int, vals ...T) S {
 	if idx < 0 {
 		idx += len(s)
@@ -54,7 +54,7 @@ func ReplaceN[T any, S ~[]T](s S, idx, n int, vals ...T) S {
 	return slices.Replace(s, idx, idx+n, vals...)
 }
 
-// ReplaceTo
+// ReplaceTo replaces the range [from:to] with vals and returns the result.
 func ReplaceTo[T any, S ~[]T](s S, from, to int, vals ...T) S {
 	if from < 0 {
 		from += len(s)
@@ -67,7 +67,7 @@ func ReplaceTo[T any, S ~[]T](s S, from, to int, vals ...T) S {
 	return slices.Replace(s, from, to, vals...)
 }
 
-// RemoveN
+// RemoveN removes n elements starting at idx and returns the new slice.
 func RemoveN[T any, S ~[]T](s S, idx, n int) S {
 	if idx < 0 {
 		idx += len(s)
@@ -75,7 +75,7 @@ func RemoveN[T any, S ~[]T](s S, idx, n int) S {
 	return slices.Delete(s, idx, idx+n)
 }
 
-// RemoveTo
+// RemoveTo removes the range [from:to] and returns the resulting slice.
 func RemoveTo[T any, S ~[]T](s S, from, to int) S {
 	if from < 0 {
 		from += len(s)
@@ -88,7 +88,7 @@ func RemoveTo[T any, S ~[]T](s S, from, to int) S {
 	return slices.Delete(s, from, to)
 }
 
-// Prefix
+// Prefix returns the prefix of the slice up to idx.
 func Prefix[T any, S ~[]T](s S, idx int) S {
 	if idx < 0 {
 		idx += len(s)
@@ -97,6 +97,7 @@ func Prefix[T any, S ~[]T](s S, idx int) S {
 }
 
 // PrefixFunc
+// PrefixFuncX returns the longest prefix for which fn returns true for each element.
 func PrefixFuncX[T any, S ~[]T](s S, fn func(T) (bool, error)) (S, error) {
 	for i, v := range s {
 		ok, err := fn(v)
@@ -109,6 +110,8 @@ func PrefixFuncX[T any, S ~[]T](s S, fn func(T) (bool, error)) (S, error) {
 	}
 	return s, nil
 }
+
+// PrefixFunc returns the longest prefix for which fn returns true for each element.
 func PrefixFunc[T any, S ~[]T](s S, fn func(T) bool) S {
 	result, _ := PrefixFuncX(s, func(t T) (bool, error) {
 		return fn(t), nil
@@ -116,7 +119,7 @@ func PrefixFunc[T any, S ~[]T](s S, fn func(T) bool) S {
 	return result
 }
 
-// Suffix
+// Suffix returns the suffix of the slice starting at idx.
 func Suffix[T any, S ~[]T](s S, idx int) S {
 	if idx < 0 {
 		idx += len(s)
@@ -124,7 +127,7 @@ func Suffix[T any, S ~[]T](s S, idx int) S {
 	return s[idx:]
 }
 
-// Rindex
+// Rindex returns the last index of v in s or -1 if not found.
 func Rindex[T comparable, S ~[]T](s S, v T) int {
 	for i := len(s) - 1; i >= 0; i-- {
 		if s[i] == v {
@@ -135,6 +138,7 @@ func Rindex[T comparable, S ~[]T](s S, v T) int {
 }
 
 // RindexFunc
+// RindexFuncX finds the last index for which fn returns true.
 func RindexFuncX[T any, S ~[]T](s S, fn func(T) (bool, error)) (int, error) {
 	for i := len(s) - 1; i >= 0; i-- {
 		ok, err := fn(s[i])
@@ -147,6 +151,8 @@ func RindexFuncX[T any, S ~[]T](s S, fn func(T) (bool, error)) (int, error) {
 	}
 	return -1, nil
 }
+
+// RindexFunc finds the last index for which fn returns true.
 func RindexFunc[T any, S ~[]T](s S, fn func(T) bool) int {
 	result, _ := RindexFuncX(s, func(t T) (bool, error) {
 		return fn(t), nil
@@ -155,6 +161,7 @@ func RindexFunc[T any, S ~[]T](s S, fn func(T) bool) int {
 }
 
 // SuffixFunc
+// SuffixFuncX returns the longest suffix for which fn returns true on all elements backwards.
 func SuffixFuncX[T any, S ~[]T](s S, fn func(T) (bool, error)) (S, error) {
 	for i := len(s) - 1; i >= 0; i-- {
 		ok, err := fn(s[i])
@@ -167,6 +174,8 @@ func SuffixFuncX[T any, S ~[]T](s S, fn func(T) (bool, error)) (S, error) {
 	}
 	return s, nil
 }
+
+// SuffixFunc returns the longest suffix for which fn returns true on all elements backwards.
 func SuffixFunc[T any, S ~[]T](s S, fn func(T) bool) S {
 	result, _ := SuffixFuncX(s, func(t T) (bool, error) {
 		return fn(t), nil
@@ -174,7 +183,7 @@ func SuffixFunc[T any, S ~[]T](s S, fn func(T) bool) S {
 	return result
 }
 
-// SliceN
+// SliceN returns n elements starting at idx (supports negative indexing).
 func SliceN[T any, S ~[]T](s S, idx, n int) S {
 	if idx < 0 {
 		idx += len(s)
@@ -182,7 +191,7 @@ func SliceN[T any, S ~[]T](s S, idx, n int) S {
 	return s[idx : idx+n]
 }
 
-// SliceTo
+// SliceTo returns the slice from `from` up to `to` (supports negative indexing).
 func SliceTo[T any, S ~[]T](s S, from, to int) S {
 	if from < 0 {
 		from += len(s)
@@ -195,7 +204,7 @@ func SliceTo[T any, S ~[]T](s S, from, to int) S {
 	return s[from:to]
 }
 
-// Each
+// EachXI iterates over elements calling fn with index and value, returning on error.
 func EachXI[T any, S ~[]T](s S, fn func(int, T) error) error {
 	for i, v := range s {
 		if err := fn(i, v); err != nil {
@@ -222,7 +231,7 @@ func Each[T any, S ~[]T](s S, fn func(T)) {
 	})
 }
 
-// Map
+// MapXI maps elements to another slice using fn which receives index and value.
 func MapXI[T, U any, S ~[]T](s S, fn func(int, T) (U, error)) ([]U, error) {
 	if len(s) == 0 {
 		return nil, nil
@@ -255,7 +264,7 @@ func Map[T, U any, S ~[]T](s S, fn func(T) U) []U {
 	return result
 }
 
-// Accum
+// AccumX reduces the slice using fn which returns the accumulated value or an error.
 func AccumX[T any, S ~[]T](s S, fn func(T, T) (T, error)) (T, error) {
 	if len(s) == 0 {
 		var zero T
@@ -278,7 +287,7 @@ func Accum[T any, S ~[]T](s S, fn func(T, T) T) T {
 	return result
 }
 
-// Filter
+// FilterX returns a new slice containing elements for which fn returns true.
 func FilterX[T any, S ~[]T](s S, fn func(T) (bool, error)) (S, error) {
 	var result S
 	for _, v := range s {
@@ -299,7 +308,7 @@ func Filter[T any, S ~[]T](s S, fn func(T) bool) S {
 	return result
 }
 
-// Group
+// GroupX groups elements by a key produced by fn and returns a map[key]slice.
 func GroupX[T any, K comparable, S ~[]T](s S, fn func(T) (K, error)) (map[K]S, error) {
 	result := make(map[K]S)
 	for _, v := range s {
@@ -318,7 +327,7 @@ func Group[T any, K comparable, S ~[]T](s S, fn func(T) K) map[K]S {
 	return result
 }
 
-// Rotate
+// Rotate rotates the slice by n positions in-place.
 func Rotate[T any, S ~[]T](s S, n int) {
 	if n < 0 {
 		n = -n

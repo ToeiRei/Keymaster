@@ -68,24 +68,24 @@ func (m *Injector) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m *Injector) applyView(v1, v2 string) string {
-	v1_width, v1_height := lipgloss.Size(v1)
+	v1Width, v1Height := lipgloss.Size(v1)
 	// limit v2 dimensions to v1
-	v2 = lipgloss.NewStyle().MaxWidth(v1_width).MaxHeight(v1_height).Render(v2)
-	v2_width, v2_height := lipgloss.Size(v2)
+	v2 = lipgloss.NewStyle().MaxWidth(v1Width).MaxHeight(v1Height).Render(v2)
+	v2Width, v2Height := lipgloss.Size(v2)
 
-	offset_left := (v1_width - v2_width) / 2
-	offset_top := (v1_height - v2_height) / 2
+	offsetLeft := (v1Width - v2Width) / 2
+	offsetTop := (v1Height - v2Height) / 2
 
-	v1_lines := strings.Split(v1, "\n")
-	v2_lines := strings.Split(v2, "\n")
+	v1Lines := strings.Split(v1, "\n")
+	v2Lines := strings.Split(v2, "\n")
 
-	for i := range v2_lines {
-		v1_left := ansi.Truncate(v1_lines[i+offset_top], offset_left, "")
-		v1_right := ansi.TruncateLeft(v1_lines[i+offset_top], offset_left+v2_width, "")
-		v1_lines[i+offset_top] = v1_left + v2_lines[i] + v1_right
+	for i := range v2Lines {
+		v1Left := ansi.Truncate(v1Lines[i+offsetTop], offsetLeft, "")
+		v1Right := ansi.TruncateLeft(v1Lines[i+offsetTop], offsetLeft+v2Width, "")
+		v1Lines[i+offsetTop] = v1Left + v2Lines[i] + v1Right
 	}
 
-	return strings.Join(v1_lines, "\n")
+	return strings.Join(v1Lines, "\n")
 }
 
 func (m Injector) View() string {
