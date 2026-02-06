@@ -12,7 +12,7 @@ func (m *Model) handlePush(msg PushMsg) tea.Cmd {
 	// blur recent model
 	(*m.activeModelGet()).Blur()
 	// push new model
-	m.model_stack = append(m.model_stack, msg.Model)
+	m.modelStack = append(m.modelStack, msg.Model)
 	// initialize pushed model
 	return m.activeModelInit()
 }
@@ -21,7 +21,7 @@ func (m *Model) handlePush(msg PushMsg) tea.Cmd {
 func (m *Model) handlePop(msg PopMsg) tea.Cmd {
 	// pop and blur old models
 	for range msg.Count {
-		if len(m.model_stack) <= 1 {
+		if len(m.modelStack) <= 1 {
 			break
 		}
 		(*m.activeModelPop()).Blur()

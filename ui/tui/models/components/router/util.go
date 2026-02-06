@@ -9,16 +9,16 @@ import (
 )
 
 func (m *Model) activeModelGet() *util.Model {
-	return m.model_stack[len(m.model_stack)-1]
+	return m.modelStack[len(m.modelStack)-1]
 }
 
 func (m *Model) activeModelSet(model *util.Model) {
-	m.model_stack[len(m.model_stack)-1] = model
+	m.modelStack[len(m.modelStack)-1] = model
 }
 
 func (m *Model) activeModelPop() *util.Model {
 	model := m.activeModelGet()
-	m.model_stack = m.model_stack[:len(m.model_stack)-1]
+	m.modelStack = m.modelStack[:len(m.modelStack)-1]
 	return model
 }
 

@@ -12,17 +12,17 @@ import (
 var routerId = 1 // TODO change to atomic int... just to be sure
 
 type Model struct {
-	id          int
-	size        util.Size
-	model_stack []*util.Model
-	baseKeyMap  help.KeyMap
+	id         int
+	size       util.Size
+	modelStack []*util.Model
+	baseKeyMap help.KeyMap
 }
 
 func New(initial_model *util.Model) (*Model, Controll) {
 	routerId++
 	return &Model{
-			id:          routerId - 1,
-			model_stack: []*util.Model{initial_model},
+			id:         routerId - 1,
+			modelStack: []*util.Model{initial_model},
 		}, Controll{
 			rid: routerId - 1,
 		}
@@ -81,6 +81,13 @@ func (m *Model) Blur() {
 
 // *Model implements util.Model
 var _ util.Model = (*Model)(nil)
+
+func (m *Model) GetStack() []*util.Model {
+	stack := make([]*util.Model, len(m.modelStack))
+	copy(stack, m.modelStack)
+	return stack
+	// return append(make([]*util.Model, 0, len(m.modelStack)), m.modelStack...)
+}
 
 func (m *Model) isMsgOwner(msg tea.Msg) bool {
 	rmsg, ok := msg.(RouterMsg)
