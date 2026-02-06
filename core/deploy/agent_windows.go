@@ -7,7 +7,7 @@
 // package deploy provides functionality for connecting to remote hosts via SSH
 // and managing their authorized_keys files. This file contains the Windows-specific
 // implementation for locating the SSH agent.
-package deploy // import "github.com/toeirei/keymaster/internal/core/deploy"
+package deploy // import "github.com/toeirei/keymaster/core/deploy"
 
 import (
 	"net"

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 // computeAccountKeyHashTx computes a deterministic fingerprint of the authorized_keys

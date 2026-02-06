@@ -76,8 +76,8 @@ func TestCheckHostKeyAlgorithm_FromTestKeys(t *testing.T) {
 		path          string
 		expectWarning bool
 	}{
-		{"../../../testdata/ssh_host_rsa_key.pub", true},
-		{"../../../testdata/ssh_host_ed25519_key.pub", false},
+		{"../../testdata/ssh_host_rsa_key.pub", true},
+		{"../../testdata/ssh_host_ed25519_key.pub", false},
 	}
 
 	for _, f := range files {

@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 const unknownHostLabel = "(no hostname)"

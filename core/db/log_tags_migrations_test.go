@@ -7,7 +7,7 @@ package db
 import (
 	"testing"
 
-	dbtags "github.com/toeirei/keymaster/internal/core/db/tags"
+	dbtags "github.com/toeirei/keymaster/core/db/tags"
 	"github.com/uptrace/bun"
 )
 

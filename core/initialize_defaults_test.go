@@ -3,10 +3,10 @@ package core_test
 import (
 	"testing"
 
-	core "github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/core/deploy"
-	"github.com/toeirei/keymaster/internal/tui"
-	"github.com/toeirei/keymaster/internal/ui"
+	core "github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/deploy"
+	"github.com/toeirei/keymaster/ui"
+	"github.com/toeirei/keymaster/ui/tui"
 )
 
 func clearDefaults() {

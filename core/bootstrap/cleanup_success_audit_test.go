@@ -7,8 +7,8 @@ package bootstrap
 import (
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/testutil"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/testutil"
 )
 
 // Test that the bootstrap package's audit wrapper records a BOOTSTRAP_HOST action

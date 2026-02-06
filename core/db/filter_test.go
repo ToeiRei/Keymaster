@@ -3,7 +3,7 @@ package db
 import (
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 func TestFilterPublicKeysByTokens_Basics(t *testing.T) {

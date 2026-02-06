@@ -7,11 +7,11 @@ package deploy_test
 import (
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/core/security"
-	"github.com/toeirei/keymaster/internal/testutil"
+	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/security"
+	"github.com/toeirei/keymaster/testutil"
 )
 
 // TestDecommissionAccount_LogsAuditActions verifies that DecommissionAccount

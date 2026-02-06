@@ -8,7 +8,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 func TestAssignAndUnassignKeyOps(t *testing.T) {

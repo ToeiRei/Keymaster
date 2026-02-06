@@ -9,7 +9,7 @@ package db
 // keeping the canonical implementations centralized in `internal/testutil`.
 
 import (
-	testutil "github.com/toeirei/keymaster/internal/testutil"
+	testutil "github.com/toeirei/keymaster/testutil"
 )
 
 type FakeAccountSearcher = testutil.FakeAccountSearcher

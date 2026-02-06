@@ -14,8 +14,8 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 
-	genssh "github.com/toeirei/keymaster/internal/core/crypto/ssh"
-	"github.com/toeirei/keymaster/internal/core/security"
+	genssh "github.com/toeirei/keymaster/core/crypto/ssh"
+	"github.com/toeirei/keymaster/core/security"
 )
 
 // Success path when a valid unencrypted private key is provided.

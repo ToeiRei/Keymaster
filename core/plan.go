@@ -5,8 +5,8 @@
 package core
 
 import (
-	"github.com/toeirei/keymaster/internal/core/keys"
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/keys"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 // DeploymentPlan is a pure description of what should be deployed to a host.

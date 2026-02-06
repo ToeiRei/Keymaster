@@ -7,7 +7,7 @@ package core
 import (
 	"fmt"
 
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 // AssignFunc is a callback that performs the actual persistence of an

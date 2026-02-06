@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/pkg/sftp"
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 	"golang.org/x/crypto/ssh"
 )
 

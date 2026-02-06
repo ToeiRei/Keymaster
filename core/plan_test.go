@@ -7,7 +7,7 @@ package core
 import (
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 func TestBuildBootstrapDeploymentPlan_Basic(t *testing.T) {

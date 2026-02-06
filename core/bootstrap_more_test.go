@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core/bootstrap"
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/bootstrap"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 type spySessionStore struct {

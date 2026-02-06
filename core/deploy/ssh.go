@@ -8,7 +8,7 @@
 //
 // It includes configurable timeout support and enhanced error classification
 // to provide better user feedback when connections fail.
-package deploy // import "github.com/toeirei/keymaster/internal/core/deploy"
+package deploy // import "github.com/toeirei/keymaster/core/deploy"
 
 import (
 	"errors"
@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/pkg/sftp"
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/core/logging"
-	"github.com/toeirei/keymaster/internal/core/security"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/logging"
+	"github.com/toeirei/keymaster/core/security"
 	"golang.org/x/crypto/ssh"
 )
 

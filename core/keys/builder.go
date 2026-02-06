@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 // BuildAuthorizedKeysContent constructs the authorized_keys content given the

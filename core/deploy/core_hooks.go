@@ -7,8 +7,8 @@ package deploy
 import (
 	"errors"
 
-	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/core/security"
+	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/security"
 	"golang.org/x/crypto/ssh"
 )
 

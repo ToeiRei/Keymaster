@@ -5,7 +5,7 @@
 package core
 
 import (
-	"github.com/toeirei/keymaster/internal/core/bootstrap"
+	"github.com/toeirei/keymaster/core/bootstrap"
 )
 
 // NewSession creates a new bootstrap session (including temporary keypair)

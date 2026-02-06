@@ -19,12 +19,12 @@ import (
 	"time"
 
 	"github.com/klauspost/compress/zstd"
-	"github.com/toeirei/keymaster/internal/config"
-	"github.com/toeirei/keymaster/internal/core/bootstrap"
-	"github.com/toeirei/keymaster/internal/i18n"
+	"github.com/toeirei/keymaster/config"
+	"github.com/toeirei/keymaster/core/bootstrap"
+	"github.com/toeirei/keymaster/i18n"
 
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/core/sshkey"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/sshkey"
 )
 
 // Option/result types (placeholders) ---------------------------------------

@@ -7,9 +7,9 @@ package core
 import (
 	"fmt"
 
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/core/security"
-	"github.com/toeirei/keymaster/internal/core/state"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/security"
+	"github.com/toeirei/keymaster/core/state"
 )
 
 type builtinBootstrapDeployer struct{ d BootstrapDeployer }

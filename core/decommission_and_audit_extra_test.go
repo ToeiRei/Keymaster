@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/core/security"
-	"github.com/toeirei/keymaster/internal/i18n"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/security"
+	"github.com/toeirei/keymaster/i18n"
 )
 
 // Test when removeSystemKey=false and no excludes: non-keymaster content should be preserved

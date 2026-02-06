@@ -5,7 +5,7 @@
 // package deploy provides functionality for connecting to remote hosts via SSH
 // and managing their authorized_keys files. This file contains the logic for
 // generating the content of an authorized_keys file from database records.
-package deploy // import "github.com/toeirei/keymaster/internal/core/deploy"
+package deploy // import "github.com/toeirei/keymaster/core/deploy"
 
 import (
 	"fmt"
@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/core/keys"
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/keys"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 // SystemKeyRestrictions defines the SSH options applied to the Keymaster system key.

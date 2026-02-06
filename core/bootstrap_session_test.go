@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 // failingStore simulates a storage backend that fails on Save.

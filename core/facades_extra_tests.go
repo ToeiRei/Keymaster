@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 func TestExtractNonKeymasterContent_Simple(t *testing.T) {

@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/core/sshkey"
-	"github.com/toeirei/keymaster/internal/core/state"
-	"github.com/toeirei/keymaster/internal/i18n"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/sshkey"
+	"github.com/toeirei/keymaster/core/state"
+	"github.com/toeirei/keymaster/i18n"
 )
 
 // AuditAccountStrict performs a strict audit by comparing the full normalized

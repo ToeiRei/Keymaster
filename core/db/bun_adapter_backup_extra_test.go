@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 // Test KnownHost get/add/replace behavior and Import/Integrate audit timestamp handling.

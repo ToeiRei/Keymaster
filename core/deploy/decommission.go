@@ -4,18 +4,18 @@
 
 // Package deploy provides functionality for decommissioning accounts by
 // removing their authorized_keys files before deleting from the database.
-package deploy // import "github.com/toeirei/keymaster/internal/core/deploy"
+package deploy // import "github.com/toeirei/keymaster/core/deploy"
 
 import (
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/core/logging"
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/core/security"
-	"github.com/toeirei/keymaster/internal/core/state"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/logging"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/security"
+	"github.com/toeirei/keymaster/core/state"
 )
 
 // DecommissionOptions configures how accounts are decommissioned

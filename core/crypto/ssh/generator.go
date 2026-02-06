@@ -4,7 +4,7 @@
 
 // package ssh provides cryptographic helpers for SSH key operations.
 // This file contains logic for generating new SSH key pairs.
-package ssh // import "github.com/toeirei/keymaster/internal/core/crypto/ssh"
+package ssh // import "github.com/toeirei/keymaster/core/crypto/ssh"
 
 import (
 	"crypto/ed25519"

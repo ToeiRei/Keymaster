@@ -10,8 +10,8 @@ import (
 
 	"golang.org/x/crypto/ssh/agent"
 
-	genssh "github.com/toeirei/keymaster/internal/core/crypto/ssh"
-	"github.com/toeirei/keymaster/internal/core/security"
+	genssh "github.com/toeirei/keymaster/core/crypto/ssh"
+	"github.com/toeirei/keymaster/core/security"
 )
 
 func TestNewDeployer_NoAgentAvailable(t *testing.T) {

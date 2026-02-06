@@ -6,7 +6,7 @@
 // It abstracts the underlying database (e.g., SQLite, PostgreSQL) behind a
 // consistent interface, allowing the rest of the application to interact with
 // the database in a uniform way.
-package db // import "github.com/toeirei/keymaster/internal/core/db"
+package db // import "github.com/toeirei/keymaster/core/db"
 
 import (
 	"database/sql"
@@ -24,8 +24,8 @@ import (
 
 	"context" // Added context import for maintenance timeouts
 
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/core/security"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/security"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/mysqldialect"
 	"github.com/uptrace/bun/dialect/pgdialect"

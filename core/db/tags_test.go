@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core/db/tags"
+	"github.com/toeirei/keymaster/core/db/tags"
 )
 
 // Test Split/Join roundtrip and validation behavior.

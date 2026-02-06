@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/testutil"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/testutil"
 )
 
 // TestCleanupOrphanedSession_LogsAudit verifies that cleaning up an orphaned

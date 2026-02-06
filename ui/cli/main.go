@@ -28,10 +28,6 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/toeirei/keymaster/core/deploy"
-	"github.com/toeirei/keymaster/ui"
-
-	// bootstrap lifecycle is delegated to core facades now
 
 	log "github.com/charmbracelet/log"
 	"github.com/toeirei/keymaster/config"

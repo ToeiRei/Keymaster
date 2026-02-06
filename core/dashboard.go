@@ -7,8 +7,8 @@ package core
 import (
 	"sort"
 
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 // DashboardData holds aggregated values for the main dashboard.

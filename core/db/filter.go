@@ -7,7 +7,7 @@ package db
 import (
 	"strings"
 
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 // FilterAccountsByTokens returns the subset of `accounts` that match all tokens.

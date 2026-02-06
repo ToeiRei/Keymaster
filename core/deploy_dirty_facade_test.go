@@ -8,8 +8,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/core/security"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/security"
 )
 
 type fakeStoreForDirty struct {

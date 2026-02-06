@@ -7,7 +7,7 @@ package core
 import (
 	"fmt"
 
-	"github.com/toeirei/keymaster/internal/core/crypto/ssh"
+	"github.com/toeirei/keymaster/core/crypto/ssh"
 )
 
 // CreateInitialSystemKey generates a new system keypair using the provided

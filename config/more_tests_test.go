@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	cfg "github.com/toeirei/keymaster/internal/config"
+	cfg "github.com/toeirei/keymaster/config"
 )
 
 func TestMergeLegacyConfigViaLoadConfig(t *testing.T) {

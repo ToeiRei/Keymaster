@@ -9,7 +9,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/core"
 )
 
 type Client struct {

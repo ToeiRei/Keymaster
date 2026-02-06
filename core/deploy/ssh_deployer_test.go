@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core/security"
+	"github.com/toeirei/keymaster/core/security"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -35,11 +35,11 @@ func (m *mockSftp) Close() error { return nil }
 // TestNewDeployerWithExpectedHostKey_Success ensures that when the presented
 // host key matches the expected key, a Deployer is returned successfully.
 func TestNewDeployerWithExpectedHostKey_Success(t *testing.T) {
-	priv, err := os.ReadFile("../../../testdata/ssh_host_ed25519_key")
+	priv, err := os.ReadFile("../../testdata/ssh_host_ed25519_key")
 	if err != nil {
 		t.Fatalf("failed to read private key: %v", err)
 	}
-	pubData, err := os.ReadFile("../../../testdata/ssh_host_ed25519_key.pub")
+	pubData, err := os.ReadFile("../../testdata/ssh_host_ed25519_key.pub")
 	if err != nil {
 		t.Fatalf("failed to read public key: %v", err)
 	}
@@ -80,11 +80,11 @@ func TestNewDeployerWithExpectedHostKey_Success(t *testing.T) {
 // TestNewDeployerWithExpectedHostKey_Mismatch ensures that when the presented
 // host key does not match the expected key, an error is returned.
 func TestNewDeployerWithExpectedHostKey_Mismatch(t *testing.T) {
-	priv, err := os.ReadFile("../../../testdata/ssh_host_ed25519_key")
+	priv, err := os.ReadFile("../../testdata/ssh_host_ed25519_key")
 	if err != nil {
 		t.Fatalf("failed to read private key: %v", err)
 	}
-	pubData, err := os.ReadFile("../../../testdata/ssh_host_rsa_key.pub")
+	pubData, err := os.ReadFile("../../testdata/ssh_host_rsa_key.pub")
 	if err != nil {
 		t.Fatalf("failed to read alternate public key: %v", err)
 	}

@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/core/security"
-	"github.com/toeirei/keymaster/internal/core/sshkey"
-	"github.com/toeirei/keymaster/internal/core/state"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/security"
+	"github.com/toeirei/keymaster/core/sshkey"
+	"github.com/toeirei/keymaster/core/state"
 )
 
 // ImportRemoteKeys connects to a host, reads its authorized_keys, imports new keys

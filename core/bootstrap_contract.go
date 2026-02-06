@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core/bootstrap"
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/core/security"
+	"github.com/toeirei/keymaster/core/bootstrap"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/security"
 )
 
 // BootstrapParams contains the information required to perform a bootstrap

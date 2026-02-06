@@ -6,7 +6,7 @@
 // and managing their authorized_keys files. This file contains the logic for
 // importing public keys from a remote host's authorized_keys file into the
 // Keymaster database.
-package deploy // import "github.com/toeirei/keymaster/internal/core/deploy"
+package deploy // import "github.com/toeirei/keymaster/core/deploy"
 
 import (
 	"bufio"
@@ -15,11 +15,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/core/model"
-	"github.com/toeirei/keymaster/internal/core/security"
-	"github.com/toeirei/keymaster/internal/core/sshkey"
-	"github.com/toeirei/keymaster/internal/core/state"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/security"
+	"github.com/toeirei/keymaster/core/sshkey"
+	"github.com/toeirei/keymaster/core/state"
 )
 
 // ImportRemoteKeys connects to a host, reads its authorized_keys, imports new keys

@@ -4,7 +4,7 @@
 
 package bootstrap
 
-import "github.com/toeirei/keymaster/internal/core/db"
+import "github.com/toeirei/keymaster/core/db"
 
 // package-level audit writer override for tests
 var auditWriter db.AuditWriter

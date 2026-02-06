@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 func TestGetSetAccountIsDirty(t *testing.T) {

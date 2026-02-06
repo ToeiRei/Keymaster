@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/core/db/tags"
+	"github.com/toeirei/keymaster/core/db/tags"
 )
 
 // Test QueryBuilderFromTagMatcher end-to-end by inserting accounts and

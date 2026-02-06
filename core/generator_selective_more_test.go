@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 // genKR3 implements KeyReader for tests

@@ -4,7 +4,7 @@
 
 package core
 
-import "github.com/toeirei/keymaster/internal/core/model"
+import "github.com/toeirei/keymaster/core/model"
 
 // DirtyAccounts returns the subset of accounts whose `IsDirty` flag is true.
 // This is a pure helper and performs no side-effects.

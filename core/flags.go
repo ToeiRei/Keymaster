@@ -4,7 +4,7 @@
 
 package core
 
-import "github.com/toeirei/keymaster/internal/core/model"
+import "github.com/toeirei/keymaster/core/model"
 
 // GetAccountIsDirty returns whether the given account is marked dirty.
 func GetAccountIsDirty(a model.Account) bool {

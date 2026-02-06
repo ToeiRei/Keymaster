@@ -7,8 +7,8 @@ package core
 import (
 	"fmt"
 
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/core/model"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 // KeyDeploymentInfo holds a public key and the accounts it's deployed to.

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/core/db"
+	"github.com/toeirei/keymaster/core/db"
 )
 
 func TestRemoveAuthorizedKeysFile_NoFile(t *testing.T) {

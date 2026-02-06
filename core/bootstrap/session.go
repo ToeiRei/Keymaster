@@ -6,7 +6,7 @@
 // temporary SSH keys, managing bootstrap sessions, and performing atomic account setup.
 // This package handles the complex workflow of securely adding new hosts to Keymaster
 // without requiring manual system key distribution.
-package bootstrap // import "github.com/toeirei/keymaster/internal/core/bootstrap"
+package bootstrap // import "github.com/toeirei/keymaster/core/bootstrap"
 
 import (
 	"crypto/rand"
@@ -14,9 +14,9 @@ import (
 	"fmt"
 	"time"
 
-	internalSSH "github.com/toeirei/keymaster/internal/core/crypto/ssh"
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/core/model"
+	internalSSH "github.com/toeirei/keymaster/core/crypto/ssh"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core/model"
 )
 
 // SessionStatus represents the current state of a bootstrap session.

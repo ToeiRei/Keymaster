@@ -11,8 +11,8 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
-	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/testutil"
+	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/testutil"
 )
 
 // TestCleanupSession_LogsStructuredAudit ensures cleanupSession emits a
