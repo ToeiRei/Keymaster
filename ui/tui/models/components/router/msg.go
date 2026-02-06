@@ -30,10 +30,6 @@ type ChangeMsg struct {
 	Model *util.Model
 }
 
-func (m InitMsg) routerId() int   { return m.RouterControll.rid }
-func (m PushMsg) routerId() int   { return m.rid }
-func (m PopMsg) routerId() int    { return m.rid }
-func (m ChangeMsg) routerId() int { return m.rid }
 func (m InitMsg) routerID() int   { return m.RouterControll.rid }
 func (m PushMsg) routerID() int   { return m.rid }
 func (m PopMsg) routerID() int    { return m.rid }
