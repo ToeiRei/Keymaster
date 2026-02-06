@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package client
 
-//  TODO move into seperate package
+// TODO move into seperate package
 type LogLevel int
 
 const (
