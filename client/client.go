@@ -71,10 +71,6 @@ type DecommisionAccountProgress struct {
 
 // --- Lifecycle & Initialization ---
 
-// connect to db,
-// auto migrate db to current version,
-// initialize store,
-// maybe run some offline chores
 // New creates and initializes a new `Client` from the provided `Config` and
 // `logger`. The implementation should connect to the backing store, run any
 // migrations and return a ready-to-use client. Currently unimplemented.
@@ -82,8 +78,6 @@ func New(config Config, logger *log.Logger) (*Client, error) {
 	return nil, errors.New("client.New not implemented")
 }
 
-// cleans up and closes all open connections,
-// maybe be an ******* and set c to nil
 // Close cleans up resources held by the client and closes any open
 // connections. Calls should pass a context for cancellation/timeouts.
 func (c *Client) Close(ctx context.Context) error {
@@ -170,8 +164,8 @@ func (c *Client) GetDirtyAccounts(ctx context.Context) ([]Account, error) {
 
 // --- Tag to Account Management ---
 
-// LinkTagToAccount maps a tag filter (e.g. "device:mobile&company:telekom") to an account
-// LinkTagAccount associates a tag filter with an `accountID` until `expiresAt`.
+// LinkTagAccount associates a tag filter (e.g. "device:mobile&company:telekom") with
+// an `accountID` until `expiresAt`.
 func (c *Client) LinkTagAccount(ctx context.Context, accountID ID, filter string, expiresAt time.Time) (ID, error) {
 	return 0, errors.New("client.LinkTagAccount not implemented")
 }

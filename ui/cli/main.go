@@ -60,7 +60,7 @@ var appConfig config.Config
 
 func setupDefaultServices(cmd *cobra.Command, args []string) error {
 	// Load optional config file argument from cli
-	optional_config_path, err := getConfigPathFromCli(cmd)
+	optionalConfigPath, err := getConfigPathFromCli(cmd)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 		"language":      "en",
 	}
 
-	appConfig, err = config.LoadConfig[config.Config](cmd, defauls, optional_config_path)
+	appConfig, err = config.LoadConfig[config.Config](cmd, defauls, optionalConfigPath)
 	// A "file not found" error is expected on first run, so we handle it specifically.
 	// Other errors during loading are usually fatal, but allow debugging when the
 	// error is due to control characters in YAML (so `keymaster debug` can run).
