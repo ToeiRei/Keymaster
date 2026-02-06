@@ -5,8 +5,9 @@
 package core
 
 import (
-	"github.com/toeirei/keymaster/internal/core/model"
 	"testing"
+
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 func TestFilterKeys(t *testing.T) {
