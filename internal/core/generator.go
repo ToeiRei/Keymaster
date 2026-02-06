@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/internal/core/keys"
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 // SystemKeyRestrictions defines the SSH options applied to the Keymaster system key.

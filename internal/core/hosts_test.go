@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 func TestBuildAccountsByHost(t *testing.T) {

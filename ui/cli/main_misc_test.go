@@ -10,7 +10,7 @@ import (
 
 	"github.com/klauspost/compress/zstd"
 	"github.com/toeirei/keymaster/internal/core"
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 func TestFindAccountByIdentifier_ID_UserAtHost_Label_And_NotFound(t *testing.T) {

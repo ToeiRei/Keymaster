@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 func TestIntegrationStore_BasicReadWrite(t *testing.T) {

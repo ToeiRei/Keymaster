@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 	"github.com/toeirei/keymaster/internal/security"
 )
 

@@ -11,8 +11,8 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/internal/core/model"
 	"github.com/toeirei/keymaster/internal/i18n"
-	"github.com/toeirei/keymaster/internal/model"
 )
 
 func TestApplySuggestion_AlreadyPresent_NoDuplicate(t *testing.T) {

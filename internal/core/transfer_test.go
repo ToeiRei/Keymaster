@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 // Reuse package fakeDeployer (defined in deploy_run_test.go) for tests.

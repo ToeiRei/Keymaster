@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 // DebugKeyAssignments returns the raw account IDs assigned to a key from the database.

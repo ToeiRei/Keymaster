@@ -12,8 +12,8 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	"github.com/toeirei/keymaster/internal/core/db"
 	"github.com/toeirei/keymaster/internal/core/keys"
+	"github.com/toeirei/keymaster/internal/core/model"
 	"github.com/toeirei/keymaster/internal/logging"
-	"github.com/toeirei/keymaster/internal/model"
 )
 
 // Compile-time interface checks

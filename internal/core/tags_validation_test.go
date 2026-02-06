@@ -7,7 +7,7 @@ package core
 import (
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 func TestBuildAccountsByTagAndUniqueTags(t *testing.T) {

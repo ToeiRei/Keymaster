@@ -10,7 +10,7 @@ package core
 import (
 	"time"
 
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 // KeyReader exposes system key reads required by deployment and generation logic.

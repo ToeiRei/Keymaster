@@ -20,7 +20,7 @@ import (
 
 	"github.com/pkg/sftp"
 	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 	"golang.org/x/crypto/ssh"
 )
 

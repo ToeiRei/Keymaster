@@ -13,7 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 // accountCmd is the root command for account management operations.

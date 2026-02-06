@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 func TestBackupImport_RoundTrip(t *testing.T) {

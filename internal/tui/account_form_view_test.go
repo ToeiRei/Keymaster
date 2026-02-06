@@ -10,8 +10,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/internal/core/model"
 	"github.com/toeirei/keymaster/internal/i18n"
-	"github.com/toeirei/keymaster/internal/model"
 )
 
 func TestAccountForm_View_AddAndEditModes(t *testing.T) {

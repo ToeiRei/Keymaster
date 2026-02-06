@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 func TestRemoveLine_Basic(t *testing.T) {

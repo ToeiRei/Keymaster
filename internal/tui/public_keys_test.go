@@ -11,7 +11,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 func TestRebuildDisplayedKeys_LocalFilter(t *testing.T) {

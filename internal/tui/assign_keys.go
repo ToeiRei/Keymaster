@@ -14,8 +14,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/internal/core"
+	"github.com/toeirei/keymaster/internal/core/model"
 	"github.com/toeirei/keymaster/internal/i18n"
-	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
 	"github.com/toeirei/keymaster/internal/uiadapters"
 )

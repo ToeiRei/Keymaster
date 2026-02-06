@@ -20,8 +20,8 @@ import (
 	"github.com/toeirei/keymaster/internal/core"
 	internalkey "github.com/toeirei/keymaster/internal/core/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/core/db"
+	"github.com/toeirei/keymaster/internal/core/model"
 	"github.com/toeirei/keymaster/internal/i18n"
-	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/ui"
 	"golang.org/x/crypto/ssh"
 )

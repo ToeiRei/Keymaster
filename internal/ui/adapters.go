@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 // AccountManager provides a small interface for account add/delete operations

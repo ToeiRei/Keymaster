@@ -7,9 +7,9 @@ package core
 import (
 	"testing"
 
+	"github.com/toeirei/keymaster/internal/core/model"
 	"github.com/toeirei/keymaster/internal/core/state"
 	"github.com/toeirei/keymaster/internal/i18n"
-	"github.com/toeirei/keymaster/internal/model"
 )
 
 // fakeKeyReaderForAudit is a minimal test implementation of KeyReader interface

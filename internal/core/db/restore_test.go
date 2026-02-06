@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 func TestIntegrateDataFromBackup_NonDestructive(t *testing.T) {

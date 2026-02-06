@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 // KeyDeploymentInfo holds a public key and the accounts it's deployed to.

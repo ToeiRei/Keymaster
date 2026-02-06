@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 // reuse fakeStoreForDecom and fakeDMForFacades from facades_decommission_test.go

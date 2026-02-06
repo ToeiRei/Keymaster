@@ -4,7 +4,7 @@
 
 package ui
 
-import "github.com/toeirei/keymaster/internal/model"
+import "github.com/toeirei/keymaster/internal/core/model"
 
 // AccountSearcher provides a small abstraction for searching accounts.
 type AccountSearcher interface {

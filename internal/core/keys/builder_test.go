@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 func TestBuildAuthorizedKeysContent_NoSystemKey(t *testing.T) {

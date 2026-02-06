@@ -5,7 +5,7 @@
 package core
 
 import (
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 // PerformDecommissionWithKeys performs a selective decommission for the

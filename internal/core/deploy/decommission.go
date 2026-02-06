@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"github.com/toeirei/keymaster/internal/core/db"
+	"github.com/toeirei/keymaster/internal/core/model"
 	"github.com/toeirei/keymaster/internal/core/state"
 	"github.com/toeirei/keymaster/internal/logging"
-	"github.com/toeirei/keymaster/internal/model"
 	"github.com/toeirei/keymaster/internal/security"
 )
 

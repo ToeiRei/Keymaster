@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 // FakeAccountSearcher is a minimal, configurable fake used by tests.

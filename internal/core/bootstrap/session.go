@@ -16,7 +16,7 @@ import (
 
 	internalSSH "github.com/toeirei/keymaster/internal/core/crypto/ssh"
 	"github.com/toeirei/keymaster/internal/core/db"
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 // SessionStatus represents the current state of a bootstrap session.

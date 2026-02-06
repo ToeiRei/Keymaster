@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/internal/model"
+	"github.com/toeirei/keymaster/internal/core/model"
 )
 
 // TestIntegration_Smoke runs a minimal integration test against a real DB.
