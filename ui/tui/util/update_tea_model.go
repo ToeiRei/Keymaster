@@ -9,18 +9,18 @@ import (
 )
 
 func UpdateTeaModelInplace[M any](msg tea.Msg, model *M) tea.Cmd {
-	var model_any any = *model
+	var modelAny any = *model
 
-	if model_updatable, ok := model_any.(updatableSelf[M]); ok {
-		model_updated, cmd := model_updatable.Update(msg)
-		*model = model_updated
+	if modelUpdatable, ok := modelAny.(updatableSelf[M]); ok {
+		modelUpdated, cmd := modelUpdatable.Update(msg)
+		*model = modelUpdated
 		return cmd
 	}
 
-	if model_updatable, ok := model_any.(updatableTea); ok {
-		model_updated, cmd := model_updatable.Update(msg)
-		if model_updated, ok := model_updated.(M); ok {
-			*model = model_updated
+	if modelUpdatable, ok := modelAny.(updatableTea); ok {
+		modelUpdated, cmd := modelUpdatable.Update(msg)
+		if modelUpdated, ok := modelUpdated.(M); ok {
+			*model = modelUpdated
 			return cmd
 		}
 		return cmd

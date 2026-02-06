@@ -16,13 +16,13 @@ func (m *Model) up() {
 }
 func (m *Model) down() {
 	// get parents sub items len
-	parent_len := m.getParentLen(m.getActiveItemStack())
+	parentLen := m.getParentLen(m.getActiveItemStack())
 	// get pointer to current active stack index
 	index := &m.ActiveStack[len(m.ActiveStack)-1]
 	// increase and rotate if too large
 	(*index)++
-	if *index > parent_len-1 {
-		*index = parent_len - 1
+	if *index > parentLen-1 {
+		*index = parentLen - 1
 	}
 }
 func (m *Model) left() {
@@ -31,15 +31,15 @@ func (m *Model) left() {
 	}
 }
 func (m *Model) right() tea.Cmd {
-	active_stack := m.getActiveItemStack()
-	active_item := active_stack[len(active_stack)-1]
-	if len(active_item.SubItems) > 0 {
+	activeStack := m.getActiveItemStack()
+	activeItem := activeStack[len(activeStack)-1]
+	if len(activeItem.SubItems) > 0 {
 		m.ActiveStack = append(m.ActiveStack, 0)
 		return nil
-	} else if active_item.Cmd != nil {
-		return active_item.Cmd
+	} else if activeItem.Cmd != nil {
+		return activeItem.Cmd
 	} else {
-		return func() tea.Msg { return ItemSelected{Id: active_item.Id} }
+		return func() tea.Msg { return ItemSelected{Id: activeItem.Id} }
 	}
 }
 
@@ -56,9 +56,9 @@ func (m *Model) getActiveItemStack() []Item {
 	return stack
 }
 
-func (m *Model) getParentLen(item_stack []Item) int {
-	if len(item_stack) > 1 {
-		return len(item_stack[len(item_stack)-2].SubItems)
+func (m *Model) getParentLen(itemStack []Item) int {
+	if len(itemStack) > 1 {
+		return len(itemStack[len(itemStack)-2].SubItems)
 	} else {
 		return len(m.Items)
 	}

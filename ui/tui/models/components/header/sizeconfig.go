@@ -17,8 +17,8 @@ var _ stack.SizeConfig = (*sizeConfig)(nil)
 
 func (s *sizeConfig) Priority() int { return 10 }
 
-func (s *sizeConfig) Caltulate(model util.Model, _ int, total_size int) int {
-	if total_size >= 10+1+lipgloss.Height(logo) {
+func (s *sizeConfig) Caltulate(model util.Model, _ int, totalSize int) int {
+	if totalSize >= 10+1+lipgloss.Height(logo) {
 		return lipgloss.Height(logo) + 1
 	}
 	return 0
