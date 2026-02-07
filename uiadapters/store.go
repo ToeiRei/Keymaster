@@ -149,6 +149,26 @@ func (s *storeAdapter) SetAccountActiveState(ctx context.Context, accountID int,
 	return db.ToggleAccountStatus(accountID)
 }
 
+// ToggleAccountStatus enables or disables an account.
+func (s *storeAdapter) ToggleAccountStatus(accountID int, enabled bool) error {
+	return db.ToggleAccountStatus(accountID, enabled)
+}
+
+// UpdateAccountHostname updates the hostname for an account.
+func (s *storeAdapter) UpdateAccountHostname(accountID int, hostname string) error {
+	return db.UpdateAccountHostname(accountID, hostname)
+}
+
+// UpdateAccountLabel updates the label for an account.
+func (s *storeAdapter) UpdateAccountLabel(accountID int, label string) error {
+	return db.UpdateAccountLabel(accountID, label)
+}
+
+// UpdateAccountTags updates the tags for an account.
+func (s *storeAdapter) UpdateAccountTags(accountID int, tags string) error {
+	return db.UpdateAccountTags(accountID, tags)
+}
+
 // GenerateAuthorizedKeysContent builds authorized_keys content for an account.
 func (s *storeAdapter) GenerateAuthorizedKeysContent(ctx context.Context, accountID int) (string, error) {
 	// Note: This builds authorized_keys content by combining the active
