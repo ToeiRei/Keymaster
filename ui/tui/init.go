@@ -5,10 +5,6 @@
 // Package tui contains the terminal UI (TUI) implementation for Keymaster.
 package tui
 
-import "github.com/toeirei/keymaster/core/deploy"
-
 // InitializeDefaults registers TUI-specific defaults. Defer to
 // deploy.InitializeDefaults() so core defaults are consistent across UIs.
-func InitializeDefaults() {
-	deploy.InitializeDefaults()
-}
+import _ "github.com/toeirei/keymaster/core/deploy"

@@ -34,7 +34,7 @@ import (
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/sshkey"
 	"github.com/toeirei/keymaster/i18n"
-	"github.com/toeirei/keymaster/ui"
+	_ "github.com/toeirei/keymaster/ui"
 	"github.com/toeirei/keymaster/ui/tui"
 	"github.com/toeirei/keymaster/uiadapters"
 	"golang.org/x/crypto/ssh"
@@ -162,8 +162,6 @@ func Execute() error {
 	// import-order side-effects. This preserves previous behavior while
 	// making wiring explicit for tests and alternative bootstraps.
 	deploy.InitializeDefaults()
-	ui.InitializeDefaults()
-	tui.InitializeDefaults()
 	// Install signal handler for graceful shutdown of bootstrap sessions
 	core.InstallSignalHandler()
 
@@ -245,7 +243,7 @@ Running without a subcommand will launch the interactive TUI.`,
 				if d != "" {
 					compositeVersion = compositeVersion + " built: " + d
 				}
-				fmt.Printf("%s\n", compositeVersion)
+				fmt.Println(compositeVersion)
 				os.Exit(0)
 			}
 			if verbose {
