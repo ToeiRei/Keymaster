@@ -71,7 +71,10 @@ func ResetStoreForTests() {
 			// failures where file handles appear briefly held after Close().
 			// Keep this narrowly scoped to test cleanup.
 			runtime.GC()
-			time.Sleep(10 * time.Millisecond)
+			// Increase sleep to allow background DB goroutines to terminate
+			// and release file handles on Windows. Use a longer timeout to
+			// mitigate intermittent test flakes observed in CI/Windows.
+			time.Sleep(500 * time.Millisecond)
 		}
 	}
 	store = nil

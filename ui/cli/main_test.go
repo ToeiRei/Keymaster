@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	log "github.com/charmbracelet/log"
 
@@ -33,12 +34,13 @@ func setupTestDB(t *testing.T) {
 	// Disable background session reaper during tests.
 	t.Setenv("KEYMASTER_DISABLE_SESSION_REAPER", "1")
 
-	// Use a unique on-disk database per test to avoid cross-test contamination.
-	// TempDir ensures isolation and avoids collisions in parallel or repeated runs.
-	tmpDir := t.TempDir()
-	dsn := filepath.Join(tmpDir, "keymaster_test.db")
+	// Use a unique in-memory SQLite database per test to avoid file locks on
+	// Windows while preserving isolation across tests. Use the file: URI with
+	// mode=memory and cache=shared so multiple connections can see the same
+	// in-memory DB when required.
+	uniq := fmt.Sprintf("memdb_%d", time.Now().UnixNano())
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", uniq)
 
-	// Configure viper to use our in-memory test DB
 	viper.Set("database.type", "sqlite")
 	viper.Set("database.dsn", dsn)
 	viper.Set("language", "en") // Use a consistent language for tests
