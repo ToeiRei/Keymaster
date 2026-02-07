@@ -44,11 +44,16 @@ func GetConfigPath(system bool) (string, error) {
 		}
 	} else {
 		// User-specific configuration paths
-		configDir, err = os.UserConfigDir()
-		if err != nil {
-			return "", err
+		// Respect XDG_CONFIG_HOME when set (helps tests and users who set XDG paths on Windows)
+		if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+			configDir = filepath.Join(xdg, "keymaster")
+		} else {
+			configDir, err = os.UserConfigDir()
+			if err != nil {
+				return "", err
+			}
+			configDir = filepath.Join(configDir, "keymaster")
 		}
-		configDir = filepath.Join(configDir, "keymaster")
 	}
 
 	return filepath.Join(configDir, "keymaster.yaml"), nil
