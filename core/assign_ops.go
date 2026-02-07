@@ -17,7 +17,7 @@ type AssignFunc func(keyID, accountID int) error
 // AssignKeyToAccount verifies the key exists in the provided keys slice,
 // invokes assignFunc to persist the assignment, and returns an updated
 // assigned map. It does not perform localization of messages.
-func AssignKeyToAccount(keys []model.PublicKey, assigned map[int]struct{}, keyID, accountID int, assignFunc AssignFunc) (map[int]struct{}, error) {
+func AssignKeyToAccountHelper(keys []model.PublicKey, assigned map[int]struct{}, keyID, accountID int, assignFunc AssignFunc) (map[int]struct{}, error) {
 	// Verify existence in-memory
 	exists := false
 	for _, k := range keys {
@@ -44,7 +44,7 @@ func AssignKeyToAccount(keys []model.PublicKey, assigned map[int]struct{}, keyID
 
 // UnassignKeyFromAccount invokes unassignFunc to persist the unassignment
 // and removes the key from the assigned map if present.
-func UnassignKeyFromAccount(assigned map[int]struct{}, keyID, accountID int, unassignFunc AssignFunc) (map[int]struct{}, error) {
+func UnassignKeyFromAccountHelper(assigned map[int]struct{}, keyID, accountID int, unassignFunc AssignFunc) (map[int]struct{}, error) {
 	if unassignFunc == nil {
 		return assigned, fmt.Errorf("no unassign function provided")
 	}
@@ -59,7 +59,7 @@ func UnassignKeyFromAccount(assigned map[int]struct{}, keyID, accountID int, una
 
 // AssignKeys iterates over the provided key IDs and invokes assignFunc for each.
 // It returns the first non-nil error encountered.
-func AssignKeys(keyIDs []int, accountID int, assignFunc AssignFunc) error {
+func AssignKeysHelper(keyIDs []int, accountID int, assignFunc AssignFunc) error {
 	if assignFunc == nil {
 		return fmt.Errorf("no assign function provided")
 	}

@@ -51,5 +51,6 @@ type KeyImporter interface {
 
 // AccountManager exposes minimal account write operations used by core facades.
 type AccountManager interface {
+	AddAccount(username, hostname, label, tags string) (int, error)
 	DeleteAccount(id int) error
 }

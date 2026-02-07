@@ -26,14 +26,17 @@ func TestAccountHelpers(t *testing.T) {
 			t.Fatalf("unexpected account: %+v", acc)
 		}
 
-		// Toggle status
+		// Set status to opposite of original and verify
 		orig := acc.IsActive
-		newStatus, err := ToggleAccountStatusBun(bdb, id)
-		if err != nil {
+		if err := ToggleAccountStatusBun(bdb, id, !orig); err != nil {
 			t.Fatalf("ToggleAccountStatusBun failed: %v", err)
 		}
-		if newStatus == orig {
-			t.Fatalf("status did not change: before=%v after=%v", orig, newStatus)
+		accAfter, err := GetAccountByIDBun(bdb, id)
+		if err != nil {
+			t.Fatalf("GetAccountByIDBun failed: %v", err)
+		}
+		if accAfter == nil || accAfter.IsActive == orig {
+			t.Fatalf("status did not change: before=%v after=%v", orig, accAfter)
 		}
 
 		// Update serial

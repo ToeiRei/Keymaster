@@ -151,6 +151,31 @@ func (w *dbStoreWrapper) AssignKeyToAccount(keyID, accountID int) error {
 	}
 	return km.AssignKeyToAccount(keyID, accountID)
 }
+
+func (w *dbStoreWrapper) ToggleAccountStatus(accountID int, enabled bool) error {
+	if w == nil || w.inner == nil {
+		return fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
+	return w.inner.ToggleAccountStatus(accountID, enabled)
+}
+func (w *dbStoreWrapper) UpdateAccountHostname(accountID int, hostname string) error {
+	if w == nil || w.inner == nil {
+		return fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
+	return w.inner.UpdateAccountHostname(accountID, hostname)
+}
+func (w *dbStoreWrapper) UpdateAccountLabel(accountID int, label string) error {
+	if w == nil || w.inner == nil {
+		return fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
+	return w.inner.UpdateAccountLabel(accountID, label)
+}
+func (w *dbStoreWrapper) UpdateAccountTags(accountID int, tags string) error {
+	if w == nil || w.inner == nil {
+		return fmt.Errorf("dbStoreWrapper: no inner store available")
+	}
+	return w.inner.UpdateAccountTags(accountID, tags)
+}
 func (w *dbStoreWrapper) UpdateAccountIsDirty(id int, dirty bool) error {
 	if w == nil || w.inner == nil {
 		return fmt.Errorf("dbStoreWrapper: no inner store available")

@@ -18,7 +18,7 @@ type Store interface {
 	AddAccount(username, hostname, label, tags string) (int, error)
 	DeleteAccount(id int) error
 	UpdateAccountSerial(id, serial int) error
-	ToggleAccountStatus(id int) error
+	ToggleAccountStatus(id int, enabled bool) error
 	UpdateAccountLabel(id int, label string) error
 	UpdateAccountHostname(id int, hostname string) error
 	UpdateAccountTags(id int, tags string) error

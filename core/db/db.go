@@ -438,8 +438,32 @@ func UpdateAccountSerial(id, serial int) error {
 }
 
 // ToggleAccountStatus flips the active status of an account.
+// ToggleAccountStatus flips the active status of an account (convenience wrapper).
 func ToggleAccountStatus(id int) error {
-	return store.ToggleAccountStatus(id)
+	// Read current status
+	if store == nil {
+		return fmt.Errorf("store not initialized")
+	}
+	if bun := store.BunDB(); bun != nil {
+		acc, err := GetAccountByIDBun(bun, id)
+		if err != nil {
+			return err
+		}
+		if acc == nil {
+			return fmt.Errorf("account not found: %d", id)
+		}
+		return store.ToggleAccountStatus(id, !acc.IsActive)
+	}
+	// Fallback: ask store to toggle by setting true (best-effort)
+	return store.ToggleAccountStatus(id, true)
+}
+
+// SetAccountActive sets the account active flag to the provided value.
+func SetAccountActive(id int, enabled bool) error {
+	if store == nil {
+		return fmt.Errorf("store not initialized")
+	}
+	return store.ToggleAccountStatus(id, enabled)
 }
 
 // UpdateAccountLabel updates the label for a given account.

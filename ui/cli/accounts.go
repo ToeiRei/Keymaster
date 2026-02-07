@@ -14,6 +14,7 @@ import (
 	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/uiadapters"
 )
 
 // accountCmd is the root command for account management operations.
@@ -40,7 +41,7 @@ You can filter by status (active, inactive) or search by hostname/username.`,
 		statusFilter, _ := cmd.Flags().GetString("status")
 		searchTerm, _ := cmd.Flags().GetString("search")
 
-		st := db.DefaultStore()
+		st := uiadapters.NewStoreAdapter()
 		accounts, err := core.ListAccounts(st, statusFilter, searchTerm)
 		if err != nil {
 			return err
@@ -72,7 +73,7 @@ var accountShowCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		identifier := args[0]
-		st := db.DefaultStore()
+		st := uiadapters.NewStoreAdapter()
 		account, err := core.ShowAccount(st, identifier)
 		if err != nil {
 			return err
@@ -120,10 +121,7 @@ var accountCreateCmd = &cobra.Command{
 		hostname, _ := cmd.Flags().GetString("hostname")
 		label, _ := cmd.Flags().GetString("label")
 		tags, _ := cmd.Flags().GetString("tags")
-		am := db.DefaultAccountManager()
-		if am == nil {
-			return fmt.Errorf("no account manager available")
-		}
+		am := uiadapters.NewStoreAdapter()
 		id, err := core.CreateAccount(am, username, hostname, label, tags)
 		if err != nil {
 			return err
@@ -144,7 +142,7 @@ var accountUpdateCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("invalid account ID: %w", err)
 		}
-		st := db.DefaultStore()
+		st := uiadapters.NewStoreAdapter()
 		var hostnamePtr, labelPtr, tagsPtr *string
 		if cmd.Flags().Changed("hostname") {
 			hostname, _ := cmd.Flags().GetString("hostname")
@@ -189,7 +187,7 @@ var accountEnableCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("invalid account ID: %w", err)
 		}
-		st := db.DefaultStore()
+		st := uiadapters.NewStoreAdapter()
 		err = core.EnableAccount(st, id)
 		if err != nil {
 			return err
@@ -210,7 +208,7 @@ var accountDisableCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("invalid account ID: %w", err)
 		}
-		st := db.DefaultStore()
+		st := uiadapters.NewStoreAdapter()
 		err = core.DisableAccount(st, id)
 		if err != nil {
 			return err
@@ -232,11 +230,8 @@ var accountDeleteCmd = &cobra.Command{
 			return fmt.Errorf("invalid account ID: %w", err)
 		}
 		force, _ := cmd.Flags().GetBool("force")
-		st := db.DefaultStore()
-		am := db.DefaultAccountManager()
-		if am == nil {
-			return fmt.Errorf("no account manager available")
-		}
+		st := uiadapters.NewStoreAdapter()
+		am := uiadapters.NewStoreAdapter()
 		confirmFunc := func(account *model.Account) bool {
 			if force {
 				return true
@@ -276,11 +271,11 @@ to this account's authorized_keys file on next deploy.`,
 			return fmt.Errorf("invalid key ID: %w", err)
 		}
 		km := db.DefaultKeyManager()
-		st := db.DefaultStore()
+		st := uiadapters.NewStoreAdapter()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}
-		err = core.AssignKeyToAccount(km, st, keyID, accountID)
+		err = core.AssignKeyToAccount(func(k, a int) error { return km.AssignKeyToAccount(k, a) }, st, keyID, accountID)
 		if err != nil {
 			return err
 		}
@@ -309,7 +304,7 @@ The key will no longer be deployed to this account's authorized_keys.`,
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}
-		err = core.UnassignKeyFromAccount(km, keyID, accountID)
+		err = core.UnassignKeyFromAccount(func(k, a int) error { return km.UnassignKeyFromAccount(k, a) }, keyID, accountID)
 		if err != nil {
 			return err
 		}

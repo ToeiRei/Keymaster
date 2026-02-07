@@ -247,8 +247,8 @@ func (b *bunAccountManager) SetActive(ctx context.Context, accountID int, active
 	if acc.IsActive == active {
 		return nil
 	}
-	// ToggleAccountStatus flips the value; call it to change state.
-	return ToggleAccountStatus(accountID)
+	// SetAccountActive will set the account active flag to the desired state.
+	return SetAccountActive(accountID, active)
 }
 
 // GetAll returns all accounts from the underlying store.

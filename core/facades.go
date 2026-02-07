@@ -540,7 +540,7 @@ func EnableAccount(st Store, id int) error {
 	if account.IsActive {
 		return nil // Already enabled
 	}
-	if err := st.ToggleAccountStatus(id); err != nil {
+	if err := st.ToggleAccountStatus(id, true); err != nil {
 		return fmt.Errorf("failed to enable account: %w", err)
 	}
 	return nil
@@ -565,7 +565,7 @@ func DisableAccount(st Store, id int) error {
 	if !account.IsActive {
 		return nil // Already disabled
 	}
-	if err := st.ToggleAccountStatus(id); err != nil {
+	if err := st.ToggleAccountStatus(id, false); err != nil {
 		return fmt.Errorf("failed to disable account: %w", err)
 	}
 	return nil
@@ -598,8 +598,8 @@ func DeleteAccount(am AccountManager, st Store, id int, force bool, confirmFunc 
 	return nil
 }
 
-// AssignKeyToAccount assigns a key to an account.
-func AssignKeyToAccount(km KeyManager, st Store, keyID, accountID int) error {
+// AssignKeyToAccount assigns a key to an account using the provided assignFunc.
+func AssignKeyToAccount(assignFunc func(keyID, accountID int) error, st Store, keyID, accountID int) error {
 	allAccounts, err := st.GetAllAccounts()
 	if err != nil {
 		return fmt.Errorf("failed to load accounts: %w", err)
@@ -614,19 +614,27 @@ func AssignKeyToAccount(km KeyManager, st Store, keyID, accountID int) error {
 	if !accountExists {
 		return fmt.Errorf("account not found: %d", accountID)
 	}
-	if err := km.AssignKeyToAccount(keyID, accountID); err != nil {
+	if assignFunc == nil {
+		return fmt.Errorf("no assign function provided")
+	}
+	if err := assignFunc(keyID, accountID); err != nil {
 		return fmt.Errorf("failed to assign key: %w", err)
 	}
 	return nil
 }
 
-// UnassignKeyFromAccount removes a key assignment from an account.
-func UnassignKeyFromAccount(km KeyManager, keyID, accountID int) error {
-	if err := km.UnassignKeyFromAccount(keyID, accountID); err != nil {
+// UnassignKeyFromAccount removes a key assignment from an account using unassignFunc.
+func UnassignKeyFromAccount(unassignFunc func(keyID, accountID int) error, keyID, accountID int) error {
+	if unassignFunc == nil {
+		return fmt.Errorf("no unassign function provided")
+	}
+	if err := unassignFunc(keyID, accountID); err != nil {
 		return fmt.Errorf("failed to unassign key: %w", err)
 	}
 	return nil
 }
+
+// (legacy wrapper removed)
 
 // CreateAccount creates a new account with the given parameters.
 func CreateAccount(am AccountManager, username, hostname, label, tags string) (int, error) {

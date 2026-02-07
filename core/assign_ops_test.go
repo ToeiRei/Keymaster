@@ -23,7 +23,7 @@ func TestAssignAndUnassignKeyOps(t *testing.T) {
 
 	assigned := make(map[int]struct{})
 	var err error
-	assigned, err = AssignKeyToAccount(keys, assigned, 2, 10, assignFn)
+	assigned, err = AssignKeyToAccountHelper(keys, assigned, 2, 10, assignFn)
 	if err != nil {
 		t.Fatalf("unexpected assign error: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestAssignAndUnassignKeyOps(t *testing.T) {
 		calledUnassign = true
 		return nil
 	}
-	assigned, err = UnassignKeyFromAccount(assigned, 2, 10, unassignFn)
+	assigned, err = UnassignKeyFromAccountHelper(assigned, 2, 10, unassignFn)
 	if err != nil {
 		t.Fatalf("unexpected unassign error: %v", err)
 	}

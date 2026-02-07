@@ -936,16 +936,10 @@ func UpdateAccountSerialBun(bdb *bun.DB, id, serial int) error {
 	return err
 }
 
-func ToggleAccountStatusBun(bdb *bun.DB, id int) (bool, error) {
+func ToggleAccountStatusBun(bdb *bun.DB, id int, enabled bool) error {
 	ctx := context.Background()
-	if _, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_active = NOT is_active WHERE id = ?", id); err != nil {
-		return false, err
-	}
-	var am AccountModel
-	if err := bdb.NewSelect().Model(&am).Where("id = ?", id).Limit(1).Scan(ctx); err != nil {
-		return false, err
-	}
-	return am.IsActive, nil
+	_, err := ExecRaw(ctx, bdb, "UPDATE accounts SET is_active = ? WHERE id = ?", enabled, id)
+	return err
 }
 
 func UpdateAccountLabelBun(bdb *bun.DB, id int, label string) error {

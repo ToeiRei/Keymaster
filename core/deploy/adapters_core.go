@@ -88,6 +88,13 @@ func (coreAccountManager) DeleteAccount(id int) error {
 	return fmt.Errorf("no account manager available")
 }
 
+func (coreAccountManager) AddAccount(username, hostname, label, tags string) (int, error) {
+	if m := db.DefaultAccountManager(); m != nil {
+		return m.AddAccount(username, hostname, label, tags)
+	}
+	return 0, fmt.Errorf("no account manager available")
+}
+
 // InitializeDefaults registers deploy-specific default implementations into
 // `internal/core`. This makes wiring explicit for tests and allows callers to
 // opt-in to deploy wiring without relying on package init.

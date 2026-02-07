@@ -30,6 +30,12 @@ type Store interface {
 	// UpdateAccountIsDirty sets or clears the is_dirty flag for an account.
 	UpdateAccountIsDirty(id int, dirty bool) error
 
+	// Account status and metadata updates
+	ToggleAccountStatus(accountID int, enabled bool) error
+	UpdateAccountHostname(id int, hostname string) error
+	UpdateAccountLabel(id int, label string) error
+	UpdateAccountTags(id int, tags string) error
+
 	// System key helpers
 	CreateSystemKey(publicKey, privateKey string) (int, error)
 	RotateSystemKey(publicKey, privateKey string) (int, error)
@@ -68,6 +74,8 @@ type KeyGenerator interface {
 // KeyManager provides higher-level key operations (importing public keys).
 type KeyManager interface {
 	AddPublicKey(alg string, keyData string, comment string, managed bool, expiresAt time.Time) error
+	AssignKeyToAccount(keyID, accountID int) error
+	UnassignKeyFromAccount(keyID, accountID int) error
 }
 
 // DeployerManager aggregates deploy-related operations used by facades.

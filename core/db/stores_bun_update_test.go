@@ -28,9 +28,9 @@ func TestStoresBun_UpdateHelpers(t *testing.T) {
 		t.Fatalf("expected serial 99, got %+v", acc)
 	}
 
-	// Toggle status twice
-	if err := s.ToggleAccountStatus(id); err != nil {
-		t.Fatalf("ToggleAccountStatus first failed: %v", err)
+	// Set status inactive, then active
+	if err := s.ToggleAccountStatus(id, false); err != nil {
+		t.Fatalf("SetAccountActive first failed: %v", err)
 	}
 	a2, err := GetAccountByIDBun(s.(*BunStore).BunDB(), id)
 	if err != nil {
@@ -39,8 +39,8 @@ func TestStoresBun_UpdateHelpers(t *testing.T) {
 	if a2 == nil || a2.IsActive {
 		t.Fatalf("expected account to be inactive after toggle, got %+v", a2)
 	}
-	if err := s.ToggleAccountStatus(id); err != nil {
-		t.Fatalf("ToggleAccountStatus second failed: %v", err)
+	if err := s.ToggleAccountStatus(id, true); err != nil {
+		t.Fatalf("SetAccountActive second failed: %v", err)
 	}
 	a3, err := GetAccountByIDBun(s.(*BunStore).BunDB(), id)
 	if err != nil {

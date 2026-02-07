@@ -56,7 +56,7 @@ func (s *BunStore) AssignKeyToAccount(keyID, accountID int) error {
 func (s *BunStore) UpdateAccountSerial(id, serial int) error {
 	return UpdateAccountSerialBun(s.bun, id, serial)
 }
-func (s *BunStore) ToggleAccountStatus(id int) error {
+func (s *BunStore) ToggleAccountStatus(id int, enabled bool) error {
 	acc, err := GetAccountByIDBun(s.bun, id)
 	if err != nil {
 		return err
@@ -64,11 +64,12 @@ func (s *BunStore) ToggleAccountStatus(id int) error {
 	if acc == nil {
 		return fmt.Errorf("account not found: %d", id)
 	}
-	newStatus, err := ToggleAccountStatusBun(s.bun, id)
-	if err == nil {
-		_ = s.LogAction("TOGGLE_ACCOUNT_STATUS", fmt.Sprintf("account: %s@%s, new_status: %t", acc.Username, acc.Hostname, newStatus))
+	if err := ToggleAccountStatusBun(s.bun, id, enabled); err == nil {
+		_ = s.LogAction("TOGGLE_ACCOUNT_STATUS", fmt.Sprintf("account: %s@%s, new_status: %t", acc.Username, acc.Hostname, enabled))
+		return nil
+	} else {
+		return err
 	}
-	return err
 }
 func (s *BunStore) UpdateAccountLabel(id int, label string) error {
 	err := UpdateAccountLabelBun(s.bun, id, label)

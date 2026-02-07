@@ -146,12 +146,12 @@ func (s *storeAdapter) SetAccountActiveState(ctx context.Context, accountID int,
 	if found.IsActive == active {
 		return nil
 	}
-	return db.ToggleAccountStatus(accountID)
+	return db.SetAccountActive(accountID, active)
 }
 
 // ToggleAccountStatus enables or disables an account.
 func (s *storeAdapter) ToggleAccountStatus(accountID int, enabled bool) error {
-	return db.ToggleAccountStatus(accountID, enabled)
+	return db.SetAccountActive(accountID, enabled)
 }
 
 // UpdateAccountHostname updates the hostname for an account.
