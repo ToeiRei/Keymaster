@@ -251,8 +251,8 @@ func removeSelectiveKeymasterContent(deployer *Deployer, result *DecommissionRes
 	// Read current content
 	content, err := deployer.GetAuthorizedKeys()
 	if err != nil {
-		// File doesn't exist, nothing to remove
-		if strings.Contains(err.Error(), "no such file") {
+		// File doesn't exist, nothing to remove. Accept common forms of "not found".
+		if os.IsNotExist(err) || strings.Contains(err.Error(), "file does not exist") || strings.Contains(err.Error(), "no such file") {
 			return nil
 		}
 		return fmt.Errorf("failed to read authorized_keys: %w", err)

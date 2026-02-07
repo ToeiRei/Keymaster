@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -387,7 +388,7 @@ func TestRemoveSelectiveKeymasterContent_Update(t *testing.T) {
 }
 
 func TestRemoveSelectiveKeymasterContent_NoFile(t *testing.T) {
-	fd := &fakeDeployerLocal{getErr: errors.New("no such file or directory")}
+	fd := &fakeDeployerLocal{getErr: os.ErrNotExist}
 	res := &DecommissionResult{}
 	if err := removeSelectiveKeymasterContent(fd, res, 5, nil, true); err != nil {
 		t.Fatalf("expected nil on no such file, got %v", err)

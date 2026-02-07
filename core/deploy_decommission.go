@@ -5,6 +5,7 @@ package core
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/toeirei/keymaster/core/logging"
@@ -172,7 +173,7 @@ func removeKeymasterContent(deployer RemoteDeployer, result *DecommissionResult,
 func removeSelectiveKeymasterContent(deployer RemoteDeployer, result *DecommissionResult, accountID int, excludeKeyIDs []int, removeSystemKey bool) error {
 	content, err := deployer.GetAuthorizedKeys()
 	if err != nil {
-		if strings.Contains(err.Error(), "no such file") {
+		if os.IsNotExist(err) {
 			return nil
 		}
 		return fmt.Errorf("failed to read authorized_keys: %w", err)
