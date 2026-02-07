@@ -24,8 +24,8 @@ func TestBunAdapter_LowCoverage(t *testing.T) {
 		t.Fatalf("AddAccount carol failed: %v", err)
 	}
 
-	// Toggle bob to inactive via public Store API
-	if err := s.ToggleAccountStatus(id2); err != nil {
+	// Set bob to inactive via public Store API
+	if err := s.ToggleAccountStatus(id2, false); err != nil {
 		t.Fatalf("ToggleAccountStatus failed: %v", err)
 	}
 
