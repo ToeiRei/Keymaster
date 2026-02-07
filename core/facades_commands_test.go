@@ -112,6 +112,12 @@ func (s *simpleStore) ExportDataForBackup() (*model.BackupData, error) { return 
 func (s *simpleStore) ImportDataFromBackup(*model.BackupData) error    { return nil }
 func (s *simpleStore) IntegrateDataFromBackup(*model.BackupData) error { return nil }
 
+// satisfy updated Store interface
+func (s *simpleStore) ToggleAccountStatus(id int, enabled bool) error      { return nil }
+func (s *simpleStore) UpdateAccountHostname(id int, hostname string) error { return nil }
+func (s *simpleStore) UpdateAccountLabel(id int, label string) error       { return nil }
+func (s *simpleStore) UpdateAccountTags(id int, tags string) error         { return nil }
+
 func TestDeployAccounts_AllAndIdentifier(t *testing.T) {
 	i18n.Init("en")
 	acct1 := model.Account{ID: 1, Username: "alice", Hostname: "a.example.com", Label: ""}

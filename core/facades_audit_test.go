@@ -42,6 +42,12 @@ func (s *simpleFakeStore) ExportDataForBackup() (*model.BackupData, error) { ret
 func (s *simpleFakeStore) ImportDataFromBackup(*model.BackupData) error    { return nil }
 func (s *simpleFakeStore) IntegrateDataFromBackup(*model.BackupData) error { return nil }
 
+// satisfy updated Store interface
+func (s *simpleFakeStore) ToggleAccountStatus(id int, enabled bool) error      { return nil }
+func (s *simpleFakeStore) UpdateAccountHostname(id int, hostname string) error { return nil }
+func (s *simpleFakeStore) UpdateAccountLabel(id int, label string) error       { return nil }
+func (s *simpleFakeStore) UpdateAccountTags(id int, tags string) error         { return nil }
+
 type fakeDeployerManager struct {
 	content []byte
 	ferr    error

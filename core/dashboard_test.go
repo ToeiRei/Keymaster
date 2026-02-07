@@ -30,7 +30,7 @@ func (f fakeStore) GetKeysForAccount(accountID int) ([]model.PublicKey, error)  
 func (f fakeStore) AddAccount(username, hostname, label, tags string) (int, error) { return 0, nil }
 func (f fakeStore) DeleteAccount(id int) error                                     { return nil }
 func (f fakeStore) UpdateAccountSerial(id, serial int) error                       { return nil }
-func (f fakeStore) ToggleAccountStatus(id int, enabled bool) error                { return nil }
+func (f fakeStore) ToggleAccountStatus(id int, enabled bool) error                 { return nil }
 func (f fakeStore) UpdateAccountLabel(id int, label string) error                  { return nil }
 func (f fakeStore) UpdateAccountHostname(id int, hostname string) error            { return nil }
 func (f fakeStore) UpdateAccountTags(id int, tags string) error                    { return nil }

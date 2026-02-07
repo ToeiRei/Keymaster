@@ -41,6 +41,12 @@ func (f *fakeStoreForDirty) ExportDataForBackup() (*model.BackupData, error)    
 func (f *fakeStoreForDirty) ImportDataFromBackup(*model.BackupData) error              { return nil }
 func (f *fakeStoreForDirty) IntegrateDataFromBackup(*model.BackupData) error           { return nil }
 
+// satisfy updated Store interface
+func (f *fakeStoreForDirty) ToggleAccountStatus(id int, enabled bool) error      { return nil }
+func (f *fakeStoreForDirty) UpdateAccountHostname(id int, hostname string) error { return nil }
+func (f *fakeStoreForDirty) UpdateAccountLabel(id int, label string) error       { return nil }
+func (f *fakeStoreForDirty) UpdateAccountTags(id int, tags string) error         { return nil }
+
 type fakeDMForDirty struct{ called []int }
 
 func (f *fakeDMForDirty) DeployForAccount(account model.Account, keepFile bool) error {

@@ -48,6 +48,12 @@ func (f *fStore) ExportDataForBackup() (*model.BackupData, error)   { return f.g
 func (f *fStore) ImportDataFromBackup(d *model.BackupData) error    { f.gotExport = d; return nil }
 func (f *fStore) IntegrateDataFromBackup(d *model.BackupData) error { f.gotExport = d; return nil }
 
+// satisfy updated Store interface
+func (f *fStore) ToggleAccountStatus(id int, enabled bool) error      { return nil }
+func (f *fStore) UpdateAccountHostname(id int, hostname string) error { return nil }
+func (f *fStore) UpdateAccountLabel(id int, label string) error       { return nil }
+func (f *fStore) UpdateAccountTags(id int, tags string) error         { return nil }
+
 // small adapters used by tests
 type badStore struct{ *fStore }
 
@@ -96,6 +102,8 @@ func (k *fKM) AddPublicKey(alg string, keyData string, comment string, managed b
 	k.added = append(k.added, comment)
 	return nil
 }
+func (k *fKM) AssignKeyToAccount(keyID, accountID int) error     { return nil }
+func (k *fKM) UnassignKeyFromAccount(keyID, accountID int) error { return nil }
 
 type fDM struct{ deployed []model.Account }
 

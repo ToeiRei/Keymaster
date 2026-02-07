@@ -37,6 +37,12 @@ func (s *failingDirtyStore) ExportDataForBackup() (*model.BackupData, error) { r
 func (s *failingDirtyStore) ImportDataFromBackup(*model.BackupData) error    { return nil }
 func (s *failingDirtyStore) IntegrateDataFromBackup(*model.BackupData) error { return nil }
 
+// satisfy updated Store interface
+func (s *failingDirtyStore) ToggleAccountStatus(id int, enabled bool) error      { return nil }
+func (s *failingDirtyStore) UpdateAccountHostname(id int, hostname string) error { return nil }
+func (s *failingDirtyStore) UpdateAccountLabel(id int, label string) error       { return nil }
+func (s *failingDirtyStore) UpdateAccountTags(id int, tags string) error         { return nil }
+
 // fake DM that returns mismatched content
 type mismatchDM struct{}
 

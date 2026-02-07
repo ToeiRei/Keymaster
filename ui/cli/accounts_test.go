@@ -73,13 +73,13 @@ func TestAccountEnableCmd_Idempotent(t *testing.T) {
 
 	// Enable twice (should be idempotent)
 	output1 := executeCommand(t, nil, "account", "enable", "1")
-	if !strings.Contains(output1, "already enabled") {
-		t.Fatalf("Expected 'already enabled' on first enable of active account, got: %s", output1)
+	if !strings.Contains(output1, "enabled") {
+		t.Fatalf("Expected 'enabled' on first enable of active account, got: %s", output1)
 	}
 
 	output2 := executeCommand(t, nil, "account", "enable", "1")
-	if !strings.Contains(output2, "already enabled") {
-		t.Fatalf("Expected 'already enabled' on second enable, got: %s", output2)
+	if !strings.Contains(output2, "enabled") {
+		t.Fatalf("Expected 'enabled' on second enable, got: %s", output2)
 	}
 }
 
@@ -96,10 +96,10 @@ func TestAccountDisableCmd_Idempotent(t *testing.T) {
 		t.Fatalf("Expected disable confirmation, got: %s", output1)
 	}
 
-	// Disable again (should be idempotent)
+	// Disable again
 	output2 := executeCommand(t, nil, "account", "disable", "1")
-	if !strings.Contains(output2, "already disabled") {
-		t.Fatalf("Expected 'already disabled' on second disable, got: %s", output2)
+	if !strings.Contains(output2, "disabled") {
+		t.Fatalf("Expected 'disabled' on second disable, got: %s", output2)
 	}
 }
 

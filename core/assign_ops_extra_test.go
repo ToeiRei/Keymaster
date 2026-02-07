@@ -17,7 +17,7 @@ func TestAssignKeys_LoopsAndStopsOnError(t *testing.T) {
 		}
 		return nil
 	}
-	err := AssignKeys([]int{1, 2, 3}, 10, assignFn)
+	err := AssignKeysHelper([]int{1, 2, 3}, 10, assignFn)
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}

@@ -34,6 +34,12 @@ func (f *fakeStoreForDecom) ExportDataForBackup() (*model.BackupData, error)    
 func (f *fakeStoreForDecom) ImportDataFromBackup(*model.BackupData) error              { return nil }
 func (f *fakeStoreForDecom) IntegrateDataFromBackup(*model.BackupData) error           { return nil }
 
+// satisfy updated Store interface
+func (f *fakeStoreForDecom) ToggleAccountStatus(id int, enabled bool) error      { return nil }
+func (f *fakeStoreForDecom) UpdateAccountHostname(id int, hostname string) error { return nil }
+func (f *fakeStoreForDecom) UpdateAccountLabel(id int, label string) error       { return nil }
+func (f *fakeStoreForDecom) UpdateAccountTags(id int, tags string) error         { return nil }
+
 type fakeDMForFacades struct {
 	single ResAndErr
 	bulk   []DecommissionResult

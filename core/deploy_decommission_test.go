@@ -29,6 +29,11 @@ func (f *fakeAccountMgr) DeleteAccount(id int) error {
 	return f.ferr
 }
 
+// satisfy AccountManager interface additions
+func (f *fakeAccountMgr) AddAccount(username, hostname, label, tags string) (int, error) {
+	return 0, nil
+}
+
 type spyAuditW struct {
 	actions []string
 }

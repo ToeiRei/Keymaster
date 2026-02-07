@@ -84,6 +84,13 @@ func (testAccountManager) DeleteAccount(id int) error {
 	return nil
 }
 
+func (testAccountManager) AddAccount(username, hostname, label, tags string) (int, error) {
+	if m := db.DefaultAccountManager(); m != nil {
+		return m.AddAccount(username, hostname, label, tags)
+	}
+	return 0, nil
+}
+
 func TestMain(m *testing.M) {
 	SetDefaultKeyReader(testKeyReader{})
 	SetDefaultKeyLister(testKeyLister{})

@@ -71,6 +71,12 @@ func (f *fakeStoreAudit) ExportDataForBackup() (*model.BackupData, error) { retu
 func (f *fakeStoreAudit) ImportDataFromBackup(*model.BackupData) error    { return nil }
 func (f *fakeStoreAudit) IntegrateDataFromBackup(*model.BackupData) error { return nil }
 
+// satisfy updated Store interface
+func (f *fakeStoreAudit) ToggleAccountStatus(id int, enabled bool) error      { return nil }
+func (f *fakeStoreAudit) UpdateAccountHostname(id int, hostname string) error { return nil }
+func (f *fakeStoreAudit) UpdateAccountLabel(id int, label string) error       { return nil }
+func (f *fakeStoreAudit) UpdateAccountTags(id int, tags string) error         { return nil }
+
 type fakeDMForAudit struct{}
 
 func (f *fakeDMForAudit) DeployForAccount(model.Account, bool) error { return nil }

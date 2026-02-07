@@ -29,10 +29,13 @@ func (f *fmKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal
 	f.added = append(f.added, comment)
 	return nil
 }
+func (f *fmKeyManager) AssignKeyToAccount(keyID, accountID int) error     { return nil }
+func (f *fmKeyManager) UnassignKeyFromAccount(keyID, accountID int) error { return nil }
 
 func (f *fmKeyManager) GetGlobalPublicKeys() ([]model.PublicKey, error)            { return nil, nil }
 func (f *fmKeyManager) GetKeysForAccount(accountID int) ([]model.PublicKey, error) { return nil, nil }
-func (f *fmKeyManager) AssignKeyToAccount(keyID, accountID int) error              { return nil }
+
+// Assign/Unassign provided above
 
 func TestImportAuthorizedKeys_Basic(t *testing.T) {
 	data := "# header\nssh-ed25519 AAAA key-one\ninvalid-line\nssh-ed25519 BBBB key-two\nssh-ed25519 CCCC\n"
