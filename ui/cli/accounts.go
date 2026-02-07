@@ -11,6 +11,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
+	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/core/model"
 )
@@ -39,56 +40,27 @@ You can filter by status (active, inactive) or search by hostname/username.`,
 		statusFilter, _ := cmd.Flags().GetString("status")
 		searchTerm, _ := cmd.Flags().GetString("search")
 
-		accounts, err := db.GetAllAccounts()
-		if err != nil {
-			return fmt.Errorf("failed to list accounts: %w", err)
-		}
-
-		// Filter by status
-		if statusFilter != "" {
-			filtered := []model.Account{}
-			isActive := statusFilter == "active"
-			for _, acc := range accounts {
-				if acc.IsActive == isActive {
-					filtered = append(filtered, acc)
-				}
+			st := db.DefaultStore()
+			accounts, err := core.ListAccounts(st, statusFilter, searchTerm)
+			if err != nil {
+				return err
 			}
-			accounts = filtered
-		}
-
-		// Filter by search term
-		if searchTerm != "" {
-			searchLower := strings.ToLower(searchTerm)
-			filtered := []model.Account{}
-			for _, acc := range accounts {
-				if strings.Contains(strings.ToLower(acc.Username), searchLower) ||
-					strings.Contains(strings.ToLower(acc.Hostname), searchLower) ||
-					strings.Contains(strings.ToLower(acc.Label), searchLower) {
-					filtered = append(filtered, acc)
-				}
+			if len(accounts) == 0 {
+				fmt.Println("No accounts found.")
+				return nil
 			}
-			accounts = filtered
-		}
-
-		if len(accounts) == 0 {
-			fmt.Println("No accounts found.")
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			fmt.Fprintln(w, "ID\tUSERNAME\tHOSTNAME\tLABEL\tTAGS\tSTATUS")
+			for _, acc := range accounts {
+				status := "active"
+				if !acc.IsActive {
+					status = "inactive"
+				}
+				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n",
+					acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, status)
+			}
+			w.Flush()
 			return nil
-		}
-
-		// Display as table
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "ID\tUSERNAME\tHOSTNAME\tLABEL\tTAGS\tSTATUS")
-		for _, acc := range accounts {
-			status := "active"
-			if !acc.IsActive {
-				status = "inactive"
-			}
-			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n",
-				acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, status)
-		}
-		w.Flush()
-
-		return nil
 	},
 }
 
@@ -99,76 +71,42 @@ var accountShowCmd = &cobra.Command{
 	Long:  `Display full details of an account including assigned SSH keys.`,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		identifier := args[0]
-
-		var account *model.Account
-
-		// Try parsing as ID first, then as hostname
-		if id, parseErr := strconv.Atoi(identifier); parseErr == nil {
-			// Look up account by ID
-			allAccounts, err := db.GetAllAccounts()
+			identifier := args[0]
+			st := db.DefaultStore()
+			account, err := core.ShowAccount(st, identifier)
 			if err != nil {
-				return fmt.Errorf("failed to load accounts: %w", err)
+				return err
 			}
-			for i, acc := range allAccounts {
-				if acc.ID == id {
-					account = &allAccounts[i]
-					break
-				}
+			status := "active"
+			if !account.IsActive {
+				status = "inactive"
 			}
-		} else {
-			// Try to find by hostname
-			accounts, err := db.GetAllAccounts()
-			if err != nil {
-				return fmt.Errorf("failed to load accounts: %w", err)
-			}
-			for i, acc := range accounts {
-				if acc.Hostname == identifier {
-					account = &accounts[i]
-					break
-				}
-			}
-		}
-
-		if account == nil {
-			return fmt.Errorf("account not found: %s", identifier)
-		}
-
-		// Display account details
-		status := "active"
-		if !account.IsActive {
-			status = "inactive"
-		}
-
-		fmt.Printf("ID:        %d\n", account.ID)
-		fmt.Printf("Username:  %s\n", account.Username)
-		fmt.Printf("Hostname:  %s\n", account.Hostname)
-		fmt.Printf("Label:     %s\n", account.Label)
-		fmt.Printf("Tags:      %s\n", account.Tags)
-		fmt.Printf("Status:    %s\n", status)
-		fmt.Printf("Serial:    %d\n", account.Serial)
-
-		// Get assigned keys
-		km := db.DefaultKeyManager()
-		if km != nil {
-			keys, keyErr := km.GetKeysForAccount(account.ID)
-			if keyErr == nil && len(keys) > 0 {
-				fmt.Println("\nAssigned Keys:")
-				w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-				fmt.Fprintln(w, "KEY_ID\tALGORITHM\tCOMMENT\tIS_GLOBAL")
-				for _, key := range keys {
-					isGlobal := "no"
-					if key.IsGlobal {
-						isGlobal = "yes"
+			fmt.Printf("ID:        %d\n", account.ID)
+			fmt.Printf("Username:  %s\n", account.Username)
+			fmt.Printf("Hostname:  %s\n", account.Hostname)
+			fmt.Printf("Label:     %s\n", account.Label)
+			fmt.Printf("Tags:      %s\n", account.Tags)
+			fmt.Printf("Status:    %s\n", status)
+			fmt.Printf("Serial:    %d\n", account.Serial)
+			km := db.DefaultKeyManager()
+			if km != nil {
+				keys, keyErr := km.GetKeysForAccount(account.ID)
+				if keyErr == nil && len(keys) > 0 {
+					fmt.Println("\nAssigned Keys:")
+					w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+					fmt.Fprintln(w, "KEY_ID\tALGORITHM\tCOMMENT\tIS_GLOBAL")
+					for _, key := range keys {
+						isGlobal := "no"
+						if key.IsGlobal {
+							isGlobal = "yes"
+						}
+						fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
+							key.ID, key.Algorithm, key.Comment, isGlobal)
 					}
-					fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
-						key.ID, key.Algorithm, key.Comment, isGlobal)
+					w.Flush()
 				}
-				w.Flush()
 			}
-		}
-
-		return nil
+			return nil
 	},
 }
 
@@ -178,30 +116,20 @@ var accountCreateCmd = &cobra.Command{
 	Short: "Create a new account",
 	Long:  `Create a new SSH account with username, hostname, and optional label and tags.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		username, _ := cmd.Flags().GetString("username")
-		hostname, _ := cmd.Flags().GetString("hostname")
-		label, _ := cmd.Flags().GetString("label")
-		tags, _ := cmd.Flags().GetString("tags")
-
-		if username == "" {
-			return fmt.Errorf("--username is required")
-		}
-		if hostname == "" {
-			return fmt.Errorf("--hostname is required")
-		}
-
-		am := db.DefaultAccountManager()
-		if am == nil {
-			return fmt.Errorf("no account manager available")
-		}
-
-		id, err := am.AddAccount(username, hostname, label, tags)
-		if err != nil {
-			return fmt.Errorf("failed to create account: %w", err)
-		}
-
-		fmt.Printf("Account created successfully with ID: %d\n", id)
-		return nil
+			username, _ := cmd.Flags().GetString("username")
+			hostname, _ := cmd.Flags().GetString("hostname")
+			label, _ := cmd.Flags().GetString("label")
+			tags, _ := cmd.Flags().GetString("tags")
+			am := db.DefaultAccountManager()
+			if am == nil {
+				return fmt.Errorf("no account manager available")
+			}
+			id, err := core.CreateAccount(am, username, hostname, label, tags)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Account created successfully with ID: %d\n", id)
+			return nil
 	},
 }
 
