@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/toeirei/keymaster/core"
-	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/uiadapters"
 )
 
 var showKeysCmd = &cobra.Command{
@@ -31,7 +31,8 @@ var showKeysCmd = &cobra.Command{
 		hostname := parts[1]
 
 		// Find the account in database
-		accounts, err := db.GetAllAccounts()
+		st := uiadapters.NewStoreAdapter()
+		accounts, err := st.GetAllAccounts()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error getting accounts: %v\n", err)
 			os.Exit(1)

@@ -12,7 +12,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/toeirei/keymaster/core"
-	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/uiadapters"
 )
@@ -89,7 +88,7 @@ var accountShowCmd = &cobra.Command{
 		fmt.Printf("Tags:      %s\n", account.Tags)
 		fmt.Printf("Status:    %s\n", status)
 		fmt.Printf("Serial:    %d\n", account.Serial)
-		km := db.DefaultKeyManager()
+		km := core.DefaultKeyManager()
 		if km != nil {
 			keys, keyErr := km.GetKeysForAccount(account.ID)
 			if keyErr == nil && len(keys) > 0 {
@@ -270,7 +269,7 @@ to this account's authorized_keys file on next deploy.`,
 		if err != nil {
 			return fmt.Errorf("invalid key ID: %w", err)
 		}
-		km := db.DefaultKeyManager()
+		km := core.DefaultKeyManager()
 		st := uiadapters.NewStoreAdapter()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
@@ -300,7 +299,7 @@ The key will no longer be deployed to this account's authorized_keys.`,
 		if err != nil {
 			return fmt.Errorf("invalid key ID: %w", err)
 		}
-		km := db.DefaultKeyManager()
+		km := core.DefaultKeyManager()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}

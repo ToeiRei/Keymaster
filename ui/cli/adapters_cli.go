@@ -9,8 +9,6 @@ import (
 	log "github.com/charmbracelet/log"
 
 	"github.com/toeirei/keymaster/core"
-	crypto_ssh "github.com/toeirei/keymaster/core/crypto/ssh"
-	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/security"
 )
@@ -95,141 +93,24 @@ func (c *cliDeployerManager) IsPassphraseRequired(err error) bool {
 type cliDBMaintainer struct{}
 
 func (c *cliDBMaintainer) RunDBMaintenance(dbType, dsn string) error {
-	return db.RunDBMaintenance(dbType, dsn)
+	return core.DefaultDBMaintainer().RunDBMaintenance(dbType, dsn)
 }
 
 // cliStoreFactory creates a new store for migration targets via db.NewStoreFromDSN.
 type cliStoreFactory struct{}
 
 func (c *cliStoreFactory) NewStoreFromDSN(dbType, dsn string) (core.Store, error) {
-	s, err := db.NewStoreFromDSN(dbType, dsn)
-	if err != nil {
-		return nil, err
-	}
-	// wrap the returned db.Store into a thin adapter that implements core.Store
-	return &dbStoreWrapper{inner: s}, nil
+	return core.NewStoreFromDSN(dbType, dsn)
 }
 
 // dbStoreWrapper adapts db.Store to core.Store for migration targets.
-type dbStoreWrapper struct{ inner db.Store }
-
-func (w *dbStoreWrapper) GetAccounts() ([]model.Account, error) { return w.inner.GetAllAccounts() }
-func (w *dbStoreWrapper) GetAllActiveAccounts() ([]model.Account, error) {
-	if w == nil || w.inner == nil {
-		return nil, fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.GetAllActiveAccounts()
-}
-func (w *dbStoreWrapper) GetAllAccounts() ([]model.Account, error) { return w.inner.GetAllAccounts() }
-func (w *dbStoreWrapper) GetAccount(id int) (*model.Account, error) {
-	if w == nil || w.inner == nil {
-		return nil, fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	ac, err := w.inner.GetAllAccounts()
-	if err != nil {
-		return nil, err
-	}
-	for _, a := range ac {
-		if a.ID == id {
-			aa := a
-			return &aa, nil
-		}
-	}
-	return nil, fmt.Errorf("not found")
-}
-func (w *dbStoreWrapper) AddAccount(username, hostname, label, tags string) (int, error) {
-	if w == nil || w.inner == nil {
-		return 0, fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.AddAccount(username, hostname, label, tags)
-}
-func (w *dbStoreWrapper) DeleteAccount(accountID int) error { return w.inner.DeleteAccount(accountID) }
-func (w *dbStoreWrapper) AssignKeyToAccount(keyID, accountID int) error {
-	km := db.DefaultKeyManager()
-	if km == nil {
-		return fmt.Errorf("no key manager available")
-	}
-	return km.AssignKeyToAccount(keyID, accountID)
-}
-
-func (w *dbStoreWrapper) ToggleAccountStatus(accountID int, enabled bool) error {
-	if w == nil || w.inner == nil {
-		return fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.ToggleAccountStatus(accountID, enabled)
-}
-func (w *dbStoreWrapper) UpdateAccountHostname(accountID int, hostname string) error {
-	if w == nil || w.inner == nil {
-		return fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.UpdateAccountHostname(accountID, hostname)
-}
-func (w *dbStoreWrapper) UpdateAccountLabel(accountID int, label string) error {
-	if w == nil || w.inner == nil {
-		return fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.UpdateAccountLabel(accountID, label)
-}
-func (w *dbStoreWrapper) UpdateAccountTags(accountID int, tags string) error {
-	if w == nil || w.inner == nil {
-		return fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.UpdateAccountTags(accountID, tags)
-}
-func (w *dbStoreWrapper) UpdateAccountIsDirty(id int, dirty bool) error {
-	if w == nil || w.inner == nil {
-		return fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.UpdateAccountIsDirty(id, dirty)
-}
-func (w *dbStoreWrapper) CreateSystemKey(publicKey, privateKey string) (int, error) {
-	if w == nil || w.inner == nil {
-		return 0, fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.CreateSystemKey(publicKey, privateKey)
-}
-func (w *dbStoreWrapper) RotateSystemKey(publicKey, privateKey string) (int, error) {
-	if w == nil || w.inner == nil {
-		return 0, fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.RotateSystemKey(publicKey, privateKey)
-}
-func (w *dbStoreWrapper) GetActiveSystemKey() (*model.SystemKey, error) {
-	if w == nil || w.inner == nil {
-		return nil, fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.GetActiveSystemKey()
-}
-func (w *dbStoreWrapper) AddKnownHostKey(hostname, key string) error {
-	if w == nil || w.inner == nil {
-		return fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.AddKnownHostKey(hostname, key)
-}
-func (w *dbStoreWrapper) ExportDataForBackup() (*model.BackupData, error) {
-	if w == nil || w.inner == nil {
-		return nil, fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.ExportDataForBackup()
-}
-func (w *dbStoreWrapper) ImportDataFromBackup(d *model.BackupData) error {
-	if w == nil || w.inner == nil {
-		return fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.ImportDataFromBackup(d)
-}
-func (w *dbStoreWrapper) IntegrateDataFromBackup(d *model.BackupData) error {
-	if w == nil || w.inner == nil {
-		return fmt.Errorf("dbStoreWrapper: no inner store available")
-	}
-	return w.inner.IntegrateDataFromBackup(d)
-}
+// dbStoreWrapper moved into core.NewStoreFromDSN wrapper; no local wrapper needed.
 
 // cliKeyGenerator delegates to the package-level generator function.
 type cliKeyGenerator struct{}
 
 func (c *cliKeyGenerator) GenerateAndMarshalEd25519Key(comment, passphrase string) (string, string, error) {
-	return crypto_ssh.GenerateAndMarshalEd25519Key(comment, passphrase)
+	return core.DefaultKeyGenerator().GenerateAndMarshalEd25519Key(comment, passphrase)
 }
 
 // ensure adapters satisfy core interfaces at compile time

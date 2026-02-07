@@ -74,8 +74,17 @@ type KeyGenerator interface {
 // KeyManager provides higher-level key operations (importing public keys).
 type KeyManager interface {
 	AddPublicKey(alg string, keyData string, comment string, managed bool, expiresAt time.Time) error
+	AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) (*model.PublicKey, error)
+	DeletePublicKey(id int) error
+	TogglePublicKeyGlobal(id int) error
+	SetPublicKeyExpiry(id int, expiresAt time.Time) error
+	GetAllPublicKeys() ([]model.PublicKey, error)
+	GetPublicKeyByComment(comment string) (*model.PublicKey, error)
+	GetGlobalPublicKeys() ([]model.PublicKey, error)
 	AssignKeyToAccount(keyID, accountID int) error
 	UnassignKeyFromAccount(keyID, accountID int) error
+	GetKeysForAccount(accountID int) ([]model.PublicKey, error)
+	GetAccountsForKey(keyID int) ([]model.Account, error)
 }
 
 // DeployerManager aggregates deploy-related operations used by facades.

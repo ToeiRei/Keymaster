@@ -11,7 +11,6 @@ package cli
 import (
 	"bufio"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,7 +30,6 @@ import (
 	log "github.com/charmbracelet/log"
 	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/core"
-	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/core/deploy"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/sshkey"
@@ -141,7 +139,7 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 
 	// Initialize the database if not already initialized by tests or earlier setup.
 	if !core.IsDBInitialized() {
-		if _, err := db.New(appConfig.Database.Type, appConfig.Database.Dsn); err != nil {
+		if err := core.InitDB(appConfig.Database.Type, appConfig.Database.Dsn); err != nil {
 			return errors.New(i18n.T("config.error_init_db", err))
 		}
 	}
@@ -251,7 +249,7 @@ Running without a subcommand will launch the interactive TUI.`,
 				os.Exit(0)
 			}
 			if verbose {
-				db.SetDebug(true)
+				core.SetDBDebug(true)
 			}
 			return setupDefaultServices(cmd, args)
 		},
@@ -595,22 +593,22 @@ var auditCompareCmd = &cobra.Command{
 			}
 		}
 
-		gotHash := db.HashAuthorizedKeysContent(content)
+		gotHash := core.HashAuthorizedKeysContent(content)
 
-		// Read stored hash from DB
-		var stored sql.NullString
-		if err := db.QueryRawInto(context.Background(), db.BunDB(), &stored, "SELECT key_hash FROM accounts WHERE id = ?", account.ID); err != nil {
+		// Read stored hash from DB via core helper
+		stored, err := core.GetAccountKeyHash(account.ID)
+		if err != nil {
 			log.Fatalf("query key_hash: %v", err)
 		}
-		if !stored.Valid || stored.String == "" {
+		if stored == "" {
 			fmt.Printf("Account %s (id=%d) has no stored key_hash; computed=%s\n", account.String(), account.ID, gotHash)
 			return
 		}
 
-		if stored.String == gotHash {
+		if stored == gotHash {
 			fmt.Printf("MATCH: account=%s id=%d key_hash=%s\n", account.String(), account.ID, gotHash)
 		} else {
-			fmt.Printf("MISMATCH: account=%s id=%d\n  stored=%s\n  computed=%s\n", account.String(), account.ID, stored.String, gotHash)
+			fmt.Printf("MISMATCH: account=%s id=%d\n  stored=%s\n  computed=%s\n", account.String(), account.ID, stored, gotHash)
 		}
 	},
 }
@@ -633,7 +631,7 @@ var importCmd = &cobra.Command{
 		}
 		defer func() { _ = file.Close() }()
 
-		km := db.DefaultKeyManager()
+		km := core.DefaultKeyManager()
 		rep := &cliReporter{}
 		imported, skipped, ierr := core.RunImportCmd(cmd.Context(), file, km, rep)
 		if ierr != nil {

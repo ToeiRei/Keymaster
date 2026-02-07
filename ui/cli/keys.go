@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/model"
 )
 
@@ -39,7 +39,7 @@ You can filter by global status or search by comment/algorithm.`,
 		globalFilter, _ := cmd.Flags().GetString("global")
 		searchTerm, _ := cmd.Flags().GetString("search")
 
-		km := db.DefaultKeyManager()
+		km := core.DefaultKeyManager()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}
@@ -112,7 +112,7 @@ var keyShowCmd = &cobra.Command{
 			return fmt.Errorf("invalid key ID: %w", err)
 		}
 
-		km := db.DefaultKeyManager()
+		km := core.DefaultKeyManager()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}
@@ -200,7 +200,7 @@ var keyAddCmd = &cobra.Command{
 			expiresAt = parsed
 		}
 
-		km := db.DefaultKeyManager()
+		km := core.DefaultKeyManager()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}
@@ -229,7 +229,7 @@ var keyDeleteCmd = &cobra.Command{
 
 		force, _ := cmd.Flags().GetBool("force")
 
-		km := db.DefaultKeyManager()
+		km := core.DefaultKeyManager()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}
@@ -299,7 +299,7 @@ Keys past their expiration date will not be deployed.`,
 			expiresAt = parsed
 		}
 
-		km := db.DefaultKeyManager()
+		km := core.DefaultKeyManager()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}
@@ -329,7 +329,7 @@ var keyEnableGlobalCmd = &cobra.Command{
 			return fmt.Errorf("invalid key ID: %w", err)
 		}
 
-		km := db.DefaultKeyManager()
+		km := core.DefaultKeyManager()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}
@@ -380,7 +380,7 @@ var keyDisableGlobalCmd = &cobra.Command{
 			return fmt.Errorf("invalid key ID: %w", err)
 		}
 
-		km := db.DefaultKeyManager()
+		km := core.DefaultKeyManager()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}
