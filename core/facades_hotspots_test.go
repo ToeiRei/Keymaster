@@ -105,6 +105,21 @@ func (k *fKM) AddPublicKey(alg string, keyData string, comment string, managed b
 }
 func (k *fKM) AssignKeyToAccount(keyID, accountID int) error     { return nil }
 func (k *fKM) UnassignKeyFromAccount(keyID, accountID int) error { return nil }
+func (k *fKM) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) (*model.PublicKey, error) {
+	if comment == "dup" {
+		return nil, errors.New("dup")
+	}
+	k.added = append(k.added, comment)
+	return &model.PublicKey{Algorithm: algorithm, KeyData: keyData, Comment: comment}, nil
+}
+func (k *fKM) DeletePublicKey(id int) error                                   { return nil }
+func (k *fKM) GetAccountsForKey(keyID int) ([]model.Account, error)           { return nil, nil }
+func (k *fKM) GetAllPublicKeys() ([]model.PublicKey, error)                   { return nil, nil }
+func (k *fKM) GetGlobalPublicKeys() ([]model.PublicKey, error)                { return nil, nil }
+func (k *fKM) GetPublicKeyByComment(comment string) (*model.PublicKey, error) { return nil, nil }
+func (k *fKM) GetKeysForAccount(accountID int) ([]model.PublicKey, error)     { return nil, nil }
+func (k *fKM) SetPublicKeyExpiry(id int, expiresAt time.Time) error           { return nil }
+func (k *fKM) TogglePublicKeyGlobal(id int) error                             { return nil }
 
 type fDM struct{ deployed []model.Account }
 

@@ -32,8 +32,26 @@ func (f *fmKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal
 func (f *fmKeyManager) AssignKeyToAccount(keyID, accountID int) error     { return nil }
 func (f *fmKeyManager) UnassignKeyFromAccount(keyID, accountID int) error { return nil }
 
+func (f *fmKeyManager) AddPublicKeyAndGetModel(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) (*model.PublicKey, error) {
+	if f.failFor != nil {
+		if e, ok := f.failFor[comment]; ok {
+			return nil, e
+		}
+	}
+	f.added = append(f.added, comment)
+	return &model.PublicKey{Algorithm: algorithm, KeyData: keyData, Comment: comment}, nil
+}
+func (f *fmKeyManager) DeletePublicKey(id int) error                         { return nil }
+func (f *fmKeyManager) GetAccountsForKey(keyID int) ([]model.Account, error) { return nil, nil }
+func (f *fmKeyManager) GetAllPublicKeys() ([]model.PublicKey, error)         { return nil, nil }
+
 func (f *fmKeyManager) GetGlobalPublicKeys() ([]model.PublicKey, error)            { return nil, nil }
 func (f *fmKeyManager) GetKeysForAccount(accountID int) ([]model.PublicKey, error) { return nil, nil }
+func (f *fmKeyManager) GetPublicKeyByComment(comment string) (*model.PublicKey, error) {
+	return nil, nil
+}
+func (f *fmKeyManager) SetPublicKeyExpiry(id int, expiresAt time.Time) error { return nil }
+func (f *fmKeyManager) TogglePublicKeyGlobal(id int) error                   { return nil }
 
 // Assign/Unassign provided above
 

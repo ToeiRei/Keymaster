@@ -4,6 +4,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 
 	sshgen "github.com/toeirei/keymaster/core/crypto/ssh"
@@ -26,7 +27,7 @@ func DefaultKeyManager() KeyManager {
 // small convenience to avoid UIs importing db helpers directly.
 func GetAccountKeyHash(accountID int) (string, error) {
 	var stored string
-	if err := db.QueryRawInto(nil, db.BunDB(), &stored, "SELECT key_hash FROM accounts WHERE id = ?", accountID); err != nil {
+	if err := db.QueryRawInto(context.Background(), db.BunDB(), &stored, "SELECT key_hash FROM accounts WHERE id = ?", accountID); err != nil {
 		return "", err
 	}
 	return stored, nil

@@ -465,8 +465,17 @@ func TestRotateKeyCmd(t *testing.T) {
 	})
 
 	t.Run("should not change existing account serials", func(t *testing.T) {
-		// This test assumes the previous tests have run, and we have an active key with serial > 1.
-		// Let's add an account that is "synced" with an older key.
+		// Make this subtest independent: create initial and rotated keys here.
+		setupTestDB(t)
+
+		// Create initial key and rotate to produce serial 2
+		if _, err := executeCommand(t, nil, "rotate-key"), error(nil); err != nil {
+			// executeCommand will call t.Fatalf on error; this branch is unreachable
+		}
+		if _, err := executeCommand(t, nil, "rotate-key"), error(nil); err != nil {
+		}
+
+		// Add an account synced to the old serial (1)
 		mgr := core.DefaultAccountManager()
 		if mgr == nil {
 			t.Fatalf("no account manager available")
@@ -475,7 +484,6 @@ func TestRotateKeyCmd(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to add test account: %v", err)
 		}
-		// Set its serial to an old, inactive key.
 		if err := core.UpdateAccountSerial(accountID, 1); err != nil {
 			t.Fatalf("Failed to set account serial: %v", err)
 		}
@@ -485,6 +493,9 @@ func TestRotateKeyCmd(t *testing.T) {
 
 		// Assert that the account's serial number has NOT changed.
 		allAccounts, _ := core.GetAllAccounts()
+		if len(allAccounts) == 0 {
+			t.Fatalf("expected at least one account, found none")
+		}
 		if allAccounts[0].Serial != 1 {
 			t.Errorf("Expected account serial to remain 1 after key rotation, but it changed to %d", allAccounts[0].Serial)
 		}

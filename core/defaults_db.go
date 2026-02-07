@@ -77,7 +77,13 @@ func SetDefaultAccountManager(a AccountManager) {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
-	if t.PkgPath() == "github.com/toeirei/keymaster/core/deploy" && t.Name() == "coreAccountManager" {
+	// If the concrete type is defined in `core`, or is the internal deploy
+	// adapter, skip propagating it into `db` to avoid creating a recursion
+	// where core -> db -> core calls loop indefinitely. Tests in `core`
+	// sometimes register small delegating helpers (like testAccountManager)
+	// that themselves call `db.DefaultAccountManager()`; propagating those
+	// back into `db` would make them delegate to themselves and recurse.
+	if t.PkgPath() == "github.com/toeirei/keymaster/core" || (t.PkgPath() == "github.com/toeirei/keymaster/core/deploy" && t.Name() == "coreAccountManager") {
 		// Skip setting DB default for the internal deploy adapter.
 		return
 	}

@@ -161,3 +161,14 @@ func (s *BunStore) ImportDataFromBackup(backup *model.BackupData) error {
 func (s *BunStore) IntegrateDataFromBackup(backup *model.BackupData) error {
 	return IntegrateDataFromBackupBun(s.bun, backup)
 }
+
+// Close releases underlying SQL resources held by the BunStore.
+func (s *BunStore) Close() error {
+	if s == nil || s.bun == nil {
+		return nil
+	}
+	if s.bun.DB != nil {
+		return s.bun.DB.Close()
+	}
+	return nil
+}

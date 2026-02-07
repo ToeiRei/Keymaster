@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"context" // Added context import for maintenance timeouts
+	"runtime"
 
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/security"
@@ -64,6 +65,13 @@ func ResetStoreForTests() {
 	if store != nil {
 		if bunDB := store.BunDB(); bunDB != nil {
 			_ = bunDB.DB.Close()
+			// Force a GC and small sleep to help Windows release file locks
+			// from underlying drivers/cleaners before test TempDir cleanup.
+			// This is a pragmatic mitigation for intermittent Windows-only
+			// failures where file handles appear briefly held after Close().
+			// Keep this narrowly scoped to test cleanup.
+			runtime.GC()
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 	store = nil
