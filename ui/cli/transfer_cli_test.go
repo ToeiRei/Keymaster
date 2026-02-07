@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/core"
-	"github.com/toeirei/keymaster/core/db"
 )
 
 type testDeployer struct{}
@@ -26,7 +26,13 @@ func TestTransferCLI_CreateAndAccept(t *testing.T) {
 	pkgFile := filepath.Join(tmpdir, "transfer.json")
 
 	// Create an active system key so authorized_keys generation succeeds
-	if _, err := db.CreateSystemKey("sys-pub-test", "sys-priv-test"); err != nil {
+	dsn := viper.GetString("database.dsn")
+	st, err := core.NewStoreFromDSN("sqlite", dsn)
+	if err != nil {
+		t.Fatalf("NewStoreFromDSN failed: %v", err)
+	}
+	defer func() { _ = core.CloseStore(st) }()
+	if _, err := st.CreateSystemKey("sys-pub-test", "sys-priv-test"); err != nil {
 		t.Fatalf("CreateSystemKey failed: %v", err)
 	}
 
@@ -61,7 +67,7 @@ func TestTransferCLI_CreateAndAccept(t *testing.T) {
 	}
 
 	// Verify account created in DB
-	accts, err := db.GetAllAccounts()
+	accts, err := st.GetAllAccounts()
 	if err != nil {
 		t.Fatalf("GetAllAccounts failed: %v", err)
 	}

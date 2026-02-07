@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/toeirei/keymaster/core"
-	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/i18n"
 )
@@ -60,8 +59,8 @@ func TestNewRootCmd_RegistersSubcommandsAndVersion(t *testing.T) {
 func TestRunParallelTasks_PrintsResultsAndLogs(t *testing.T) {
 	// Initialize i18n and in-memory DB so logging doesn't fail
 	i18n.Init("en")
-	if _, err := db.New("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.New failed: %v", err)
+	if err := core.InitDB("sqlite", ":memory:"); err != nil {
+		t.Fatalf("InitDB failed: %v", err)
 	}
 
 	// Prepare accounts

@@ -19,7 +19,6 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/core"
-	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/i18n"
 	"golang.org/x/crypto/ssh"
 )
@@ -46,15 +45,15 @@ func setupTestDB(t *testing.T) {
 
 	// Initialize i18n and the database
 	i18n.Init("en")
-	if _, err := db.New("sqlite", dsn); err != nil {
+	if err := core.InitDB("sqlite", dsn); err != nil {
 		t.Fatalf("Failed to initialize test database: %v", err)
 	}
-	// Ensure core uses the package-level DB initialization state during tests.
-	core.SetDefaultDBIsInitialized(db.IsInitialized)
+	// Ensure core considers DB initialized during tests.
+	core.SetDefaultDBIsInitialized(func() bool { return true })
 	// Reset injected defaults after test to avoid cross-test pollution.
 	t.Cleanup(func() {
 		core.SetDefaultDBIsInitialized(nil)
-		db.ResetStoreForTests()
+		core.ResetStoreForTests()
 	})
 }
 
@@ -161,7 +160,7 @@ ssh-ed25519 CCCCC3NzaC1lZDI1NTE5AAAAIGy5E/P9Ea45T/k+s/p3g4zJzE4Q3g== user@exampl
 	})
 
 	t.Run("database should contain exactly one key", func(t *testing.T) {
-		km := db.DefaultKeyManager()
+		km := core.DefaultKeyManager()
 		if km == nil {
 			t.Fatalf("no key manager available")
 		}
@@ -242,7 +241,7 @@ func TestTrustHostCmd(t *testing.T) {
 	})
 
 	t.Run("database should contain the trusted host key", func(t *testing.T) {
-		key, err := db.GetKnownHostKey(hostname)
+		key, err := core.GetKnownHostKey(hostname)
 		if err != nil {
 			t.Fatalf("Failed to get known host key from DB: %v", err)
 		}
@@ -304,7 +303,7 @@ func TestTrustHostCmd_WeakKey(t *testing.T) {
 	})
 
 	t.Run("database should still contain the trusted host key", func(t *testing.T) {
-		key, err := db.GetKnownHostKey(hostname)
+		key, err := core.GetKnownHostKey(hostname)
 		if err != nil {
 			t.Fatalf("Failed to get known host key from DB: %v", err)
 		}
@@ -416,7 +415,7 @@ func TestRotateKeyCmd(t *testing.T) {
 		}
 
 		// 4. Assert Database State
-		activeKey, err := db.GetActiveSystemKey()
+		activeKey, err := core.GetActiveSystemKey()
 		if err != nil {
 			t.Fatalf("Failed to get active system key from DB: %v", err)
 		}
@@ -441,7 +440,7 @@ func TestRotateKeyCmd(t *testing.T) {
 		}
 
 		// 4. Assert New Database State
-		activeKey, err := db.GetActiveSystemKey()
+		activeKey, err := core.GetActiveSystemKey()
 		if err != nil {
 			t.Fatalf("Failed to get active system key from DB: %v", err)
 		}
@@ -453,7 +452,7 @@ func TestRotateKeyCmd(t *testing.T) {
 		}
 
 		// 5. Assert Old Key is now inactive
-		oldKey, err := db.GetSystemKeyBySerial(1)
+		oldKey, err := core.GetSystemKeyBySerial(1)
 		if err != nil {
 			t.Fatalf("Failed to get old system key (serial 1) from DB: %v", err)
 		}
@@ -468,7 +467,7 @@ func TestRotateKeyCmd(t *testing.T) {
 	t.Run("should not change existing account serials", func(t *testing.T) {
 		// This test assumes the previous tests have run, and we have an active key with serial > 1.
 		// Let's add an account that is "synced" with an older key.
-		mgr := db.DefaultAccountManager()
+		mgr := core.DefaultAccountManager()
 		if mgr == nil {
 			t.Fatalf("no account manager available")
 		}
@@ -477,7 +476,7 @@ func TestRotateKeyCmd(t *testing.T) {
 			t.Fatalf("Failed to add test account: %v", err)
 		}
 		// Set its serial to an old, inactive key.
-		if err := db.UpdateAccountSerial(accountID, 1); err != nil {
+		if err := core.UpdateAccountSerial(accountID, 1); err != nil {
 			t.Fatalf("Failed to set account serial: %v", err)
 		}
 
@@ -485,7 +484,7 @@ func TestRotateKeyCmd(t *testing.T) {
 		executeCommand(t, nil, "rotate-key")
 
 		// Assert that the account's serial number has NOT changed.
-		allAccounts, _ := db.GetAllAccounts()
+		allAccounts, _ := core.GetAllAccounts()
 		if allAccounts[0].Serial != 1 {
 			t.Errorf("Expected account serial to remain 1 after key rotation, but it changed to %d", allAccounts[0].Serial)
 		}
@@ -507,14 +506,14 @@ func TestExportSSHConfigCmd(t *testing.T) {
 		setupTestDB(t) // Fresh DB
 
 		// Add test accounts
-		mgr := db.DefaultAccountManager()
+		mgr := core.DefaultAccountManager()
 		if mgr == nil {
 			t.Fatalf("no account manager available")
 		}
 		_, _ = mgr.AddAccount("user1", "host1.com", "prod-web-1", "")
 		_, _ = mgr.AddAccount("user2", "host2.com", "", "") // No label
 		inactiveID, _ := mgr.AddAccount("user3", "host3.com", "inactive-host", "")
-		_ = db.ToggleAccountStatus(inactiveID) // Make this one inactive
+		_ = core.ToggleAccountStatus(inactiveID) // Make this one inactive
 
 		output := executeCommand(t, nil, "export-ssh-client-config")
 
@@ -540,7 +539,7 @@ func TestExportSSHConfigCmd(t *testing.T) {
 	t.Run("should write config to specified file", func(t *testing.T) {
 		setupTestDB(t) // Fresh DB
 
-		mgr := db.DefaultAccountManager()
+		mgr := core.DefaultAccountManager()
 		if mgr == nil {
 			t.Fatalf("no account manager available")
 		}

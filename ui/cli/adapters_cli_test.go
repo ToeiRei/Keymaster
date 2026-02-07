@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/toeirei/keymaster/core"
-	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/security"
 	"github.com/toeirei/keymaster/uiadapters"
@@ -35,7 +34,7 @@ func (f *fakeAccountManager) AddAccount(username, hostname, label, tags string) 
 func (f *fakeAccountManager) DeleteAccount(id int) error { return nil }
 
 // Minimal fake KeyManager for assign
-// fakeKeyManager implements db.KeyManager with minimal stubs for tests.
+// fakeKeyManager implements core.KeyManager with minimal stubs for tests.
 type fakeKeyManager struct{}
 
 func (f *fakeKeyManager) AddPublicKey(algorithm, keyData, comment string, isGlobal bool, expiresAt time.Time) error {
@@ -60,13 +59,13 @@ func (f *fakeKeyManager) GetKeysForAccount(accountID int) ([]model.PublicKey, er
 func (f *fakeKeyManager) GetAccountsForKey(keyID int) ([]model.Account, error) { return nil, nil }
 
 func TestCliStoreAdapter_AddDeleteAssign(t *testing.T) {
-	// inject fakes into db package defaults
-	prevAcct := db.DefaultAccountManager()
-	prevKey := db.DefaultKeyManager()
-	db.SetDefaultAccountManager(&fakeAccountManager{})
-	db.SetDefaultKeyManager(&fakeKeyManager{})
-	defer db.SetDefaultAccountManager(prevAcct)
-	defer db.SetDefaultKeyManager(prevKey)
+	// inject fakes into core package defaults
+	prevAcct := core.DefaultAccountManager()
+	prevKey := core.DefaultKeyManager()
+	core.SetDefaultAccountManager(&fakeAccountManager{})
+	core.SetDefaultKeyManager(&fakeKeyManager{})
+	defer core.SetDefaultAccountManager(prevAcct)
+	defer core.SetDefaultKeyManager(prevKey)
 
 	a := uiadapters.NewStoreAdapter()
 	id, err := a.AddAccount("u", "h", "l", "t")
@@ -102,9 +101,9 @@ func TestCliDeployerManager_DeployAndAudit_Decommission(t *testing.T) {
 	}
 
 	// Test decommission path that avoids remote cleanup by injecting fake account manager
-	prevAcct := db.DefaultAccountManager()
-	db.SetDefaultAccountManager(&fakeAccountManager{})
-	defer db.SetDefaultAccountManager(prevAcct)
+	prevAcct := core.DefaultAccountManager()
+	core.SetDefaultAccountManager(&fakeAccountManager{})
+	defer core.SetDefaultAccountManager(prevAcct)
 	// Skip remote cleanup to avoid network operations
 	res, err := dm.DecommissionAccount(acct, security.FromString("syskey"), core.DecommissionOptions{SkipRemoteCleanup: true})
 	if err != nil {

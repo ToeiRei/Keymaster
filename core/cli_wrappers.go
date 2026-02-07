@@ -52,6 +52,24 @@ func NewStoreFromDSN(dbType, dsn string) (Store, error) {
 	return &dbStoreWrapper{inner: s}, nil
 }
 
+// ResetStoreForTests closes and clears the package-level DB store. Tests may
+// call this via the `core` package to avoid importing `core/db` directly.
+func ResetStoreForTests() { db.ResetStoreForTests() }
+
+// Convenience wrappers for commonly used DB helpers so UIs/tests can call
+// into `core` instead of importing `core/db` directly.
+func GetKnownHostKey(hostname string) (string, error) { return db.GetKnownHostKey(hostname) }
+func GetActiveSystemKey() (*model.SystemKey, error)   { return db.GetActiveSystemKey() }
+func GetSystemKeyBySerial(serial int) (*model.SystemKey, error) {
+	return db.GetSystemKeyBySerial(serial)
+}
+func UpdateAccountSerial(accountID int, serial int) error {
+	return db.UpdateAccountSerial(accountID, serial)
+}
+func GetAllAccounts() ([]model.Account, error)       { return db.GetAllAccounts() }
+func ToggleAccountStatus(accountID int) error        { return db.ToggleAccountStatus(accountID) }
+func GetAllActiveAccounts() ([]model.Account, error) { return db.GetAllActiveAccounts() }
+
 // DefaultDBMaintainer returns a DBMaintainer implementation that delegates
 // to the db package's RunDBMaintenance helper.
 type dbMaintainer struct{}
@@ -71,6 +89,32 @@ func (s sshKeyGen) GenerateAndMarshalEd25519Key(comment, passphrase string) (str
 }
 
 func DefaultKeyGenerator() KeyGenerator { return sshKeyGen{} }
+
+// SetDefaultKeyManager registers a package-level KeyManager implementation
+// for tests and initialization code. This delegates to the DB layer's
+// SetDefaultKeyManager so callers don't need to import `core/db`.
+func SetDefaultKeyManager(m KeyManager) { db.SetDefaultKeyManager(m) }
+
+// (SetDefaultAccountManager is implemented in defaults_db.go and also
+// delegates to the DB package; no duplicate implementation here.)
+
+// CloseStore attempts to close resources held by a store created via
+// NewStoreFromDSN. This helps tests clean up in-memory or temp-file DBs when
+// they create ad-hoc stores for assertions.
+func CloseStore(s Store) error {
+	if s == nil {
+		return nil
+	}
+	if w, ok := s.(*dbStoreWrapper); ok {
+		if w.inner == nil {
+			return nil
+		}
+		if closer, ok := interface{}(w.inner).(interface{ Close() error }); ok {
+			return closer.Close()
+		}
+	}
+	return nil
+}
 
 // dbStoreWrapper adapts db.Store to core.Store.
 type dbStoreWrapper struct{ inner db.Store }

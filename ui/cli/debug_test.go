@@ -10,12 +10,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/toeirei/keymaster/core/db"
+	"github.com/spf13/viper"
+	"github.com/toeirei/keymaster/core"
 )
 
 func TestDebugAddAccount(t *testing.T) {
 	setupTestDB(t)
-	mgr := db.DefaultAccountManager()
+	mgr := core.DefaultAccountManager()
 	if mgr == nil {
 		t.Fatalf("no account manager available")
 	}
@@ -24,7 +25,13 @@ func TestDebugAddAccount(t *testing.T) {
 		t.Fatalf("AddAccount returned error: %v", err)
 	}
 	fmt.Printf("AddAccount id=%d\n", id)
-	accts, err := db.GetAllActiveAccounts()
+	dsn := viper.GetString("database.dsn")
+	st, err := core.NewStoreFromDSN("sqlite", dsn)
+	if err != nil {
+		t.Fatalf("NewStoreFromDSN failed: %v", err)
+	}
+	defer func() { _ = core.CloseStore(st) }()
+	accts, err := st.GetAllActiveAccounts()
 	if err != nil {
 		t.Fatalf("GetAllActiveAccounts failed: %v", err)
 	}

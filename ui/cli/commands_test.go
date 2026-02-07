@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/core"
-	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/i18n"
 )
@@ -348,11 +347,10 @@ func TestSetupDefaultServices_DBInitialization(t *testing.T) {
 	tmp := t.TempDir()
 	dbPath := filepath.Join(tmp, "test.db")
 
-	// Ensure core DB init checks are wired for this test.
-	core.SetDefaultDBIsInitialized(db.IsInitialized)
-	t.Cleanup(func() {
-		core.SetDefaultDBIsInitialized(nil)
-	})
+	// Ensure core DB init checks are wired for this test by checking the
+	// presence of the DB file on disk (avoids importing core/db in tests).
+	core.SetDefaultDBIsInitialized(func() bool { _, err := os.Stat(dbPath); return err == nil })
+	t.Cleanup(func() { core.SetDefaultDBIsInitialized(nil) })
 
 	// Set up minimal command with database flags
 	cmd := &cobra.Command{}
@@ -380,10 +378,8 @@ func TestSetupDefaultServices_DBInitialization(t *testing.T) {
 	// Verify i18n was initialized (should not panic)
 	_ = i18n.T("test.key")
 
-	// Close the underlying sql.DB to allow temp cleanup on Windows
-	if bunDB := db.BunDB(); bunDB != nil {
-		_ = bunDB.DB.Close()
-	}
+	// Reset the package-level store to allow temp cleanup on Windows
+	core.ResetStoreForTests()
 }
 
 // TestGetConfigPathFromCli_NoFlag verifies config path extraction when flag not set
@@ -560,8 +556,8 @@ func TestVersionCmd_Output(t *testing.T) {
 func TestCLIDeployerManager_Delegation(t *testing.T) {
 	// Initialize minimal DB for core facades
 	i18n.Init("en")
-	if _, err := db.New("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.New failed: %v", err)
+	if err := core.InitDB("sqlite", ":memory:"); err != nil {
+		t.Fatalf("InitDB failed: %v", err)
 	}
 
 	dm := &cliDeployerManager{}

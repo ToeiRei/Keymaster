@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core"
 )
 
 // TestKeyCommands_BasicFlow tests the key management workflow: add → list → show → set-expiry → enable-global → delete.
@@ -32,7 +32,7 @@ func TestKeyCommands_BasicFlow(t *testing.T) {
 	}
 
 	// Get the key ID from the list output
-	km := db.DefaultKeyManager()
+	km := core.DefaultKeyManager()
 	keys, err := km.GetAllPublicKeys()
 	if err != nil || len(keys) == 0 {
 		t.Fatalf("failed to retrieve keys: %v", err)
@@ -82,7 +82,7 @@ func TestKeyEnableGlobalCmd_Idempotent(t *testing.T) {
 	setupTestDB(t)
 
 	// Add a key
-	km := db.DefaultKeyManager()
+	km := core.DefaultKeyManager()
 	addedKey, err := km.AddPublicKeyAndGetModel(
 		"ssh-ed25519",
 		"AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyDataForTesting",
@@ -114,7 +114,7 @@ func TestKeyDisableGlobalCmd_Idempotent(t *testing.T) {
 	setupTestDB(t)
 
 	// Add a global key
-	km := db.DefaultKeyManager()
+	km := core.DefaultKeyManager()
 	addedKey, err := km.AddPublicKeyAndGetModel(
 		"ssh-ed25519",
 		"AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyDataForTesting",
@@ -170,7 +170,7 @@ func TestKeyListCmd_Filtering(t *testing.T) {
 		// Debug: print what we got
 		t.Logf("List output: %s", out)
 		// Try to see if keys exist in DB directly
-		km := db.DefaultKeyManager()
+		km := core.DefaultKeyManager()
 		keys, err := km.GetAllPublicKeys()
 		t.Logf("Direct DB query: %d keys, err=%v", len(keys), err)
 		t.Fatalf("expected both keys in list")

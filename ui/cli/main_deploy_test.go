@@ -6,15 +6,15 @@ package cli
 import (
 	"testing"
 
-	"github.com/toeirei/keymaster/core/db"
+	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/i18n"
 )
 
 func TestRunDeploymentForAccount_NoActiveSystemKey_ReturnsError(t *testing.T) {
 	i18n.Init("en")
-	if _, err := db.New("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.New failed: %v", err)
+	if err := core.InitDB("sqlite", ":memory:"); err != nil {
+		t.Fatalf("InitDB failed: %v", err)
 	}
 
 	acct := model.Account{ID: 1, Username: "u", Hostname: "h", Serial: 0}
@@ -26,8 +26,8 @@ func TestRunDeploymentForAccount_NoActiveSystemKey_ReturnsError(t *testing.T) {
 
 func TestRunDeploymentForAccount_MissingSerialKey_ReturnsError(t *testing.T) {
 	i18n.Init("en")
-	if _, err := db.New("sqlite", ":memory:"); err != nil {
-		t.Fatalf("db.New failed: %v", err)
+	if err := core.InitDB("sqlite", ":memory:"); err != nil {
+		t.Fatalf("InitDB failed: %v", err)
 	}
 
 	acct := model.Account{ID: 1, Username: "u", Hostname: "h", Serial: 999}

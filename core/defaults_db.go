@@ -5,7 +5,9 @@ package core
 
 import (
 	"fmt"
+	"reflect"
 
+	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/security"
 )
@@ -57,7 +59,30 @@ func SetDefaultAuditWriter(w AuditWriter) { defaultAuditWriter = w }
 func DefaultAccountManager() AccountManager { return defaultAccountManager }
 
 // SetDefaultAccountManager sets the package-level AccountManager used by core helpers.
-func SetDefaultAccountManager(a AccountManager) { defaultAccountManager = a }
+func SetDefaultAccountManager(a AccountManager) {
+	defaultAccountManager = a
+	// Also set the DB package default so adapters that call into `core/db`
+	// observe the injected test double. However, avoid propagating the
+	// internal deploy adapter (`core.deploy.coreAccountManager`) which
+	// delegates back into `core` and would create an infinite recursion
+	// (deploy -> core -> db -> deploy...). Detect that adapter by its
+	// concrete type package path and skip propagation in that case.
+	if a == nil {
+		db.SetDefaultAccountManager(nil)
+		return
+	}
+	// Use reflection to detect the concrete type's package path without
+	// importing the deploy package (to avoid cycles).
+	t := reflect.TypeOf(a)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.PkgPath() == "github.com/toeirei/keymaster/core/deploy" && t.Name() == "coreAccountManager" {
+		// Skip setting DB default for the internal deploy adapter.
+		return
+	}
+	db.SetDefaultAccountManager(a)
+}
 
 // DefaultInitDB delegates DB initialization to the injected function if present.
 func DefaultInitDB(dbType, dsn string) error {
