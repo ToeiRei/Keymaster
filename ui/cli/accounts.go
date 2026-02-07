@@ -40,27 +40,27 @@ You can filter by status (active, inactive) or search by hostname/username.`,
 		statusFilter, _ := cmd.Flags().GetString("status")
 		searchTerm, _ := cmd.Flags().GetString("search")
 
-			st := db.DefaultStore()
-			accounts, err := core.ListAccounts(st, statusFilter, searchTerm)
-			if err != nil {
-				return err
-			}
-			if len(accounts) == 0 {
-				fmt.Println("No accounts found.")
-				return nil
-			}
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tUSERNAME\tHOSTNAME\tLABEL\tTAGS\tSTATUS")
-			for _, acc := range accounts {
-				status := "active"
-				if !acc.IsActive {
-					status = "inactive"
-				}
-				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n",
-					acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, status)
-			}
-			w.Flush()
+		st := db.DefaultStore()
+		accounts, err := core.ListAccounts(st, statusFilter, searchTerm)
+		if err != nil {
+			return err
+		}
+		if len(accounts) == 0 {
+			fmt.Println("No accounts found.")
 			return nil
+		}
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(w, "ID\tUSERNAME\tHOSTNAME\tLABEL\tTAGS\tSTATUS")
+		for _, acc := range accounts {
+			status := "active"
+			if !acc.IsActive {
+				status = "inactive"
+			}
+			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n",
+				acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, status)
+		}
+		w.Flush()
+		return nil
 	},
 }
 
@@ -71,42 +71,42 @@ var accountShowCmd = &cobra.Command{
 	Long:  `Display full details of an account including assigned SSH keys.`,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-			identifier := args[0]
-			st := db.DefaultStore()
-			account, err := core.ShowAccount(st, identifier)
-			if err != nil {
-				return err
-			}
-			status := "active"
-			if !account.IsActive {
-				status = "inactive"
-			}
-			fmt.Printf("ID:        %d\n", account.ID)
-			fmt.Printf("Username:  %s\n", account.Username)
-			fmt.Printf("Hostname:  %s\n", account.Hostname)
-			fmt.Printf("Label:     %s\n", account.Label)
-			fmt.Printf("Tags:      %s\n", account.Tags)
-			fmt.Printf("Status:    %s\n", status)
-			fmt.Printf("Serial:    %d\n", account.Serial)
-			km := db.DefaultKeyManager()
-			if km != nil {
-				keys, keyErr := km.GetKeysForAccount(account.ID)
-				if keyErr == nil && len(keys) > 0 {
-					fmt.Println("\nAssigned Keys:")
-					w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-					fmt.Fprintln(w, "KEY_ID\tALGORITHM\tCOMMENT\tIS_GLOBAL")
-					for _, key := range keys {
-						isGlobal := "no"
-						if key.IsGlobal {
-							isGlobal = "yes"
-						}
-						fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
-							key.ID, key.Algorithm, key.Comment, isGlobal)
+		identifier := args[0]
+		st := db.DefaultStore()
+		account, err := core.ShowAccount(st, identifier)
+		if err != nil {
+			return err
+		}
+		status := "active"
+		if !account.IsActive {
+			status = "inactive"
+		}
+		fmt.Printf("ID:        %d\n", account.ID)
+		fmt.Printf("Username:  %s\n", account.Username)
+		fmt.Printf("Hostname:  %s\n", account.Hostname)
+		fmt.Printf("Label:     %s\n", account.Label)
+		fmt.Printf("Tags:      %s\n", account.Tags)
+		fmt.Printf("Status:    %s\n", status)
+		fmt.Printf("Serial:    %d\n", account.Serial)
+		km := db.DefaultKeyManager()
+		if km != nil {
+			keys, keyErr := km.GetKeysForAccount(account.ID)
+			if keyErr == nil && len(keys) > 0 {
+				fmt.Println("\nAssigned Keys:")
+				w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+				fmt.Fprintln(w, "KEY_ID\tALGORITHM\tCOMMENT\tIS_GLOBAL")
+				for _, key := range keys {
+					isGlobal := "no"
+					if key.IsGlobal {
+						isGlobal = "yes"
 					}
-					w.Flush()
+					fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
+						key.ID, key.Algorithm, key.Comment, isGlobal)
 				}
+				w.Flush()
 			}
-			return nil
+		}
+		return nil
 	},
 }
 
@@ -116,20 +116,20 @@ var accountCreateCmd = &cobra.Command{
 	Short: "Create a new account",
 	Long:  `Create a new SSH account with username, hostname, and optional label and tags.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-			username, _ := cmd.Flags().GetString("username")
-			hostname, _ := cmd.Flags().GetString("hostname")
-			label, _ := cmd.Flags().GetString("label")
-			tags, _ := cmd.Flags().GetString("tags")
-			am := db.DefaultAccountManager()
-			if am == nil {
-				return fmt.Errorf("no account manager available")
-			}
-			id, err := core.CreateAccount(am, username, hostname, label, tags)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("Account created successfully with ID: %d\n", id)
-			return nil
+		username, _ := cmd.Flags().GetString("username")
+		hostname, _ := cmd.Flags().GetString("hostname")
+		label, _ := cmd.Flags().GetString("label")
+		tags, _ := cmd.Flags().GetString("tags")
+		am := db.DefaultAccountManager()
+		if am == nil {
+			return fmt.Errorf("no account manager available")
+		}
+		id, err := core.CreateAccount(am, username, hostname, label, tags)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Account created successfully with ID: %d\n", id)
+		return nil
 	},
 }
 
@@ -144,55 +144,36 @@ var accountUpdateCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("invalid account ID: %w", err)
 		}
-
-		// Check if account exists
-		allAccounts, err := db.GetAllAccounts()
-		if err != nil {
-			return fmt.Errorf("failed to load accounts: %w", err)
-		}
-
-		accountExists := false
-		for _, acc := range allAccounts {
-			if acc.ID == id {
-				accountExists = true
-				break
-			}
-		}
-		if !accountExists {
-			return fmt.Errorf("account not found: %d", id)
-		}
-
-		// Update fields if provided
+		st := db.DefaultStore()
+		var hostnamePtr, labelPtr, tagsPtr *string
 		if cmd.Flags().Changed("hostname") {
 			hostname, _ := cmd.Flags().GetString("hostname")
-			if hostname != "" {
-				if err := db.UpdateAccountHostname(id, hostname); err != nil {
-					return fmt.Errorf("failed to update hostname: %w", err)
-				}
-				fmt.Printf("Hostname updated to: %s\n", hostname)
-			}
+			hostnamePtr = &hostname
 		}
-
 		if cmd.Flags().Changed("label") {
 			label, _ := cmd.Flags().GetString("label")
-			if err := db.UpdateAccountLabel(id, label); err != nil {
-				return fmt.Errorf("failed to update label: %w", err)
-			}
-			fmt.Printf("Label updated to: %s\n", label)
+			labelPtr = &label
 		}
-
 		if cmd.Flags().Changed("tags") {
 			tags, _ := cmd.Flags().GetString("tags")
-			if err := db.UpdateAccountTags(id, tags); err != nil {
-				return fmt.Errorf("failed to update tags: %w", err)
-			}
-			fmt.Printf("Tags updated to: %s\n", tags)
+			tagsPtr = &tags
 		}
-
-		if !cmd.Flags().Changed("hostname") && !cmd.Flags().Changed("label") && !cmd.Flags().Changed("tags") {
+		err = core.UpdateAccount(st, id, hostnamePtr, labelPtr, tagsPtr)
+		if err != nil {
+			return err
+		}
+		if hostnamePtr != nil {
+			fmt.Printf("Hostname updated to: %s\n", *hostnamePtr)
+		}
+		if labelPtr != nil {
+			fmt.Printf("Label updated to: %s\n", *labelPtr)
+		}
+		if tagsPtr != nil {
+			fmt.Printf("Tags updated to: %s\n", *tagsPtr)
+		}
+		if hostnamePtr == nil && labelPtr == nil && tagsPtr == nil {
 			fmt.Println("No fields to update. Use --hostname, --label, or --tags flags.")
 		}
-
 		return nil
 	},
 }
@@ -208,36 +189,11 @@ var accountEnableCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("invalid account ID: %w", err)
 		}
-
-		// Check if account exists and get current status
-		allAccounts, err := db.GetAllAccounts()
+		st := db.DefaultStore()
+		err = core.EnableAccount(st, id)
 		if err != nil {
-			return fmt.Errorf("failed to load accounts: %w", err)
+			return err
 		}
-
-		var account *model.Account
-		for i, acc := range allAccounts {
-			if acc.ID == id {
-				account = &allAccounts[i]
-				break
-			}
-		}
-
-		if account == nil {
-			return fmt.Errorf("account not found: %d", id)
-		}
-
-		// If already active, report but don't error
-		if account.IsActive {
-			fmt.Printf("Account %d is already enabled\n", id)
-			return nil
-		}
-
-		// Enable the account
-		if err := db.ToggleAccountStatus(id); err != nil {
-			return fmt.Errorf("failed to enable account: %w", err)
-		}
-
 		fmt.Printf("Account %d enabled\n", id)
 		return nil
 	},
@@ -254,36 +210,11 @@ var accountDisableCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("invalid account ID: %w", err)
 		}
-
-		// Check if account exists and get current status
-		allAccounts, err := db.GetAllAccounts()
+		st := db.DefaultStore()
+		err = core.DisableAccount(st, id)
 		if err != nil {
-			return fmt.Errorf("failed to load accounts: %w", err)
+			return err
 		}
-
-		var account *model.Account
-		for i, acc := range allAccounts {
-			if acc.ID == id {
-				account = &allAccounts[i]
-				break
-			}
-		}
-
-		if account == nil {
-			return fmt.Errorf("account not found: %d", id)
-		}
-
-		// If already inactive, report but don't error
-		if !account.IsActive {
-			fmt.Printf("Account %d is already disabled\n", id)
-			return nil
-		}
-
-		// Disable the account
-		if err := db.ToggleAccountStatus(id); err != nil {
-			return fmt.Errorf("failed to disable account: %w", err)
-		}
-
 		fmt.Printf("Account %d disabled\n", id)
 		return nil
 	},
@@ -300,48 +231,30 @@ var accountDeleteCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("invalid account ID: %w", err)
 		}
-
 		force, _ := cmd.Flags().GetBool("force")
-
-		// Get account info for confirmation
-		allAccounts, err := db.GetAllAccounts()
-		if err != nil {
-			return fmt.Errorf("failed to load accounts: %w", err)
+		st := db.DefaultStore()
+		am := db.DefaultAccountManager()
+		if am == nil {
+			return fmt.Errorf("no account manager available")
 		}
-
-		var account *model.Account
-		for i, acc := range allAccounts {
-			if acc.ID == id {
-				account = &allAccounts[i]
-				break
+		confirmFunc := func(account *model.Account) bool {
+			if force {
+				return true
 			}
-		}
-
-		if account == nil {
-			return fmt.Errorf("account not found: %d", id)
-		}
-
-		// Confirm deletion unless --force is used
-		if !force {
 			fmt.Printf("Delete account: %s@%s (ID: %d)? (yes/no): ", account.Username, account.Hostname, id)
 			var response string
 			fmt.Scanln(&response)
 			if strings.ToLower(response) != "yes" {
 				fmt.Println("Deletion cancelled.")
-				return nil
+				return false
 			}
+			return true
 		}
-
-		am := db.DefaultAccountManager()
-		if am == nil {
-			return fmt.Errorf("no account manager available")
+		err = core.DeleteAccount(am, st, id, force, confirmFunc)
+		if err != nil {
+			return err
 		}
-
-		if err := am.DeleteAccount(id); err != nil {
-			return fmt.Errorf("failed to delete account: %w", err)
-		}
-
-		fmt.Printf("Account deleted: %s@%s\n", account.Username, account.Hostname)
+		fmt.Printf("Account deleted (ID: %d)\n", id)
 		return nil
 	},
 }
@@ -358,34 +271,19 @@ to this account's authorized_keys file on next deploy.`,
 		if err != nil {
 			return fmt.Errorf("invalid account ID: %w", err)
 		}
-
 		keyID, err := strconv.Atoi(args[1])
 		if err != nil {
 			return fmt.Errorf("invalid key ID: %w", err)
 		}
-
 		km := db.DefaultKeyManager()
+		st := db.DefaultStore()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}
-
-		// Get account and key for display - verify account exists
-		allAccounts, _ := db.GetAllAccounts()
-		accountExists := false
-		for _, acc := range allAccounts {
-			if acc.ID == accountID {
-				accountExists = true
-				break
-			}
+		err = core.AssignKeyToAccount(km, st, keyID, accountID)
+		if err != nil {
+			return err
 		}
-		if !accountExists {
-			return fmt.Errorf("account not found: %d", accountID)
-		}
-
-		if err := km.AssignKeyToAccount(keyID, accountID); err != nil {
-			return fmt.Errorf("failed to assign key: %w", err)
-		}
-
 		fmt.Printf("Key %d assigned to account %d\n", keyID, accountID)
 		return nil
 	},
@@ -403,21 +301,18 @@ The key will no longer be deployed to this account's authorized_keys.`,
 		if err != nil {
 			return fmt.Errorf("invalid account ID: %w", err)
 		}
-
 		keyID, err := strconv.Atoi(args[1])
 		if err != nil {
 			return fmt.Errorf("invalid key ID: %w", err)
 		}
-
 		km := db.DefaultKeyManager()
 		if km == nil {
 			return fmt.Errorf("no key manager available")
 		}
-
-		if err := km.UnassignKeyFromAccount(keyID, accountID); err != nil {
-			return fmt.Errorf("failed to unassign key: %w", err)
+		err = core.UnassignKeyFromAccount(km, keyID, accountID)
+		if err != nil {
+			return err
 		}
-
 		fmt.Printf("Key %d unassigned from account %d\n", keyID, accountID)
 		return nil
 	},
