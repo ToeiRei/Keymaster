@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -518,4 +519,235 @@ func CleanupAllActiveSessions() error {
 // IsDBInitialized returns true when the database has been initialized.
 func IsDBInitialized() bool {
 	return DefaultIsDBInitialized()
+}
+
+// EnableAccount sets an account to active.
+func EnableAccount(st Store, id int) error {
+	allAccounts, err := st.GetAllAccounts()
+	if err != nil {
+		return fmt.Errorf("failed to load accounts: %w", err)
+	}
+	var account *model.Account
+	for i, acc := range allAccounts {
+		if acc.ID == id {
+			account = &allAccounts[i]
+			break
+		}
+	}
+	if account == nil {
+		return fmt.Errorf("account not found: %d", id)
+	}
+	if account.IsActive {
+		return nil // Already enabled
+	}
+	if err := st.ToggleAccountStatus(id); err != nil {
+		return fmt.Errorf("failed to enable account: %w", err)
+	}
+	return nil
+}
+
+// DisableAccount sets an account to inactive.
+func DisableAccount(st Store, id int) error {
+	allAccounts, err := st.GetAllAccounts()
+	if err != nil {
+		return fmt.Errorf("failed to load accounts: %w", err)
+	}
+	var account *model.Account
+	for i, acc := range allAccounts {
+		if acc.ID == id {
+			account = &allAccounts[i]
+			break
+		}
+	}
+	if account == nil {
+		return fmt.Errorf("account not found: %d", id)
+	}
+	if !account.IsActive {
+		return nil // Already disabled
+	}
+	if err := st.ToggleAccountStatus(id); err != nil {
+		return fmt.Errorf("failed to disable account: %w", err)
+	}
+	return nil
+}
+
+// DeleteAccount deletes an account and all its associated key assignments.
+func DeleteAccount(am AccountManager, st Store, id int, force bool, confirmFunc func(account *model.Account) bool) error {
+	allAccounts, err := st.GetAllAccounts()
+	if err != nil {
+		return fmt.Errorf("failed to load accounts: %w", err)
+	}
+	var account *model.Account
+	for i, acc := range allAccounts {
+		if acc.ID == id {
+			account = &allAccounts[i]
+			break
+		}
+	}
+	if account == nil {
+		return fmt.Errorf("account not found: %d", id)
+	}
+	if !force && confirmFunc != nil {
+		if !confirmFunc(account) {
+			return nil // Deletion cancelled
+		}
+	}
+	if err := am.DeleteAccount(id); err != nil {
+		return fmt.Errorf("failed to delete account: %w", err)
+	}
+	return nil
+}
+
+// AssignKeyToAccount assigns a key to an account.
+func AssignKeyToAccount(km KeyManager, st Store, keyID, accountID int) error {
+	allAccounts, err := st.GetAllAccounts()
+	if err != nil {
+		return fmt.Errorf("failed to load accounts: %w", err)
+	}
+	accountExists := false
+	for _, acc := range allAccounts {
+		if acc.ID == accountID {
+			accountExists = true
+			break
+		}
+	}
+	if !accountExists {
+		return fmt.Errorf("account not found: %d", accountID)
+	}
+	if err := km.AssignKeyToAccount(keyID, accountID); err != nil {
+		return fmt.Errorf("failed to assign key: %w", err)
+	}
+	return nil
+}
+
+// UnassignKeyFromAccount removes a key assignment from an account.
+func UnassignKeyFromAccount(km KeyManager, keyID, accountID int) error {
+	if err := km.UnassignKeyFromAccount(keyID, accountID); err != nil {
+		return fmt.Errorf("failed to unassign key: %w", err)
+	}
+	return nil
+}
+
+// CreateAccount creates a new account with the given parameters.
+func CreateAccount(am AccountManager, username, hostname, label, tags string) (int, error) {
+	if username == "" {
+		return 0, fmt.Errorf("--username is required")
+	}
+	if hostname == "" {
+		return 0, fmt.Errorf("--hostname is required")
+	}
+	id, err := am.AddAccount(username, hostname, label, tags)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create account: %w", err)
+	}
+	return id, nil
+}
+
+// UpdateAccount updates hostname, label, or tags for an existing account.
+func UpdateAccount(st Store, id int, hostname, label, tags *string) error {
+	// Check if account exists
+	allAccounts, err := st.GetAllAccounts()
+	if err != nil {
+		return fmt.Errorf("failed to load accounts: %w", err)
+	}
+	accountExists := false
+	for _, acc := range allAccounts {
+		if acc.ID == id {
+			accountExists = true
+			break
+		}
+	}
+	if !accountExists {
+		return fmt.Errorf("account not found: %d", id)
+	}
+
+	// Update fields if provided
+	updated := false
+	if hostname != nil {
+		if *hostname != "" {
+			if err := st.UpdateAccountHostname(id, *hostname); err != nil {
+				return fmt.Errorf("failed to update hostname: %w", err)
+			}
+			updated = true
+		}
+	}
+	if label != nil {
+		if err := st.UpdateAccountLabel(id, *label); err != nil {
+			return fmt.Errorf("failed to update label: %w", err)
+		}
+		updated = true
+	}
+	if tags != nil {
+		if err := st.UpdateAccountTags(id, *tags); err != nil {
+			return fmt.Errorf("failed to update tags: %w", err)
+		}
+		updated = true
+	}
+	if !updated {
+		return fmt.Errorf("no fields to update. Use hostname, label, or tags")
+	}
+	return nil
+}
+
+// ListAccounts returns all accounts, optionally filtered by status and/or search term.
+func ListAccounts(st Store, statusFilter, searchTerm string) ([]model.Account, error) {
+	accounts, err := st.GetAllAccounts()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list accounts: %w", err)
+	}
+
+	// Filter by status
+	if statusFilter != "" {
+		filtered := []model.Account{}
+		isActive := statusFilter == "active"
+		for _, acc := range accounts {
+			if acc.IsActive == isActive {
+				filtered = append(filtered, acc)
+			}
+		}
+		accounts = filtered
+	}
+
+	// Filter by search term
+	if searchTerm != "" {
+		searchLower := strings.ToLower(searchTerm)
+		filtered := []model.Account{}
+		for _, acc := range accounts {
+			if strings.Contains(strings.ToLower(acc.Username), searchLower) ||
+				strings.Contains(strings.ToLower(acc.Hostname), searchLower) ||
+				strings.Contains(strings.ToLower(acc.Label), searchLower) {
+				filtered = append(filtered, acc)
+			}
+		}
+		accounts = filtered
+	}
+
+	return accounts, nil
+}
+
+// ShowAccount returns a single account by ID or hostname.
+func ShowAccount(st Store, identifier string) (*model.Account, error) {
+	// Try parsing as ID first, then as hostname
+	if id, parseErr := strconv.Atoi(identifier); parseErr == nil {
+		allAccounts, err := st.GetAllAccounts()
+		if err != nil {
+			return nil, fmt.Errorf("failed to load accounts: %w", err)
+		}
+		for i, acc := range allAccounts {
+			if acc.ID == id {
+				return &allAccounts[i], nil
+			}
+		}
+	} else {
+		accounts, err := st.GetAllAccounts()
+		if err != nil {
+			return nil, fmt.Errorf("failed to load accounts: %w", err)
+		}
+		for i, acc := range accounts {
+			if acc.Hostname == identifier {
+				return &accounts[i], nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("account not found: %s", identifier)
 }
