@@ -44,14 +44,9 @@ func GetConfigPath(system bool) (string, error) {
 		}
 	} else {
 		// User-specific configuration paths
-		// Allow XDG_CONFIG_HOME override for testing and cross-platform consistency
-		if env := os.Getenv("XDG_CONFIG_HOME"); env != "" {
-			configDir = env
-		} else {
-			configDir, err = os.UserConfigDir()
-			if err != nil {
-				return "", fmt.Errorf("could not get user config directory: %w", err)
-			}
+		configDir, err = os.UserConfigDir()
+		if err != nil {
+			return "", err
 		}
 		configDir = filepath.Join(configDir, "keymaster")
 	}
@@ -98,6 +93,7 @@ func LoadConfig[T any](cmd *cobra.Command, defaults map[string]any, additionalCo
 	// exist, treat as ConfigFileNotFound.
 	foundConfig := false
 	for _, p := range candidateFiles {
+		// TODO why empty check? this should always be nonempty, or error above -> path doesnt make it to the array
 		if p == "" {
 			continue
 		}
