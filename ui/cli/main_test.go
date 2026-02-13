@@ -50,7 +50,7 @@ func setupTestDB(t *testing.T) {
 	// Construct a unique in-memory DSN using the TempDir basename so each
 	// test gets an isolated DB instance.
 	tmpDir := t.TempDir()
-	base := filepath.Base(tmpDir)
+	base := fmt.Sprintf("%d_%s", time.Now().UnixNano(), filepath.Base(tmpDir))
 	dsn := fmt.Sprintf("file:%s_keymaster_test?mode=memory&cache=shared", base)
 
 	viper.Set("database.type", "sqlite")
