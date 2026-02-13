@@ -74,7 +74,13 @@ func ResetStoreForTests() {
 			// Increase sleep to allow background DB goroutines to terminate
 			// and release file handles on Windows. Use a longer timeout to
 			// mitigate intermittent test flakes observed in CI/Windows.
-			time.Sleep(500 * time.Millisecond)
+			// Retry GC+sleep a few times to give the runtime time to finalize
+			// and for background cleanup to release file handles. Use an
+			// exponential-ish backoff total ~3s to be conservative on CI.
+			for i, d := 0, 200*time.Millisecond; i < 6; i, d = i+1, d*2 {
+				runtime.GC()
+				time.Sleep(d)
+			}
 		}
 	}
 	store = nil

@@ -14,11 +14,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	log "github.com/charmbracelet/log"
 
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/deploy"
 	"github.com/toeirei/keymaster/i18n"
 	"golang.org/x/crypto/ssh"
 )
@@ -33,10 +35,23 @@ func setupTestDB(t *testing.T) {
 	// Disable background session reaper during tests.
 	t.Setenv("KEYMASTER_DISABLE_SESSION_REAPER", "1")
 
-	// Use a unique on-disk database per test to avoid cross-test contamination.
-	// TempDir ensures isolation and avoids collisions in parallel or repeated runs.
+	// Reset core defaults to avoid cross-test pollution from earlier tests.
+	core.SetDefaultKeyReader(nil)
+	core.SetDefaultKeyLister(nil)
+	core.SetDefaultAccountSerialUpdater(nil)
+	core.SetDefaultKeyImporter(nil)
+	core.SetDefaultAuditWriter(nil)
+	core.SetDefaultAccountManager(nil)
+	core.SetDefaultDBInit(nil)
+	core.SetDefaultDBIsInitialized(nil)
+
+	// Use a unique in-memory SQLite database per test to avoid on-disk file
+	// handles that can cause intermittent cleanup failures on some runners.
+	// Construct a unique in-memory DSN using the TempDir basename so each
+	// test gets an isolated DB instance.
 	tmpDir := t.TempDir()
-	dsn := filepath.Join(tmpDir, "keymaster_test.db")
+	base := filepath.Base(tmpDir)
+	dsn := fmt.Sprintf("file:%s_keymaster_test?mode=memory&cache=shared", base)
 
 	viper.Set("database.type", "sqlite")
 	viper.Set("database.dsn", dsn)
@@ -44,6 +59,11 @@ func setupTestDB(t *testing.T) {
 
 	// Initialize i18n and the database
 	i18n.Init("en")
+	// Ensure core defaults (adapters) are wired for this test run. Some
+	// earlier tests may clear global defaults; re-register deploy defaults
+	// to make test behavior deterministic.
+	deploy.InitializeDefaults()
+
 	if err := core.InitDB("sqlite", dsn); err != nil {
 		t.Fatalf("Failed to initialize test database: %v", err)
 	}
@@ -53,6 +73,16 @@ func setupTestDB(t *testing.T) {
 	t.Cleanup(func() {
 		core.SetDefaultDBIsInitialized(nil)
 		core.ResetStoreForTests()
+		// Attempt to remove the on-disk DB file repeatedly. On some OSes
+		// (Windows/CI runners) file handles may linger briefly; retrying
+		// removal helps ensure TempDir cleanup succeeds.
+		// This is a best-effort cleanup to reduce intermittent test flakes.
+		for i := 0; i < 10; i++ {
+			if err := os.Remove(dsn); err == nil || os.IsNotExist(err) {
+				break
+			}
+			time.Sleep(200 * time.Millisecond)
+		}
 	})
 }
 
