@@ -8,4 +8,11 @@ package ui
 // InitializeDefaults registers UI-level defaults. For now, defer to
 // deploy.InitializeDefaults() which wires the canonical core adapters used
 // by UI packages. This preserves previous behavior after package moves.
-import _ "github.com/toeirei/keymaster/core/deploy"
+import "github.com/toeirei/keymaster/core/deploy"
+
+// InitializeDefaults is provided for callers that expect a UI-level
+// initialization entrypoint. It delegates to `core/deploy` to wire the
+// canonical default adapters.
+func InitializeDefaults() {
+	deploy.InitializeDefaults()
+}
