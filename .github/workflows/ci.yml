@@ -25,14 +25,20 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: '1.25.7'
+      - name: Clean Go module cache (prevent partial-restore issues)
+        run: |
+          rm -rf ~/go/pkg/mod || true
+          rm -rf ~/.cache/go-build || true
+
       - name: Cache Go modules
         uses: actions/cache@v5
         with:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum','**/go.mod') }}
           restore-keys: |
+            ${{ runner.os }}-go-${{ hashFiles('**/go.mod') }}
             ${{ runner.os }}-go-
       - name: Install tools
         run: |
@@ -49,7 +55,8 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         continue-on-error: true
         with:
-          version: v2.1.0
+          version: latest
+          go-version: '1.25.7'
           # Use colored-line-number output. Excludes should be configured in .golangci.yml
           args: run ./...
       - name: Static vet
