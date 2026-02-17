@@ -224,6 +224,10 @@ func TestTrustHostCmd(t *testing.T) {
 		t.Fatalf("Failed to listen on a port: %v", err)
 	}
 	defer func() { _ = listener.Close() }()
+	// Avoid Accept() blocking indefinitely in case the client fails to connect.
+	if tl, ok := listener.(*net.TCPListener); ok {
+		_ = tl.SetDeadline(time.Now().Add(5 * time.Second))
+	}
 
 	go func() {
 		conn, err := listener.Accept()
@@ -301,6 +305,10 @@ func TestTrustHostCmd_WeakKey(t *testing.T) {
 		t.Fatalf("Failed to listen on a port: %v", err)
 	}
 	defer func() { _ = listener.Close() }()
+	// Avoid Accept() blocking indefinitely in case the client fails to connect.
+	if tl, ok := listener.(*net.TCPListener); ok {
+		_ = tl.SetDeadline(time.Now().Add(5 * time.Second))
+	}
 
 	go func() {
 		conn, err := listener.Accept()
