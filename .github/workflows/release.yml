@@ -35,7 +35,7 @@ jobs:
           echo "notes_path=$NOTES_FILE" >> $GITHUB_OUTPUT
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           version: '~> v2'
           args: release --clean
