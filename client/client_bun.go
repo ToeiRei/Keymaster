@@ -11,7 +11,6 @@ import (
 
 	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/core"
-	"github.com/toeirei/keymaster/core/db"
 )
 
 type BunClient struct {
@@ -35,9 +34,16 @@ var _ Client = (*BunClient)(nil)
 // `logger`. The implementation should connect to the backing store, run any
 // migrations and return a ready-to-use client. Currently unimplemented.
 func NewBunClient(config config.Config, logger *log.Logger) (*BunClient, error) {
-	// db.New(config.Database.Type, config.Database.Dsn)
-	store, err := db.NewStoreFromDSN(config.Database.Type, config.Database.Dsn)
-	_ = store // TODO can't use store yet, as it does not implement core.Store (wich it shouldn't but hey)
+	// Initialize package-level DB (migrations, global store) so core/deploy
+	// wiring that relies on package-level adapters works the same as the CLI.
+	if err := core.InitDB(config.Database.Type, config.Database.Dsn); err != nil {
+		return nil, err
+	}
+
+	// Also create a wrapped core.Store instance we can use without relying on
+	// package globals. NewStoreFromDSN returns a core.Store wrapper around
+	// the underlying DB implementation.
+	st, err := core.NewStoreFromDSN(config.Database.Type, config.Database.Dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -45,14 +51,18 @@ func NewBunClient(config config.Config, logger *log.Logger) (*BunClient, error) 
 	return &BunClient{
 		config: config,
 		log:    logger,
-		// store:  core.Store(store),
+		store:  st,
 	}, nil
 }
 
 // Close cleans up resources held by the client and closes any open
 // connections. Calls should pass a context for cancellation/timeouts.
 func (c *BunClient) Close(ctx context.Context) error {
-	return errors.New("client.Close not implemented")
+	// Attempt to close any store resources created via core.NewStoreFromDSN.
+	if c.store != nil {
+		return core.CloseStore(c.store)
+	}
+	return nil
 }
 
 // --- PublicKey Management ---
