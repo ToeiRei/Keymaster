@@ -28,7 +28,7 @@ type TestUIClient struct {
 	targets    []Target
 	accounts   []Account
 	//lint:ignore U1000 Placeholder for future grant-related features.
-	grants     []TestUIGrant
+	grants []TestUIGrant
 	// id counter to simulate serial
 	publicKeysID ID
 	targetsID    ID
