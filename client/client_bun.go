@@ -28,6 +28,13 @@ type BunClient struct {
 	hostToID     map[string]ID
 	targetsByID  map[ID]Target
 	nextTargetID ID
+	// tag link management (in-memory)
+	tagLinks map[ID]struct {
+		accountID int
+		filter    string
+		expiresAt time.Time
+	}
+	nextTagLinkID ID
 }
 
 // *BunClient implements Client
@@ -60,6 +67,12 @@ func NewBunClient(config config.Config, logger *log.Logger) (*BunClient, error) 
 		hostToID:     make(map[string]ID),
 		targetsByID:  make(map[ID]Target),
 		nextTargetID: 1,
+		tagLinks: make(map[ID]struct {
+			accountID int
+			filter    string
+			expiresAt time.Time
+		}),
+		nextTagLinkID: 1,
 	}, nil
 }
 
@@ -369,22 +382,82 @@ func (c *BunClient) GetDirtyAccounts(ctx context.Context) ([]Account, error) {
 // LinkTagAccount associates a tag filter (e.g. "device:mobile&company:telekom") with
 // an `accountID` until `expiresAt`.
 func (c *BunClient) LinkTagAccount(ctx context.Context, accountID ID, filter string, expiresAt time.Time) (ID, error) {
-	return 0, errors.New("client.LinkTagAccount not implemented")
+	id := c.nextTagLinkID
+	c.nextTagLinkID++
+	c.tagLinks[id] = struct {
+		accountID int
+		filter    string
+		expiresAt time.Time
+	}{accountID: int(accountID), filter: filter, expiresAt: expiresAt}
+	return id, nil
 }
 
 // UnLinkTagAccount removes previously created tag-account links.
 func (c *BunClient) UnLinkTagAccount(ctx context.Context, linkIDs ...ID) error {
-	return errors.New("client.UnLinkTagAccount not implemented")
+	for _, id := range linkIDs {
+		delete(c.tagLinks, id)
+	}
+	return nil
 }
 
 // ResolvePublicKeysForAccount returns public keys applicable to `accountID`.
 func (c *BunClient) ResolvePublicKeysForAccount(ctx context.Context, accountID ID) ([]PublicKey, error) {
-	return nil, errors.New("client.ResolvePublicKeysForAccount not implemented")
+	km := core.DefaultKeyManager()
+	if km == nil {
+		return nil, errors.New("no key manager available")
+	}
+	// Keys explicitly assigned to account
+	assigned, err := km.GetKeysForAccount(int(accountID))
+	if err != nil {
+		return nil, err
+	}
+	// Global keys
+	global, err := km.GetGlobalPublicKeys()
+	if err != nil {
+		return nil, err
+	}
+	// Merge unique by ID
+	seen := make(map[int]bool)
+	var out []PublicKey
+	for _, k := range global {
+		seen[k.ID] = true
+		out = append(out, PublicKey{ID(k.ID), k.Comment, nil})
+	}
+	for _, k := range assigned {
+		if !seen[k.ID] {
+			seen[k.ID] = true
+			out = append(out, PublicKey{ID(k.ID), k.Comment, nil})
+		}
+	}
+	return out, nil
 }
 
 // ResolveAccountsForPublicKey returns accounts that a public key applies to.
 func (c *BunClient) ResolveAccountsForPublicKey(ctx context.Context, publicKeyID ID) ([]Account, error) {
-	return nil, errors.New("client.ResolveAccountsForPublicKey not implemented")
+	km := core.DefaultKeyManager()
+	if km == nil {
+		return nil, errors.New("no key manager available")
+	}
+	accs, err := km.GetAccountsForKey(int(publicKeyID))
+	if err != nil {
+		return nil, err
+	}
+	var out []Account
+	for _, a := range accs {
+		// ensure target exists
+		var tid ID
+		if id, ok := c.hostToID[a.Hostname]; ok {
+			tid = id
+		} else {
+			t, terr := c.CreateTarget(ctx, a.Hostname, 22)
+			if terr != nil {
+				return nil, terr
+			}
+			tid = t.id
+		}
+		out = append(out, Account{ID(a.ID), tid, a.Username, ""})
+	}
+	return out, nil
 }
 
 // --- Onboarding & Decommision ---
