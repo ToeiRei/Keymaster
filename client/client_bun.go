@@ -11,6 +11,8 @@ import (
 
 	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/core/security"
 	"github.com/toeirei/keymaster/core/sshkey"
 )
 
@@ -464,17 +466,104 @@ func (c *BunClient) ResolveAccountsForPublicKey(ctx context.Context, publicKeyID
 
 // OnboardHost starts onboarding of a host and returns a progress channel.
 func (c *BunClient) OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountName string, deploymentKey string) (chan OnboardHostProgress, error) {
-	return nil, errors.New("client.OnboardHost not implemented")
+	ch := make(chan OnboardHostProgress, 2)
+	go func() {
+		defer close(ch)
+		ch <- OnboardHostProgress{Percent: 0}
+
+		var pk security.Secret
+		if deploymentKey != "" {
+			pk = security.FromBytes([]byte(deploymentKey))
+		}
+
+		params := core.BootstrapParams{
+			Username:       accountName,
+			Hostname:       host,
+			Label:          "",
+			Tags:           "",
+			SelectedKeyIDs: nil,
+			TempPrivateKey: pk,
+		}
+
+		deps := core.BootstrapDeps{
+			AddAccount: func(username, hostname, label, tags string) (int, error) {
+				return c.store.AddAccount(username, hostname, label, tags)
+			},
+			DeleteAccount: func(accountID int) error {
+				return c.store.DeleteAccount(accountID)
+			},
+			AssignKey: func(keyID, accountID int) error {
+				return c.store.AssignKeyToAccount(keyID, accountID)
+			},
+			GenerateKeysContent: core.GenerateKeysContent,
+			NewBootstrapDeployer: func(hostname, username string, privateKey interface{}, expectedHostKey string) (core.BootstrapDeployer, error) {
+				var sec security.Secret
+				if pk, ok := privateKey.(security.Secret); ok {
+					sec = pk
+				}
+				d, err := core.NewBootstrapDeployer(hostname, username, sec, expectedHostKey)
+				return d, err
+			},
+			GetActiveSystemKey: func() (*model.SystemKey, error) {
+				return c.store.GetActiveSystemKey()
+			},
+			LogAudit: func(e core.BootstrapAuditEvent) error { return nil },
+		}
+
+		_, _ = core.PerformBootstrapDeployment(ctx, params, deps)
+		ch <- OnboardHostProgress{Percent: 100}
+	}()
+	return ch, nil
 }
 
 // DecommisionTarget decommissions a deployment target and streams progress.
 func (c *BunClient) DecommisionTarget(ctx context.Context, id ID) (chan DecommisionTargetProgress, error) {
-	return nil, errors.New("client.DecommisionTarget not implemented")
+	ch := make(chan DecommisionTargetProgress, 2)
+	go func() {
+		defer close(ch)
+		ch <- DecommisionTargetProgress{Percent: 0}
+
+		t, ok := c.targetsByID[id]
+		if !ok {
+			ch <- DecommisionTargetProgress{Percent: 100}
+			return
+		}
+
+		accountsModel, err := c.store.GetAllActiveAccounts()
+		if err != nil {
+			ch <- DecommisionTargetProgress{Percent: 100}
+			return
+		}
+		var targets []model.Account
+		for _, a := range accountsModel {
+			if a.Hostname == t.host {
+				targets = append(targets, a)
+			}
+		}
+
+		_, _ = core.DecommissionAccounts(ctx, targets, core.DecommissionOptions{}, core.DefaultDeployerManager, c.store, nil)
+		ch <- DecommisionTargetProgress{Percent: 100}
+	}()
+	return ch, nil
 }
 
 // DecommisionAccount decommissions an account and streams progress.
 func (c *BunClient) DecommisionAccount(ctx context.Context, id ID) (chan DecommisionAccountProgress, error) {
-	return nil, errors.New("client.DecommisionAccount not implemented")
+	ch := make(chan DecommisionAccountProgress, 2)
+	go func() {
+		defer close(ch)
+		ch <- DecommisionAccountProgress{Percent: 0}
+
+		m, err := c.store.GetAccount(int(id))
+		if err != nil || m == nil {
+			ch <- DecommisionAccountProgress{Percent: 100}
+			return
+		}
+		targets := []model.Account{*m}
+		_, _ = core.DecommissionAccounts(ctx, targets, core.DecommissionOptions{}, core.DefaultDeployerManager, c.store, nil)
+		ch <- DecommisionAccountProgress{Percent: 100}
+	}()
+	return ch, nil
 }
 
 // --- Deploy stuff ---
@@ -482,20 +571,109 @@ func (c *BunClient) DecommisionAccount(ctx context.Context, id ID) (chan Decommi
 // DeployPublicKeys deploys public keys to their target accounts and reports
 // progress on the returned channel.
 func (c *BunClient) DeployPublicKeys(ctx context.Context, publicKeyID ...ID) (chan DeployProgress, error) {
-	return nil, errors.New("client.DeployPublicKeys not implemented")
+	ch := make(chan DeployProgress, 10)
+	go func() {
+		defer close(ch)
+		ch <- DeployProgress{Percent: 0}
+
+		var allAccounts []model.Account
+		for _, pid := range publicKeyID {
+			accounts, err := c.ResolveAccountsForPublicKey(ctx, pid)
+			if err != nil {
+				continue
+			}
+			for _, a := range accounts {
+				if m, err := c.store.GetAccount(int(a.id)); err == nil && m != nil {
+					allAccounts = append(allAccounts, *m)
+				}
+			}
+		}
+		total := len(allAccounts)
+		for i, acc := range allAccounts {
+			_ = core.DefaultDeployerManager.DeployForAccount(acc, false)
+			percent := float32(i+1) / float32(total) * 100
+			ch <- DeployProgress{Percent: percent}
+		}
+		if total == 0 {
+			ch <- DeployProgress{Percent: 100}
+		}
+	}()
+	return ch, nil
 }
 
 // DeployTargets deploys to the specified target ids and streams progress.
 func (c *BunClient) DeployTargets(ctx context.Context, targetID ...ID) (chan DeployProgress, error) {
-	return nil, errors.New("client.DeployTargets not implemented")
+	ch := make(chan DeployProgress, 10)
+	go func() {
+		defer close(ch)
+		ch <- DeployProgress{Percent: 0}
+
+		var allAccounts []model.Account
+		for _, tid := range targetID {
+			accounts, err := c.ListAccountsByTarget(ctx, tid)
+			if err != nil {
+				continue
+			}
+			for _, a := range accounts {
+				if m, err := c.store.GetAccount(int(a.id)); err == nil && m != nil {
+					allAccounts = append(allAccounts, *m)
+				}
+			}
+		}
+		total := len(allAccounts)
+		for i, acc := range allAccounts {
+			_ = core.DefaultDeployerManager.DeployForAccount(acc, false)
+			percent := float32(i+1) / float32(total) * 100
+			ch <- DeployProgress{Percent: percent}
+		}
+		if total == 0 {
+			ch <- DeployProgress{Percent: 100}
+		}
+	}()
+	return ch, nil
 }
 
 // DeployAccounts deploys to the specified account ids and streams progress.
 func (c *BunClient) DeployAccounts(ctx context.Context, accountID ...ID) (chan DeployProgress, error) {
-	return nil, errors.New("client.DeployAccounts not implemented")
+	ch := make(chan DeployProgress, 10)
+	go func() {
+		defer close(ch)
+		ch <- DeployProgress{Percent: 0}
+
+		var allAccounts []model.Account
+		for _, aid := range accountID {
+			if m, err := c.store.GetAccount(int(aid)); err == nil && m != nil {
+				allAccounts = append(allAccounts, *m)
+			}
+		}
+		total := len(allAccounts)
+		for i, acc := range allAccounts {
+			_ = core.DefaultDeployerManager.DeployForAccount(acc, false)
+			percent := float32(i+1) / float32(total) * 100
+			ch <- DeployProgress{Percent: percent}
+		}
+		if total == 0 {
+			ch <- DeployProgress{Percent: 100}
+		}
+	}()
+	return ch, nil
 }
 
 // DeployAll triggers deployment for all pending targets/accounts.
 func (c *BunClient) DeployAll(ctx context.Context) (chan DeployProgress, error) {
-	return nil, errors.New("client.DeployAll not implemented")
+	ch := make(chan DeployProgress, 10)
+	go func() {
+		defer close(ch)
+		ch <- DeployProgress{Percent: 0}
+		res, _ := core.DeployAccounts(ctx, c.store, core.DefaultDeployerManager, nil, nil)
+		total := len(res)
+		for i := range res {
+			percent := float32(i+1) / float32(total) * 100
+			ch <- DeployProgress{Percent: percent}
+		}
+		if total == 0 {
+			ch <- DeployProgress{Percent: 100}
+		}
+	}()
+	return ch, nil
 }
