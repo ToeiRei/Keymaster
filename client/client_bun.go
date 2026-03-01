@@ -11,6 +11,7 @@ import (
 
 	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/sshkey"
 )
 
 type BunClient struct {
@@ -68,27 +69,97 @@ func (c *BunClient) Close(ctx context.Context) error {
 // --- PublicKey Management ---
 
 func (c *BunClient) CreatePublicKey(ctx context.Context, identity string, tags []string) (PublicKey, error) {
-	return PublicKey{}, errors.New("client.CreatePublicKey not implemented")
+	km := core.DefaultKeyManager()
+	if km == nil {
+		return PublicKey{}, errors.New("no key manager available")
+	}
+
+	// Generate a new keypair and store the public key via the KeyManager.
+	pubLine, _, err := core.DefaultKeyGenerator().GenerateAndMarshalEd25519Key(identity, "")
+	if err != nil {
+		return PublicKey{}, err
+	}
+	alg, keyData, comment, perr := sshkey.Parse(pubLine)
+	if perr != nil {
+		return PublicKey{}, perr
+	}
+	pk, err := km.AddPublicKeyAndGetModel(alg, keyData, comment, false, time.Time{})
+	if err != nil {
+		return PublicKey{}, err
+	}
+	return PublicKey{ID(pk.ID), pk.Comment, tags}, nil
 }
 
 func (c *BunClient) GetPublicKey(ctx context.Context, id ID) (PublicKey, error) {
-	return PublicKey{}, errors.New("client.GetPublicKey not implemented")
+	km := core.DefaultKeyManager()
+	if km == nil {
+		return PublicKey{}, errors.New("no key manager available")
+	}
+	pks, err := km.GetAllPublicKeys()
+	if err != nil {
+		return PublicKey{}, err
+	}
+	for _, p := range pks {
+		if ID(p.ID) == id {
+			return PublicKey{ID(p.ID), p.Comment, nil}, nil
+		}
+	}
+	return PublicKey{}, errors.New("public key not found")
 }
 
 func (c *BunClient) GetPublicKeys(ctx context.Context, ids ...ID) ([]PublicKey, error) {
-	return nil, errors.New("client.GetPublicKeys not implemented")
+	km := core.DefaultKeyManager()
+	if km == nil {
+		return nil, errors.New("no key manager available")
+	}
+	pks, err := km.GetAllPublicKeys()
+	if err != nil {
+		return nil, err
+	}
+	var out []PublicKey
+	for _, p := range pks {
+		for _, id := range ids {
+			if ID(p.ID) == id {
+				out = append(out, PublicKey{ID(p.ID), p.Comment, nil})
+			}
+		}
+	}
+	return out, nil
 }
 
 func (c *BunClient) ListPublicKeys(ctx context.Context, tagFilter string) ([]PublicKey, error) {
-	return nil, errors.New("client.ListPublicKeys not implemented")
+	km := core.DefaultKeyManager()
+	if km == nil {
+		return nil, errors.New("no key manager available")
+	}
+	pks, err := km.GetAllPublicKeys()
+	if err != nil {
+		return nil, err
+	}
+	var out []PublicKey
+	for _, p := range pks {
+		// Tags are not modeled in core.PublicKey; return empty tags for now.
+		out = append(out, PublicKey{ID(p.ID), p.Comment, nil})
+	}
+	return out, nil
 }
 
 func (c *BunClient) UpdatePublicKeyTags(ctx context.Context, id ID, tags []string) error {
-	return errors.New("client.UpdatePublicKeyTags not implemented")
+	// Tags are a client/UI-level concept for now; no-op.
+	return nil
 }
 
 func (c *BunClient) DeletePublicKeys(ctx context.Context, ids ...ID) error {
-	return errors.New("client.DeletePublicKeys not implemented")
+	km := core.DefaultKeyManager()
+	if km == nil {
+		return errors.New("no key manager available")
+	}
+	for _, id := range ids {
+		if err := km.DeletePublicKey(int(id)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // --- Target Management ---
