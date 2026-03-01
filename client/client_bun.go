@@ -24,6 +24,10 @@ type BunClient struct {
 	// log is not meant for cli out
 	//lint:ignore U1000 Placeholder for future logging wiring.
 	log *log.Logger
+	// in-memory mapping for UI-level Targets
+	hostToID     map[string]ID
+	targetsByID  map[ID]Target
+	nextTargetID ID
 }
 
 // *BunClient implements Client
@@ -50,9 +54,12 @@ func NewBunClient(config config.Config, logger *log.Logger) (*BunClient, error) 
 	}
 
 	return &BunClient{
-		config: config,
-		log:    logger,
-		store:  st,
+		config:       config,
+		log:          logger,
+		store:        st,
+		hostToID:     make(map[string]ID),
+		targetsByID:  make(map[ID]Target),
+		nextTargetID: 1,
 	}, nil
 }
 
@@ -165,27 +172,86 @@ func (c *BunClient) DeletePublicKeys(ctx context.Context, ids ...ID) error {
 // --- Target Management ---
 
 func (c *BunClient) CreateTarget(ctx context.Context, host string, port int /* , gateway string, plugin string */) (Target, error) {
-	return Target{}, errors.New("client.CreateTarget not implemented")
+	if id, ok := c.hostToID[host]; ok {
+		t := c.targetsByID[id]
+		// update port if changed
+		if t.port != port {
+			t.port = port
+			c.targetsByID[id] = t
+		}
+		return t, nil
+	}
+	id := c.nextTargetID
+	c.nextTargetID++
+	t := Target{id, host, port}
+	c.hostToID[host] = id
+	c.targetsByID[id] = t
+	return t, nil
 }
 
 func (c *BunClient) GetTarget(ctx context.Context, id ID) (Target, error) {
-	return Target{}, errors.New("client.GetTarget not implemented")
+	if t, ok := c.targetsByID[id]; ok {
+		return t, nil
+	}
+	return Target{}, errors.New("target not found")
 }
 
 func (c *BunClient) GetTargets(ctx context.Context, ids ...ID) ([]Target, error) {
-	return nil, errors.New("client.GetTargets not implemented")
+	var out []Target
+	for _, id := range ids {
+		if t, ok := c.targetsByID[id]; ok {
+			out = append(out, t)
+		}
+	}
+	return out, nil
 }
 
 func (c *BunClient) ListTargets(ctx context.Context) ([]Target, error) {
-	return nil, errors.New("client.ListTargets not implemented")
+	// Seed targets from existing accounts if none known yet.
+	if len(c.targetsByID) == 0 {
+		accounts, err := core.GetAllAccounts()
+		if err == nil {
+			for _, a := range accounts {
+				if _, ok := c.hostToID[a.Hostname]; !ok {
+					id := c.nextTargetID
+					c.nextTargetID++
+					t := Target{id, a.Hostname, 22}
+					c.hostToID[a.Hostname] = id
+					c.targetsByID[id] = t
+				}
+			}
+		}
+	}
+	out := make([]Target, 0, len(c.targetsByID))
+	for _, t := range c.targetsByID {
+		out = append(out, t)
+	}
+	return out, nil
 }
 
 func (c *BunClient) UpdateTarget(ctx context.Context, id ID, target Target) error {
-	return errors.New("client.UpdateTarget not implemented")
+	t, ok := c.targetsByID[id]
+	if !ok {
+		return errors.New("target not found")
+	}
+	// If host changed, update host->id mapping
+	if t.host != target.host {
+		delete(c.hostToID, t.host)
+		c.hostToID[target.host] = id
+	}
+	// Update stored target (including port)
+	c.targetsByID[id] = Target{id, target.host, target.port}
+	return nil
 }
 
 func (c *BunClient) DeleteTargets(ctx context.Context, ids ...ID) error {
-	return errors.New("client.DeleteTargets not implemented")
+	for _, id := range ids {
+		if t, ok := c.targetsByID[id]; ok {
+			delete(c.targetsByID, id)
+			delete(c.hostToID, t.host)
+		}
+	}
+	return nil
 }
 
 // --- Account Management ---
