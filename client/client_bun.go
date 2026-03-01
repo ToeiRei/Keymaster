@@ -279,12 +279,19 @@ func (c *BunClient) CreateAccount(ctx context.Context, targetID ID, name string,
 	} else {
 		return Account{}, errors.New("unknown target")
 	}
-	am := core.DefaultAccountManager()
-	if am == nil {
-		return Account{}, errors.New("no account manager available")
+	// Prefer package-level AccountManager when available so that created
+	// accounts are visible to package-level helpers (key manager, deployer).
+	if am := core.DefaultAccountManager(); am != nil {
+		acctID, err := am.AddAccount(name, hostname, "", "")
+		if err != nil {
+			return Account{}, err
+		}
+		return Account{ID(acctID), targetID, name, deploymentKey}, nil
 	}
-	// label and tags are UI-level; pass empty
-	acctID, err := am.AddAccount(name, hostname, "", "")
+	if c.store == nil {
+		return Account{}, errors.New("no store available")
+	}
+	acctID, err := c.store.AddAccount(name, hostname, "", "")
 	if err != nil {
 		return Account{}, err
 	}
@@ -292,7 +299,10 @@ func (c *BunClient) CreateAccount(ctx context.Context, targetID ID, name string,
 }
 
 func (c *BunClient) GetAccount(ctx context.Context, id ID) (Account, error) {
-	m, err := core.GetAccount(int(id))
+	if c.store == nil {
+		return Account{}, errors.New("no store available")
+	}
+	m, err := c.store.GetAccount(int(id))
 	if err != nil {
 		return Account{}, err
 	}
@@ -331,7 +341,10 @@ func (c *BunClient) ListAccountsByTarget(ctx context.Context, targetID ID) ([]Ac
 	if !ok {
 		return nil, errors.New("target not found")
 	}
-	accounts, err := core.GetAccounts()
+	if c.store == nil {
+		return nil, errors.New("no store available")
+	}
+	accounts, err := c.store.GetAccounts()
 	if err != nil {
 		return nil, err
 	}
@@ -347,15 +360,22 @@ func (c *BunClient) ListAccountsByTarget(ctx context.Context, targetID ID) ([]Ac
 
 func (c *BunClient) DeleteAccounts(ctx context.Context, ids ...ID) error {
 	for _, id := range ids {
-		if err := core.DeleteAccount(int(id)); err != nil {
-			return err
+		if c.store != nil {
+			if err := c.store.DeleteAccount(int(id)); err != nil {
+				return err
+			}
+		} else {
+			return errors.New("no store available")
 		}
 	}
 	return nil
 }
 
 func (c *BunClient) GetDirtyAccounts(ctx context.Context) ([]Account, error) {
-	accounts, err := core.GetAccounts()
+	if c.store == nil {
+		return nil, errors.New("no store available")
+	}
+	accounts, err := c.store.GetAccounts()
 	if err != nil {
 		return nil, err
 	}
@@ -443,6 +463,27 @@ func (c *BunClient) ResolveAccountsForPublicKey(ctx context.Context, publicKeyID
 	accs, err := km.GetAccountsForKey(int(publicKeyID))
 	if err != nil {
 		return nil, err
+	}
+	// Fallback: if direct reverse lookup returned no accounts (some adapters
+	// may not implement it), scan all accounts and check their assigned keys.
+	if len(accs) == 0 {
+		if c.store != nil {
+			all, aerr := c.store.GetAccounts()
+			if aerr == nil {
+				for _, am := range all {
+					keysFor, kerr := km.GetKeysForAccount(am.ID)
+					if kerr != nil {
+						continue
+					}
+					for _, k := range keysFor {
+						if k.ID == int(publicKeyID) {
+							accs = append(accs, am)
+							break
+						}
+					}
+				}
+			}
+		}
 	}
 	var out []Account
 	for _, a := range accs {

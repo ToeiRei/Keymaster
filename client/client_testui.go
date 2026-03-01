@@ -13,6 +13,7 @@ import (
 	"github.com/bobg/go-generics/v4/slices"
 )
 
+//lint:ignore U1000 Placeholder for future test grant fields.
 type TestUIGrant struct {
 	accountID ID
 	matcher   string
@@ -26,6 +27,7 @@ type TestUIClient struct {
 	publicKeys []PublicKey
 	targets    []Target
 	accounts   []Account
+	//lint:ignore U1000 Placeholder for future grant-related features.
 	grants     []TestUIGrant
 	// id counter to simulate serial
 	publicKeysID ID
