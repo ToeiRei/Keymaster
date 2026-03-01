@@ -257,27 +257,111 @@ func (c *BunClient) DeleteTargets(ctx context.Context, ids ...ID) error {
 // --- Account Management ---
 
 func (c *BunClient) CreateAccount(ctx context.Context, targetID ID, name string, deploymentKey string) (Account, error) {
-	return Account{}, errors.New("client.CreateAccount not implemented")
+	// Resolve hostname from targetID
+	var hostname string
+	if t, ok := c.targetsByID[targetID]; ok {
+		hostname = t.host
+	} else {
+		return Account{}, errors.New("unknown target")
+	}
+	am := core.DefaultAccountManager()
+	if am == nil {
+		return Account{}, errors.New("no account manager available")
+	}
+	// label and tags are UI-level; pass empty
+	acctID, err := am.AddAccount(name, hostname, "", "")
+	if err != nil {
+		return Account{}, err
+	}
+	return Account{ID(acctID), targetID, name, deploymentKey}, nil
 }
 
 func (c *BunClient) GetAccount(ctx context.Context, id ID) (Account, error) {
-	return Account{}, errors.New("client.GetAccount not implemented")
+	m, err := core.GetAccount(int(id))
+	if err != nil {
+		return Account{}, err
+	}
+	if m == nil {
+		return Account{}, errors.New("account not found")
+	}
+	// Ensure target exists in memory
+	var targetID ID
+	if idt, ok := c.hostToID[m.Hostname]; ok {
+		targetID = idt
+	} else {
+		// create a new target entry with default port 22
+		t, terr := c.CreateTarget(ctx, m.Hostname, 22)
+		if terr != nil {
+			return Account{}, terr
+		}
+		targetID = t.id
+	}
+	return Account{ID(m.ID), targetID, m.Username, ""}, nil
 }
 
 func (c *BunClient) GetAccounts(ctx context.Context, ids ...ID) ([]Account, error) {
-	return nil, errors.New("client.GetAccounts not implemented")
+	var out []Account
+	for _, id := range ids {
+		a, err := c.GetAccount(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, nil
 }
 
 func (c *BunClient) ListAccountsByTarget(ctx context.Context, targetID ID) ([]Account, error) {
-	return nil, errors.New("client.ListAccountsByTarget not implemented")
+	t, ok := c.targetsByID[targetID]
+	if !ok {
+		return nil, errors.New("target not found")
+	}
+	accounts, err := core.GetAccounts()
+	if err != nil {
+		return nil, err
+	}
+	var out []Account
+	for _, m := range accounts {
+		if m.Hostname == t.host {
+			// try to find targetID mapping (should match)
+			out = append(out, Account{ID(m.ID), targetID, m.Username, ""})
+		}
+	}
+	return out, nil
 }
 
 func (c *BunClient) DeleteAccounts(ctx context.Context, ids ...ID) error {
-	return errors.New("client.DeleteAccounts not implemented")
+	for _, id := range ids {
+		if err := core.DeleteAccount(int(id)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (c *BunClient) GetDirtyAccounts(ctx context.Context) ([]Account, error) {
-	return nil, errors.New("client.GetDirtyAccounts not implemented")
+	accounts, err := core.GetAccounts()
+	if err != nil {
+		return nil, err
+	}
+	var out []Account
+	for _, m := range accounts {
+		if m.IsDirty {
+			// ensure target mapping
+			var targetID ID
+			if idt, ok := c.hostToID[m.Hostname]; ok {
+				targetID = idt
+			} else {
+				t, terr := c.CreateTarget(ctx, m.Hostname, 22)
+				if terr != nil {
+					return nil, terr
+				}
+				targetID = t.id
+			}
+			out = append(out, Account{ID(m.ID), targetID, m.Username, ""})
+		}
+	}
+	return out, nil
 }
 
 // --- Tag to Account Management ---
