@@ -91,27 +91,33 @@ type ID int
 
 // PublicKey represents a public key record.
 type PublicKey struct {
-	id       ID
-	identity string
-	tags     []string
+	Id       ID
+	Identity string
+	Tags     []string
 	// ...
 }
 
 // Target represents a remote host or endpoint to deploy keys to.
 type Target struct {
-	id   ID
-	host string
-	port int
+	Id   ID
+	Host string
+	Port int
 	// ...
 }
 
 // Account represents an account on a target host.
 type Account struct {
-	id            ID
-	targetID      ID
-	name          string
-	deploymentKey string
+	Id                               ID
+	TargetID                         ID
+	Name                             string
+	DeploymentKey                    string
+	deploymentLastAuthorizedKeysHash *string
 	// ...
+}
+
+func (a Account) IsDirty() bool {
+	// TODO implement
+	return false
 }
 
 // DeployProgress reports incremental progress for a deployment operation.

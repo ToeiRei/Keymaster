@@ -61,7 +61,7 @@ func (c *TestUIClient) CreatePublicKey(ctx context.Context, identity string, tag
 
 func (c *TestUIClient) GetPublicKey(ctx context.Context, id ID) (PublicKey, error) {
 	if i, ok := slices.BinarySearchFunc(c.publicKeys, id, func(publicKey PublicKey, id ID) int {
-		return int(publicKey.id - id)
+		return int(publicKey.Id - id)
 	}); ok {
 		return c.publicKeys[i], nil
 	}
@@ -70,22 +70,22 @@ func (c *TestUIClient) GetPublicKey(ctx context.Context, id ID) (PublicKey, erro
 
 func (c *TestUIClient) GetPublicKeys(ctx context.Context, ids ...ID) ([]PublicKey, error) {
 	return slices.Filter(c.publicKeys, func(publicKey PublicKey) bool {
-		return slices.Contains(ids, publicKey.id)
+		return slices.Contains(ids, publicKey.Id)
 	}), nil
 }
 
 func (c *TestUIClient) ListPublicKeys(ctx context.Context, tagFilter string) ([]PublicKey, error) {
 	// WARNING does not realy repect the tagFilter
 	return slices.Filter(c.publicKeys, func(publicKey PublicKey) bool {
-		return slices.Contains(publicKey.tags, tagFilter)
+		return slices.Contains(publicKey.Tags, tagFilter)
 	}), nil
 }
 
 func (c *TestUIClient) UpdatePublicKeyTags(ctx context.Context, id ID, tags []string) error {
 	if i, ok := slices.BinarySearchFunc(c.publicKeys, id, func(publicKey PublicKey, id ID) int {
-		return int(publicKey.id - id)
+		return int(publicKey.Id - id)
 	}); ok {
-		c.publicKeys[i].tags = tags
+		c.publicKeys[i].Tags = tags
 		return nil
 	}
 	return fmt.Errorf("PublicKey with id %v not found", id)
@@ -94,7 +94,7 @@ func (c *TestUIClient) UpdatePublicKeyTags(ctx context.Context, id ID, tags []st
 func (c *TestUIClient) DeletePublicKeys(ctx context.Context, ids ...ID) error {
 	indexs := make([]int, 0, len(c.publicKeys))
 	for i, publicKey := range c.publicKeys {
-		if slices.Contains(ids, publicKey.id) {
+		if slices.Contains(ids, publicKey.Id) {
 			indexs = append(indexs, i)
 		}
 	}
@@ -116,7 +116,7 @@ func (c *TestUIClient) CreateTarget(ctx context.Context, host string, port int /
 
 func (c *TestUIClient) GetTarget(ctx context.Context, id ID) (Target, error) {
 	if i, ok := slices.BinarySearchFunc(c.targets, id, func(target Target, id ID) int {
-		return int(target.id - id)
+		return int(target.Id - id)
 	}); ok {
 		return c.targets[i], nil
 	}
@@ -125,7 +125,7 @@ func (c *TestUIClient) GetTarget(ctx context.Context, id ID) (Target, error) {
 
 func (c *TestUIClient) GetTargets(ctx context.Context, ids ...ID) ([]Target, error) {
 	return slices.Filter(c.targets, func(target Target) bool {
-		return slices.Contains(ids, target.id)
+		return slices.Contains(ids, target.Id)
 	}), nil
 }
 
@@ -135,10 +135,10 @@ func (c *TestUIClient) ListTargets(ctx context.Context) ([]Target, error) {
 
 func (c *TestUIClient) UpdateTarget(ctx context.Context, id ID, target Target) error {
 	if i, ok := slices.BinarySearchFunc(c.targets, id, func(target Target, id ID) int {
-		return int(target.id - id)
+		return int(target.Id - id)
 	}); ok {
-		c.targets[i].host = target.host
-		c.targets[i].port = target.port
+		c.targets[i].Host = target.Host
+		c.targets[i].Port = target.Port
 		return nil
 	}
 	return fmt.Errorf("Target with id %v not found", id)
@@ -147,7 +147,7 @@ func (c *TestUIClient) UpdateTarget(ctx context.Context, id ID, target Target) e
 func (c *TestUIClient) DeleteTargets(ctx context.Context, ids ...ID) error {
 	indexs := make([]int, 0, len(c.targets))
 	for i, target := range c.targets {
-		if slices.Contains(ids, target.id) {
+		if slices.Contains(ids, target.Id) {
 			indexs = append(indexs, i)
 		}
 	}
@@ -161,7 +161,7 @@ func (c *TestUIClient) DeleteTargets(ctx context.Context, ids ...ID) error {
 // --- Account Management ---
 
 func (c *TestUIClient) CreateAccount(ctx context.Context, targetID ID, name string, deploymentKey string) (Account, error) {
-	account := Account{c.accountsID, targetID, name, deploymentKey}
+	account := Account{c.accountsID, targetID, name, deploymentKey, true}
 	c.accounts = append(c.accounts, account)
 	c.accountsID++
 	return account, nil
@@ -169,7 +169,7 @@ func (c *TestUIClient) CreateAccount(ctx context.Context, targetID ID, name stri
 
 func (c *TestUIClient) GetAccount(ctx context.Context, id ID) (Account, error) {
 	if i, ok := slices.BinarySearchFunc(c.accounts, id, func(account Account, id ID) int {
-		return int(account.id - id)
+		return int(account.Id - id)
 	}); ok {
 		return c.accounts[i], nil
 	}
@@ -178,20 +178,20 @@ func (c *TestUIClient) GetAccount(ctx context.Context, id ID) (Account, error) {
 
 func (c *TestUIClient) GetAccounts(ctx context.Context, ids ...ID) ([]Account, error) {
 	return slices.Filter(c.accounts, func(account Account) bool {
-		return slices.Contains(ids, account.id)
+		return slices.Contains(ids, account.Id)
 	}), nil
 }
 
 func (c *TestUIClient) ListAccountsByTarget(ctx context.Context, targetID ID) ([]Account, error) {
 	return slices.Filter(c.accounts, func(account Account) bool {
-		return account.targetID == targetID
+		return account.TargetID == targetID
 	}), nil
 }
 
 func (c *TestUIClient) DeleteAccounts(ctx context.Context, ids ...ID) error {
 	indexs := make([]int, 0, len(c.accounts))
 	for i, account := range c.accounts {
-		if slices.Contains(ids, account.id) {
+		if slices.Contains(ids, account.Id) {
 			indexs = append(indexs, i)
 		}
 	}
@@ -203,7 +203,9 @@ func (c *TestUIClient) DeleteAccounts(ctx context.Context, ids ...ID) error {
 }
 
 func (c *TestUIClient) GetDirtyAccounts(ctx context.Context) ([]Account, error) {
-	return nil, errors.New("client.GetDirtyAccounts not implemented")
+	return slices.Filter(c.accounts, func(account Account) bool {
+		return !account.IsDirty
+	}), nil
 }
 
 // --- Tag to Account Management ---
