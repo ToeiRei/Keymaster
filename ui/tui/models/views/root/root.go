@@ -27,8 +27,8 @@ type Model struct {
 }
 
 func New() *Model {
-	_header := util.ModelPointer(header.New())
-	_footer := util.ModelPointer(footer.New(&BaseKeyMap))
+	headerPtr := util.ModelPointer(header.New())
+	footerPtr := util.ModelPointer(footer.New(&BaseKeyMap))
 
 	version := "unknown version"
 	if len(buildvars.Version) > 0 {
@@ -39,16 +39,16 @@ func New() *Model {
 	return &Model{
 		stack: stack.New(
 			stack.WithOrientation(stack.Vertical),
-			stack.WithItem(_header, header.SizeConfig),
+			stack.WithItem(headerPtr, header.SizeConfig),
 			stack.WithFocusNext(),
 			stack.WithItem(
 				util.ModelPointer(popup.NewInjector(
 					util.ModelPointer(content.New()),
 				)),
 				stack.VariableSize(1)),
-			stack.WithItem(_footer, footer.SizeConfig),
+			stack.WithItem(footerPtr, footer.SizeConfig),
 		),
-		footer:       _footer,
+		footer:       footerPtr,
 		titleHandler: titleHandler,
 	}
 }
