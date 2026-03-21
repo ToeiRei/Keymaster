@@ -4,15 +4,16 @@
 package content
 
 import (
+	"context"
+
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/ui/tui/models/components/menu"
-	"github.com/toeirei/keymaster/ui/tui/models/components/popup"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
 	"github.com/toeirei/keymaster/ui/tui/models/components/stack"
 	"github.com/toeirei/keymaster/ui/tui/models/views/dashboard"
-	"github.com/toeirei/keymaster/ui/tui/models/views/testpopup1"
-	"github.com/toeirei/keymaster/ui/tui/models/views/testview1"
+	"github.com/toeirei/keymaster/ui/tui/models/views/publickey"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
@@ -32,78 +33,7 @@ func New() *Model {
 
 	menuPtr := util.ModelPointer(menu.New(
 		menu.WithItem("dashboard", "Dashboard"),
-		menu.WithItem("test", "Tests",
-			menu.WithItem("test.popup1", "Popup Test 1"),
-			menu.WithItem("test.view1", "View Test 1"),
-		),
-		menu.WithItem("projects", "Projects",
-			menu.WithItem("proj_active", "Active Projects",
-				menu.WithItem("proj_a", "Project Alpha",
-					menu.WithItem("a_tasks", "Task List"),
-					menu.WithItem("a_milestones", "Milestones"),
-				),
-				menu.WithItem("proj_b", "Project Beta"),
-			),
-			menu.WithItem("proj_archived", "Archive"),
-		),
-		menu.WithItem("users", "User Management",
-			menu.WithItem("u_list", "All Users"),
-			menu.WithItem("u_roles", "Role Definitions",
-				menu.WithItem("role_admin", "Administrators",
-					menu.WithItem("perm_full", "Full Permissions"),
-				),
-				menu.WithItem("role_editor", "Editors"),
-			),
-		),
-		menu.WithItem("analytics", "Analytics",
-			menu.WithItem("an_sales", "Sales Reports",
-				menu.WithItem("q1_sales", "Q1 Report"),
-				menu.WithItem("q2_sales", "Q2 Report"),
-			),
-			menu.WithItem("an_traffic", "Web Traffic"),
-		),
-		menu.WithItem("billing", "Billing",
-			menu.WithItem("bill_inv", "Invoices"),
-			menu.WithItem("bill_meth", "Payment Methods"),
-		),
-		menu.WithItem("settings", "Settings",
-			menu.WithItem("set_gen", "General"),
-			menu.WithItem("set_sec", "Security",
-				menu.WithItem("sec_2fa", "Two-Factor Auth",
-					menu.WithItem("2fa_sms", "SMS Setup"),
-					menu.WithItem("2fa_app", "Authenticator App"),
-				),
-			),
-		),
-		menu.WithItem("inventory", "Inventory with a name"),
-		menu.WithItem("logistics", "Logistics",
-			menu.WithItem("log_shipping", "Shipping",
-				menu.WithItem("ship_int", "International",
-					menu.WithItem("ship_customs", "Customs Forms"),
-				),
-			),
-		),
-		menu.WithItem("marketing", "Marketing"),
-		menu.WithItem("support", "Support Tickets",
-			menu.WithItem("sup_open", "Open Tickets"),
-			menu.WithItem("sup_closed", "History"),
-		),
-		menu.WithItem("hr", "Human Resources",
-			menu.WithItem("hr_payroll", "Payroll"),
-			menu.WithItem("hr_benefits", "Benefits"),
-		),
-		menu.WithItem("legal", "Legal Compliance"),
-		menu.WithItem("it_assets", "IT Assets",
-			menu.WithItem("it_hw", "Hardware",
-				menu.WithItem("hw_laptops", "Laptops"),
-				menu.WithItem("hw_servers", "Servers"),
-			),
-		),
-		menu.WithItem("api", "API Management",
-			menu.WithItem("api_keys", "Access Keys"),
-			menu.WithItem("api_docs", "Documentation"),
-		),
-		menu.WithItem("feedback", "User Feedback"),
+		menu.WithItem("publickey.list", "Public Keys"),
 	))
 	dashboardPtr := util.ModelPointer(dashboard.New())
 	routerModel, routerControll := router.New(dashboardPtr)
@@ -127,15 +57,40 @@ func (m *Model) Init() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
+	client := client.NewMockClient(nil, client.MockClientOverwrites{
+		ListPublicKeys: func(ctx context.Context, tagFilter string) ([]client.PublicKey, error) {
+			return []client.PublicKey{
+				{
+					Id:       1,
+					Identity: "Sha your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-ödtjfb",
+					Tags:     []string{"user:jannes", "company:none"},
+				},
+				{
+					Id:       2,
+					Identity: "Sha 420 asdjhk-fbaskjdfhal_sdvkhathrösdljhask-ödjfb",
+					Tags:     []string{"user:toirei", "company:another"},
+				},
+				{
+					Id:       3,
+					Identity: "Sha 69 asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb",
+					Tags:     []string{"user:somebodyelse", "company:evilgoogle"},
+				},
+			}, nil
+		},
+	})
+
 	// handle menu messages
 	if msg, ok := msg.(menu.ItemSelected); ok {
 		switch msg.Id {
-		case "test.popup1":
-			// popup example 1
-			return popup.Open(util.ModelPointer(testpopup1.New()))
-		case "test.view1":
-			// view example 1
-			return m.routerControll.Push(util.ModelPointer(testview1.New(m.routerControll)))
+		// case "test.popup1":
+		// 	// popup example 1
+		// 	return popup.Open(util.ModelPointer(testpopup1.New()))
+		// case "test.view1":
+		// 	// view example 1
+		// 	return m.routerControll.Push(util.ModelPointer(testview1.New(m.routerControll)))
+		// }
+		case "publickey.list":
+			return m.routerControll.Push(util.ModelPointer(publickey.NewList(client, m.routerControll)))
 		}
 	}
 
