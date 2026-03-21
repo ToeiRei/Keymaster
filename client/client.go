@@ -111,7 +111,7 @@ type Account struct {
 	TargetID                         ID
 	Name                             string
 	DeploymentKey                    string
-	deploymentLastAuthorizedKeysHash *string
+	DeploymentLastAuthorizedKeysHash *string
 	// ...
 }
 

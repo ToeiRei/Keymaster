@@ -27,49 +27,49 @@ func TestBunClient_AccountsCRUD(t *testing.T) {
 		t.Fatalf("CreateTarget failed: %v", err)
 	}
 
-	acct, err := c.CreateAccount(ctx, tgt.id, "deploy", "")
+	acct, err := c.CreateAccount(ctx, tgt.Id, "deploy", "")
 	if err != nil {
 		t.Fatalf("CreateAccount failed: %v", err)
 	}
-	if acct.id == 0 {
+	if acct.Id == 0 {
 		t.Fatalf("expected non-zero account id")
 	}
-	if acct.name != "deploy" {
-		t.Fatalf("unexpected account name: %s", acct.name)
+	if acct.Name != "deploy" {
+		t.Fatalf("unexpected account name: %s", acct.Name)
 	}
 
 	// GetAccount
-	got, err := c.GetAccount(ctx, acct.id)
+	got, err := c.GetAccount(ctx, acct.Id)
 	if err != nil {
 		t.Fatalf("GetAccount failed: %v", err)
 	}
-	if got.id != acct.id || got.name != acct.name {
+	if got.Id != acct.Id || got.Name != acct.Name {
 		t.Fatalf("GetAccount mismatch: %#v vs %#v", got, acct)
 	}
 
 	// ListAccountsByTarget
-	list, err := c.ListAccountsByTarget(ctx, tgt.id)
+	list, err := c.ListAccountsByTarget(ctx, tgt.Id)
 	if err != nil {
 		t.Fatalf("ListAccountsByTarget failed: %v", err)
 	}
-	if len(list) != 1 || list[0].id != acct.id {
+	if len(list) != 1 || list[0].Id != acct.Id {
 		t.Fatalf("ListAccountsByTarget unexpected: %#v", list)
 	}
 
 	// GetAccounts
-	many, err := c.GetAccounts(ctx, acct.id)
+	many, err := c.GetAccounts(ctx, acct.Id)
 	if err != nil {
 		t.Fatalf("GetAccounts failed: %v", err)
 	}
-	if len(many) != 1 || many[0].id != acct.id {
+	if len(many) != 1 || many[0].Id != acct.Id {
 		t.Fatalf("GetAccounts unexpected: %#v", many)
 	}
 
 	// DeleteAccounts
-	if err := c.DeleteAccounts(ctx, acct.id); err != nil {
+	if err := c.DeleteAccounts(ctx, acct.Id); err != nil {
 		t.Fatalf("DeleteAccounts failed: %v", err)
 	}
-	after, err := c.ListAccountsByTarget(ctx, tgt.id)
+	after, err := c.ListAccountsByTarget(ctx, tgt.Id)
 	if err != nil {
 		t.Fatalf("ListAccountsByTarget after delete failed: %v", err)
 	}

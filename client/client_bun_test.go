@@ -23,13 +23,13 @@ func TestBunClient_CreatePublicKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreatePublicKey failed: %v", err)
 	}
-	if pk.id == 0 {
+	if pk.Id == 0 {
 		t.Fatalf("expected non-zero id")
 	}
-	if pk.identity != "test-identity" {
-		t.Fatalf("unexpected identity: %s", pk.identity)
+	if pk.Identity != "test-identity" {
+		t.Fatalf("unexpected identity: %s", pk.Identity)
 	}
-	if len(pk.tags) != 1 || pk.tags[0] != "tag1" {
-		t.Fatalf("unexpected tags: %#v", pk.tags)
+	if len(pk.Tags) != 1 || pk.Tags[0] != "tag1" {
+		t.Fatalf("unexpected tags: %#v", pk.Tags)
 	}
 }

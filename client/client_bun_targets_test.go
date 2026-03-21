@@ -26,22 +26,22 @@ func TestBunClient_TargetsCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateTarget failed: %v", err)
 	}
-	if t1.id == 0 {
+	if t1.Id == 0 {
 		t.Fatalf("expected non-zero id")
 	}
-	if t1.host != "example.com" {
-		t.Fatalf("unexpected host: %s", t1.host)
+	if t1.Host != "example.com" {
+		t.Fatalf("unexpected host: %s", t1.Host)
 	}
-	if t1.port != 22 {
-		t.Fatalf("unexpected port: %d", t1.port)
+	if t1.Port != 22 {
+		t.Fatalf("unexpected port: %d", t1.Port)
 	}
 
 	// Get
-	g, err := c.GetTarget(ctx, t1.id)
+	g, err := c.GetTarget(ctx, t1.Id)
 	if err != nil {
 		t.Fatalf("GetTarget failed: %v", err)
 	}
-	if g.id != t1.id || g.host != t1.host || g.port != t1.port {
+	if g.Id != t1.Id || g.Host != t1.Host || g.Port != t1.Port {
 		t.Fatalf("GetTarget returned mismatch: %#v vs %#v", g, t1)
 	}
 
@@ -50,19 +50,19 @@ func TestBunClient_TargetsCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateTarget (update) failed: %v", err)
 	}
-	if t2.id != t1.id {
+	if t2.Id != t1.Id {
 		t.Fatalf("expected same id for same host")
 	}
-	if t2.port != 2222 {
-		t.Fatalf("expected updated port 2222, got %d", t2.port)
+	if t2.Port != 2222 {
+		t.Fatalf("expected updated port 2222, got %d", t2.Port)
 	}
 
 	// GetTargets
-	list, err := c.GetTargets(ctx, t1.id)
+	list, err := c.GetTargets(ctx, t1.Id)
 	if err != nil {
 		t.Fatalf("GetTargets failed: %v", err)
 	}
-	if len(list) != 1 || list[0].id != t1.id {
+	if len(list) != 1 || list[0].Id != t1.Id {
 		t.Fatalf("GetTargets unexpected result: %#v", list)
 	}
 
@@ -73,7 +73,7 @@ func TestBunClient_TargetsCRUD(t *testing.T) {
 	}
 	found := false
 	for _, tt := range all {
-		if tt.id == t1.id && tt.host == "example.com" {
+		if tt.Id == t1.Id && tt.Host == "example.com" {
 			found = true
 			break
 		}
@@ -83,19 +83,19 @@ func TestBunClient_TargetsCRUD(t *testing.T) {
 	}
 
 	// UpdateTarget: change host
-	if err := c.UpdateTarget(ctx, t1.id, Target{0, "new.example.com", 2222}); err != nil {
+	if err := c.UpdateTarget(ctx, t1.Id, Target{0, "new.example.com", 2222}); err != nil {
 		t.Fatalf("UpdateTarget failed: %v", err)
 	}
-	updated, err := c.GetTarget(ctx, t1.id)
+	updated, err := c.GetTarget(ctx, t1.Id)
 	if err != nil {
 		t.Fatalf("GetTarget after update failed: %v", err)
 	}
-	if updated.host != "new.example.com" {
-		t.Fatalf("UpdateTarget did not change host, got %s", updated.host)
+	if updated.Host != "new.example.com" {
+		t.Fatalf("UpdateTarget did not change host, got %s", updated.Host)
 	}
 
 	// DeleteTargets
-	if err := c.DeleteTargets(ctx, t1.id); err != nil {
+	if err := c.DeleteTargets(ctx, t1.Id); err != nil {
 		t.Fatalf("DeleteTargets failed: %v", err)
 	}
 	after, err := c.ListTargets(ctx)
@@ -103,7 +103,7 @@ func TestBunClient_TargetsCRUD(t *testing.T) {
 		t.Fatalf("ListTargets after delete failed: %v", err)
 	}
 	for _, tt := range after {
-		if tt.id == t1.id {
+		if tt.Id == t1.Id {
 			t.Fatalf("target was not deleted")
 		}
 	}

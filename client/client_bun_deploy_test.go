@@ -76,7 +76,7 @@ func TestBunClient_Onboard_Decom_Deploy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateTarget failed: %v", err)
 	}
-	acct, err := c.CreateAccount(context.Background(), tgt.id, "bob", "")
+	acct, err := c.CreateAccount(context.Background(), tgt.Id, "bob", "")
 	if err != nil {
 		t.Fatalf("CreateAccount failed: %v", err)
 	}
@@ -91,12 +91,12 @@ func TestBunClient_Onboard_Decom_Deploy(t *testing.T) {
 	if km == nil {
 		t.Fatalf("no key manager available")
 	}
-	if err := km.AssignKeyToAccount(int(pk.id), int(acct.id)); err != nil {
+	if err := km.AssignKeyToAccount(int(pk.Id), int(acct.Id)); err != nil {
 		t.Fatalf("AssignKeyToAccount failed: %v", err)
 	}
 
 	// DeployPublicKeys
-	dch, err := c.DeployPublicKeys(context.Background(), pk.id)
+	dch, err := c.DeployPublicKeys(context.Background(), pk.Id)
 	if err != nil {
 		t.Fatalf("DeployPublicKeys failed: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestBunClient_Onboard_Decom_Deploy(t *testing.T) {
 	}
 
 	// DeployTargets
-	dch2, err := c.DeployTargets(context.Background(), tgt.id)
+	dch2, err := c.DeployTargets(context.Background(), tgt.Id)
 	if err != nil {
 		t.Fatalf("DeployTargets failed: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestBunClient_Onboard_Decom_Deploy(t *testing.T) {
 	}
 
 	// DeployAccounts
-	dch3, err := c.DeployAccounts(context.Background(), acct.id)
+	dch3, err := c.DeployAccounts(context.Background(), acct.Id)
 	if err != nil {
 		t.Fatalf("DeployAccounts failed: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestBunClient_Onboard_Decom_Deploy(t *testing.T) {
 	}
 
 	// DecommissionTarget
-	dech, err := c.DecommisionTarget(context.Background(), tgt.id)
+	dech, err := c.DecommisionTarget(context.Background(), tgt.Id)
 	if err != nil {
 		t.Fatalf("DecommisionTarget failed: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestBunClient_Onboard_Decom_Deploy(t *testing.T) {
 	}
 
 	// DecommissionAccount
-	dech2, err := c.DecommisionAccount(context.Background(), acct.id)
+	dech2, err := c.DecommisionAccount(context.Background(), acct.Id)
 	if err != nil {
 		t.Fatalf("DecommisionAccount failed: %v", err)
 	}

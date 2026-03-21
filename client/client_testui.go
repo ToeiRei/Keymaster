@@ -161,7 +161,7 @@ func (c *TestUIClient) DeleteTargets(ctx context.Context, ids ...ID) error {
 // --- Account Management ---
 
 func (c *TestUIClient) CreateAccount(ctx context.Context, targetID ID, name string, deploymentKey string) (Account, error) {
-	account := Account{c.accountsID, targetID, name, deploymentKey, true}
+	account := Account{c.accountsID, targetID, name, deploymentKey, nil}
 	c.accounts = append(c.accounts, account)
 	c.accountsID++
 	return account, nil
@@ -204,7 +204,7 @@ func (c *TestUIClient) DeleteAccounts(ctx context.Context, ids ...ID) error {
 
 func (c *TestUIClient) GetDirtyAccounts(ctx context.Context) ([]Account, error) {
 	return slices.Filter(c.accounts, func(account Account) bool {
-		return !account.IsDirty
+		return !account.IsDirty()
 	}), nil
 }
 

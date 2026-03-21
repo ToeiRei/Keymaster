@@ -28,7 +28,7 @@ func TestBunClient_TagLinkAndResolve(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateTarget failed: %v", err)
 	}
-	acct, err := c.CreateAccount(ctx, tgt.id, "alice", "")
+	acct, err := c.CreateAccount(ctx, tgt.Id, "alice", "")
 	if err != nil {
 		t.Fatalf("CreateAccount failed: %v", err)
 	}
@@ -42,18 +42,18 @@ func TestBunClient_TagLinkAndResolve(t *testing.T) {
 	if km == nil {
 		t.Fatalf("no key manager")
 	}
-	if err := km.AssignKeyToAccount(int(pk.id), int(acct.id)); err != nil {
+	if err := km.AssignKeyToAccount(int(pk.Id), int(acct.Id)); err != nil {
 		t.Fatalf("AssignKeyToAccount failed: %v", err)
 	}
 
 	// ResolvePublicKeysForAccount should include this key
-	keys, err := c.ResolvePublicKeysForAccount(ctx, acct.id)
+	keys, err := c.ResolvePublicKeysForAccount(ctx, acct.Id)
 	if err != nil {
 		t.Fatalf("ResolvePublicKeysForAccount failed: %v", err)
 	}
 	found := false
 	for _, k := range keys {
-		if k.id == pk.id {
+		if k.Id == pk.Id {
 			found = true
 			break
 		}
@@ -63,16 +63,16 @@ func TestBunClient_TagLinkAndResolve(t *testing.T) {
 	}
 
 	// ResolveAccountsForPublicKey should return the account
-	accts, err := c.ResolveAccountsForPublicKey(ctx, pk.id)
+	accts, err := c.ResolveAccountsForPublicKey(ctx, pk.Id)
 	if err != nil {
 		t.Fatalf("ResolveAccountsForPublicKey failed: %v", err)
 	}
-	if len(accts) == 0 || accts[0].id != acct.id {
+	if len(accts) == 0 || accts[0].Id != acct.Id {
 		t.Fatalf("ResolveAccountsForPublicKey unexpected: %#v", accts)
 	}
 
 	// LinkTagAccount / UnLinkTagAccount basic behavior
-	linkID, err := c.LinkTagAccount(ctx, acct.id, "env:prod", time.Now().Add(24*time.Hour))
+	linkID, err := c.LinkTagAccount(ctx, acct.Id, "env:prod", time.Now().Add(24*time.Hour))
 	if err != nil {
 		t.Fatalf("LinkTagAccount failed: %v", err)
 	}

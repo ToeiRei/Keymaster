@@ -190,8 +190,8 @@ func (c *BunClient) CreateTarget(ctx context.Context, host string, port int /* ,
 	if id, ok := c.hostToID[host]; ok {
 		t := c.targetsByID[id]
 		// update port if changed
-		if t.port != port {
-			t.port = port
+		if t.Port != port {
+			t.Port = port
 			c.targetsByID[id] = t
 		}
 		return t, nil
@@ -250,12 +250,12 @@ func (c *BunClient) UpdateTarget(ctx context.Context, id ID, target Target) erro
 		return errors.New("target not found")
 	}
 	// If host changed, update host->id mapping
-	if t.host != target.host {
-		delete(c.hostToID, t.host)
-		c.hostToID[target.host] = id
+	if t.Host != target.Host {
+		delete(c.hostToID, t.Host)
+		c.hostToID[target.Host] = id
 	}
 	// Update stored target (including port)
-	c.targetsByID[id] = Target{id, target.host, target.port}
+	c.targetsByID[id] = Target{id, target.Host, target.Port}
 	return nil
 }
 
@@ -263,7 +263,7 @@ func (c *BunClient) DeleteTargets(ctx context.Context, ids ...ID) error {
 	for _, id := range ids {
 		if t, ok := c.targetsByID[id]; ok {
 			delete(c.targetsByID, id)
-			delete(c.hostToID, t.host)
+			delete(c.hostToID, t.Host)
 		}
 	}
 	return nil
@@ -275,7 +275,7 @@ func (c *BunClient) CreateAccount(ctx context.Context, targetID ID, name string,
 	// Resolve hostname from targetID
 	var hostname string
 	if t, ok := c.targetsByID[targetID]; ok {
-		hostname = t.host
+		hostname = t.Host
 	} else {
 		return Account{}, errors.New("unknown target")
 	}
@@ -286,7 +286,7 @@ func (c *BunClient) CreateAccount(ctx context.Context, targetID ID, name string,
 		if err != nil {
 			return Account{}, err
 		}
-		return Account{ID(acctID), targetID, name, deploymentKey}, nil
+		return Account{ID(acctID), targetID, name, deploymentKey, nil}, nil
 	}
 	if c.store == nil {
 		return Account{}, errors.New("no store available")
@@ -295,7 +295,7 @@ func (c *BunClient) CreateAccount(ctx context.Context, targetID ID, name string,
 	if err != nil {
 		return Account{}, err
 	}
-	return Account{ID(acctID), targetID, name, deploymentKey}, nil
+	return Account{ID(acctID), targetID, name, deploymentKey, nil}, nil
 }
 
 func (c *BunClient) GetAccount(ctx context.Context, id ID) (Account, error) {
@@ -319,9 +319,9 @@ func (c *BunClient) GetAccount(ctx context.Context, id ID) (Account, error) {
 		if terr != nil {
 			return Account{}, terr
 		}
-		targetID = t.id
+		targetID = t.Id
 	}
-	return Account{ID(m.ID), targetID, m.Username, ""}, nil
+	return Account{ID(m.ID), targetID, m.Username, "", nil}, nil
 }
 
 func (c *BunClient) GetAccounts(ctx context.Context, ids ...ID) ([]Account, error) {
@@ -350,9 +350,9 @@ func (c *BunClient) ListAccountsByTarget(ctx context.Context, targetID ID) ([]Ac
 	}
 	var out []Account
 	for _, m := range accounts {
-		if m.Hostname == t.host {
+		if m.Hostname == t.Host {
 			// try to find targetID mapping (should match)
-			out = append(out, Account{ID(m.ID), targetID, m.Username, ""})
+			out = append(out, Account{ID(m.ID), targetID, m.Username, "", nil})
 		}
 	}
 	return out, nil
@@ -391,9 +391,9 @@ func (c *BunClient) GetDirtyAccounts(ctx context.Context) ([]Account, error) {
 				if terr != nil {
 					return nil, terr
 				}
-				targetID = t.id
+				targetID = t.Id
 			}
-			out = append(out, Account{ID(m.ID), targetID, m.Username, ""})
+			out = append(out, Account{ID(m.ID), targetID, m.Username, "", nil})
 		}
 	}
 	return out, nil
@@ -496,9 +496,9 @@ func (c *BunClient) ResolveAccountsForPublicKey(ctx context.Context, publicKeyID
 			if terr != nil {
 				return nil, terr
 			}
-			tid = t.id
+			tid = t.Id
 		}
-		out = append(out, Account{ID(a.ID), tid, a.Username, ""})
+		out = append(out, Account{ID(a.ID), tid, a.Username, "", nil})
 	}
 	return out, nil
 }
@@ -577,7 +577,7 @@ func (c *BunClient) DecommisionTarget(ctx context.Context, id ID) (chan Decommis
 		}
 		var targets []model.Account
 		for _, a := range accountsModel {
-			if a.Hostname == t.host {
+			if a.Hostname == t.Host {
 				targets = append(targets, a)
 			}
 		}
@@ -624,7 +624,7 @@ func (c *BunClient) DeployPublicKeys(ctx context.Context, publicKeyID ...ID) (ch
 				continue
 			}
 			for _, a := range accounts {
-				if m, err := c.store.GetAccount(int(a.id)); err == nil && m != nil {
+				if m, err := c.store.GetAccount(int(a.Id)); err == nil && m != nil {
 					allAccounts = append(allAccounts, *m)
 				}
 			}
@@ -656,7 +656,7 @@ func (c *BunClient) DeployTargets(ctx context.Context, targetID ...ID) (chan Dep
 				continue
 			}
 			for _, a := range accounts {
-				if m, err := c.store.GetAccount(int(a.id)); err == nil && m != nil {
+				if m, err := c.store.GetAccount(int(a.Id)); err == nil && m != nil {
 					allAccounts = append(allAccounts, *m)
 				}
 			}
