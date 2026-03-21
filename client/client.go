@@ -55,6 +55,8 @@ type Client interface {
 
 	DeleteAccounts(ctx context.Context, ids ...ID) error
 
+	IsAccountDirty(ctx context.Context, account Account) (bool, error)
+
 	GetDirtyAccounts(ctx context.Context) ([]Account, error)
 
 	// --- Tag to Account Management ---

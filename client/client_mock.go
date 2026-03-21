@@ -34,6 +34,7 @@ type MockClientOverwrites struct {
 	GetPublicKeys               func(ctx context.Context, ids ...ID) ([]PublicKey, error)
 	GetTarget                   func(ctx context.Context, id ID) (Target, error)
 	GetTargets                  func(ctx context.Context, ids ...ID) ([]Target, error)
+	IsAccountDirty              func(ctx context.Context, account Account) (bool, error)
 	LinkTagAccount              func(ctx context.Context, accountID ID, filter string, expiresAt time.Time) (ID, error)
 	ListAccountsByTarget        func(ctx context.Context, targetID ID) ([]Account, error)
 	ListPublicKeys              func(ctx context.Context, tagFilter string) ([]PublicKey, error)
@@ -217,6 +218,14 @@ func (m *MockClient) GetTargets(ctx context.Context, ids ...ID) ([]Target, error
 		return m.BaseClient.GetTargets(ctx, ids...)
 	}
 	panic("MockClient.GetTargets not implemented")
+}
+func (m *MockClient) IsAccountDirty(ctx context.Context, account Account) (bool, error) {
+	if m.Overwrites.IsAccountDirty != nil {
+		return m.Overwrites.IsAccountDirty(ctx, account)
+	} else if m.BaseClient != nil {
+		return m.BaseClient.IsAccountDirty(ctx, account)
+	}
+	panic("MockClient.IsAccountDirty not implemented")
 }
 func (m *MockClient) LinkTagAccount(ctx context.Context, accountID ID, filter string, expiresAt time.Time) (ID, error) {
 	if m.Overwrites.LinkTagAccount != nil {

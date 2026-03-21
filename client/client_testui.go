@@ -202,10 +202,14 @@ func (c *TestUIClient) DeleteAccounts(ctx context.Context, ids ...ID) error {
 	return nil
 }
 
+func (c *TestUIClient) IsAccountDirty(ctx context.Context, account Account) (bool, error) {
+	return false, nil
+}
+
 func (c *TestUIClient) GetDirtyAccounts(ctx context.Context) ([]Account, error) {
-	return slices.Filter(c.accounts, func(account Account) bool {
-		return !account.IsDirty()
-	}), nil
+	return slices.Filterx(c.accounts, func(account Account) (bool, error) {
+		return c.IsAccountDirty(ctx, account)
+	})
 }
 
 // --- Tag to Account Management ---
