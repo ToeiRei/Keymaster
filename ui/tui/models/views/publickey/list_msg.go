@@ -5,7 +5,14 @@ package publickey
 
 import "github.com/toeirei/keymaster/client"
 
-type listMsgReload struct {
+type listMsgReloaded struct {
 	publicKeys []client.PublicKey
 	err        error
 }
+
+type listMsgDeleteResult struct {
+	publicKey client.PublicKey
+	err       error
+}
+
+type listMsgDeleting struct{}

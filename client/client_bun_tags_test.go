@@ -9,6 +9,7 @@ import (
 
 	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
 func TestBunClient_TagLinkAndResolve(t *testing.T) {
@@ -34,7 +35,7 @@ func TestBunClient_TagLinkAndResolve(t *testing.T) {
 	}
 
 	// create a public key and assign to account
-	pk, err := c.CreatePublicKey(ctx, "alice-key", nil)
+	pk, err := c.CreatePublicKey(ctx, "alice-key", util.NewPointer("some comment"), nil)
 	if err != nil {
 		t.Fatalf("CreatePublicKey failed: %v", err)
 	}

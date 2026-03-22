@@ -145,10 +145,7 @@ func (m *Injector) close() tea.Cmd {
 		}
 		m.popups = m.popups[:len(m.popups)-1]
 		// focus underlying view
-		return tea.Batch(
-			m.focusActiveModel(),
-			onCloseCmd,
-		)
+		return tea.Sequence(m.focusActiveModel(), onCloseCmd)
 	}
 	return nil
 }

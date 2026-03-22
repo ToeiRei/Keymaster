@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
-package forminput
+package formelement
 
 import (
 	"strings"
@@ -35,7 +35,7 @@ func (k ButtonKeyMap) ShortHelp() []key.Binding { return []key.Binding{k.Click} 
 
 func (k ButtonKeyMap) FullHelp() [][]key.Binding { return [][]key.Binding{{k.Click}} }
 
-func NewButton(label string, disabled bool, onClick func() (tea.Cmd, form.Action)) form.FormInput {
+func NewButton(label string, disabled bool, onClick func() (tea.Cmd, form.Action)) form.FormElement {
 	return &Button{
 		Label: label,
 		KeyMap: ButtonKeyMap{
@@ -90,10 +90,14 @@ func (b *Button) View(width int) string {
 	}
 }
 
+func (b *Button) Focusable() bool {
+	return !b.Disabled
+}
+
 // not needed
 func (b *Button) Get() any      { return nil }
 func (b *Button) Init() tea.Cmd { return nil }
 func (b *Button) Reset()        {}
 func (b *Button) Set(any)       {}
 
-var _ form.FormInput = (*Button)(nil)
+var _ form.FormElement = (*Button)(nil)

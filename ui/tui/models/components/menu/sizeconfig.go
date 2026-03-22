@@ -9,8 +9,11 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
-const min_size int = 20
-const max_size int = 40
+const (
+	min_size      int = 12
+	max_size      int = 40
+	collapse_size int = 50
+)
 
 var SizeConfig = &sizeConfig{}
 
@@ -23,6 +26,9 @@ func (s *sizeConfig) Priority() int { return 20 }
 func (s *sizeConfig) Caltulate(model util.Model, remaining_size int, _ int) int {
 	if menu, ok := model.(*Model); ok {
 		if !menu.focused {
+			if remaining_size <= collapse_size {
+				return 0
+			}
 			return min_size
 		}
 		// clamp needed size

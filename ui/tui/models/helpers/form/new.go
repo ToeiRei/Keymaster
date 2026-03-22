@@ -37,20 +37,20 @@ func WithResetAfterSubmit[T any]() NewOpt[T] {
 	}
 }
 
-func WithInput[T any](id string, input FormInput) NewOpt[T] {
+func WithElement[T any](id string, element FormElement) NewOpt[T] {
 	return func(form *Form[T]) {
 		form.rows = append(form.rows, formRow{items: []int{len(form.items)}})
-		form.items = append(form.items, formItem{id: id, input: input})
+		form.items = append(form.items, formItem{id: id, element: element})
 	}
 }
 
-func WithInputInline[T any](id string, input FormInput) NewOpt[T] {
+func WithElementInline[T any](id string, element FormElement) NewOpt[T] {
 	return func(form *Form[T]) {
 		if len(form.rows) > 0 {
 			form.rows[len(form.rows)-1].items = append(form.rows[len(form.rows)-1].items, len(form.items))
 		} else {
 			form.rows = append(form.rows, formRow{items: []int{len(form.items)}})
 		}
-		form.items = append(form.items, formItem{id: id, input: input})
+		form.items = append(form.items, formItem{id: id, element: element})
 	}
 }

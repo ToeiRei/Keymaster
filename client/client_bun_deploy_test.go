@@ -10,6 +10,7 @@ import (
 	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/security"
+	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
 // fake deployer manager used to avoid network operations in tests.
@@ -82,7 +83,7 @@ func TestBunClient_Onboard_Decom_Deploy(t *testing.T) {
 	}
 
 	// Create a public key and assign to account
-	pk, err := c.CreatePublicKey(context.Background(), "ci-key", nil)
+	pk, err := c.CreatePublicKey(context.Background(), "ci-key", util.NewPointer("some comment"), nil)
 	if err != nil {
 		t.Fatalf("CreatePublicKey failed: %v", err)
 	}

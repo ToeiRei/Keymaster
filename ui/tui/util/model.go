@@ -16,9 +16,6 @@ type Model interface {
 	Focusable
 }
 
-// polyfill: won't be needed as of go 1.26
-func new[T any](v T) *T { return &v }
-
 func ModelPointer[T any, PT interface {
 	*T
 	Model

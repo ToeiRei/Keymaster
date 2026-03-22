@@ -14,7 +14,7 @@ type KeyMap struct {
 }
 
 func (km KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Exit, km.Help}
+	return []key.Binding{km.Help}
 }
 
 func (km KeyMap) FullHelp() [][]key.Binding {

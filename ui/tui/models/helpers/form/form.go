@@ -13,7 +13,7 @@ import (
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
-type FormInput interface {
+type FormElement interface {
 	util.Focusable
 	Reset()
 	Init() tea.Cmd
@@ -21,11 +21,12 @@ type FormInput interface {
 	Set(any)
 	Get() any
 	View(width int) string
+	Focusable() bool
 }
 
 type formItem struct {
-	id    string
-	input FormInput
+	id      string
+	element FormElement
 }
 
 type formRow struct {
@@ -47,37 +48,32 @@ type Form[T any] struct {
 
 func (f Form[T]) Init() tea.Cmd {
 	return tea.Batch(slicest.Map(f.items, func(item formItem) tea.Cmd {
-		return item.input.Init()
+		return item.element.Init()
 	})...)
 }
 
-func (f Form[T]) Update(msg tea.Msg) (Form[T], tea.Cmd) {
+func (f *Form[T]) Update(msg tea.Msg) tea.Cmd {
 	// handle size updates
 	if f.size.Update(msg) {
-		return f, nil
+		return nil
 	}
 
 	if f.focused {
-		var cmd tea.Cmd
-
 		// handle key updates for form
 		if kmsg, ok := msg.(tea.KeyMsg); ok {
 			switch {
 			case key.Matches(kmsg, DefaultKeyMap.Next):
-				cmd = f.changeActiveIndex(1)
-				return f, cmd
+				return f.changeActiveIndex(1)
 			case key.Matches(kmsg, DefaultKeyMap.Prev):
-				cmd = f.changeActiveIndex(-1)
-				return f, cmd
+				return f.changeActiveIndex(-1)
 			}
 		}
 
 		// pass msg to active input
-		cmd = f.updateActiveInput(msg)
-		return f, cmd
+		return f.updateActiveInput(msg)
 	}
 
-	return f, nil
+	return nil
 }
 
 func (f Form[T]) View() string {
@@ -91,7 +87,7 @@ func (f Form[T]) View() string {
 			return lipgloss.JoinHorizontal(
 				lipgloss.Center,
 				slicest.Map(row.items, func(item_index int) string {
-					return f.items[item_index].input.View(f.size.Width / len(row.items))
+					return f.items[item_index].element.View(f.size.Width / len(row.items))
 				})...,
 			)
 		})...,
@@ -99,16 +95,16 @@ func (f Form[T]) View() string {
 }
 
 // *Model implements util.Focusable
-// var _ util.Model = (*Form[any])(nil) // Update with self return
+var _ util.Model = (*Form[any])(nil) // Update with self return
 
 func (f *Form[T]) Focus(baseKeyMap help.KeyMap) tea.Cmd {
 	f.focused, f.baseKeyMap = true, baseKeyMap
-	return f.items[f.activeIndex].input.Focus(util.MergeKeyMaps(f.baseKeyMap, DefaultKeyMap))
+	return f.items[f.activeIndex].element.Focus(util.MergeKeyMaps(f.baseKeyMap, DefaultKeyMap))
 }
 
 func (f *Form[T]) Blur() {
 	f.focused, f.baseKeyMap = false, nil
-	f.items[f.activeIndex].input.Blur()
+	f.items[f.activeIndex].element.Blur()
 }
 
 // *Model implements util.Focusable
@@ -116,10 +112,10 @@ var _ util.Focusable = (*Form[any])(nil)
 
 func (f *Form[T]) Reset() tea.Cmd {
 	for _, item := range f.items {
-		item.input.Reset()
+		item.element.Reset()
 	}
 
-	return f.changeActiveIndex(-f.activeIndex)
+	return f.changeActiveIndex(len(f.items) - f.activeIndex)
 }
 
 func (f *Form[T]) Submit() tea.Cmd {
@@ -141,7 +137,7 @@ func (f *Form[T]) updateActiveInput(msg tea.Msg) tea.Cmd {
 		action    Action
 	)
 
-	updateCmd, action = f.items[f.activeIndex].input.Update(msg)
+	updateCmd, action = f.items[f.activeIndex].element.Update(msg)
 
 	switch action {
 	case ActionNone:
@@ -158,24 +154,49 @@ func (f *Form[T]) updateActiveInput(msg tea.Msg) tea.Cmd {
 	return tea.Batch(updateCmd, actionCmd)
 }
 
-func (f *Form[T]) changeActiveIndex(index int) tea.Cmd {
-	index = index % len(f.items)
+func (f *Form[T]) changeActiveIndex(index_delta int) tea.Cmd {
+	// default to current item
+	newActiveIndex := f.activeIndex
 
-	if index != 0 && f.focused {
-		oldActiveIndex := f.activeIndex
-		f.activeIndex += index
-
-		if f.activeIndex > len(f.items)-1 {
-			f.activeIndex = 0
+	// direction aware search for the next focusable item
+	for i := 0; i < len(f.items); i++ {
+		var index int
+		if index_delta >= 0 {
+			index = (f.activeIndex + index_delta + i) % len(f.items)
+		} else {
+			index = (f.activeIndex + index_delta - i) % len(f.items)
 		}
-		if f.activeIndex < 0 {
-			f.activeIndex = len(f.items) - 1
+		if index < 0 {
+			index += len(f.items)
 		}
-
-		f.items[oldActiveIndex].input.Blur()
+		if f.items[index].element.Focusable() {
+			newActiveIndex = index
+			break
+		}
 	}
 
-	return f.items[f.activeIndex].input.Focus(util.MergeKeyMaps(f.baseKeyMap, DefaultKeyMap))
+	if f.activeIndex == newActiveIndex {
+		return nil
+	}
+
+	f.items[f.activeIndex].element.Blur()
+	f.activeIndex = newActiveIndex
+
+	// if index_delta != 0 {
+	// 	oldActiveIndex := f.activeIndex
+	// 	f.activeIndex += index_delta
+
+	// 	if f.activeIndex > len(f.items)-1 {
+	// 		f.activeIndex = 0
+	// 	}
+	// 	if f.activeIndex < 0 {
+	// 		f.activeIndex = len(f.items) - 1
+	// 	}
+
+	// 	f.items[oldActiveIndex].input.Blur()
+	// }
+
+	return f.items[f.activeIndex].element.Focus(util.MergeKeyMaps(f.baseKeyMap, DefaultKeyMap))
 }
 
 func (f *Form[T]) Get() (T, error) {
@@ -183,7 +204,7 @@ func (f *Form[T]) Get() (T, error) {
 	values := make(map[string]any, len(f.items))
 
 	for _, item := range f.items {
-		values[item.id] = item.input.Get()
+		values[item.id] = item.element.Get()
 	}
 
 	err := mapstructure.Decode(values, &data)
@@ -198,7 +219,7 @@ func (f *Form[T]) Set(data T) error {
 
 	for i := range f.items {
 		if value, ok := values[f.items[i].id]; ok {
-			f.items[i].input.Set(value)
+			f.items[i].element.Set(value)
 		}
 	}
 

@@ -5,24 +5,26 @@ package publickey
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/bobg/go-generics/v4/slices"
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
+	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
-	"github.com/toeirei/keymaster/util/slicest"
 )
 
 type ListModel struct {
-	// data
+	// state
 	publicKeys   []client.PublicKey
-	loading      bool
+	locked       *string
 	loadingError error
+	focussed     bool
 
 	// util
 	client client.Client
@@ -36,18 +38,15 @@ type ListModel struct {
 func NewList(client client.Client, rc router.Controll) *ListModel {
 	table := table.New()
 	return &ListModel{
-		client:       client,
-		rc:           rc,
-		publicKeys:   nil,
-		loading:      false,
-		loadingError: nil,
-		table:        &table,
+		client: client,
+		rc:     rc,
+		table:  &table,
 	}
 }
 
 // Init implements util.Model.
 func (m *ListModel) Init() tea.Cmd {
-	m.updateColumns()
+	m.refreshTable()
 	return m.reload()
 }
 
@@ -57,25 +56,78 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 	if m.size.Update(msg) {
 		m.table.SetWidth(m.size.Width)
 		m.table.SetHeight(m.size.Height)
-		m.updateColumns()
+		m.refreshTable()
 		return nil
 	}
 
 	// Handle messages
 	switch msg := msg.(type) {
-	case listMsgReload:
-		m.loading = false
+	case listMsgReloaded:
+		m.locked = nil
 		m.publicKeys = msg.publicKeys
 		m.loadingError = msg.err
-		m.table.SetRows(slices.Map(msg.publicKeys, func(publicKey client.PublicKey) table.Row {
-			return table.Row{
-				fmt.Sprint(publicKey.Id),
-				strings.Join(publicKey.Tags, ", "),
-			}
-		}))
+		m.refreshTable()
 		return nil
+
+	case listMsgDeleting:
+		m.locked = util.NewPointer("Deleting Public Key...")
+
+	case listMsgDeleteResult:
+		m.locked = nil
+		if msg.err != nil {
+			// TODO show popup with error
+			return nil
+		}
+		m.publicKeys = slices.DeleteFunc(m.publicKeys, func(pk client.PublicKey) bool { return pk.Id == msg.publicKey.Id })
+		m.refreshTable()
+		// TODO does not work for some reason
+		return nil
+
 	case tea.KeyMsg:
-		return util.UpdateTeaModelInplace(msg, m.table)
+		if !m.focussed || m.locked != nil {
+			return nil
+		}
+		switch {
+		case key.Matches(msg, ListBaseKeyMap.Edit):
+			// TODO replace mock with open edit page
+			return m.rc.Push(util.ModelPointer(NewList(m.client, m.rc)))
+
+		case key.Matches(msg, ListBaseKeyMap.Delete):
+			publicKey := m.publicKeys[m.table.Cursor()]
+			return popup.Open(util.ModelPointer(popupviews.NewChoice(
+				"Do you realy want to delete this PublicKey?",
+				popupviews.Choices{
+					"Cancel": func() tea.Cmd { return popup.Close() },
+					"Delete": func() tea.Cmd {
+						return tea.Sequence(
+							popup.Close(),
+							func() tea.Msg { return listMsgDeleting{} },
+							func() tea.Msg {
+								return listMsgDeleteResult{
+									publicKey: publicKey,
+									err:       m.client.DeletePublicKeys(context.Background(), publicKey.Id),
+								}
+							},
+						)
+					},
+				},
+				40, 40,
+			)))
+
+		case key.Matches(
+			msg,
+			ListBaseKeyMap.LineUp,
+			ListBaseKeyMap.LineDown,
+			ListBaseKeyMap.PageUp,
+			ListBaseKeyMap.PageDown,
+			ListBaseKeyMap.HalfPageUp,
+			ListBaseKeyMap.HalfPageDown,
+			ListBaseKeyMap.GotoTop,
+			ListBaseKeyMap.GotoBottom,
+		):
+			// pass key msg to table
+			return util.UpdateTeaModelInplace(msg, m.table)
+		}
 	}
 
 	return nil
@@ -83,50 +135,57 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 
 // View implements util.Model.
 func (m *ListModel) View() string {
+	if m.loadingError != nil {
+		return m.loadingError.Error()
+	}
 	return m.table.View()
 }
 
 // Focus implements util.Model.
 func (m *ListModel) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+	m.focussed = true
 	m.table.Focus()
-	return util.AnnounceKeyMapCmd(baseKeyMap, m.table.KeyMap)
+	return util.AnnounceKeyMapCmd(baseKeyMap, ListBaseKeyMap)
 }
 
 // Blur implements util.Model.
 func (m *ListModel) Blur() {
+	m.focussed = false
 	m.table.Blur()
 }
 
-// *Model implements util.Model
+// *ListModel implements util.Model
 var _ util.Model = (*ListModel)(nil)
 
 func (m *ListModel) reload() tea.Cmd {
-	if m.loading {
+	if m.locked != nil {
 		return nil
 	}
 
-	m.loading = true
+	m.locked = util.NewPointer("Loading Public Keys...")
 
 	return func() tea.Msg {
 		publicKeys, err := m.client.ListPublicKeys(context.Background(), "")
-		return listMsgReload{publicKeys, err}
+		return listMsgReloaded{publicKeys, err}
 	}
 }
 
-func (m *ListModel) updateColumns() {
-	// i dont know wich one is better >_>
-	// Ids := slicest.Map(m.publicKeys, func(publicKey client.PublicKey) int {
-	// 	return len(fmt.Sprint(publicKey.Id))
-	// })
-	// Ids = append(Ids, 2)
-	// _ = slices.Max(Ids)
-	minIdLength := slicest.ReduceD(m.publicKeys, 2, func(publicKey client.PublicKey, prev int) int {
-		return max(len(fmt.Sprint(publicKey.Id)), prev)
+func (m *ListModel) refreshTable() {
+	// TODO this code is just a prove of concept and needs improvements like dynamic scaling!
+	m.table.SetColumns([]table.Column{
+		{Title: "Algorithm", Width: 10},
+		{Title: "Comment", Width: 10},
+		{Title: "Tags", Width: m.size.Width - 20 - 6},
 	})
 
-	// TODO this code is just a prove of concept and needs improvements!
-	m.table.SetColumns([]table.Column{
-		{Title: "ID", Width: minIdLength},
-		{Title: "Tags", Width: m.size.Width - minIdLength - 2},
-	})
+	m.table.SetRows(slices.Map(m.publicKeys, func(publicKey client.PublicKey) table.Row {
+		return table.Row{
+			// column: Algorithm
+			publicKey.Algorithm,
+			// column: Comment
+			util.DerefOrNullValue(publicKey.Comment),
+			// column: Tags
+			strings.Join(publicKey.Tags, ", "),
+		}
+	}))
 }

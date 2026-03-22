@@ -16,7 +16,7 @@ type MockClient struct {
 type MockClientOverwrites struct {
 	Close                       func(ctx context.Context) error
 	CreateAccount               func(ctx context.Context, targetID ID, name string, deploymentKey string) (Account, error)
-	CreatePublicKey             func(ctx context.Context, identity string, tags []string) (PublicKey, error)
+	CreatePublicKey             func(ctx context.Context, key string, comment *string, tags []string) (PublicKey, error)
 	CreateTarget                func(ctx context.Context, host string, port int) (Target, error)
 	DecommisionAccount          func(ctx context.Context, id ID) (chan DecommisionAccountProgress, error)
 	DecommisionTarget           func(ctx context.Context, id ID) (chan DecommisionTargetProgress, error)
@@ -75,11 +75,11 @@ func (m *MockClient) CreateAccount(ctx context.Context, targetID ID, name string
 	}
 	panic("MockClient.CreateAccount not implemented")
 }
-func (m *MockClient) CreatePublicKey(ctx context.Context, identity string, tags []string) (PublicKey, error) {
+func (m *MockClient) CreatePublicKey(ctx context.Context, key string, comment *string, tags []string) (PublicKey, error) {
 	if m.Overwrites.CreatePublicKey != nil {
-		return m.Overwrites.CreatePublicKey(ctx, identity, tags)
+		return m.Overwrites.CreatePublicKey(ctx, key, comment, tags)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.CreatePublicKey(ctx, identity, tags)
+		return m.BaseClient.CreatePublicKey(ctx, key, comment, tags)
 	}
 	panic("MockClient.CreatePublicKey not implemented")
 }

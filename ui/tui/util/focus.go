@@ -81,3 +81,19 @@ func (m MergedKeyMaps) FullHelp() [][]key.Binding {
 }
 
 var _ help.KeyMap = (*MergedKeyMaps)(nil)
+
+type EmptyKeyMap struct {
+	Exit key.Binding
+	Help key.Binding
+}
+
+func (km EmptyKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{}
+}
+
+func (km EmptyKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{{}}
+}
+
+// *KeyMap implements help.KeyMap
+var _ help.KeyMap = (*EmptyKeyMap)(nil)

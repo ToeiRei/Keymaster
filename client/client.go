@@ -17,7 +17,7 @@ type Client interface {
 
 	// --- PublicKey Management ---
 
-	CreatePublicKey(ctx context.Context, identity string, tags []string) (PublicKey, error)
+	CreatePublicKey(ctx context.Context, key string, comment *string, tags []string) (PublicKey, error)
 
 	GetPublicKey(ctx context.Context, id ID) (PublicKey, error)
 
@@ -93,9 +93,11 @@ type ID int
 
 // PublicKey represents a public key record.
 type PublicKey struct {
-	Id       ID
-	Identity string
-	Tags     []string
+	Id        ID
+	Algorithm string
+	Data      string
+	Comment   *string
+	Tags      []string
 	// ...
 }
 

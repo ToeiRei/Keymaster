@@ -6,6 +6,7 @@ package form
 import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 type KeyMap struct {
@@ -25,12 +26,6 @@ func (km KeyMap) FullHelp() [][]key.Binding {
 var _ help.KeyMap = (*KeyMap)(nil)
 
 var DefaultKeyMap = KeyMap{
-	Next: key.NewBinding(
-		key.WithKeys("tab"),
-		key.WithHelp("tab", "next"),
-	),
-	Prev: key.NewBinding(
-		key.WithKeys("shift+tab"),
-		key.WithHelp("shift+tab", "previous"),
-	),
+	Next: keys.Next(),
+	Prev: keys.Prev(),
 }

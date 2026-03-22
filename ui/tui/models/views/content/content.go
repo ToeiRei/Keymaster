@@ -61,21 +61,30 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		ListPublicKeys: func(ctx context.Context, tagFilter string) ([]client.PublicKey, error) {
 			return []client.PublicKey{
 				{
-					Id:       1,
-					Identity: "Sha your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-ödtjfb",
-					Tags:     []string{"user:jannes", "company:none"},
+					Id:        1,
+					Algorithm: "Sha-your-mom",
+					Data:      "ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-ödtjfb",
+					Comment:   util.NewPointer("my-key"),
+					Tags:      []string{"user:jannes", "company:none"},
 				},
 				{
-					Id:       2,
-					Identity: "Sha 420 asdjhk-fbaskjdfhal_sdvkhathrösdljhask-ödjfb",
-					Tags:     []string{"user:toirei", "company:another"},
+					Id:        2,
+					Algorithm: "Sha-420",
+					Data:      "asdjhk-fbaskjdfhal_sdvkhathrösdljhask-ödjfb",
+					Comment:   util.NewPointer("420"),
+					Tags:      []string{"user:toeirei", "company:another"},
 				},
 				{
-					Id:       3,
-					Identity: "Sha 69 asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb",
-					Tags:     []string{"user:somebodyelse", "company:evilgoogle"},
+					Id:        3,
+					Algorithm: "Sha-69",
+					Data:      "asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb",
+					Comment:   util.NewPointer("69"),
+					Tags:      []string{"user:somebodyelse", "company:evilgoogle"},
 				},
 			}, nil
+		},
+		DeletePublicKeys: func(ctx context.Context, ids ...client.ID) error {
+			return nil
 		},
 	})
 

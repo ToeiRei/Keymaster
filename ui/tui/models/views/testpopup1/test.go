@@ -7,9 +7,9 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toeirei/keymaster/ui/tui/models/components/popup"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
-	forminput "github.com/toeirei/keymaster/ui/tui/models/helpers/form/input"
+	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
@@ -25,14 +25,14 @@ type Model struct {
 func New() *Model {
 	return &Model{
 		form: form.New(
-			form.WithInput[formData]("firstname", forminput.NewText("Vorname", "Max")),
-			form.WithInput[formData]("lastname", forminput.NewText("Nachname", "Mustermann")),
-			form.WithInput[formData]("", forminput.NewButton(
+			form.WithElement[formData]("firstname", formelement.NewText("Vorname", "Max")),
+			form.WithElement[formData]("lastname", formelement.NewText("Nachname", "Mustermann")),
+			form.WithElement[formData]("", formelement.NewButton(
 				"Cancel",
 				false,
 				func() (tea.Cmd, form.Action) { return nil, form.ActionCancel },
 			)),
-			form.WithInputInline[formData]("", forminput.NewButton(
+			form.WithElementInline[formData]("", formelement.NewButton(
 				"Submit",
 				false,
 				func() (tea.Cmd, form.Action) { return nil, form.ActionSubmit },
@@ -54,9 +54,8 @@ func (m Model) Init() tea.Cmd {
 	return m.form.Init()
 }
 
-func (m *Model) Update(msg tea.Msg) (cmd tea.Cmd) {
-	m.form, cmd = m.form.Update(msg)
-	return
+func (m *Model) Update(msg tea.Msg) tea.Cmd {
+	return m.form.Update(msg)
 }
 
 func (m Model) View() string {

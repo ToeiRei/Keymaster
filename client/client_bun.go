@@ -90,26 +90,36 @@ func (c *BunClient) Close(ctx context.Context) error {
 
 // --- PublicKey Management ---
 
-func (c *BunClient) CreatePublicKey(ctx context.Context, identity string, tags []string) (PublicKey, error) {
+func (c *BunClient) CreatePublicKey(ctx context.Context, key string, comment *string, tags []string) (PublicKey, error) {
 	km := core.DefaultKeyManager()
 	if km == nil {
 		return PublicKey{}, errors.New("no key manager available")
 	}
 
 	// Generate a new keypair and store the public key via the KeyManager.
-	pubLine, _, err := core.DefaultKeyGenerator().GenerateAndMarshalEd25519Key(identity, "")
+	pubLine, _, err := core.DefaultKeyGenerator().GenerateAndMarshalEd25519Key(key, "")
 	if err != nil {
 		return PublicKey{}, err
 	}
-	alg, keyData, comment, perr := sshkey.Parse(pubLine)
+	alg, keyData, _, perr := sshkey.Parse(pubLine)
 	if perr != nil {
 		return PublicKey{}, perr
 	}
-	pk, err := km.AddPublicKeyAndGetModel(alg, keyData, comment, false, time.Time{})
+	_comment := ""
+	if comment != nil {
+		_comment = *comment
+	}
+	pk, err := km.AddPublicKeyAndGetModel(alg, keyData, _comment, false, time.Time{})
 	if err != nil {
 		return PublicKey{}, err
 	}
-	return PublicKey{ID(pk.ID), pk.Comment, tags}, nil
+	return PublicKey{
+		Id:        ID(pk.ID),
+		Algorithm: alg,
+		Data:      pk.KeyData,
+		Comment:   &pk.Comment,
+		Tags:      nil, // TODO where the tags at?
+	}, nil
 }
 
 func (c *BunClient) GetPublicKey(ctx context.Context, id ID) (PublicKey, error) {
@@ -121,9 +131,10 @@ func (c *BunClient) GetPublicKey(ctx context.Context, id ID) (PublicKey, error) 
 	if err != nil {
 		return PublicKey{}, err
 	}
-	for _, p := range pks {
-		if ID(p.ID) == id {
-			return PublicKey{ID(p.ID), p.Comment, nil}, nil
+	for _, pk := range pks {
+		if ID(pk.ID) == id {
+			return PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, &pk.Comment, nil}, // TODO where the tags at?
+				nil
 		}
 	}
 	return PublicKey{}, errors.New("public key not found")
@@ -139,10 +150,10 @@ func (c *BunClient) GetPublicKeys(ctx context.Context, ids ...ID) ([]PublicKey, 
 		return nil, err
 	}
 	var out []PublicKey
-	for _, p := range pks {
+	for _, pk := range pks {
 		for _, id := range ids {
-			if ID(p.ID) == id {
-				out = append(out, PublicKey{ID(p.ID), p.Comment, nil})
+			if ID(pk.ID) == id {
+				out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, &pk.Comment, nil}) // TODO where the tags at?
 			}
 		}
 	}
@@ -159,9 +170,9 @@ func (c *BunClient) ListPublicKeys(ctx context.Context, tagFilter string) ([]Pub
 		return nil, err
 	}
 	var out []PublicKey
-	for _, p := range pks {
+	for _, pk := range pks {
 		// Tags are not modeled in core.PublicKey; return empty tags for now.
-		out = append(out, PublicKey{ID(p.ID), p.Comment, nil})
+		out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, &pk.Comment, nil}) // TODO where the tags at?
 	}
 	return out, nil
 }
@@ -452,14 +463,14 @@ func (c *BunClient) ResolvePublicKeysForAccount(ctx context.Context, accountID I
 	// Merge unique by ID
 	seen := make(map[int]bool)
 	var out []PublicKey
-	for _, k := range global {
-		seen[k.ID] = true
-		out = append(out, PublicKey{ID(k.ID), k.Comment, nil})
+	for _, pk := range global {
+		seen[pk.ID] = true
+		out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, &pk.Comment, nil}) // TODO where the tags at?
 	}
-	for _, k := range assigned {
-		if !seen[k.ID] {
-			seen[k.ID] = true
-			out = append(out, PublicKey{ID(k.ID), k.Comment, nil})
+	for _, pk := range assigned {
+		if !seen[pk.ID] {
+			seen[pk.ID] = true
+			out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, &pk.Comment, nil}) // TODO where the tags at?
 		}
 	}
 	return out, nil

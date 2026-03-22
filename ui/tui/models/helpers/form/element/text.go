@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
-package forminput
+package formelement
 
 import (
 	"github.com/charmbracelet/bubbles/help"
@@ -17,6 +17,7 @@ type Text struct {
 	Label       string
 	Placeholder string
 	KeyMap      TextKeyMap
+	Disabled    bool
 
 	input   textinput.Model
 	focused bool
@@ -30,7 +31,7 @@ func (k TextKeyMap) ShortHelp() []key.Binding { return []key.Binding{} }
 
 func (k TextKeyMap) FullHelp() [][]key.Binding { return [][]key.Binding{} }
 
-func NewText(label, placeholder string) form.FormInput {
+func NewText(label, placeholder string) form.FormElement {
 	return &Text{
 		Label:       label,
 		Placeholder: placeholder,
@@ -107,4 +108,8 @@ func (t *Text) View(width int) string {
 	return lipgloss.JoinVertical(lipgloss.Left, label, t.input.View())
 }
 
-var _ form.FormInput = (*Text)(nil)
+func (t *Text) Focusable() bool {
+	return !t.Disabled
+}
+
+var _ form.FormElement = (*Text)(nil)
