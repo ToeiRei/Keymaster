@@ -117,11 +117,6 @@ type Account struct {
 	// ...
 }
 
-func (a Account) IsDirty() bool {
-	// TODO implement
-	return false
-}
-
 // DeployProgress reports incremental progress for a deployment operation.
 type DeployProgress struct {
 	Percent float32

@@ -371,6 +371,17 @@ func (c *BunClient) DeleteAccounts(ctx context.Context, ids ...ID) error {
 	return nil
 }
 
+func (c *BunClient) IsAccountDirty(ctx context.Context, a Account) (bool, error) {
+	if c.store == nil {
+		return false, errors.New("no store available")
+	}
+	account, err := c.store.GetAccount(int(a.Id))
+	if err != nil {
+		return false, err
+	}
+	return account.IsDirty, nil
+}
+
 func (c *BunClient) GetDirtyAccounts(ctx context.Context) ([]Account, error) {
 	if c.store == nil {
 		return nil, errors.New("no store available")
