@@ -56,7 +56,7 @@ func (c *TestUIClient) Close(ctx context.Context) error {
 func (c *TestUIClient) CreatePublicKey(ctx context.Context, key string, comment *string, tags []string) (PublicKey, error) {
 	keyParts := strings.Split(key, " ")
 	if len(keyParts) < 2 {
-		return PublicKey{}, errors.New("Invalid key provided")
+		return PublicKey{}, errors.New("invalid key provided")
 	}
 	// algorithm, data := keyParts[0], strings.Join(slices.SliceTo(keyParts, 1, len(keyParts)), " ")
 	algorithm, data := keyParts[0], keyParts[1]
@@ -72,7 +72,7 @@ func (c *TestUIClient) GetPublicKey(ctx context.Context, id ID) (PublicKey, erro
 	}); ok {
 		return c.publicKeys[i], nil
 	}
-	return PublicKey{}, fmt.Errorf("PublicKey with id %v not found", id)
+	return PublicKey{}, fmt.Errorf("public key with id %v not found", id)
 }
 
 func (c *TestUIClient) GetPublicKeys(ctx context.Context, ids ...ID) ([]PublicKey, error) {
@@ -95,7 +95,7 @@ func (c *TestUIClient) UpdatePublicKeyTags(ctx context.Context, id ID, tags []st
 		c.publicKeys[i].Tags = tags
 		return nil
 	}
-	return fmt.Errorf("PublicKey with id %v not found", id)
+	return fmt.Errorf("public key with id %v not found", id)
 }
 
 func (c *TestUIClient) DeletePublicKeys(ctx context.Context, ids ...ID) error {
@@ -127,7 +127,7 @@ func (c *TestUIClient) GetTarget(ctx context.Context, id ID) (Target, error) {
 	}); ok {
 		return c.targets[i], nil
 	}
-	return Target{}, fmt.Errorf("Target with id %v not found", id)
+	return Target{}, fmt.Errorf("target with id %v not found", id)
 }
 
 func (c *TestUIClient) GetTargets(ctx context.Context, ids ...ID) ([]Target, error) {
@@ -148,7 +148,7 @@ func (c *TestUIClient) UpdateTarget(ctx context.Context, id ID, target Target) e
 		c.targets[i].Port = target.Port
 		return nil
 	}
-	return fmt.Errorf("Target with id %v not found", id)
+	return fmt.Errorf("target with id %v not found", id)
 }
 
 func (c *TestUIClient) DeleteTargets(ctx context.Context, ids ...ID) error {
@@ -180,7 +180,7 @@ func (c *TestUIClient) GetAccount(ctx context.Context, id ID) (Account, error) {
 	}); ok {
 		return c.accounts[i], nil
 	}
-	return Account{}, fmt.Errorf("Account with id %v not found", id)
+	return Account{}, fmt.Errorf("account with id %v not found", id)
 }
 
 func (c *TestUIClient) GetAccounts(ctx context.Context, ids ...ID) ([]Account, error) {
