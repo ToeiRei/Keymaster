@@ -24,7 +24,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.7'
+          go-version: '1.25.8'
       - name: Clean Go module cache (prevent partial-restore issues)
         run: |
           rm -rf ~/go/pkg/mod || true
@@ -81,7 +81,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.7'
+          go-version: '1.25.8'
       - name: Compute version and git sha
         id: ver
         run: |
