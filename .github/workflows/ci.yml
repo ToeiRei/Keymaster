@@ -24,7 +24,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.8'
+          version: '1.25.8'
       - name: Clean Go module cache (prevent partial-restore issues)
         run: |
           rm -rf ~/go/pkg/mod || true
@@ -56,7 +56,6 @@ jobs:
         continue-on-error: true
         with:
           version: latest
-          go-version: '1.25.7'
           # Use colored-line-number output. Excludes should be configured in .golangci.yml
           args: run ./...
       - name: Static vet
@@ -81,7 +80,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.8'
+          version: '1.25.8'
       - name: Compute version and git sha
         id: ver
         run: |
