@@ -95,20 +95,22 @@ func (c *BunClient) CreatePublicKey(ctx context.Context, key string, comment *st
 	if km == nil {
 		return PublicKey{}, errors.New("no key manager available")
 	}
-
-	// Generate a new keypair and store the public key via the KeyManager.
-	pubLine, _, err := core.DefaultKeyGenerator().GenerateAndMarshalEd25519Key(key, "")
-	if err != nil {
-		return PublicKey{}, err
-	}
-	alg, keyData, _, perr := sshkey.Parse(pubLine)
+	// If the caller supplied a full authorized_keys line, parse it. Otherwise
+	// treat the provided `key` string as the raw key data.
+	alg, keyData, parsedComment, perr := sshkey.Parse(key)
 	if perr != nil {
-		return PublicKey{}, perr
+		// Not a full authorized_keys line; treat as raw key data.
+		alg = ""
+		keyData = key
 	}
+
 	_comment := ""
 	if comment != nil {
 		_comment = *comment
+	} else if parsedComment != "" {
+		_comment = parsedComment
 	}
+
 	pk, err := km.AddPublicKeyAndGetModel(alg, keyData, _comment, false, time.Time{})
 	if err != nil {
 		return PublicKey{}, err
@@ -118,7 +120,7 @@ func (c *BunClient) CreatePublicKey(ctx context.Context, key string, comment *st
 		Algorithm: alg,
 		Data:      pk.KeyData,
 		Comment:   &pk.Comment,
-		Tags:      nil, // TODO where the tags at?
+		Tags:      tags,
 	}, nil
 }
 
