@@ -22,9 +22,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v4
         with:
-          version: '1.25.8'
+          go-version: '1.25.8'
+      - name: Verify Go version
+        run: go version
       - name: Clean Go module cache (prevent partial-restore issues)
         run: |
           rm -rf ~/go/pkg/mod || true
@@ -78,9 +80,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v4
         with:
-          version: '1.25.8'
+          go-version: '1.25.8'
+      - name: Verify Go version
+        run: go version
       - name: Compute version and git sha
         id: ver
         run: |
