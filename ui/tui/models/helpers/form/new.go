@@ -7,50 +7,73 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type NewOpt[T any] = func(form *Form[T])
+type FormOpt[T any] = func(form *Form[T])
 
-// type RowOpt[T any] = func(form *Form[T])
+type RowOpt[T any] = func(form *Form[T], row *row)
 
-func New[T any](opts ...NewOpt[T]) Form[T] {
+func New[T any](opts ...FormOpt[T]) Form[T] {
 	form := Form[T]{}
 	for _, opt := range opts {
 		opt(&form)
 	}
+	form.changeActiveIndex(0)
 	return form
 }
 
-func WithOnSubmit[T any](fn func(result T, err error) tea.Cmd) NewOpt[T] {
+func WithOnSubmit[T any](fn func(result T, err error) tea.Cmd) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.OnSubmit = fn
 	}
 }
 
-func WithOnCancel[T any](fn func() tea.Cmd) NewOpt[T] {
+func WithOnCancel[T any](fn func() tea.Cmd) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.OnCancel = fn
 	}
 }
 
-func WithResetAfterSubmit[T any]() NewOpt[T] {
+func WithResetAfterSubmit[T any]() FormOpt[T] {
 	return func(form *Form[T]) {
 		form.ResetAfterSubmit = true
 	}
 }
 
-func WithElement[T any](id string, element FormElement) NewOpt[T] {
+func WithFocus[T any](i int) FormOpt[T] {
 	return func(form *Form[T]) {
-		form.rows = append(form.rows, formRow{items: []int{len(form.items)}})
-		form.items = append(form.items, formItem{id: id, element: element})
+		form.activeIndex = i
 	}
 }
 
-func WithElementInline[T any](id string, element FormElement) NewOpt[T] {
+func WithSingleElementRow[T any](id string, element FormElement) FormOpt[T] {
+	return WithRow(WithElement[T](id, element))
+}
+
+func WithRow[T any](opts ...RowOpt[T]) FormOpt[T] {
 	return func(form *Form[T]) {
-		if len(form.rows) > 0 {
-			form.rows[len(form.rows)-1].items = append(form.rows[len(form.rows)-1].items, len(form.items))
-		} else {
-			form.rows = append(form.rows, formRow{items: []int{len(form.items)}})
+		row := row{}
+		for _, opt := range opts {
+			opt(form, &row)
 		}
-		form.items = append(form.items, formItem{id: id, element: element})
+		form.rows = append(form.rows, row)
+
+	}
+}
+
+func WithFocusNext[T any]() RowOpt[T] {
+	return func(form *Form[T], row *row) {
+		form.activeIndex = len(form.items)
+	}
+}
+
+func WithAlign[T any](align RowAlign) RowOpt[T] {
+	return func(form *Form[T], row *row) {
+		row.align = align
+	}
+}
+
+func WithElement[T any](id string, element FormElement) RowOpt[T] {
+	return func(form *Form[T], row *row) {
+		row.items = append(row.items, len(form.items))
+		form.items = append(form.items, item{id: id, element: element})
 	}
 }

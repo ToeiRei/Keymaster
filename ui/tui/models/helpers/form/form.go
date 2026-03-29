@@ -13,6 +13,21 @@ import (
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
+const (
+	Left RowAlign = iota
+	Right
+	Center
+	// Strech
+)
+
+type RowAlign int
+
+var rowAlignments = map[RowAlign]lipgloss.Position{
+	Left:   lipgloss.Left,
+	Right:  lipgloss.Right,
+	Center: lipgloss.Center,
+}
+
 type FormElement interface {
 	util.Focusable
 	Reset()
@@ -24,13 +39,14 @@ type FormElement interface {
 	Focusable() bool
 }
 
-type formItem struct {
+type item struct {
 	id      string
 	element FormElement
 }
 
-type formRow struct {
+type row struct {
 	items []int
+	align RowAlign
 }
 
 type Form[T any] struct {
@@ -38,8 +54,8 @@ type Form[T any] struct {
 	OnCancel         func() tea.Cmd
 	ResetAfterSubmit bool
 
-	items       []formItem
-	rows        []formRow
+	items       []item
+	rows        []row
 	activeIndex int
 	focused     bool
 	baseKeyMap  help.KeyMap
@@ -47,14 +63,14 @@ type Form[T any] struct {
 }
 
 func (f Form[T]) Init() tea.Cmd {
-	return tea.Batch(slicest.Map(f.items, func(item formItem) tea.Cmd {
+	return tea.Batch(slicest.Map(f.items, func(item item) tea.Cmd {
 		return item.element.Init()
 	})...)
 }
 
 func (f *Form[T]) Update(msg tea.Msg) tea.Cmd {
 	// handle size updates
-	if f.size.Update(msg) {
+	if f.size.UpdateFromMsg(msg) {
 		return nil
 	}
 
@@ -80,12 +96,9 @@ func (f Form[T]) View() string {
 	// TODO refine (this is only a basic implementation)
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		// slicest.Map(f.items, func(item formItem) string {
-		// 	return item.input.View(f.size.Width)
-		// })...,
-		slicest.Map(f.rows, func(row formRow) string {
+		slicest.Map(f.rows, func(row row) string {
 			return lipgloss.JoinHorizontal(
-				lipgloss.Center,
+				lipgloss.Left,
 				slicest.Map(row.items, func(item_index int) string {
 					return f.items[item_index].element.View(f.size.Width / len(row.items))
 				})...,

@@ -55,7 +55,7 @@ func (s Model) Init() tea.Cmd {
 func (s *Model) Update(msg tea.Msg) tea.Cmd {
 	var cmds []tea.Cmd
 
-	if s.size.Update(msg) {
+	if s.size.UpdateFromMsg(msg) {
 		s.calculateItemSizes()
 		cmds = append(cmds, s.updateResizedItems(true)...)
 	} else {

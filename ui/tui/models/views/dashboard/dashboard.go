@@ -30,7 +30,7 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
-	if m.size.Update(msg) {
+	if m.size.UpdateFromMsg(msg) {
 		return nil
 	}
 	// wont work until db can be constructed... mock for now

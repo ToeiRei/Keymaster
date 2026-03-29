@@ -37,7 +37,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		})
 	}
 
-	m.size.Update(msg)
+	m.size.UpdateFromMsg(msg)
 	return (*m.help).Update(msg)
 }
 

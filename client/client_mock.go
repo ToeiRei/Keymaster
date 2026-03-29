@@ -43,6 +43,7 @@ type MockClientOverwrites struct {
 	ResolveAccountsForPublicKey func(ctx context.Context, publicKeyID ID) ([]Account, error)
 	ResolvePublicKeysForAccount func(ctx context.Context, accountID ID) ([]PublicKey, error)
 	UnLinkTagAccount            func(ctx context.Context, linkIDs ...ID) error
+	UpdatePublicKey             func(ctx context.Context, id ID, publicKey PublicKey) error
 	UpdatePublicKeyTags         func(ctx context.Context, id ID, tags []string) error
 	UpdateTarget                func(ctx context.Context, id ID, target Target) error
 }
@@ -290,6 +291,14 @@ func (m *MockClient) UnLinkTagAccount(ctx context.Context, linkIDs ...ID) error 
 		return m.BaseClient.UnLinkTagAccount(ctx, linkIDs...)
 	}
 	panic("MockClient.UnLinkTagAccount not implemented")
+}
+func (m *MockClient) UpdatePublicKey(ctx context.Context, id ID, publicKey PublicKey) error {
+	if m.Overwrites.UpdatePublicKey != nil {
+		return m.Overwrites.UpdatePublicKey(ctx, id, publicKey)
+	} else if m.BaseClient != nil {
+		return m.BaseClient.UpdatePublicKey(ctx, id, publicKey)
+	}
+	panic("MockClient.UpdatePublicKey not implemented")
 }
 func (m *MockClient) UpdatePublicKeyTags(ctx context.Context, id ID, tags []string) error {
 	if m.Overwrites.UpdatePublicKeyTags != nil {

@@ -39,7 +39,7 @@ func (m Model) Init() tea.Cmd {
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 
-	if m.size.Update(msg) {
+	if m.size.UpdateFromMsg(msg) {
 		// pass window size messages
 		cmd = m.activeModelUpdate(msg)
 	} else if m.isMsgOwner(msg) {

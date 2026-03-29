@@ -10,7 +10,7 @@ type Size struct {
 	Height int
 }
 
-func (s *Size) Update(msg tea.Msg) bool {
+func (s *Size) UpdateFromMsg(msg tea.Msg) bool {
 	if msg, ok := msg.(tea.WindowSizeMsg); ok {
 		s.Width, s.Height = msg.Width, msg.Height
 		return true

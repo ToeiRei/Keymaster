@@ -41,7 +41,7 @@ func (m Injector) Init() tea.Cmd {
 }
 
 func (m *Injector) Update(msg tea.Msg) tea.Cmd {
-	if m.size.Update(msg) {
+	if m.size.UpdateFromMsg(msg) {
 		if len(m.popups) > 0 {
 			return tea.Batch(
 				(*m.activeModel()).Update(tea.WindowSizeMsg{

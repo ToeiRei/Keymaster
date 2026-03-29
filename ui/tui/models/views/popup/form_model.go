@@ -32,7 +32,7 @@ func (m FormModel[T]) Init() tea.Cmd {
 }
 
 func (m *FormModel[T]) Update(msg tea.Msg) tea.Cmd {
-	if m.size.Update(msg) {
+	if m.size.UpdateFromMsg(msg) {
 		size := util.Size{
 			Width:  min(m.innerSize.Width, m.size.Width),
 			Height: min(m.innerSize.Height, m.size.Height),

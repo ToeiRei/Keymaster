@@ -71,9 +71,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, BaseKeyMap.Exit):
 			return m, popup.Open(util.ModelPointer(popupviews.NewForm(
 				form.New(
-					form.WithElement[struct{}]("", formelement.NewLabel("Do you realy wanna exit KeyMaster?")),
-					form.WithElement[struct{}]("", formelement.NewButton("Cancel", false, func() (tea.Cmd, form.Action) { return popup.Close(), form.ActionNone })),
-					form.WithElementInline[struct{}]("", formelement.NewButton("Exit", false, func() (tea.Cmd, form.Action) { return tea.Quit, form.ActionNone })),
+					form.WithRow(
+						form.WithElement[struct{}]("", formelement.NewLabel("Do you realy wanna exit KeyMaster?")),
+					),
+					form.WithRow(
+						form.WithAlign[struct{}](form.Center),
+						form.WithElement[struct{}]("", formelement.NewButton("Cancel", false, func() (tea.Cmd, form.Action) { return popup.Close(), form.ActionNone })),
+						form.WithElement[struct{}]("", formelement.NewButton("Exit", false, func() (tea.Cmd, form.Action) { return tea.Quit, form.ActionNone })),
+					),
 				),
 				40, 40,
 			)))

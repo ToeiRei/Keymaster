@@ -36,11 +36,10 @@ type ListModel struct {
 }
 
 func NewList(client client.Client, rc router.Controll) *ListModel {
-	table := table.New()
 	return &ListModel{
 		client: client,
 		rc:     rc,
-		table:  &table,
+		table:  util.NewPointer(table.New()),
 	}
 }
 
@@ -53,7 +52,7 @@ func (m *ListModel) Init() tea.Cmd {
 // Update implements util.Model.
 func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 	// Handle resizing
-	if m.size.Update(msg) {
+	if m.size.UpdateFromMsg(msg) {
 		m.table.SetWidth(m.size.Width)
 		m.table.SetHeight(m.size.Height)
 		m.refreshTable()
@@ -135,6 +134,9 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 
 // View implements util.Model.
 func (m *ListModel) View() string {
+	if m.locked != nil {
+		return *m.locked
+	}
 	if m.loadingError != nil {
 		return m.loadingError.Error()
 	}
@@ -183,7 +185,7 @@ func (m *ListModel) refreshTable() {
 			// column: Algorithm
 			publicKey.Algorithm,
 			// column: Comment
-			util.DerefOrNullValue(publicKey.Comment),
+			publicKey.Comment,
 			// column: Tags
 			strings.Join(publicKey.Tags, ", "),
 		}

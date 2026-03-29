@@ -25,6 +25,9 @@ type Client interface {
 
 	ListPublicKeys(ctx context.Context, tagFilter string) ([]PublicKey, error)
 
+	UpdatePublicKey(ctx context.Context, id ID, publicKey PublicKey) error
+
+	// DEPRECATED
 	UpdatePublicKeyTags(ctx context.Context, id ID, tags []string) error
 
 	DeletePublicKeys(ctx context.Context, ids ...ID) error
@@ -96,7 +99,7 @@ type PublicKey struct {
 	Id        ID
 	Algorithm string
 	Data      string
-	Comment   *string
+	Comment   string
 	Tags      []string
 	// ...
 }

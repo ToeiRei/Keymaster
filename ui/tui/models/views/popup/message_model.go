@@ -12,31 +12,35 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
-type ChoiceModel struct {
+const (
+	MessageInfo MessageSeverity = iota
+	MessageWarning
+	MessageError
+)
+
+type MessageSeverity int
+
+type MessageModel struct {
 	form      form.Form[struct{}]
 	innerSize util.Size
 	size      util.Size
 }
 
-type Choices map[string]func() tea.Cmd
-
-func NewChoice(question string, choices Choices, width, height int) *ChoiceModel {
-	opts := make([]form.RowOpt[struct{}], len(choices))
-
-	for name, callback := range choices {
-		opts = append(opts, form.WithElement[struct{}]("", formelement.NewButton(
-			name,
-			false,
-			func() (tea.Cmd, form.Action) {
-				return callback(), form.ActionNone
-			},
-		)))
+func NewMessage(severity MessageSeverity, message string, callback func() tea.Cmd, width, height int) *MessageModel {
+	switch severity {
+	case MessageInfo:
+		message = "INFO: " + message
+	case MessageWarning:
+		message = "WARNING: " + message
+	case MessageError:
+		message = "ERROR: " + message
 	}
-
-	return &ChoiceModel{
+	return &MessageModel{
 		form: form.New(
-			form.WithSingleElementRow[struct{}]("", formelement.NewLabel(question)),
-			form.WithRow(opts...),
+			form.WithSingleElementRow[struct{}]("", formelement.NewLabel(message)),
+			form.WithSingleElementRow[struct{}]("", formelement.NewButton("Ok", false, func() (tea.Cmd, form.Action) {
+				return callback(), form.ActionNone
+			})),
 		),
 		innerSize: util.Size{
 			Width:  width,
@@ -45,11 +49,11 @@ func NewChoice(question string, choices Choices, width, height int) *ChoiceModel
 	}
 }
 
-func (m ChoiceModel) Init() tea.Cmd {
+func (m MessageModel) Init() tea.Cmd {
 	return m.form.Init()
 }
 
-func (m *ChoiceModel) Update(msg tea.Msg) tea.Cmd {
+func (m *MessageModel) Update(msg tea.Msg) tea.Cmd {
 	if m.size.UpdateFromMsg(msg) {
 		size := util.Size{
 			Width:  min(m.innerSize.Width, m.size.Width),
@@ -60,18 +64,18 @@ func (m *ChoiceModel) Update(msg tea.Msg) tea.Cmd {
 	return m.form.Update(msg)
 }
 
-func (m ChoiceModel) View() string {
+func (m MessageModel) View() string {
 	// TODO only for testing... size of form needs to be made non greedy
 	return lipgloss.NewStyle().MaxWidth(40).Render(m.form.View())
 	// return m.form.View()
 }
 
-func (m *ChoiceModel) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+func (m *MessageModel) Focus(baseKeyMap help.KeyMap) tea.Cmd {
 	return m.form.Focus(baseKeyMap)
 }
-func (m *ChoiceModel) Blur() {
+func (m *MessageModel) Blur() {
 	m.form.Blur()
 }
 
-// *ChoiceModel implements util.Model
-var _ util.Model = (*ChoiceModel)(nil)
+// *MessageModel implements util.Model
+var _ util.Model = (*MessageModel)(nil)
