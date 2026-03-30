@@ -305,7 +305,7 @@ func (m *mockSftpClient) Open(path string) (io.ReadWriteCloser, error) {
 	m.record("open: " + path)
 	if file, ok := m.files[path]; ok {
 		// return a copy of the buffer so reads don't mutate original
-				return &mockSftpFile{Buffer: bytes.NewBuffer(file.Bytes()), path: path, parent: m}, nil
+		return &mockSftpFile{Buffer: bytes.NewBuffer(file.Bytes()), path: path, parent: m}, nil
 	}
 	return nil, os.ErrNotExist
 }

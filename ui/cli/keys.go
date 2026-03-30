@@ -256,7 +256,7 @@ var keyDeleteCmd = &cobra.Command{
 		if !force {
 			fmt.Printf("Delete key: %s (ID: %d)? (yes/no): ", key.Comment, id)
 			var response string
-						_, _ = fmt.Scanln(&response)
+			_, _ = fmt.Scanln(&response)
 			if strings.ToLower(response) != "yes" {
 				fmt.Println("Deletion cancelled.")
 				return nil

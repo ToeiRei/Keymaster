@@ -237,7 +237,7 @@ var accountDeleteCmd = &cobra.Command{
 			}
 			fmt.Printf("Delete account: %s@%s (ID: %d)? (yes/no): ", account.Username, account.Hostname, id)
 			var response string
-						_, _ = fmt.Scanln(&response)
+			_, _ = fmt.Scanln(&response)
 			if strings.ToLower(response) != "yes" {
 				fmt.Println("Deletion cancelled.")
 				return false
