@@ -10,5 +10,4 @@ linters:
     # gosimple is deprecated/merged into staticcheck; remove unsupported name
     - ineffassign
  
-issues:
-  exclude-use-default: false
+issues: {}
