@@ -83,7 +83,7 @@ func TestBunClient_TargetsCRUD(t *testing.T) {
 	}
 
 	// UpdateTarget: change host
-	if err := c.UpdateTarget(ctx, t1.Id, Target{0, "new.example.com", 2222}); err != nil {
+	if err := c.UpdateTarget(ctx, t1.Id, "new.example.com", 2222); err != nil {
 		t.Fatalf("UpdateTarget failed: %v", err)
 	}
 	updated, err := c.GetTarget(ctx, t1.Id)

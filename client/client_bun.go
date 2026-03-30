@@ -90,7 +90,7 @@ func (c *BunClient) Close(ctx context.Context) error {
 
 // --- PublicKey Management ---
 
-func (c *BunClient) CreatePublicKey(ctx context.Context, key string, comment string, tags []string) (PublicKey, error) {
+func (c *BunClient) CreatePublicKey(ctx context.Context, key string, comment *string, tags []string) (PublicKey, error) {
 	km := core.DefaultKeyManager()
 	if km == nil {
 		return PublicKey{}, errors.New("no key manager available")
@@ -104,7 +104,11 @@ func (c *BunClient) CreatePublicKey(ctx context.Context, key string, comment str
 		keyData = key
 	}
 
-	pk, err := km.AddPublicKeyAndGetModel(alg, keyData, comment, false, time.Time{})
+	_comment := ""
+	if comment != nil {
+		_comment = *comment
+	}
+	pk, err := km.AddPublicKeyAndGetModel(alg, keyData, _comment, false, time.Time{})
 	if err != nil {
 		return PublicKey{}, err
 	}
@@ -112,7 +116,7 @@ func (c *BunClient) CreatePublicKey(ctx context.Context, key string, comment str
 		Id:        ID(pk.ID),
 		Algorithm: pk.Algorithm,
 		Data:      pk.KeyData,
-		Comment:   comment,
+		Comment:   _comment,
 		Tags:      tags,
 	}, nil
 }
