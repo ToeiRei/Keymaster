@@ -14,5 +14,6 @@ type editMsgUpdateResult struct {
 	err error
 }
 
-type editMsgCancel struct {
+type EditMsgUpdated struct {
+	PublicKeyId client.ID
 }

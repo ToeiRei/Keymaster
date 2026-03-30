@@ -33,11 +33,7 @@ func New() *Model {
 	headerPtr := util.ModelPointer(header.New())
 	footerPtr := util.ModelPointer(footer.New(&BaseKeyMap))
 
-	version := "unknown version"
-	if len(buildvars.Version) > 0 {
-		version = buildvars.Version
-	}
-	titleHandler := windowtitle.NewHandler(fmt.Sprintf("%s %s", title, version), " | ")
+	titleHandler := windowtitle.NewHandler(fmt.Sprintf("%s %s", title, buildvars.Version), " | ")
 
 	return &Model{
 		stack: stack.New(

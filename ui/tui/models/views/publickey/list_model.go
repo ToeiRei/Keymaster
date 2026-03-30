@@ -82,14 +82,24 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 		// TODO does not work for some reason
 		return nil
 
+	case EditMsgUpdated:
+		// TODO optimize by only fetching the updated item inplace
+		return m.reload()
+
 	case tea.KeyMsg:
 		if !m.focussed || m.locked != nil {
 			return nil
 		}
 		switch {
 		case key.Matches(msg, ListBaseKeyMap.Edit):
-			// TODO replace mock with open edit page
-			return m.rc.Push(util.ModelPointer(NewList(m.client, m.rc)))
+			if m.table.Cursor() == -1 {
+				return nil // TODO open popup with "please select a public key" text
+			}
+			return m.rc.Push(util.ModelPointer(NewEdit(
+				m.client,
+				m.rc,
+				m.publicKeys[m.table.Cursor()].Id,
+			)))
 
 		case key.Matches(msg, ListBaseKeyMap.Delete):
 			publicKey := m.publicKeys[m.table.Cursor()]

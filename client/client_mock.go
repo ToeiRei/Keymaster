@@ -16,7 +16,7 @@ type MockClient struct {
 type MockClientOverwrites struct {
 	Close                       func(ctx context.Context) error
 	CreateAccount               func(ctx context.Context, targetID ID, name string, deploymentKey string) (Account, error)
-	CreatePublicKey             func(ctx context.Context, key string, comment *string, tags []string) (PublicKey, error)
+	CreatePublicKey             func(ctx context.Context, key string, comment string, tags []string) (PublicKey, error)
 	CreateTarget                func(ctx context.Context, host string, port int) (Target, error)
 	DecommisionAccount          func(ctx context.Context, id ID) (chan DecommisionAccountProgress, error)
 	DecommisionTarget           func(ctx context.Context, id ID) (chan DecommisionTargetProgress, error)
@@ -43,9 +43,9 @@ type MockClientOverwrites struct {
 	ResolveAccountsForPublicKey func(ctx context.Context, publicKeyID ID) ([]Account, error)
 	ResolvePublicKeysForAccount func(ctx context.Context, accountID ID) ([]PublicKey, error)
 	UnLinkTagAccount            func(ctx context.Context, linkIDs ...ID) error
-	UpdatePublicKey             func(ctx context.Context, id ID, publicKey PublicKey) error
+	UpdatePublicKey             func(ctx context.Context, id ID, comment string, tags []string) error
 	UpdatePublicKeyTags         func(ctx context.Context, id ID, tags []string) error
-	UpdateTarget                func(ctx context.Context, id ID, target Target) error
+	UpdateTarget                func(ctx context.Context, id ID, host string, port int) error
 }
 
 var _ Client = (*MockClient)(nil)
@@ -76,7 +76,7 @@ func (m *MockClient) CreateAccount(ctx context.Context, targetID ID, name string
 	}
 	panic("MockClient.CreateAccount not implemented")
 }
-func (m *MockClient) CreatePublicKey(ctx context.Context, key string, comment *string, tags []string) (PublicKey, error) {
+func (m *MockClient) CreatePublicKey(ctx context.Context, key string, comment string, tags []string) (PublicKey, error) {
 	if m.Overwrites.CreatePublicKey != nil {
 		return m.Overwrites.CreatePublicKey(ctx, key, comment, tags)
 	} else if m.BaseClient != nil {
@@ -292,11 +292,11 @@ func (m *MockClient) UnLinkTagAccount(ctx context.Context, linkIDs ...ID) error 
 	}
 	panic("MockClient.UnLinkTagAccount not implemented")
 }
-func (m *MockClient) UpdatePublicKey(ctx context.Context, id ID, publicKey PublicKey) error {
+func (m *MockClient) UpdatePublicKey(ctx context.Context, id ID, comment string, tags []string) error {
 	if m.Overwrites.UpdatePublicKey != nil {
-		return m.Overwrites.UpdatePublicKey(ctx, id, publicKey)
+		return m.Overwrites.UpdatePublicKey(ctx, id, comment, tags)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.UpdatePublicKey(ctx, id, publicKey)
+		return m.BaseClient.UpdatePublicKey(ctx, id, comment, tags)
 	}
 	panic("MockClient.UpdatePublicKey not implemented")
 }
@@ -308,11 +308,11 @@ func (m *MockClient) UpdatePublicKeyTags(ctx context.Context, id ID, tags []stri
 	}
 	panic("MockClient.UpdatePublicKeyTags not implemented")
 }
-func (m *MockClient) UpdateTarget(ctx context.Context, id ID, target Target) error {
+func (m *MockClient) UpdateTarget(ctx context.Context, id ID, host string, port int) error {
 	if m.Overwrites.UpdateTarget != nil {
-		return m.Overwrites.UpdateTarget(ctx, id, target)
+		return m.Overwrites.UpdateTarget(ctx, id, host, port)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.UpdateTarget(ctx, id, target)
+		return m.BaseClient.UpdateTarget(ctx, id, host, port)
 	}
 	panic("MockClient.UpdateTarget not implemented")
 }

@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -22,8 +21,6 @@ type TestUIGrant struct {
 }
 
 type TestUIClient struct {
-	// logger kinda still here... not used tho
-	log *log.Logger
 	// local temporary repository for testing ui features
 	publicKeys []PublicKey
 	targets    []Target
@@ -41,10 +38,8 @@ var _ Client = (*TestUIClient)(nil)
 
 // --- Lifecycle & Initialization ---
 
-func NewTestUIClient(logger *log.Logger) *TestUIClient {
-	return &TestUIClient{
-		log: logger,
-	}
+func NewTestUIClient() *TestUIClient {
+	return &TestUIClient{}
 }
 
 func (c *TestUIClient) Close(ctx context.Context) error {
@@ -53,7 +48,7 @@ func (c *TestUIClient) Close(ctx context.Context) error {
 
 // --- PublicKey Management ---
 
-func (c *TestUIClient) CreatePublicKey(ctx context.Context, key string, comment *string, tags []string) (PublicKey, error) {
+func (c *TestUIClient) CreatePublicKey(ctx context.Context, key string, comment string, tags []string) (PublicKey, error) {
 	keyParts := strings.Split(key, " ")
 	if len(keyParts) < 2 {
 		return PublicKey{}, errors.New("invalid key provided")
@@ -82,10 +77,24 @@ func (c *TestUIClient) GetPublicKeys(ctx context.Context, ids ...ID) ([]PublicKe
 }
 
 func (c *TestUIClient) ListPublicKeys(ctx context.Context, tagFilter string) ([]PublicKey, error) {
+	if tagFilter == "" {
+		return slices.Clone(c.publicKeys), nil
+	}
 	// WARNING does not realy repect the tagFilter
 	return slices.Filter(c.publicKeys, func(publicKey PublicKey) bool {
 		return slices.Contains(publicKey.Tags, tagFilter)
 	}), nil
+}
+
+func (c *TestUIClient) UpdatePublicKey(ctx context.Context, id ID, comment string, tags []string) error {
+	if i, ok := slices.BinarySearchFunc(c.publicKeys, id, func(publicKey PublicKey, id ID) int {
+		return int(publicKey.Id - id)
+	}); ok {
+		c.publicKeys[i].Comment = comment
+		c.publicKeys[i].Tags = tags
+		return nil
+	}
+	return fmt.Errorf("public key with id %v not found", id)
 }
 
 func (c *TestUIClient) UpdatePublicKeyTags(ctx context.Context, id ID, tags []string) error {
@@ -140,12 +149,12 @@ func (c *TestUIClient) ListTargets(ctx context.Context) ([]Target, error) {
 	return slices.Filter(c.targets, func(target Target) bool { return true }), nil
 }
 
-func (c *TestUIClient) UpdateTarget(ctx context.Context, id ID, target Target) error {
+func (c *TestUIClient) UpdateTarget(ctx context.Context, id ID, host string, port int) error {
 	if i, ok := slices.BinarySearchFunc(c.targets, id, func(target Target, id ID) int {
 		return int(target.Id - id)
 	}); ok {
-		c.targets[i].Host = target.Host
-		c.targets[i].Port = target.Port
+		c.targets[i].Host = host
+		c.targets[i].Port = port
 		return nil
 	}
 	return fmt.Errorf("target with id %v not found", id)

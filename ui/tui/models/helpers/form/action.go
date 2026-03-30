@@ -9,6 +9,7 @@ const (
 	ActionPrev
 	ActionSubmit
 	ActionCancel
+	ActionReset
 )
 
 type Action int

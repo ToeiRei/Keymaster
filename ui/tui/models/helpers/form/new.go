@@ -32,6 +32,12 @@ func WithOnCancel[T any](fn func() tea.Cmd) FormOpt[T] {
 	}
 }
 
+func WithOnReset[T any](fn func() tea.Cmd) FormOpt[T] {
+	return func(form *Form[T]) {
+		form.OnReset = fn
+	}
+}
+
 func WithResetAfterSubmit[T any]() FormOpt[T] {
 	return func(form *Form[T]) {
 		form.ResetAfterSubmit = true

@@ -18,8 +18,8 @@ import (
 )
 
 type editFormData struct {
-	comment string `mapstructure:"comment"`
-	tags    string `mapstructure:"tags"`
+	Comment string `form:"comment"`
+	Tags    string `form:"tags"`
 }
 
 type EditModel struct {
@@ -41,45 +41,56 @@ type EditModel struct {
 
 func NewEdit(c client.Client, rc router.Controll, id client.ID) *EditModel {
 	return &EditModel{
-		client: c,
-		rc:     rc,
-		form: util.NewPointer(form.New(
-			form.WithSingleElementRow[editFormData]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
-			form.WithSingleElementRow[editFormData]("tags", formelement.NewText("tags", "comma seperated list of tags")),
-			form.WithRow(
-				form.WithElement[editFormData]("", formelement.NewButton("Cancel", false, func() (tea.Cmd, form.Action) {
-					return nil, form.ActionCancel
-				})),
-				form.WithElement[editFormData]("", formelement.NewButton("Save", false, func() (tea.Cmd, form.Action) {
-					return nil, form.ActionSubmit
-				})),
-			),
-		)),
+		publicKeyId: id,
+		client:      c,
+		rc:          rc,
 	}
 }
 
 // Init implements util.Model.
 func (m *EditModel) Init() tea.Cmd {
-	m.form.OnSubmit = func(result editFormData, err error) tea.Cmd {
-		m.locked = util.NewPointer("Updating PublicKey...")
-		return func() tea.Msg {
-			err := m.client.UpdatePublicKey(context.Background(), m.publicKeyId, client.PublicKey{
-				Comment: result.comment,
-				Tags: slices.Filter(
-					slices.Map(
-						strings.Split(result.tags, ","),
-						func(tag string) string { return strings.TrimSpace(tag) },
+	m.form = util.NewPointer(form.New(
+		form.WithSingleElementRow[editFormData]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
+		form.WithSingleElementRow[editFormData]("tags", formelement.NewText("tags", "comma seperated list of tags")),
+		form.WithRow(
+			form.WithElement[editFormData]("", formelement.NewButton("Reset", false, func() (tea.Cmd, form.Action) {
+				return nil, form.ActionReset
+			})),
+			form.WithElement[editFormData]("", formelement.NewButton("Cancel", false, func() (tea.Cmd, form.Action) {
+				return nil, form.ActionCancel
+			})),
+			form.WithElement[editFormData]("", formelement.NewButton("Save", false, func() (tea.Cmd, form.Action) {
+				return nil, form.ActionSubmit
+			})),
+		),
+		form.WithOnSubmit(func(result editFormData, err error) tea.Cmd {
+			m.locked = util.NewPointer("Updating PublicKey...")
+			return func() tea.Msg {
+				err := m.client.UpdatePublicKey(
+					context.Background(),
+					m.publicKeyId,
+					result.Comment,
+					slices.Filter( // remove empty user provided tags
+						slices.Map( // trim user provided tags
+							strings.Split(result.Tags, ","), // split user provided tags
+							func(tag string) string { return strings.TrimSpace(tag) },
+						),
+						func(tag string) bool { return tag != "" },
 					),
-					func(tag string) bool { return tag != "" },
-				),
-			})
-			return editMsgUpdateResult{err}
-		}
-	}
-	m.form.OnCancel = func() tea.Cmd {
-		m.refreshForm()
-		return nil
-	}
+				)
+
+				return editMsgUpdateResult{err}
+			}
+		}),
+		form.WithOnCancel[editFormData](func() tea.Cmd {
+			return m.rc.Pop(1)
+		}),
+		form.WithOnReset[editFormData](func() tea.Cmd {
+			_ = m.refreshForm()
+			return nil
+		}),
+	))
+
 	return m.load()
 }
 
@@ -96,15 +107,16 @@ func (m *EditModel) Update(msg tea.Msg) tea.Cmd {
 		m.locked = nil
 		m.publicKey = msg.publicKey
 		m.loadingError = msg.err
-		m.refreshForm()
+		_ = m.refreshForm()
 		return nil
 
 	case editMsgUpdateResult:
-		m.locked = nil
-		m.loadingError = msg.err
-
-	case editMsgCancel:
-		m.refreshForm()
+		if msg.err != nil {
+			m.locked = nil
+			m.loadingError = msg.err
+			return nil
+		}
+		return tea.Sequence(m.rc.Pop(1), func() tea.Msg { return EditMsgUpdated{m.publicKeyId} })
 
 	case tea.KeyMsg:
 		if !m.focussed || m.locked != nil {
@@ -120,8 +132,6 @@ func (m *EditModel) Update(msg tea.Msg) tea.Cmd {
 			return m.form.Update(msg)
 		}
 
-	default:
-		return nil
 	}
 
 	return nil

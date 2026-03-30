@@ -90,36 +90,29 @@ func (c *BunClient) Close(ctx context.Context) error {
 
 // --- PublicKey Management ---
 
-func (c *BunClient) CreatePublicKey(ctx context.Context, key string, comment *string, tags []string) (PublicKey, error) {
+func (c *BunClient) CreatePublicKey(ctx context.Context, key string, comment string, tags []string) (PublicKey, error) {
 	km := core.DefaultKeyManager()
 	if km == nil {
 		return PublicKey{}, errors.New("no key manager available")
 	}
 	// If the caller supplied a full authorized_keys line, parse it. Otherwise
 	// treat the provided `key` string as the raw key data.
-	alg, keyData, parsedComment, perr := sshkey.Parse(key)
+	alg, keyData, _, perr := sshkey.Parse(key)
 	if perr != nil {
 		// Not a full authorized_keys line; treat as raw key data.
 		alg = ""
 		keyData = key
 	}
 
-	_comment := ""
-	if comment != nil {
-		_comment = *comment
-	} else if parsedComment != "" {
-		_comment = parsedComment
-	}
-
-	pk, err := km.AddPublicKeyAndGetModel(alg, keyData, _comment, false, time.Time{})
+	pk, err := km.AddPublicKeyAndGetModel(alg, keyData, comment, false, time.Time{})
 	if err != nil {
 		return PublicKey{}, err
 	}
 	return PublicKey{
 		Id:        ID(pk.ID),
-		Algorithm: alg,
+		Algorithm: pk.Algorithm,
 		Data:      pk.KeyData,
-		Comment:   &pk.Comment,
+		Comment:   comment,
 		Tags:      tags,
 	}, nil
 }
@@ -135,7 +128,7 @@ func (c *BunClient) GetPublicKey(ctx context.Context, id ID) (PublicKey, error) 
 	}
 	for _, pk := range pks {
 		if ID(pk.ID) == id {
-			return PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, &pk.Comment, nil}, // TODO where the tags at?
+			return PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, pk.Comment, nil}, // TODO where the tags at?
 				nil
 		}
 	}
@@ -155,7 +148,7 @@ func (c *BunClient) GetPublicKeys(ctx context.Context, ids ...ID) ([]PublicKey, 
 	for _, pk := range pks {
 		for _, id := range ids {
 			if ID(pk.ID) == id {
-				out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, &pk.Comment, nil}) // TODO where the tags at?
+				out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, pk.Comment, nil}) // TODO where the tags at?
 			}
 		}
 	}
@@ -174,9 +167,17 @@ func (c *BunClient) ListPublicKeys(ctx context.Context, tagFilter string) ([]Pub
 	var out []PublicKey
 	for _, pk := range pks {
 		// Tags are not modeled in core.PublicKey; return empty tags for now.
-		out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, &pk.Comment, nil}) // TODO where the tags at?
+		out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, pk.Comment, nil}) // TODO where the tags at?
 	}
 	return out, nil
+}
+
+func (c *BunClient) UpdatePublicKey(ctx context.Context, id ID, comment string, tags []string) error {
+	// km := core.DefaultKeyManager()
+	// if km == nil {
+	// 	return errors.New("no key manager available")
+	// }
+	panic("unable to implement using bin client")
 }
 
 func (c *BunClient) UpdatePublicKeyTags(ctx context.Context, id ID, tags []string) error {
@@ -257,18 +258,18 @@ func (c *BunClient) ListTargets(ctx context.Context) ([]Target, error) {
 	return out, nil
 }
 
-func (c *BunClient) UpdateTarget(ctx context.Context, id ID, target Target) error {
+func (c *BunClient) UpdateTarget(ctx context.Context, id ID, host string, port int) error {
 	t, ok := c.targetsByID[id]
 	if !ok {
 		return errors.New("target not found")
 	}
 	// If host changed, update host->id mapping
-	if t.Host != target.Host {
+	if t.Host != host {
 		delete(c.hostToID, t.Host)
-		c.hostToID[target.Host] = id
+		c.hostToID[host] = id
 	}
 	// Update stored target (including port)
-	c.targetsByID[id] = Target{id, target.Host, target.Port}
+	c.targetsByID[id] = Target{id, host, port}
 	return nil
 }
 
@@ -467,12 +468,12 @@ func (c *BunClient) ResolvePublicKeysForAccount(ctx context.Context, accountID I
 	var out []PublicKey
 	for _, pk := range global {
 		seen[pk.ID] = true
-		out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, &pk.Comment, nil}) // TODO where the tags at?
+		out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, pk.Comment, nil}) // TODO where the tags at?
 	}
 	for _, pk := range assigned {
 		if !seen[pk.ID] {
 			seen[pk.ID] = true
-			out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, &pk.Comment, nil}) // TODO where the tags at?
+			out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, pk.Comment, nil}) // TODO where the tags at?
 		}
 	}
 	return out, nil

@@ -52,6 +52,7 @@ type row struct {
 type Form[T any] struct {
 	OnSubmit         func(result T, err error) tea.Cmd
 	OnCancel         func() tea.Cmd
+	OnReset          func() tea.Cmd
 	ResetAfterSubmit bool
 
 	items       []item
@@ -128,19 +129,38 @@ func (f *Form[T]) Reset() tea.Cmd {
 		item.element.Reset()
 	}
 
-	return f.changeActiveIndex(len(f.items) - f.activeIndex)
+	var onResetCmd tea.Cmd
+	if f.OnReset != nil {
+		onResetCmd = f.OnReset()
+	}
+
+	return tea.Sequence(
+		onResetCmd,
+		// maintain index_delta >= 0 when changing active index, so the next and not the previos focusable element will get acitivated!
+		f.changeActiveIndex(len(f.items)-f.activeIndex),
+	)
 }
 
 func (f *Form[T]) Submit() tea.Cmd {
+	var onSubmitCmd tea.Cmd
+	if f.OnSubmit != nil {
+		data, err := f.Get()
+		onSubmitCmd = f.OnSubmit(data, err)
+	}
+
 	var resetCmd tea.Cmd
-	data, err := f.Get()
 	if f.ResetAfterSubmit {
 		resetCmd = f.Reset()
 	}
-	return tea.Batch(
-		resetCmd,
-		f.OnSubmit(data, err),
-	)
+
+	return tea.Sequence(onSubmitCmd, resetCmd)
+}
+
+func (f *Form[T]) Cancel() tea.Cmd {
+	if f.OnCancel != nil {
+		return f.OnCancel()
+	}
+	return nil
 }
 
 func (f *Form[T]) updateActiveInput(msg tea.Msg) tea.Cmd {
@@ -161,7 +181,9 @@ func (f *Form[T]) updateActiveInput(msg tea.Msg) tea.Cmd {
 	case ActionSubmit:
 		actionCmd = f.Submit()
 	case ActionCancel:
-		actionCmd = f.OnCancel()
+		actionCmd = f.Cancel()
+	case ActionReset:
+		actionCmd = f.Reset()
 	}
 
 	return tea.Batch(updateCmd, actionCmd)
@@ -220,13 +242,13 @@ func (f *Form[T]) Get() (T, error) {
 		values[item.id] = item.element.Get()
 	}
 
-	err := mapstructure.Decode(values, &data)
+	err := decode(values, &data)
 	return data, err
 }
 
 func (f *Form[T]) Set(data T) error {
 	values := make(map[string]any, len(f.items))
-	if err := mapstructure.Decode(data, &values); err != nil {
+	if err := decode(data, &values); err != nil {
 		return err
 	}
 
@@ -237,4 +259,19 @@ func (f *Form[T]) Set(data T) error {
 	}
 
 	return nil
+}
+
+func decode(input any, output any) error {
+	config := &mapstructure.DecoderConfig{
+		Metadata: nil,
+		Result:   output,
+		TagName:  "mapstructure,form", // TODO deprecate "mapstructure"
+	}
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+
+	return decoder.Decode(input)
 }

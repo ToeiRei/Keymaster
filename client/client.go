@@ -17,7 +17,7 @@ type Client interface {
 
 	// --- PublicKey Management ---
 
-	CreatePublicKey(ctx context.Context, key string, comment *string, tags []string) (PublicKey, error)
+	CreatePublicKey(ctx context.Context, key string, comment string, tags []string) (PublicKey, error)
 
 	GetPublicKey(ctx context.Context, id ID) (PublicKey, error)
 
@@ -25,7 +25,7 @@ type Client interface {
 
 	ListPublicKeys(ctx context.Context, tagFilter string) ([]PublicKey, error)
 
-	UpdatePublicKey(ctx context.Context, id ID, publicKey PublicKey) error
+	UpdatePublicKey(ctx context.Context, id ID, comment string, tags []string) error
 
 	// DEPRECATED
 	UpdatePublicKeyTags(ctx context.Context, id ID, tags []string) error
@@ -42,7 +42,7 @@ type Client interface {
 
 	ListTargets(ctx context.Context) ([]Target, error)
 
-	UpdateTarget(ctx context.Context, id ID, target Target) error
+	UpdateTarget(ctx context.Context, id ID, host string, port int) error
 
 	DeleteTargets(ctx context.Context, ids ...ID) error
 

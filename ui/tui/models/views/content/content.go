@@ -21,6 +21,7 @@ type Model struct {
 	stack          *stack.Model
 	router         *util.Model
 	routerControll router.Controll
+	client         client.Client
 }
 
 func New() *Model {
@@ -53,41 +54,17 @@ func New() *Model {
 }
 
 func (m *Model) Init() tea.Cmd {
+	m.client = client.NewTestUIClient()
+
+	// create development test data
+	_, _ = m.client.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-ödtjfb", "my-key", []string{"user:jannes", "company:none"})
+	_, _ = m.client.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjdfhal_sdvkhathrösdljhask-ödjfb", "420", []string{"user:toeirei", "company:another"})
+	_, _ = m.client.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb", "69", []string{"user:somebodyelse", "company:evilgoogle"})
+
 	return m.stack.Init()
 }
 
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
-	client := client.NewMockClient(nil, client.MockClientOverwrites{
-		ListPublicKeys: func(ctx context.Context, tagFilter string) ([]client.PublicKey, error) {
-			return []client.PublicKey{
-				{
-					Id:        1,
-					Algorithm: "Sha-your-mom",
-					Data:      "ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-ödtjfb",
-					Comment:   "my-key",
-					Tags:      []string{"user:jannes", "company:none"},
-				},
-				{
-					Id:        2,
-					Algorithm: "Sha-420",
-					Data:      "asdjhk-fbaskjdfhal_sdvkhathrösdljhask-ödjfb",
-					Comment:   "420",
-					Tags:      []string{"user:toeirei", "company:another"},
-				},
-				{
-					Id:        3,
-					Algorithm: "Sha-69",
-					Data:      "asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb",
-					Comment:   "69",
-					Tags:      []string{"user:somebodyelse", "company:evilgoogle"},
-				},
-			}, nil
-		},
-		DeletePublicKeys: func(ctx context.Context, ids ...client.ID) error {
-			return nil
-		},
-	})
-
 	// handle menu messages
 	if msg, ok := msg.(menu.ItemSelected); ok {
 		switch msg.Id {
@@ -99,7 +76,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		// 	return m.routerControll.Push(util.ModelPointer(testview1.New(m.routerControll)))
 		// }
 		case "publickey.list":
-			return m.routerControll.Push(util.ModelPointer(publickey.NewList(client, m.routerControll)))
+			return m.routerControll.Push(util.ModelPointer(publickey.NewList(m.client, m.routerControll)))
 		}
 	}
 
