@@ -22,7 +22,6 @@ const (
 
 type RowAlign int
 
-
 type FormElement interface {
 	util.Focusable
 	Reset()
