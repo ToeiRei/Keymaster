@@ -1,7 +1,10 @@
 name: CI
 
 permissions:
-  contents: write
+  # Least-privilege: CI only needs read access to repository contents.
+  # Avoid granting write access to the GITHUB_TOKEN to reduce blast radius
+  # if a step or third-party action is compromised.
+  contents: read
     
 on:
   push:
@@ -21,6 +24,13 @@ jobs:
       KEYMASTER_DB_MAX_IDLE_CONNS: '1'
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Do not persist the automatically-provided GITHUB_TOKEN to the
+          # checked-out repository. This prevents accidental leakage of the
+          # token to build artifacts or subprocesses that operate on the repo.
+          persist-credentials: false
+          # Fetch full history (tags) for version computations when needed.
+          fetch-depth: 0
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -55,10 +65,10 @@ jobs:
           fi
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
-        continue-on-error: true
+        # Fail the job if linter reports issues. Continue-on-error masks problems
+        # and can be abused; require a passing linter in CI for safety.
         with:
           version: v2.11.4
-          # Use colored-line-number output. Excludes should be configured in .golangci.yml
           args: run ./...
       - name: Static vet
         run: go vet ./...
