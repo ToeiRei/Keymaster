@@ -305,7 +305,7 @@ func (m *mockSftpClient) Open(path string) (io.ReadWriteCloser, error) {
 	m.record("open: " + path)
 	if file, ok := m.files[path]; ok {
 		// return a copy of the buffer so reads don't mutate original
-		return &mockSftpFile{Buffer: bytes.NewBuffer(file.Buffer.Bytes()), path: path, parent: m}, nil
+				return &mockSftpFile{Buffer: bytes.NewBuffer(file.Bytes()), path: path, parent: m}, nil
 	}
 	return nil, os.ErrNotExist
 }
@@ -397,8 +397,8 @@ func TestDeployAuthorizedKeys_DirExists(t *testing.T) {
 	if !ok {
 		t.Fatal("authorized_keys file was not created")
 	}
-	if finalFile.Buffer.String() != content {
-		t.Errorf("unexpected content in authorized_keys: got %q want %q", finalFile.Buffer.String(), content)
+	if finalFile.String() != content {
+		t.Errorf("unexpected content in authorized_keys: got %q want %q", finalFile.String(), content)
 	}
 
 	// 3. Permissions on final file are correct
@@ -413,7 +413,7 @@ func TestGetAuthorizedKeys_Success(t *testing.T) {
 
 	// Prepare file
 	mockClient.files[".ssh/authorized_keys"] = &mockSftpFile{Buffer: &bytes.Buffer{}, path: ".ssh/authorized_keys", parent: mockClient}
-	mockClient.files[".ssh/authorized_keys"].Buffer.WriteString("line1\nline2\n")
+	mockClient.files[".ssh/authorized_keys"].WriteString("line1\nline2\n")
 
 	data, err := d.GetAuthorizedKeys()
 	if err != nil {

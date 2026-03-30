@@ -79,7 +79,9 @@ func TestGetAccountsForKeyBun_NoAssignments(t *testing.T) {
 		bdb := s.BunDB()
 
 		// Create account(s) - should not matter for this test
-		AddAccountBun(bdb, "user1", "host1", "label1", "")
+		if _, err := AddAccountBun(bdb, "user1", "host1", "label1", ""); err != nil {
+			t.Fatalf("AddAccountBun failed: %v", err)
+		}
 
 		// Create a key with NO assignments
 		res, err := ExecRaw(ctx, bdb, "INSERT INTO public_keys (algorithm, key_data, comment, is_global) VALUES (?, ?, ?, ?)",
@@ -121,8 +123,12 @@ func TestGetAccountsForKeyBun_NoDuplicates(t *testing.T) {
 		keyID := int(keyID64)
 
 		// Assign to both accounts
-		ExecRaw(ctx, bdb, "INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, aid1)
-		ExecRaw(ctx, bdb, "INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, aid2)
+		if _, err := ExecRaw(ctx, bdb, "INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, aid1); err != nil {
+			t.Fatalf("insert account_key 1 failed: %v", err)
+		}
+		if _, err := ExecRaw(ctx, bdb, "INSERT INTO account_keys(key_id, account_id) VALUES(?, ?)", keyID, aid2); err != nil {
+			t.Fatalf("insert account_key 2 failed: %v", err)
+		}
 
 		// Query
 		accounts, err := GetAccountsForKeyBun(bdb, keyID)

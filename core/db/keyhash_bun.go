@@ -55,7 +55,7 @@ func computeAccountKeyHashTx(ctx context.Context, q execRawProvider, accountID i
 	// Build authorized_keys content deterministically (allow nil system key).
 	var sb strings.Builder
 	if sk != nil {
-		sb.WriteString(fmt.Sprintf("# Keymaster Managed Keys (Serial: %d)\n", sk.Serial))
+		fmt.Fprintf(&sb, "# Keymaster Managed Keys (Serial: %d)\n", sk.Serial)
 		restrictedSystemKey := fmt.Sprintf("%s %s", "command=\"internal-sftp\",no-port-forwarding,no-x11-forwarding,no-agent-forwarding,no-pty", sk.PublicKey)
 		sb.WriteString(restrictedSystemKey)
 	} else {

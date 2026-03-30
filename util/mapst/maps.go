@@ -30,7 +30,7 @@ func Mapx[K comparable, V any, R any, M ~map[K]V](m M, fn func(K, V) (R, error))
 // Each
 
 func Each[K comparable, V any, M ~map[K]V](m M, fn func(K, V)) {
-	Eachx(m, func(k K, v V) error {
+	_ = Eachx(m, func(k K, v V) error {
 		fn(k, v)
 		return nil
 	})

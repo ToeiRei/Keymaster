@@ -512,11 +512,8 @@ func TestRotateKeyCmd(t *testing.T) {
 		setupTestDB(t)
 
 		// Create initial key and rotate to produce serial 2
-		if _, err := executeCommand(t, nil, "rotate-key"), error(nil); err != nil {
-			// executeCommand will call t.Fatalf on error; this branch is unreachable
-		}
-		if _, err := executeCommand(t, nil, "rotate-key"), error(nil); err != nil {
-		}
+		_ = executeCommand(t, nil, "rotate-key")
+		_ = executeCommand(t, nil, "rotate-key")
 
 		// Add an account synced to the old serial (1)
 		mgr := core.DefaultAccountManager()

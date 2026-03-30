@@ -90,7 +90,7 @@ func TestRemoveSelectiveKeymasterContent_RemoveSystemKeyOnly(t *testing.T) {
 	if !ok {
 		t.Fatalf("final authorized_keys missing from mock files")
 	}
-	out := final.Buffer.String()
+				out := final.String()
 	if strings.Contains(out, "sys-pub-2") || strings.Contains(out, "command=\"internal-sftp\"") {
 		t.Fatalf("expected system key to be removed from final content, but found system key")
 	}

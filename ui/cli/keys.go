@@ -81,7 +81,7 @@ You can filter by global status or search by comment/algorithm.`,
 
 		// Display as table
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "ID\tALGORITHM\tCOMMENT\tGLOBAL\tEXPIRES")
+		_, _ = fmt.Fprintln(w, "ID\tALGORITHM\tCOMMENT\tGLOBAL\tEXPIRES")
 		for _, key := range keys {
 			globalStatus := "no"
 			if key.IsGlobal {
@@ -91,10 +91,10 @@ You can filter by global status or search by comment/algorithm.`,
 			if !key.ExpiresAt.IsZero() {
 				expires = key.ExpiresAt.Format("2006-01-02")
 			}
-			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n",
+			_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n",
 				key.ID, key.Algorithm, key.Comment, globalStatus, expires)
 		}
-		w.Flush()
+		_ = w.Flush()
 
 		return nil
 	},
@@ -157,12 +157,12 @@ var keyShowCmd = &cobra.Command{
 		if accountErr == nil && len(accounts) > 0 {
 			fmt.Println("\nAssigned Accounts:")
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ACCOUNT_ID\tUSERNAME\tHOSTNAME\tLABEL")
+			_, _ = fmt.Fprintln(w, "ACCOUNT_ID\tUSERNAME\tHOSTNAME\tLABEL")
 			for _, acc := range accounts {
-				fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
+				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
 					acc.ID, acc.Username, acc.Hostname, acc.Label)
 			}
-			w.Flush()
+			_ = w.Flush()
 		}
 
 		return nil
@@ -256,7 +256,7 @@ var keyDeleteCmd = &cobra.Command{
 		if !force {
 			fmt.Printf("Delete key: %s (ID: %d)? (yes/no): ", key.Comment, id)
 			var response string
-			fmt.Scanln(&response)
+						_, _ = fmt.Scanln(&response)
 			if strings.ToLower(response) != "yes" {
 				fmt.Println("Deletion cancelled.")
 				return nil
@@ -437,9 +437,9 @@ func registerKeyCommands() {
 		keyAddCmd.Flags().StringP("comment", "c", "", "Key comment/identifier (required)")
 		keyAddCmd.Flags().BoolP("global", "g", false, "Deploy to all accounts")
 		keyAddCmd.Flags().String("expires", "", "Expiration date (YYYY-MM-DD)")
-		keyAddCmd.MarkFlagRequired("algorithm")
-		keyAddCmd.MarkFlagRequired("key-data")
-		keyAddCmd.MarkFlagRequired("comment")
+		_ = keyAddCmd.MarkFlagRequired("algorithm")
+		_ = keyAddCmd.MarkFlagRequired("key-data")
+		_ = keyAddCmd.MarkFlagRequired("comment")
 	}
 
 	// Setup flags for delete (only if not already defined)

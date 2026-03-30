@@ -78,7 +78,7 @@ func TestRemoveSelectiveKeymasterContent_RemovesExcludedKey(t *testing.T) {
 	if !ok {
 		t.Fatalf("final authorized_keys missing from mock files")
 	}
-	out := final.Buffer.String()
+	out := final.String()
 	if strings.Contains(out, "k-two") {
 		t.Fatalf("expected excluded key 'k-two' to be removed, but found in final content")
 	}

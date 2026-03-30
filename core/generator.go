@@ -94,7 +94,7 @@ func GenerateSelectiveKeysContent(accountID int, serial int, excludeKeyIDs []int
 			return "", fmt.Errorf("no system key found for serial %d", serial)
 		}
 
-		content.WriteString(fmt.Sprintf("# Keymaster Managed Keys (Serial: %d)\n", systemKey.Serial))
+		fmt.Fprintf(&content, "# Keymaster Managed Keys (Serial: %d)\n", systemKey.Serial)
 		restrictedSystemKey := fmt.Sprintf("%s %s", SystemKeyRestrictions, systemKey.PublicKey)
 		content.WriteString(restrictedSystemKey)
 	}

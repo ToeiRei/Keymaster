@@ -43,10 +43,10 @@ func TestWildcardsAndEscaping_RendersExpectedSQL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open sqlite: %v", err)
 	}
-	defer sqldb.Close()
+	defer func() { _ = sqldb.Close() }()
 
 	bdb := bun.NewDB(sqldb, sqlitedialect.New())
-	defer bdb.Close()
+	defer func() { _ = bdb.Close() }()
 
 	sel := bdb.NewSelect()
 	qb := sel.QueryBuilder()

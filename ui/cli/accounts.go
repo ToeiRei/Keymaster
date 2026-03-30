@@ -50,16 +50,16 @@ You can filter by status (active, inactive) or search by hostname/username.`,
 			return nil
 		}
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "ID\tUSERNAME\tHOSTNAME\tLABEL\tTAGS\tSTATUS")
+		_, _ = fmt.Fprintln(w, "ID\tUSERNAME\tHOSTNAME\tLABEL\tTAGS\tSTATUS")
 		for _, acc := range accounts {
 			status := "active"
 			if !acc.IsActive {
 				status = "inactive"
 			}
-			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n",
+			_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n",
 				acc.ID, acc.Username, acc.Hostname, acc.Label, acc.Tags, status)
 		}
-		w.Flush()
+		_ = w.Flush()
 		return nil
 	},
 }
@@ -94,16 +94,16 @@ var accountShowCmd = &cobra.Command{
 			if keyErr == nil && len(keys) > 0 {
 				fmt.Println("\nAssigned Keys:")
 				w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-				fmt.Fprintln(w, "KEY_ID\tALGORITHM\tCOMMENT\tIS_GLOBAL")
+				_, _ = fmt.Fprintln(w, "KEY_ID\tALGORITHM\tCOMMENT\tIS_GLOBAL")
 				for _, key := range keys {
 					isGlobal := "no"
 					if key.IsGlobal {
 						isGlobal = "yes"
 					}
-					fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
+					_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
 						key.ID, key.Algorithm, key.Comment, isGlobal)
 				}
-				w.Flush()
+				_ = w.Flush()
 			}
 		}
 		return nil
@@ -237,7 +237,7 @@ var accountDeleteCmd = &cobra.Command{
 			}
 			fmt.Printf("Delete account: %s@%s (ID: %d)? (yes/no): ", account.Username, account.Hostname, id)
 			var response string
-			fmt.Scanln(&response)
+						_, _ = fmt.Scanln(&response)
 			if strings.ToLower(response) != "yes" {
 				fmt.Println("Deletion cancelled.")
 				return false

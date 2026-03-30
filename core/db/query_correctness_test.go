@@ -210,9 +210,15 @@ func TestGetAccountsForKeyBun_OnlyReturnAccountsWithKey(t *testing.T) {
 	key2, _ := GetPublicKeyByCommentBun(bdb, "key2")
 
 	// Assign key1 to Alice and Bob, key2 only to Alice
-	AssignKeyToAccountBun(bdb, key1.ID, aliceAcc.ID)
-	AssignKeyToAccountBun(bdb, key1.ID, bobAcc.ID)
-	AssignKeyToAccountBun(bdb, key2.ID, aliceAcc.ID)
+	if err := AssignKeyToAccountBun(bdb, key1.ID, aliceAcc.ID); err != nil {
+		t.Fatalf("AssignKeyToAccountBun failed: %v", err)
+	}
+	if err := AssignKeyToAccountBun(bdb, key1.ID, bobAcc.ID); err != nil {
+		t.Fatalf("AssignKeyToAccountBun failed: %v", err)
+	}
+	if err := AssignKeyToAccountBun(bdb, key2.ID, aliceAcc.ID); err != nil {
+		t.Fatalf("AssignKeyToAccountBun failed: %v", err)
+	}
 
 	// Test: GetAccountsForKey for key1 should return Alice and Bob only
 	accountsForKey1, err := GetAccountsForKeyBun(bdb, key1.ID)

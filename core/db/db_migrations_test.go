@@ -16,7 +16,7 @@ func TestEnsureSchemaMigrationsTable_AddsColumn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sql.Open: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Create schema_migrations without applied_at
 	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY)`); err != nil {
@@ -32,7 +32,7 @@ func TestEnsureSchemaMigrationsTable_AddsColumn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pragma query: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	found := false
 	for rows.Next() {
 		var cid int
@@ -60,7 +60,7 @@ func TestRunMigrations_NoMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sql.Open: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	// Use a dbType that has no embedded migrations to exercise the ErrNotExist path.
 	if err := RunMigrations(db, "no-such-type"); err != nil {
 		t.Fatalf("RunMigrations (no migrations) returned error: %v", err)
@@ -73,7 +73,7 @@ func TestRunMigrations_SQLite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sql.Open: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if err := RunMigrations(db, "sqlite"); err != nil {
 		t.Fatalf("RunMigrations sqlite failed: %v", err)
 	}

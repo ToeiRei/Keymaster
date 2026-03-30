@@ -356,13 +356,13 @@ func TestSetupDefaultServices_DBInitialization(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().String("database.type", "sqlite", "")
 	cmd.Flags().String("database.dsn", dbPath, "")
-	cmd.Flags().Set("database.type", "sqlite")
-	cmd.Flags().Set("database.dsn", dbPath)
+	_ = cmd.Flags().Set("database.type", "sqlite")
+	_ = cmd.Flags().Set("database.dsn", dbPath)
 
 	// Set XDG_CONFIG_HOME to temp dir to avoid config file conflicts
 	oldXDG := os.Getenv("XDG_CONFIG_HOME")
-	os.Setenv("XDG_CONFIG_HOME", tmp)
-	defer os.Setenv("XDG_CONFIG_HOME", oldXDG)
+	_ = os.Setenv("XDG_CONFIG_HOME", tmp)
+	defer func() { _ = os.Setenv("XDG_CONFIG_HOME", oldXDG) }()
 
 	// Call setupDefaultServices
 	err := setupDefaultServices(cmd, []string{})
@@ -406,11 +406,11 @@ func TestGetConfigPathFromCli_WithPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp config: %v", err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	cmd := &cobra.Command{}
 	cmd.Flags().String("config", "", "config file")
-	cmd.Flags().Set("config", configPath)
+	_ = cmd.Flags().Set("config", configPath)
 
 	path, err := getConfigPathFromCli(cmd)
 	if err != nil {
@@ -533,11 +533,11 @@ func TestVersionCmd_Output(t *testing.T) {
 	// Execute version command
 	versionCmd.Run(versionCmd, []string{})
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	// Verify output contains version info

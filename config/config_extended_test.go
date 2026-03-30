@@ -414,7 +414,7 @@ func TestWriteConfigFile_ReadonlyDirectory(t *testing.T) {
 	if err := os.MkdirAll(readOnlyDir, 0o555); err != nil {
 		t.Fatalf("mkdir readonly: %v", err)
 	}
-	defer os.Chmod(readOnlyDir, 0o755) // Restore permissions for cleanup
+	defer func() { _ = os.Chmod(readOnlyDir, 0o755) }() // Restore permissions for cleanup
 
 	_ = os.Setenv("XDG_CONFIG_HOME", readOnlyDir)
 	defer func() { _ = os.Unsetenv("XDG_CONFIG_HOME") }()
@@ -502,8 +502,8 @@ func isAdmin() bool {
 		if err != nil {
 			return false
 		}
-		f.Close()
-		os.Remove(testFile)
+		_ = f.Close()
+		_ = os.Remove(testFile)
 		return true
 	}
 	// On Unix, check if we're root

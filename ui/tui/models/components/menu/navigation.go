@@ -45,7 +45,7 @@ func (m *Model) right() tea.Cmd {
 
 func (m *Model) getActiveItemStack() []Item {
 	var stack []Item
-	var cursor []Item = m.Items
+	cursor := m.Items
 
 	for _, i := range m.ActiveStack {
 		item := cursor[i]

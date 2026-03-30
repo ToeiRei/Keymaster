@@ -24,7 +24,7 @@ func BuildAuthorizedKeysContent(systemKey *model.SystemKey, globalKeys, accountK
 	}
 
 	// Header and restricted system key
-	sb.WriteString(fmt.Sprintf("# Keymaster Managed Keys (Serial: %d)\n", systemKey.Serial))
+	fmt.Fprintf(&sb, "# Keymaster Managed Keys (Serial: %d)\n", systemKey.Serial)
 	restrictedSystemKey := fmt.Sprintf("%s %s", "command=\"internal-sftp\",no-port-forwarding,no-x11-forwarding,no-agent-forwarding,no-pty", systemKey.PublicKey)
 	sb.WriteString(restrictedSystemKey)
 

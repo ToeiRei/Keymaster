@@ -92,7 +92,7 @@ func GenerateSelectiveKeysContent(accountID int, serial int, excludeKeyIDs []int
 		}
 
 		// Add the Keymaster header and the restricted system key.
-		content.WriteString(fmt.Sprintf("# Keymaster Managed Keys (Serial: %d)\n", systemKey.Serial))
+		fmt.Fprintf(&content, "# Keymaster Managed Keys (Serial: %d)\n", systemKey.Serial)
 		restrictedSystemKey := fmt.Sprintf("%s %s", SystemKeyRestrictions, systemKey.PublicKey)
 		content.WriteString(restrictedSystemKey)
 	}
