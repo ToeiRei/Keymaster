@@ -69,7 +69,8 @@ jobs:
         # and can be abused; require a passing linter in CI for safety.
         with:
           version: v2.11.4
-          args: run ./...
+          # The action already invokes `golangci-lint run`, so pass only targets.
+          args: ./...
       - name: Static vet
         run: go vet ./...
       - name: Run tests (race on Linux)
