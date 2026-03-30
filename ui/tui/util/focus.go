@@ -95,5 +95,5 @@ func (km EmptyKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{{}}
 }
 
-// *KeyMap implements help.KeyMap
+// *[KeyMap] implements [help.KeyMap]
 var _ help.KeyMap = (*EmptyKeyMap)(nil)

@@ -109,6 +109,9 @@ type Target struct {
 	Id   ID
 	Host string
 	Port int
+	// PluginType   string // shh,cmd,cisco-switch
+	// PluginConfig string // freetext plugin configuration (parsed and used by plugin, not core)
+	// PluginData   string // data/cache seved by plugin
 	// ...
 }
 
@@ -119,6 +122,8 @@ type Account struct {
 	Name                             string
 	DeploymentKey                    string
 	DeploymentLastAuthorizedKeysHash *string
+	// PluginConfig string // freetext plugin configuration OVERWRITE (parsed and used by plugin, not core)
+	// PluginData   string // data/cache seved by plugin
 	// ...
 }
 

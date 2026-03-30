@@ -48,6 +48,8 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 				m.left()
 			case key.Matches(msg, DefaultKeyMap.Right):
 				return m.right()
+			case key.Matches(msg, DefaultKeyMap.Quit):
+				return tea.Quit
 			}
 		}
 	}
@@ -87,5 +89,5 @@ func (m *Model) Blur() {
 	m.focused = false
 }
 
-// *Model implements util.Model
+// *[Model] implements [util.Model]
 var _ util.Model = (*Model)(nil)

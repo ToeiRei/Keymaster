@@ -44,5 +44,5 @@ func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
 
 func (m *Model) Blur() {}
 
-// *Model implements util.Model
+// *[Model] implements [util.Model]
 var _ util.Model = (*Model)(nil)

@@ -40,5 +40,5 @@ func (m *Model) Blur() {
 	panic("unimplemented")
 }
 
-// *Model implements util.Model
+// *[Model] implements [util.Model]
 var _ util.Model = (*Model)(nil)

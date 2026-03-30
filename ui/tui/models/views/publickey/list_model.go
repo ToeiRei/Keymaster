@@ -123,6 +123,9 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 				40, 40,
 			)))
 
+		case key.Matches(msg, ListBaseKeyMap.Exit):
+			return m.rc.Pop(1)
+
 		case key.Matches(
 			msg,
 			ListBaseKeyMap.LineUp,
@@ -166,7 +169,7 @@ func (m *ListModel) Blur() {
 	m.table.Blur()
 }
 
-// *ListModel implements util.Model
+// *[ListModel] implements [util.Model]
 var _ util.Model = (*ListModel)(nil)
 
 func (m *ListModel) reload() tea.Cmd {

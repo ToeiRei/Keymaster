@@ -5,10 +5,16 @@ package keys
 
 import "github.com/charmbracelet/bubbles/key"
 
+func Quit() key.Binding {
+	return key.NewBinding(
+		key.WithKeys("q"),
+		key.WithHelp("q", "quit"),
+	)
+}
 func Exit() key.Binding {
 	return key.NewBinding(
-		key.WithKeys("ctrl+c"),
-		key.WithHelp("ctrl+c", "exit"),
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "exit"),
 	)
 }
 func Help() key.Binding {
@@ -118,6 +124,12 @@ func Cancel() key.Binding {
 	)
 }
 
+func Create() key.Binding {
+	return key.NewBinding(
+		key.WithKeys("a", "ctrl+n"),
+		key.WithHelp("a/ctrl+n", "add/new"),
+	)
+}
 func Edit() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("e", "enter"),

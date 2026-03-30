@@ -55,5 +55,5 @@ func (m *FormModel[T]) Blur() {
 	m.form.Blur()
 }
 
-// *FormModel implements util.Model
+// *[FormModel] implements [util.Model]
 var _ util.Model = (*FormModel[any])(nil)

@@ -51,5 +51,5 @@ func (m *Model) Blur() {
 	m.msgs = append(m.msgs, tea.Msg("i got blurred bitch!"))
 }
 
-// *Model implements util.Model
+// *[Model] implements [util.Model]
 var _ util.Model = (*Model)(nil)

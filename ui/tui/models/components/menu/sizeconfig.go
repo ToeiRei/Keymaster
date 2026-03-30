@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	min_size      int = 12
+	min_size      int = 20
 	max_size      int = 40
 	collapse_size int = 50
 )

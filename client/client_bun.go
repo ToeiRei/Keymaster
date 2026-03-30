@@ -39,7 +39,7 @@ type BunClient struct {
 	nextTagLinkID ID
 }
 
-// *BunClient implements Client
+// *[BunClient] implements [Client]
 var _ Client = (*BunClient)(nil)
 
 // --- Lifecycle & Initialization ---

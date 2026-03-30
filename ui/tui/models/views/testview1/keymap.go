@@ -20,7 +20,7 @@ func (km KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{{km.Quit}}
 }
 
-// *KeyMap implements help.KeyMap
+// *[KeyMap] implements [help.KeyMap]
 var _ help.KeyMap = (*KeyMap)(nil)
 
 var DefaultKeyMap = KeyMap{

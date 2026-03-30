@@ -77,5 +77,5 @@ func (m *MessageModel) Blur() {
 	m.form.Blur()
 }
 
-// *MessageModel implements util.Model
+// *[MessageModel] implements [util.Model]
 var _ util.Model = (*MessageModel)(nil)

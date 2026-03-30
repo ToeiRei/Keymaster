@@ -70,7 +70,7 @@ func (m *Model) Blur() {
 	m.help.Blur()
 }
 
-// *Model implements util.Model
+// *[Model] implements [util.Model]
 var _ util.Model = (*Model)(nil)
 
 func (m *Model) ToggleExpanded() {

@@ -33,7 +33,7 @@ type TestUIClient struct {
 	accountsID   ID
 }
 
-// *TestUIClient implements Client
+// *[TestUIClient] implements [Client]
 var _ Client = (*TestUIClient)(nil)
 
 // --- Lifecycle & Initialization ---

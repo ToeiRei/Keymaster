@@ -160,7 +160,7 @@ func (m *EditModel) Blur() {
 	m.form.Blur()
 }
 
-// *EditModel implements util.Model
+// *[EditModel] implements [util.Model]
 var _ util.Model = (*EditModel)(nil)
 
 func (m *EditModel) load() tea.Cmd {

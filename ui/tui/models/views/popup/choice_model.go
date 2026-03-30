@@ -73,5 +73,5 @@ func (m *ChoiceModel) Blur() {
 	m.form.Blur()
 }
 
-// *ChoiceModel implements util.Model
+// *[ChoiceModel] implements [util.Model]
 var _ util.Model = (*ChoiceModel)(nil)

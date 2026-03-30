@@ -108,7 +108,7 @@ func (f Form[T]) View() string {
 	)
 }
 
-// *Model implements util.Focusable
+// *[Model] implements [util.Focusable]
 var _ util.Model = (*Form[any])(nil) // Update with self return
 
 func (f *Form[T]) Focus(baseKeyMap help.KeyMap) tea.Cmd {
@@ -121,7 +121,7 @@ func (f *Form[T]) Blur() {
 	f.items[f.activeIndex].element.Blur()
 }
 
-// *Model implements util.Focusable
+// *[Model] implements [util.Focusable]
 var _ util.Focusable = (*Form[any])(nil)
 
 func (f *Form[T]) Reset() tea.Cmd {

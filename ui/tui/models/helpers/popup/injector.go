@@ -117,7 +117,7 @@ func (m *Injector) Blur() {
 	(*m.activeModel()).Blur()
 }
 
-// *Model implements util.Model
+// *[Model] implements [util.Model]
 var _ util.Model = (*Injector)(nil)
 
 func (m *Injector) open(popup popup) tea.Cmd {

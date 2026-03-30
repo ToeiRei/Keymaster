@@ -8,6 +8,7 @@ package menu
 import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 type KeyMap struct {
@@ -15,6 +16,7 @@ type KeyMap struct {
 	Down  key.Binding
 	Left  key.Binding
 	Right key.Binding
+	Quit  key.Binding
 }
 
 func (km KeyMap) ShortHelp() []key.Binding {
@@ -25,25 +27,13 @@ func (km KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{{km.Up, km.Down}, {km.Right, km.Left}}
 }
 
-// *KeyMap implements help.KeyMap
+// *[KeyMap] implements [help.KeyMap]
 var _ help.KeyMap = (*KeyMap)(nil)
 
-// ↑ ↓ ← →
 var DefaultKeyMap = KeyMap{
-	Up: key.NewBinding(
-		key.WithKeys("k", "up"),
-		key.WithHelp("↑/k", "up"),
-	),
-	Down: key.NewBinding(
-		key.WithKeys("j", "down"),
-		key.WithHelp("↓/j", "down"),
-	),
-	Left: key.NewBinding(
-		key.WithKeys("left", "backspace", "esc"),
-		key.WithHelp("←/esc", "back"),
-	),
-	Right: key.NewBinding(
-		key.WithKeys("right", "enter"),
-		key.WithHelp("→/enter", "select/open"),
-	),
+	Up:    keys.Up(),
+	Down:  keys.Down(),
+	Left:  keys.Left(),
+	Right: keys.Right(),
+	Quit:  keys.Quit(),
 }

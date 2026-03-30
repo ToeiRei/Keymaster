@@ -11,13 +11,10 @@ import (
 	"github.com/toeirei/keymaster/buildvars"
 	"github.com/toeirei/keymaster/ui/tui/models/components/header"
 	"github.com/toeirei/keymaster/ui/tui/models/components/stack"
-	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
-	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	windowtitle "github.com/toeirei/keymaster/ui/tui/models/helpers/title"
 	"github.com/toeirei/keymaster/ui/tui/models/views/content"
 	"github.com/toeirei/keymaster/ui/tui/models/views/footer"
-	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
@@ -64,22 +61,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// handle keys messages
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch {
-		case key.Matches(msg, BaseKeyMap.Exit):
-			return m, popup.Open(util.ModelPointer(popupviews.NewForm(
-				form.New(
-					form.WithRow(
-						form.WithElement[struct{}]("", formelement.NewLabel("Do you realy wanna exit KeyMaster?")),
-					),
-					form.WithRow(
-						form.WithAlign[struct{}](form.Center),
-						form.WithElement[struct{}]("", formelement.NewButton("Cancel", false, func() (tea.Cmd, form.Action) { return popup.Close(), form.ActionNone })),
-						form.WithElement[struct{}]("", formelement.NewButton("Exit", false, func() (tea.Cmd, form.Action) { return tea.Quit, form.ActionNone })),
-					),
-				),
-				40, 40,
-			)))
-			// TODO maybe add popup
-			// return m, tea.Quit
 		case key.Matches(msg, BaseKeyMap.Help):
 			util.BorrowModelFunc(m.footer, func(_footer *footer.Model) {
 				_footer.ToggleExpanded()
@@ -100,5 +81,5 @@ func (m Model) View() string {
 	return m.stack.View()
 }
 
-// *Model implements util.Model
+// *[Model] implements [util.Model]
 var _ tea.Model = (*Model)(nil)
