@@ -118,6 +118,12 @@ func executeCommand(t *testing.T, stdin io.Reader, args ...string) string {
 
 	// Create a new root command for each test to ensure isolation
 	root := NewRootCmd()
+	// Prevent accidental interactive TUI launches in tests.
+	// Executing the root command with no args launches the TUI; fail fast
+	// so CI/test runners don't hang.
+	if len(args) == 0 {
+		t.Fatalf("attempted to execute root command with no args; tests must provide args to avoid launching the interactive TUI")
+	}
 	root.SetArgs(args)
 
 	// Execute the command
