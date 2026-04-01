@@ -17,7 +17,7 @@ type Client interface {
 
 	// --- PublicKey Management ---
 
-	CreatePublicKey(ctx context.Context, key string, comment *string, tags []string) (PublicKey, error)
+	CreatePublicKey(ctx context.Context, key string, comment string, tags []string) (PublicKey, error)
 
 	GetPublicKey(ctx context.Context, id ID) (PublicKey, error)
 

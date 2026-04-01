@@ -48,18 +48,14 @@ func (c *TestUIClient) Close(ctx context.Context) error {
 
 // --- PublicKey Management ---
 
-func (c *TestUIClient) CreatePublicKey(ctx context.Context, key string, comment *string, tags []string) (PublicKey, error) {
+func (c *TestUIClient) CreatePublicKey(ctx context.Context, key string, comment string, tags []string) (PublicKey, error) {
 	keyParts := strings.Split(key, " ")
 	if len(keyParts) < 2 {
 		return PublicKey{}, errors.New("invalid key provided")
 	}
 	// algorithm, data := keyParts[0], strings.Join(slices.SliceTo(keyParts, 1, len(keyParts)), " ")
 	algorithm, data := keyParts[0], keyParts[1]
-	_comment := ""
-	if comment != nil {
-		_comment = *comment
-	}
-	publicKey := PublicKey{c.publicKeysID, algorithm, data, _comment, tags}
+	publicKey := PublicKey{c.publicKeysID, algorithm, data, comment, tags}
 	c.publicKeys = append(c.publicKeys, publicKey)
 	c.publicKeysID++
 	return publicKey, nil

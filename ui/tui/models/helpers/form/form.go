@@ -22,6 +22,12 @@ const (
 
 type RowAlign int
 
+var rowAlignments = map[RowAlign]lipgloss.Position{
+	Left:   lipgloss.Left,
+	Right:  lipgloss.Right,
+	Center: lipgloss.Center,
+}
+
 type FormElement interface {
 	util.Focusable
 	Reset()

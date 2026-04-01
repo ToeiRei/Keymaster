@@ -57,9 +57,9 @@ func (m *Model) Init() tea.Cmd {
 	m.client = client.NewTestUIClient()
 
 	// create development test data
-	_, _ = m.client.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-ödtjfb", util.NewPointer("my-key"), []string{"user:jannes", "company:none"})
-	_, _ = m.client.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjdfhal_sdvkhathrösdljhask-ödjfb", util.NewPointer("420"), []string{"user:toeirei", "company:another"})
-	_, _ = m.client.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb", util.NewPointer("69"), []string{"user:somebodyelse", "company:evilgoogle"})
+	_, _ = m.client.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-ödtjfb", "my-key", []string{"user:jannes", "company:none"})
+	_, _ = m.client.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjdfhal_sdvkhathrösdljhask-ödjfb", "420", []string{"user:toeirei", "company:another"})
+	_, _ = m.client.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb", "69", []string{"user:somebodyelse", "company:evilgoogle"})
 
 	return m.stack.Init()
 }
