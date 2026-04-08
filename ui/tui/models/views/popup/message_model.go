@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
@@ -26,7 +27,13 @@ type MessageModel struct {
 	size      util.Size
 }
 
-func NewMessage(severity MessageSeverity, message string, callback func() tea.Cmd, width, height int) *MessageModel {
+func NewMessage(
+	severity MessageSeverity,
+	message string,
+	cmd tea.Cmd,
+	width int,
+	height int,
+) *MessageModel {
 	switch severity {
 	case MessageInfo:
 		message = "INFO: " + message
@@ -37,10 +44,13 @@ func NewMessage(severity MessageSeverity, message string, callback func() tea.Cm
 	}
 	return &MessageModel{
 		form: form.New(
-			form.WithSingleElementRow[struct{}]("", formelement.NewLabel(message)),
-			form.WithSingleElementRow[struct{}]("", formelement.NewButton("Ok", false, func() (tea.Cmd, form.Action) {
-				return callback(), form.ActionNone
-			})),
+			form.WithRow(
+				form.WithItem[struct{}]("_message", formelement.NewLabel(message)),
+				form.WithItem[struct{}]("_ok", formelement.NewButton("Ok", formelement.WithButtonActionSubmit())),
+			),
+			form.WithOnSubmit(func(_ struct{}, _ error) tea.Cmd {
+				return tea.Sequence(popup.Close(), cmd)
+			}),
 		),
 		innerSize: util.Size{
 			Width:  width,

@@ -24,11 +24,10 @@ type editFormData struct {
 
 type EditModel struct {
 	// state
-	publicKeyId  client.ID
-	publicKey    client.PublicKey
-	locked       *string
-	loadingError error
-	focussed     bool
+	publicKeyId client.ID
+	publicKey   client.PublicKey
+	locked      *string
+	focussed    bool
 
 	// util
 	client client.Client
@@ -50,18 +49,14 @@ func NewEdit(c client.Client, rc router.Controll, id client.ID) *EditModel {
 // Init implements util.Model.
 func (m *EditModel) Init() tea.Cmd {
 	m.form = util.NewPointer(form.New(
-		form.WithSingleElementRow[editFormData]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
-		form.WithSingleElementRow[editFormData]("tags", formelement.NewText("tags", "comma seperated list of tags")),
 		form.WithRow(
-			form.WithElement[editFormData]("", formelement.NewButton("Reset", false, func() (tea.Cmd, form.Action) {
-				return nil, form.ActionReset
-			})),
-			form.WithElement[editFormData]("", formelement.NewButton("Cancel", false, func() (tea.Cmd, form.Action) {
-				return nil, form.ActionCancel
-			})),
-			form.WithElement[editFormData]("", formelement.NewButton("Save", false, func() (tea.Cmd, form.Action) {
-				return nil, form.ActionSubmit
-			})),
+			form.WithItem[editFormData]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
+			form.WithItem[editFormData]("tags", formelement.NewText("Tags", "comma seperated list of tags")),
+		),
+		form.WithRow(
+			form.WithItem[editFormData]("_reset", formelement.NewButton("Reset", formelement.WithButtonActionReset())),
+			form.WithItem[editFormData]("_cancel", formelement.NewButton("Cancel", formelement.WithButtonActionCancel())),
+			form.WithItem[editFormData]("_save", formelement.NewButton("Save", formelement.WithButtonActionSubmit())),
 		),
 		form.WithOnSubmit(func(result editFormData, err error) tea.Cmd {
 			m.locked = util.NewPointer("Updating PublicKey...")
@@ -106,14 +101,20 @@ func (m *EditModel) Update(msg tea.Msg) tea.Cmd {
 	case editMsgLoadResult:
 		m.locked = nil
 		m.publicKey = msg.publicKey
-		m.loadingError = msg.err
 		_ = m.refreshForm()
+		if msg.err != nil {
+			// TODO open popup displaying error
+			return nil
+		}
 		return nil
 
 	case editMsgUpdateResult:
+		m.locked = nil
 		if msg.err != nil {
-			m.locked = nil
-			m.loadingError = msg.err
+			if msg.err != nil {
+				// TODO open popup displaying error
+				return nil
+			}
 			return nil
 		}
 		return tea.Sequence(m.rc.Pop(1), func() tea.Msg { return EditMsgUpdated{m.publicKeyId} })
@@ -141,9 +142,6 @@ func (m *EditModel) Update(msg tea.Msg) tea.Cmd {
 func (m *EditModel) View() string {
 	if m.locked != nil {
 		return *m.locked
-	}
-	if m.loadingError != nil {
-		return m.loadingError.Error()
 	}
 	return m.form.View()
 }

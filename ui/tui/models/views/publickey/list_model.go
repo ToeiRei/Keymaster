@@ -82,7 +82,7 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 		// TODO does not work for some reason
 		return nil
 
-	case EditMsgUpdated:
+	case EditMsgUpdated, CreateMsgCreated:
 		// TODO optimize by only fetching the updated item inplace
 		return m.reload()
 
@@ -91,6 +91,12 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 			return nil
 		}
 		switch {
+		case key.Matches(msg, ListBaseKeyMap.Create):
+			return m.rc.Push(util.ModelPointer(NewCreate(
+				m.client,
+				m.rc,
+			)))
+
 		case key.Matches(msg, ListBaseKeyMap.Edit):
 			if m.table.Cursor() == -1 {
 				return nil // TODO open popup with "please select a public key" text
@@ -106,19 +112,16 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 			return popup.Open(util.ModelPointer(popupviews.NewChoice(
 				"Do you realy want to delete this PublicKey?",
 				popupviews.Choices{
-					"Cancel": func() tea.Cmd { return popup.Close() },
-					"Delete": func() tea.Cmd {
-						return tea.Sequence(
-							popup.Close(),
-							func() tea.Msg { return listMsgDeleting{} },
-							func() tea.Msg {
-								return listMsgDeleteResult{
-									publicKey: publicKey,
-									err:       m.client.DeletePublicKeys(context.Background(), publicKey.Id),
-								}
-							},
-						)
-					},
+					{"Cancel", nil},
+					{"Delete", tea.Sequence(
+						func() tea.Msg { return listMsgDeleting{} },
+						func() tea.Msg {
+							return listMsgDeleteResult{
+								publicKey: publicKey,
+								err:       m.client.DeletePublicKeys(context.Background(), publicKey.Id),
+							}
+						},
+					)},
 				},
 				40, 40,
 			)))

@@ -25,19 +25,11 @@ type Model struct {
 func New() *Model {
 	return &Model{
 		form: form.New(
-			form.WithSingleElementRow[formData]("firstname", formelement.NewText("Vorname", "Max")),
-			form.WithSingleElementRow[formData]("lastname", formelement.NewText("Nachname", "Mustermann")),
+			form.WithRowItem[formData]("firstname", formelement.NewText("Vorname", "Max")),
+			form.WithRowItem[formData]("lastname", formelement.NewText("Nachname", "Mustermann")),
 			form.WithRow(
-				form.WithElement[formData]("", formelement.NewButton(
-					"Cancel",
-					false,
-					func() (tea.Cmd, form.Action) { return nil, form.ActionCancel },
-				)),
-				form.WithElement[formData]("", formelement.NewButton(
-					"Submit",
-					false,
-					func() (tea.Cmd, form.Action) { return nil, form.ActionSubmit },
-				)),
+				form.WithItem[formData]("_cancel", formelement.NewButton("Cancel", formelement.WithButtonActionCancel())),
+				form.WithItem[formData]("_submit", formelement.NewButton("Submit", formelement.WithButtonActionSubmit())),
 			),
 			form.WithOnSubmit(func(result formData, err error) tea.Cmd {
 				return tea.Sequence(

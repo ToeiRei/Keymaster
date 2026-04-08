@@ -4,7 +4,7 @@
 package form
 
 const (
-	ActionNone = iota
+	ActionNone Action = iota
 	ActionNext
 	ActionPrev
 	ActionSubmit

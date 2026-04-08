@@ -4,12 +4,16 @@
 package popupviews
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/util/slicest"
 )
 
 type ChoiceModel struct {
@@ -18,25 +22,26 @@ type ChoiceModel struct {
 	size      util.Size
 }
 
-type Choices map[string]func() tea.Cmd
+type Choice struct {
+	Name string
+	Cmd  tea.Cmd
+}
+type Choices []Choice
 
 func NewChoice(question string, choices Choices, width, height int) *ChoiceModel {
-	opts := make([]form.RowOpt[struct{}], len(choices))
-
-	for name, callback := range choices {
-		opts = append(opts, form.WithElement[struct{}]("", formelement.NewButton(
-			name,
-			false,
-			func() (tea.Cmd, form.Action) {
-				return callback(), form.ActionNone
-			},
-		)))
-	}
+	itemOpts := slicest.MapI(choices, func(i int, choice Choice) form.RowOpt[struct{}] {
+		return form.WithItem[struct{}]("choice_"+fmt.Sprint(i), formelement.NewButton(
+			choice.Name,
+			formelement.WithButtonAction(func() (tea.Cmd, form.Action) {
+				return tea.Sequence(popup.Close(), choice.Cmd), form.ActionNone
+			}),
+		))
+	})
 
 	return &ChoiceModel{
 		form: form.New(
-			form.WithSingleElementRow[struct{}]("", formelement.NewLabel(question)),
-			form.WithRow(opts...),
+			form.WithRowItem[struct{}]("choice_label", formelement.NewLabel(question)),
+			form.WithRow(itemOpts...),
 		),
 		innerSize: util.Size{
 			Width:  width,

@@ -138,7 +138,7 @@ func Edit() key.Binding {
 }
 func Delete() key.Binding {
 	return key.NewBinding(
-		key.WithKeys("del"),
+		key.WithKeys("delete"),
 		key.WithHelp("del", "delete"),
 	)
 }

@@ -35,8 +35,30 @@ func (k ButtonKeyMap) ShortHelp() []key.Binding { return []key.Binding{k.Click} 
 
 func (k ButtonKeyMap) FullHelp() [][]key.Binding { return [][]key.Binding{{k.Click}} }
 
-func NewButton(label string, disabled bool, onClick func() (tea.Cmd, form.Action)) form.FormElement {
-	return &Button{
+type ButtonOpt = func(button *Button)
+
+func WithButtonDisabled() ButtonOpt {
+	return func(button *Button) { button.Disabled = true }
+}
+
+func WithButtonActionSubmit() ButtonOpt {
+	return func(button *Button) { button.OnClick = func() (tea.Cmd, form.Action) { return nil, form.ActionSubmit } }
+}
+
+func WithButtonActionCancel() ButtonOpt {
+	return func(button *Button) { button.OnClick = func() (tea.Cmd, form.Action) { return nil, form.ActionCancel } }
+}
+
+func WithButtonActionReset() ButtonOpt {
+	return func(button *Button) { button.OnClick = func() (tea.Cmd, form.Action) { return nil, form.ActionReset } }
+}
+
+func WithButtonAction(fn func() (tea.Cmd, form.Action)) ButtonOpt {
+	return func(button *Button) { button.OnClick = fn }
+}
+
+func NewButton(label string, opts ...ButtonOpt) form.FormElement {
+	button := &Button{
 		Label: label,
 		KeyMap: ButtonKeyMap{
 			Click: key.NewBinding(
@@ -44,7 +66,6 @@ func NewButton(label string, disabled bool, onClick func() (tea.Cmd, form.Action
 				key.WithHelp("enter", strings.ToLower(label)),
 			),
 		},
-		OnClick: onClick,
 		DisabledStyle: lipgloss.NewStyle().
 			Padding(0, 2).
 			Border(lipgloss.RoundedBorder()).
@@ -62,6 +83,37 @@ func NewButton(label string, disabled bool, onClick func() (tea.Cmd, form.Action
 			Foreground(lipgloss.Color("240")).
 			Bold(true),
 	}
+	for _, opt := range opts {
+		opt(button)
+	}
+	return button
+
+	// return &Button{
+	// 	Label: label,
+	// 	KeyMap: ButtonKeyMap{
+	// 		Click: key.NewBinding(
+	// 			key.WithKeys("enter"),
+	// 			key.WithHelp("enter", strings.ToLower(label)),
+	// 		),
+	// 	},
+	// 	OnClick: onClick,
+	// 	DisabledStyle: lipgloss.NewStyle().
+	// 		Padding(0, 2).
+	// 		Border(lipgloss.RoundedBorder()).
+	// 		BorderForeground(lipgloss.Color("240")).
+	// 		Foreground(lipgloss.Color("240")),
+	// 	BlurredStyle: lipgloss.NewStyle().
+	// 		Padding(0, 2).
+	// 		Border(lipgloss.RoundedBorder()).
+	// 		BorderForeground(lipgloss.Color("240")).
+	// 		Foreground(lipgloss.Color("240")),
+	// 	FocusedStyle: lipgloss.NewStyle().
+	// 		Padding(0, 2).
+	// 		Border(lipgloss.RoundedBorder()).
+	// 		BorderForeground(lipgloss.Color("205")).
+	// 		Foreground(lipgloss.Color("240")).
+	// 		Bold(true),
+	// }
 }
 
 func (b *Button) Focus(baseKeyMap help.KeyMap) tea.Cmd {
