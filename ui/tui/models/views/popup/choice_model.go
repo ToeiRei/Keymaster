@@ -33,7 +33,7 @@ func OpenChoice(question string, choices Choices, width, height int) tea.Cmd {
 }
 
 func newChoice(question string, choices Choices, width, height int) *ChoiceModel {
-	itemOpts := slicest.MapI(choices, func(i int, choice Choice) form.RowOpt[struct{}] {
+	rowOpts := slicest.MapI(choices, func(i int, choice Choice) form.RowOpt[struct{}] {
 		return form.WithItem[struct{}]("choice_"+fmt.Sprint(i), formelement.NewButton(
 			choice.Name,
 			formelement.WithButtonAction(func() (tea.Cmd, form.Action) {
@@ -41,11 +41,12 @@ func newChoice(question string, choices Choices, width, height int) *ChoiceModel
 			}),
 		))
 	})
+	rowOpts = append(rowOpts, form.WithAlign[struct{}](form.Center))
 
 	return &ChoiceModel{
 		form: form.New(
 			form.WithRowItem[struct{}]("choice_label", formelement.NewLabel(question)),
-			form.WithRow(itemOpts...),
+			form.WithRow(rowOpts...),
 		),
 		innerSize: util.Size{
 			Width:  width,
