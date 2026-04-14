@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
@@ -15,6 +16,10 @@ type FormModel[T any] struct {
 	form      form.Form[T]
 	innerSize util.Size
 	size      util.Size
+}
+
+func OpenForm[T any](form form.Form[T], width, height int) tea.Cmd {
+	return popup.Open(util.ModelPointer(NewForm(form, width, height)))
 }
 
 func NewForm[T any](form form.Form[T], width, height int) *FormModel[T] {
