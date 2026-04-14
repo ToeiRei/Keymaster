@@ -32,11 +32,17 @@ func New() *Model {
 	// 	 }
 	// }
 
+	client := client.NewTestUIClient()
+	// create development test data
+	_, _ = client.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-ödtjfb", "my-key", []string{"user:jannes", "company:none"})
+	_, _ = client.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjdfhal_sdvkhathrösdljhask-ödjfb", "420", []string{"user:toeirei", "company:another"})
+	_, _ = client.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb", "69", []string{"user:somebodyelse", "company:evilgoogle"})
+
 	menuPtr := util.ModelPointer(menu.New(
 		menu.WithItem("dashboard", "Dashboard"),
 		menu.WithItem("publickey.list", "Public Keys"),
 	))
-	dashboardPtr := util.ModelPointer(dashboard.New())
+	dashboardPtr := util.ModelPointer(dashboard.New(client))
 	routerModel, routerControll := router.New(dashboardPtr)
 	routerPtr := util.ModelPointer(routerModel)
 	stackModel := stack.New(
@@ -50,17 +56,11 @@ func New() *Model {
 		stack:          stackModel,
 		router:         routerPtr,
 		routerControll: routerControll,
+		client:         client,
 	}
 }
 
 func (m *Model) Init() tea.Cmd {
-	m.client = client.NewTestUIClient()
-
-	// create development test data
-	_, _ = m.client.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-ödtjfb", "my-key", []string{"user:jannes", "company:none"})
-	_, _ = m.client.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjdfhal_sdvkhathrösdljhask-ödjfb", "420", []string{"user:toeirei", "company:another"})
-	_, _ = m.client.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb", "69", []string{"user:somebodyelse", "company:evilgoogle"})
-
 	return m.stack.Init()
 }
 
@@ -91,7 +91,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		})
 	}
 
-	return tea.Batch(cmd1, cmd2)
+	return tea.Sequence(cmd1, cmd2)
 }
 
 func (m *Model) View() string {
@@ -99,7 +99,7 @@ func (m *Model) View() string {
 }
 
 func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
-	return m.stack.Focus(parentKeyMap )
+	return m.stack.Focus(parentKeyMap)
 }
 
 func (m *Model) Blur() {

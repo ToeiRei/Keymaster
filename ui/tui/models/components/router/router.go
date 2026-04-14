@@ -72,7 +72,7 @@ func (m Model) View() string {
 
 func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.parentKeyMap  = parentKeyMap 
-	return (*m.activeModelGet()).Focus(parentKeyMap )
+	return (*m.activeModelGet()).Focus(parentKeyMap)
 }
 
 func (m *Model) Blur() {

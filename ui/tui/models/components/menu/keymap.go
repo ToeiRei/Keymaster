@@ -20,11 +20,11 @@ type KeyMap struct {
 }
 
 func (km KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Up, km.Down, km.Right, km.Left}
+	return []key.Binding{km.Up, km.Down, km.Right, km.Left, km.Quit}
 }
 
 func (km KeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{km.Up, km.Down}, {km.Right, km.Left}}
+	return [][]key.Binding{{km.Up, km.Down}, {km.Right, km.Left}, {km.Quit}}
 }
 
 // *[KeyMap] implements [help.KeyMap]

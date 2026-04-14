@@ -77,7 +77,7 @@ func (m ChoiceModel) View() string {
 }
 
 func (m *ChoiceModel) Focus(parentKeyMap help.KeyMap) tea.Cmd {
-	return m.form.Focus(parentKeyMap )
+	return m.form.Focus(parentKeyMap)
 }
 func (m *ChoiceModel) Blur() {
 	m.form.Blur()

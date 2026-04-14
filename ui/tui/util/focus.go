@@ -21,7 +21,7 @@ type Focusable interface {
 func TryFocusTeaModel(m *tea.Model, parentKeyMap  help.KeyMap) (tea.Cmd, error) {
 	_m := *m
 	if focusable, ok := _m.(Focusable); ok {
-		cmd := focusable.Focus(parentKeyMap )
+		cmd := focusable.Focus(parentKeyMap)
 		*m = focusable.(tea.Model)
 		return cmd, nil
 	} else {

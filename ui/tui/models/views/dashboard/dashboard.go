@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/ui/tui/util"
@@ -16,13 +17,16 @@ import (
 )
 
 type Model struct {
-	data core.DashboardData
-	err  error
-	size util.Size
+	data   core.DashboardData
+	err    error
+	client client.Client
+	size   util.Size
 }
 
-func New() *Model {
-	return &Model{}
+func New(c client.Client) *Model {
+	return &Model{
+		client: c,
+	}
 }
 
 func (m Model) Init() tea.Cmd {
@@ -79,7 +83,7 @@ func (m Model) View() string {
 	}
 }
 
-func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd { return util.AnnounceKeyMapCmd(parentKeyMap ) }
+func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd { return util.AnnounceKeyMapCmd(parentKeyMap) }
 
 func (m *Model) Blur() {}
 

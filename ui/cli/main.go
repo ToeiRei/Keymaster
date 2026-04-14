@@ -694,7 +694,7 @@ step before Keymaster can manage a new host.`,
 		if err := st.AddKnownHostKey(canonicalHost, keyStr); err != nil {
 			log.Fatalf("%s", i18n.T("trust_host.error_get_key", err))
 		}
-		fmt.Printf("Warning: Permanently added '%s' (type ) to the list of known hosts.\n", canonicalHost)
+		fmt.Printf("Warning: Permanently added '%s' (type) to the list of known hosts.\n", canonicalHost)
 	},
 }
 

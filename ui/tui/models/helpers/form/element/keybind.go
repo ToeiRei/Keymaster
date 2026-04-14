@@ -25,25 +25,25 @@ func NewKeybind(action func() (tea.Cmd, form.Action), globalKeyBindings ...key.B
 	}
 }
 
-func (b *Keybind) Update(msg tea.Msg) (tea.Cmd, form.Action) {
+func (k *Keybind) Update(msg tea.Msg) (tea.Cmd, form.Action) {
 	// msg is KeyMsg
 	// key matches global binding
 	// Action not nil
-	if msg, ok := msg.(tea.KeyMsg); ok && key.Matches(msg, b.GlobalKeyBindings...) && b.Action != nil {
-		return b.Action()
+	if msg, ok := msg.(tea.KeyMsg); ok && key.Matches(msg, k.GlobalKeyBindings...) && k.Action != nil {
+		return k.Action()
 	}
 	return nil, form.ActionNone
 }
 
-func (b *Keybind) Init() (tea.Cmd, form.GlobalKeyMap) {
-	return nil, b.GlobalKeyBindings
+func (k *Keybind) Init() (tea.Cmd, form.GlobalKeyMap) {
+	return nil, k.GlobalKeyBindings
 }
 
 // not needed
-func (b *Keybind) Focus(parentKeyMap help.KeyMap) tea.Cmd { return nil }
-func (b *Keybind) Blur()                                  {}
-func (b *Keybind) View(width int) string                  { return "" }
-func (b *Keybind) Focusable() bool                        { return false }
-func (b *Keybind) Get() any                               { return nil }
-func (b *Keybind) Reset()                                 {}
-func (b *Keybind) Set(any)                                {}
+func (k *Keybind) Focus(parentKeyMap help.KeyMap) tea.Cmd { return nil }
+func (k *Keybind) Blur()                                  {}
+func (k *Keybind) View(width int) string                  { return "" }
+func (k *Keybind) Focusable() bool                        { return false }
+func (k *Keybind) Get() any                               { return nil }
+func (k *Keybind) Reset()                                 {}
+func (k *Keybind) Set(any)                                {}

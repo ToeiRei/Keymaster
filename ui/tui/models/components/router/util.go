@@ -27,7 +27,7 @@ func (m *Model) activeModelUpdate(msg tea.Msg) tea.Cmd {
 }
 
 func (m *Model) activeModelFocus() tea.Cmd {
-	return (*m.activeModelGet()).Focus(m.parentKeyMap )
+	return (*m.activeModelGet()).Focus(m.parentKeyMap)
 }
 
 func (m *Model) activeModelInit() tea.Cmd {

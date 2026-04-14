@@ -33,7 +33,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	// catch AnnounceFocusMsg and inject parentKeyMap 
 	if msg, ok := msg.(util.AnnounceKeyMapMsg); ok {
 		return (*m.help).Update(util.AnnounceKeyMapMsg{
-			KeyMap: util.MergeKeyMaps(msg.KeyMap, m.parentKeyMap ),
+			KeyMap: util.MergeKeyMaps(msg.KeyMap, m.parentKeyMap),
 		})
 	}
 
@@ -63,7 +63,7 @@ func (m Model) View() string {
 }
 
 func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
-	return m.help.Focus(parentKeyMap )
+	return m.help.Focus(parentKeyMap)
 }
 
 func (m *Model) Blur() {

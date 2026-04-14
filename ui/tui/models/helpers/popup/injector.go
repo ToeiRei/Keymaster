@@ -111,7 +111,7 @@ func (m Injector) View() string {
 
 func (m *Injector) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.parentKeyMap  = parentKeyMap 
-	return (*m.activeModel()).Focus(parentKeyMap )
+	return (*m.activeModel()).Focus(parentKeyMap)
 }
 func (m *Injector) Blur() {
 	(*m.activeModel()).Blur()
@@ -158,7 +158,7 @@ func (m *Injector) activeModel() *util.Model {
 	}
 }
 func (m *Injector) focusActiveModel() tea.Cmd {
-	return m.Focus(m.parentKeyMap )
+	return m.Focus(m.parentKeyMap)
 }
 func (m *Injector) blurActiveModel() {
 	m.Blur()
