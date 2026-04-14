@@ -117,9 +117,8 @@ func (s Model) View() string {
 			if item.size == 0 {
 				return ""
 			}
-			tmp1 := (*item.Model).View()
-			tmp2 := styler(item.size, margin).Render(tmp1)
-			return tmp2
+			view := (*item.Model).View()
+			return styler(item.size, margin).Render(view)
 		})...,
 	)
 }
