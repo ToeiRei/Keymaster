@@ -19,10 +19,10 @@ type FormModel[T any] struct {
 }
 
 func OpenForm[T any](form form.Form[T], width, height int) tea.Cmd {
-	return popup.Open(util.ModelPointer(NewForm(form, width, height)))
+	return popup.Open(util.ModelPointer(newForm(form, width, height)))
 }
 
-func NewForm[T any](form form.Form[T], width, height int) *FormModel[T] {
+func newForm[T any](form form.Form[T], width, height int) *FormModel[T] {
 	return &FormModel[T]{
 		form: form,
 		innerSize: util.Size{

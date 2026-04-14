@@ -14,7 +14,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
-	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
@@ -109,7 +108,7 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 
 		case key.Matches(msg, ListBaseKeyMap.Delete):
 			publicKey := m.publicKeys[m.table.Cursor()]
-			return popup.Open(util.ModelPointer(popupviews.NewChoice(
+			return popupviews.OpenChoice(
 				"Do you realy want to delete this PublicKey?",
 				popupviews.Choices{
 					{"Cancel", nil},
@@ -124,7 +123,7 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 					)},
 				},
 				40, 40,
-			)))
+			)
 
 		case key.Matches(msg, ListBaseKeyMap.Exit):
 			return m.rc.Pop(1)

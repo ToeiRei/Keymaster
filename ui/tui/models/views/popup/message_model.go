@@ -28,10 +28,10 @@ type MessageModel struct {
 }
 
 func OpenMessage(severity MessageSeverity, message string, cmd tea.Cmd, width, height int) tea.Cmd {
-	return popup.Open(util.ModelPointer(NewMessage(severity, message, cmd, width, height)))
+	return popup.Open(util.ModelPointer(newMessage(severity, message, cmd, width, height)))
 }
 
-func NewMessage(
+func newMessage(
 	severity MessageSeverity,
 	message string,
 	cmd tea.Cmd,

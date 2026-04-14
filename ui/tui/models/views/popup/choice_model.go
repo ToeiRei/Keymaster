@@ -29,10 +29,10 @@ type Choice struct {
 type Choices []Choice
 
 func OpenChoice(question string, choices Choices, width, height int) tea.Cmd {
-	return popup.Open(util.ModelPointer(NewChoice(question, choices, width, height)))
+	return popup.Open(util.ModelPointer(newChoice(question, choices, width, height)))
 }
 
-func NewChoice(question string, choices Choices, width, height int) *ChoiceModel {
+func newChoice(question string, choices Choices, width, height int) *ChoiceModel {
 	itemOpts := slicest.MapI(choices, func(i int, choice Choice) form.RowOpt[struct{}] {
 		return form.WithItem[struct{}]("choice_"+fmt.Sprint(i), formelement.NewButton(
 			choice.Name,

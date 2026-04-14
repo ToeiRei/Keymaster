@@ -56,46 +56,44 @@ func NewCreate(c client.Client, rc router.Controll) *CreateModel {
 func (m *CreateModel) Init() tea.Cmd {
 	m.form = util.NewPointer(form.New(
 		form.WithRowItem[createFormData]("_import", formelement.NewButton("Import", formelement.WithButtonAction(func() (tea.Cmd, form.Action) {
-			return popup.Open(
-				util.ModelPointer(
-					popupviews.NewForm(form.New(
-						form.WithRowItem[createFormImport]("key", formelement.NewText("", "")),
-						form.WithRow(
-							form.WithItem[createFormImport]("_cancel", formelement.NewButton("Cancel", formelement.WithButtonActionCancel())),
-							form.WithItem[createFormImport]("_import", formelement.NewButton("Import", formelement.WithButtonActionSubmit())),
-						),
-						form.WithOnCancel[createFormImport](func() tea.Cmd { return popup.Close() }),
-						form.WithOnSubmit(func(result createFormImport, err error) tea.Cmd {
-							if err != nil {
-								return popup.Open(util.ModelPointer(popupviews.NewMessage(
-									popupviews.MessageError,
-									err.Error(),
-									nil,
-									50, 20,
-								)))
-							}
+			return popupviews.OpenForm(form.New(
+				form.WithRowItem[createFormImport]("key", formelement.NewText("", "")),
+				form.WithRow(
+					form.WithItem[createFormImport]("_cancel", formelement.NewButton("Cancel", formelement.WithButtonActionCancel())),
+					form.WithItem[createFormImport]("_import", formelement.NewButton("Import", formelement.WithButtonActionSubmit())),
+				),
+				form.WithOnCancel[createFormImport](func() tea.Cmd { return popup.Close() }),
+				form.WithOnSubmit(func(result createFormImport, err error) tea.Cmd {
+					if err != nil {
+						return popupviews.OpenMessage(
+							popupviews.MessageError,
+							err.Error(),
+							nil,
+							50, 20,
+						)
+					}
 
-							// TODO parse result.key
-							parts := strings.Split(result.Key, " ")
+					// TODO parse result.key
+					parts := strings.Split(result.Key, " ")
 
-							if len(parts) < 2 || len(parts) > 3 {
-								return popup.Open(util.ModelPointer(popupviews.NewMessage(
-									popupviews.MessageError,
-									"unable to parse public key",
-									nil,
-									50, 20,
-								)))
-							}
+					if len(parts) < 2 || len(parts) > 3 {
+						return popupviews.OpenMessage(
+							popupviews.MessageError,
+							"unable to parse public key",
+							nil,
+							50, 20,
+						)
+					}
 
-							var data, algorithm, comment string
-							data, algorithm = parts[0], parts[1]
-							if len(parts) == 3 {
-								comment = parts[2]
-							}
+					var data, algorithm, comment string
+					data, algorithm = parts[0], parts[1]
+					if len(parts) == 3 {
+						comment = parts[2]
+					}
 
-							return tea.Sequence(popup.Close(), func() tea.Msg { return createMsgImportResult{data, algorithm, comment} })
-						}),
-					), 50, 20)),
+					return tea.Sequence(popup.Close(), func() tea.Msg { return createMsgImportResult{data, algorithm, comment} })
+				}),
+			), 50, 20,
 			), form.ActionNone
 		}))),
 		form.WithRowItem[createFormData]("data", formelement.NewText("Data", "public key content")),
