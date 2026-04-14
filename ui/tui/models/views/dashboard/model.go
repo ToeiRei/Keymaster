@@ -4,6 +4,8 @@
 package dashboard
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -16,9 +18,12 @@ import (
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
+type Data = core.DashboardData
+
 type Model struct {
-	data   core.DashboardData
-	err    error
+	data Data
+	err  error
+
 	client client.Client
 	size   util.Size
 }
@@ -30,31 +35,20 @@ func New(c client.Client) *Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.reload()
 }
 
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	if m.size.UpdateFromMsg(msg) {
 		return nil
 	}
-	// wont work until db can be constructed... mock for now
-	m.data = core.DashboardData{
-		AccountCount:       69,
-		ActiveAccountCount: 420,
-		HostsUpToDate:      67,
-		HostsOutdated:      0,
-		SystemKeySerial:    9001,
-		RecentLogs: []model.AuditLogEntry{
-			{
-				ID:        1,
-				Timestamp: "2026.01.01",
-				Username:  "rei",
-				Action:    "eat",
-				Details:   "nothing",
-			},
-		},
+
+	switch msg := msg.(type) {
+	case msgReloadResult:
+		m.data = msg.data
+		m.err = msg.err
 	}
-	m.err = nil
+
 	return nil
 }
 
@@ -83,9 +77,31 @@ func (m Model) View() string {
 	}
 }
 
-func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd { return util.AnnounceKeyMapCmd(parentKeyMap) }
+func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+	return tea.Batch(
+		m.reload(),
+		util.AnnounceKeyMapCmd(parentKeyMap),
+	)
+}
 
 func (m *Model) Blur() {}
 
 // *[Model] implements [util.Model]
 var _ util.Model = (*Model)(nil)
+
+func (m *Model) reload() tea.Cmd {
+	return func() tea.Msg {
+		// TODO implement dashboard data loader
+		accounts, err1 := m.client.GetAccounts(context.Background())
+		accountsDirty, err2 := m.client.GetDirtyAccounts(context.Background())
+		_ = accountsDirty
+		// _, _ := m.client.GetAccounts(context.Background())
+
+		return msgReloadResult{
+			data: Data{
+				AccountCount: len(accounts),
+			},
+			err: errors.Join(err1, err2),
+		}
+	}
+}
