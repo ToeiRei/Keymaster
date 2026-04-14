@@ -53,6 +53,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m Model) View() string {
+	// TODO make it look fancy
 	if m.err != nil {
 		return fmt.Sprintf(
 			"Error Loading Dashboard data:\n%s",
