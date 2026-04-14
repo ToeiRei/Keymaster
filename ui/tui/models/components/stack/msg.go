@@ -11,11 +11,11 @@ import (
 
 type MsgFilter = func(model util.Model, msg tea.Msg) tea.Msg
 
-func applyMessageFilters(model util.Model, msg tea.Msg, msg_filters []MsgFilter) tea.Msg {
-	return slicest.ReduceD(msg_filters, msg, func(msg_filter MsgFilter, msg tea.Msg) tea.Msg {
+func applyMessageFilters(model util.Model, msg tea.Msg, msgFilters []MsgFilter) tea.Msg {
+	return slicest.ReduceD(msgFilters, msg, func(msgFilter MsgFilter, msg tea.Msg) tea.Msg {
 		if msg == nil {
 			return nil
 		}
-		return msg_filter(model, msg)
+		return msgFilter(model, msg)
 	})
 }
