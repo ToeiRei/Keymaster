@@ -159,10 +159,10 @@ func (m *ListModel) View() string {
 }
 
 // Focus implements util.Model.
-func (m *ListModel) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+func (m *ListModel) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focussed = true
 	m.table.Focus()
-	return util.AnnounceKeyMapCmd(baseKeyMap, ListBaseKeyMap)
+	return util.AnnounceKeyMapCmd(parentKeyMap, ListBaseKeyMap)
 }
 
 // Blur implements util.Model.

@@ -117,6 +117,12 @@ func Submit() key.Binding {
 		key.WithHelp("enter", "submit"),
 	)
 }
+func Save() key.Binding {
+	return key.NewBinding(
+		key.WithKeys("ctrl+s"),
+		key.WithHelp("ctrl+s", "save"),
+	)
+}
 func Cancel() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("esc"),

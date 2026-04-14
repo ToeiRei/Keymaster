@@ -81,9 +81,9 @@ func (m Model) View() string {
 		Render(m.view())
 }
 
-func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focused = true
-	return util.AnnounceKeyMapCmd(baseKeyMap, DefaultKeyMap)
+	return util.AnnounceKeyMapCmd(parentKeyMap , DefaultKeyMap)
 }
 func (m *Model) Blur() {
 	m.focused = false

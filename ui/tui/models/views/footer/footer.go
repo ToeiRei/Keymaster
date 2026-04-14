@@ -12,14 +12,14 @@ import (
 )
 
 type Model struct {
-	baseKeyMap help.KeyMap
+	parentKeyMap  help.KeyMap
 	size       util.Size
 	help       *keyhelp.Model
 }
 
-func New(baseKeyMap help.KeyMap) *Model {
+func New(parentKeyMap  help.KeyMap) *Model {
 	return &Model{
-		baseKeyMap: baseKeyMap,
+		parentKeyMap : parentKeyMap ,
 		help:       keyhelp.New(),
 		// TODO implement and add status component
 	}
@@ -30,10 +30,10 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
-	// catch AnnounceFocusMsg and inject baseKeyMap
+	// catch AnnounceFocusMsg and inject parentKeyMap 
 	if msg, ok := msg.(util.AnnounceKeyMapMsg); ok {
 		return (*m.help).Update(util.AnnounceKeyMapMsg{
-			KeyMap: util.MergeKeyMaps(msg.KeyMap, m.baseKeyMap),
+			KeyMap: util.MergeKeyMaps(msg.KeyMap, m.parentKeyMap ),
 		})
 	}
 
@@ -62,8 +62,8 @@ func (m Model) View() string {
 		))
 }
 
-func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
-	return m.help.Focus(baseKeyMap)
+func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+	return m.help.Focus(parentKeyMap )
 }
 
 func (m *Model) Blur() {

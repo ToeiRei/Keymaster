@@ -38,8 +38,8 @@ func (m Model) View() string {
 	return "basically nothing to see here"
 }
 
-func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
-	return util.AnnounceKeyMapCmd(baseKeyMap, DefaultKeyMap)
+func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+	return util.AnnounceKeyMapCmd(parentKeyMap , DefaultKeyMap)
 }
 
 func (m *Model) Blur() {}

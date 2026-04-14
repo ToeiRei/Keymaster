@@ -14,17 +14,21 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
+// *[Button] implements [form.FormElement]
+var _ form.FormElement = (*Button)(nil)
+
 type Button struct {
 	Label    string
 	Disabled bool
 	KeyMap   ButtonKeyMap
-	OnClick  func() (tea.Cmd, form.Action)
+	Action   func() (tea.Cmd, form.Action)
 
 	DisabledStyle lipgloss.Style
 	BlurredStyle  lipgloss.Style
 	FocusedStyle  lipgloss.Style
 
-	focused bool
+	globalKeyBindings form.GlobalKeyMap
+	focused           bool
 }
 
 type ButtonKeyMap struct {
@@ -42,19 +46,23 @@ func WithButtonDisabled() ButtonOpt {
 }
 
 func WithButtonActionSubmit() ButtonOpt {
-	return func(button *Button) { button.OnClick = func() (tea.Cmd, form.Action) { return nil, form.ActionSubmit } }
+	return func(button *Button) { button.Action = func() (tea.Cmd, form.Action) { return nil, form.ActionSubmit } }
 }
 
 func WithButtonActionCancel() ButtonOpt {
-	return func(button *Button) { button.OnClick = func() (tea.Cmd, form.Action) { return nil, form.ActionCancel } }
+	return func(button *Button) { button.Action = func() (tea.Cmd, form.Action) { return nil, form.ActionCancel } }
 }
 
 func WithButtonActionReset() ButtonOpt {
-	return func(button *Button) { button.OnClick = func() (tea.Cmd, form.Action) { return nil, form.ActionReset } }
+	return func(button *Button) { button.Action = func() (tea.Cmd, form.Action) { return nil, form.ActionReset } }
 }
 
-func WithButtonAction(fn func() (tea.Cmd, form.Action)) ButtonOpt {
-	return func(button *Button) { button.OnClick = fn }
+func WithButtonAction(action func() (tea.Cmd, form.Action)) ButtonOpt {
+	return func(button *Button) { button.Action = action }
+}
+
+func WithButtonGlobalKeyBindings(bindings ...key.Binding) ButtonOpt {
+	return func(button *Button) { button.globalKeyBindings = append(button.globalKeyBindings, bindings...) }
 }
 
 func NewButton(label string, opts ...ButtonOpt) form.FormElement {
@@ -87,38 +95,11 @@ func NewButton(label string, opts ...ButtonOpt) form.FormElement {
 		opt(button)
 	}
 	return button
-
-	// return &Button{
-	// 	Label: label,
-	// 	KeyMap: ButtonKeyMap{
-	// 		Click: key.NewBinding(
-	// 			key.WithKeys("enter"),
-	// 			key.WithHelp("enter", strings.ToLower(label)),
-	// 		),
-	// 	},
-	// 	OnClick: onClick,
-	// 	DisabledStyle: lipgloss.NewStyle().
-	// 		Padding(0, 2).
-	// 		Border(lipgloss.RoundedBorder()).
-	// 		BorderForeground(lipgloss.Color("240")).
-	// 		Foreground(lipgloss.Color("240")),
-	// 	BlurredStyle: lipgloss.NewStyle().
-	// 		Padding(0, 2).
-	// 		Border(lipgloss.RoundedBorder()).
-	// 		BorderForeground(lipgloss.Color("240")).
-	// 		Foreground(lipgloss.Color("240")),
-	// 	FocusedStyle: lipgloss.NewStyle().
-	// 		Padding(0, 2).
-	// 		Border(lipgloss.RoundedBorder()).
-	// 		BorderForeground(lipgloss.Color("205")).
-	// 		Foreground(lipgloss.Color("240")).
-	// 		Bold(true),
-	// }
 }
 
-func (b *Button) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+func (b *Button) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	b.focused = true
-	return util.AnnounceKeyMapCmd(baseKeyMap, b.KeyMap)
+	return util.AnnounceKeyMapCmd(parentKeyMap, b.KeyMap)
 }
 
 func (b *Button) Blur() {
@@ -126,8 +107,12 @@ func (b *Button) Blur() {
 }
 
 func (b *Button) Update(msg tea.Msg) (tea.Cmd, form.Action) {
-	if msg, ok := msg.(tea.KeyMsg); ok && !b.Disabled && key.Matches(msg, b.KeyMap.Click) && b.OnClick != nil {
-		return b.OnClick()
+	// msg is KeyMsg
+	// not disabled
+	// key matches click or global binding
+	// OnClick not nil
+	if msg, ok := msg.(tea.KeyMsg); ok && !b.Disabled && (key.Matches(msg, b.KeyMap.Click) || key.Matches(msg, b.globalKeyBindings...)) && b.Action != nil {
+		return b.Action()
 	}
 	return nil, form.ActionNone
 }
@@ -146,10 +131,11 @@ func (b *Button) Focusable() bool {
 	return !b.Disabled
 }
 
-// not needed
-func (b *Button) Get() any      { return nil }
-func (b *Button) Init() tea.Cmd { return nil }
-func (b *Button) Reset()        {}
-func (b *Button) Set(any)       {}
+func (b *Button) Init() (tea.Cmd, form.GlobalKeyMap) {
+	return nil, b.globalKeyBindings
+}
 
-var _ form.FormElement = (*Button)(nil)
+// not needed
+func (b *Button) Get() any { return nil }
+func (b *Button) Reset()   {}
+func (b *Button) Set(any)  {}

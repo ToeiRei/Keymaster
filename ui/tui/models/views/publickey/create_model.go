@@ -17,6 +17,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 type createFormData struct {
@@ -59,7 +60,10 @@ func (m *CreateModel) Init() tea.Cmd {
 			return popupviews.OpenForm(form.New(
 				form.WithRowItem[createFormImport]("key", formelement.NewText("", "")),
 				form.WithRow(
-					form.WithItem[createFormImport]("_cancel", formelement.NewButton("Cancel", formelement.WithButtonActionCancel())),
+					form.WithItem[createFormImport]("_cancel", formelement.NewButton("Cancel",
+						formelement.WithButtonActionCancel(),
+						formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
+					)),
 					form.WithItem[createFormImport]("_import", formelement.NewButton("Import", formelement.WithButtonActionSubmit())),
 				),
 				form.WithOnCancel[createFormImport](func() tea.Cmd { return popup.Close() }),
@@ -101,9 +105,17 @@ func (m *CreateModel) Init() tea.Cmd {
 		form.WithRowItem[createFormData]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
 		form.WithRowItem[createFormData]("tags", formelement.NewText("Tags", "comma seperated list of tags")),
 		form.WithRow(
-			form.WithItem[createFormData]("_reset", formelement.NewButton("Reset", formelement.WithButtonActionReset())),
-			form.WithItem[createFormData]("_cancel", formelement.NewButton("Cancel", formelement.WithButtonActionCancel())),
-			form.WithItem[createFormData]("_save", formelement.NewButton("Save", formelement.WithButtonActionSubmit())),
+			form.WithItem[createFormData]("_reset", formelement.NewButton("Reset",
+				formelement.WithButtonActionReset(),
+			)),
+			form.WithItem[createFormData]("_cancel", formelement.NewButton("Cancel",
+				formelement.WithButtonActionCancel(),
+				formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
+			)),
+			form.WithItem[createFormData]("_save", formelement.NewButton("Save",
+				formelement.WithButtonActionSubmit(),
+				formelement.WithButtonGlobalKeyBindings(keys.Save()),
+			)),
 		),
 		form.WithOnSubmit(func(result createFormData, err error) tea.Cmd {
 			m.locked = util.NewPointer("Creating PublicKey...")
@@ -129,7 +141,7 @@ func (m *CreateModel) Init() tea.Cmd {
 		}),
 	))
 
-	return nil
+	return m.form.Init()
 }
 
 // Update implements util.Model.
@@ -189,9 +201,9 @@ func (m *CreateModel) View() string {
 }
 
 // Focus implements util.Model.
-func (m *CreateModel) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+func (m *CreateModel) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focussed = true
-	return m.form.Focus(baseKeyMap)
+	return m.form.Focus(parentKeyMap)
 }
 
 // Blur implements util.Model.

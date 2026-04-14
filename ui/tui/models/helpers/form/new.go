@@ -94,6 +94,6 @@ func WithAlign[T any](align RowAlign) RowOpt[T] {
 func WithItem[T any](id string, element FormElement) RowOpt[T] {
 	return func(form *Form[T], row *row) {
 		row.items = append(row.items, len(form.items))
-		form.items = append(form.items, Item{id, element})
+		form.items = append(form.items, Item{id, element, nil})
 	}
 }

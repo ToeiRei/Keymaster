@@ -13,6 +13,9 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
+// *[Text] implements [form.FormElement]
+var _ form.FormElement = (*Text)(nil)
+
 type Text struct {
 	Label       string
 	Placeholder string
@@ -45,11 +48,11 @@ func NewText(label, placeholder string) form.FormElement {
 	}
 }
 
-func (t *Text) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+func (t *Text) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	t.focused = true
 	return tea.Batch(
 		t.input.Focus(),
-		util.AnnounceKeyMapCmd(baseKeyMap, t.KeyMap),
+		util.AnnounceKeyMapCmd(parentKeyMap , t.KeyMap),
 	)
 }
 
@@ -62,8 +65,8 @@ func (t *Text) Get() any {
 	return t.input.Value()
 }
 
-func (t *Text) Init() tea.Cmd {
-	return nil
+func (t *Text) Init() (tea.Cmd, form.GlobalKeyMap) {
+	return nil, nil
 }
 
 func (t *Text) Reset() {

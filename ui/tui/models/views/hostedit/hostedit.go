@@ -31,7 +31,7 @@ func (m *Model) View() string {
 }
 
 // Focus implements util.Model.
-func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	panic("unimplemented")
 }
 

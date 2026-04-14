@@ -9,6 +9,9 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 )
 
+// *[Label] implements [form.FormElement]
+var _ form.FormElement = (*Label)(nil)
+
 type Label struct {
 	Text string
 }
@@ -27,11 +30,11 @@ func (b *Label) Focusable() bool {
 
 // not needed
 func (b *Label) Get() any                                  { return nil }
-func (b *Label) Init() tea.Cmd                             { return nil }
+func (b *Label) Init() (tea.Cmd, form.GlobalKeyMap)        { return nil, nil }
 func (b *Label) Update(msg tea.Msg) (tea.Cmd, form.Action) { return nil, form.ActionNone }
 func (b *Label) Reset()                                    {}
 func (b *Label) Set(any)                                   {}
-func (b *Label) Focus(baseKeyMap help.KeyMap) tea.Cmd      { return nil }
+func (b *Label) Focus(parentKeyMap help.KeyMap) tea.Cmd      { return nil }
 func (b *Label) Blur()                                     {}
 
 var _ form.FormElement = (*Label)(nil)

@@ -84,8 +84,8 @@ func (m MessageModel) View() string {
 	// return m.form.View()
 }
 
-func (m *MessageModel) Focus(baseKeyMap help.KeyMap) tea.Cmd {
-	return m.form.Focus(baseKeyMap)
+func (m *MessageModel) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+	return m.form.Focus(parentKeyMap )
 }
 func (m *MessageModel) Blur() {
 	m.form.Blur()

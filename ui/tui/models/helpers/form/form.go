@@ -31,17 +31,19 @@ var rowAlignments = map[RowAlign]lipgloss.Position{
 type FormElement interface {
 	util.Focusable
 	Reset()
-	Init() tea.Cmd
+	Init() (tea.Cmd, GlobalKeyMap)
 	Update(msg tea.Msg) (tea.Cmd, Action)
 	Set(any)
 	Get() any
 	View(width int) string
 	Focusable() bool
+	// GlobalKeyMap() GlobalKeyMap
 }
 
 type Item struct {
-	Id      string
-	Element FormElement
+	Id           string
+	Element      FormElement
+	globalKeyMap GlobalKeyMap
 }
 
 type row struct {
@@ -55,17 +57,19 @@ type Form[T any] struct {
 	OnReset          func() tea.Cmd
 	ResetAfterSubmit bool
 
-	items       []Item
-	rows        []row
-	activeIndex int
-	focused     bool
-	baseKeyMap  help.KeyMap
-	size        util.Size
+	items        []Item
+	rows         []row
+	activeIndex  int
+	focused      bool
+	parentKeyMap help.KeyMap
+	size         util.Size
 }
 
 func (f Form[T]) Init() tea.Cmd {
-	return tea.Batch(slicest.Map(f.items, func(item Item) tea.Cmd {
-		return item.Element.Init()
+	return tea.Batch(slicest.MapI(f.items, func(i int, item Item) tea.Cmd {
+		var cmd tea.Cmd
+		cmd, f.items[i].globalKeyMap = item.Element.Init()
+		return cmd
 	})...)
 }
 
@@ -76,18 +80,26 @@ func (f *Form[T]) Update(msg tea.Msg) tea.Cmd {
 	}
 
 	if f.focused {
-		// handle key updates for form
+		// handle key msgs
 		if kmsg, ok := msg.(tea.KeyMsg); ok {
+			// handle key updates for form
 			switch {
 			case key.Matches(kmsg, DefaultKeyMap.Next):
 				return f.changeActiveIndex(1)
 			case key.Matches(kmsg, DefaultKeyMap.Prev):
 				return f.changeActiveIndex(-1)
 			}
+
+			// handle global keymaps
+			for i, item := range f.items {
+				if key.Matches(kmsg, item.globalKeyMap...) {
+					return f.updateElement(i, kmsg)
+				}
+			}
 		}
 
 		// pass msg to active input
-		return f.updateActiveInput(msg)
+		return f.updateElement(f.activeIndex, msg)
 	}
 
 	return nil
@@ -108,21 +120,31 @@ func (f Form[T]) View() string {
 	)
 }
 
-// *[Model] implements [util.Focusable]
-var _ util.Model = (*Form[any])(nil) // Update with self return
+// *[Model] implements [util.Model]
+var _ util.Model = (*Form[any])(nil)
 
-func (f *Form[T]) Focus(baseKeyMap help.KeyMap) tea.Cmd {
-	f.focused, f.baseKeyMap = true, baseKeyMap
-	return f.items[f.activeIndex].Element.Focus(util.MergeKeyMaps(f.baseKeyMap, DefaultKeyMap))
+func (f *Form[T]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+	f.focused, f.parentKeyMap = true, parentKeyMap
+	return f.items[f.activeIndex].Element.Focus(f.keymap())
 }
 
 func (f *Form[T]) Blur() {
-	f.focused, f.baseKeyMap = false, nil
+	f.focused, f.parentKeyMap = false, nil
 	f.items[f.activeIndex].Element.Blur()
 }
 
 // *[Model] implements [util.Focusable]
 var _ util.Focusable = (*Form[any])(nil)
+
+func (f *Form[T]) keymap() help.KeyMap {
+	return util.MergeKeyMaps(
+		f.parentKeyMap,
+		DefaultKeyMap,
+		slicest.Reduce(f.items, func(item Item, km GlobalKeyMap) GlobalKeyMap {
+			return append(km, item.globalKeyMap...)
+		}),
+	)
+}
 
 func (f *Form[T]) Reset() tea.Cmd {
 	for _, item := range f.items {
@@ -163,14 +185,10 @@ func (f *Form[T]) Cancel() tea.Cmd {
 	return nil
 }
 
-func (f *Form[T]) updateActiveInput(msg tea.Msg) tea.Cmd {
-	var (
-		updateCmd tea.Cmd
-		actionCmd tea.Cmd
-		action    Action
-	)
+func (f *Form[T]) updateElement(index int, msg tea.Msg) tea.Cmd {
+	var actionCmd tea.Cmd
 
-	updateCmd, action = f.items[f.activeIndex].Element.Update(msg)
+	updateCmd, action := f.items[index].Element.Update(msg)
 
 	switch action {
 	case ActionNone:
@@ -231,7 +249,7 @@ func (f *Form[T]) changeActiveIndex(index_delta int) tea.Cmd {
 	// 	f.items[oldActiveIndex].input.Blur()
 	// }
 
-	return f.items[f.activeIndex].Element.Focus(util.MergeKeyMaps(f.baseKeyMap, DefaultKeyMap))
+	return f.items[f.activeIndex].Element.Focus(f.keymap())
 }
 
 func (f *Form[T]) Get() (T, error) {

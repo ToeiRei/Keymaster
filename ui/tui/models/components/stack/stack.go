@@ -35,7 +35,7 @@ type Model struct {
 	items         []Item
 	size          util.Size
 	focussedIndex int
-	baseKeyMap    help.KeyMap
+	parentKeyMap  help.KeyMap
 }
 
 type Item struct {
@@ -124,8 +124,8 @@ func (s Model) View() string {
 	)
 }
 
-func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
-	m.baseKeyMap = baseKeyMap
+func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+	m.parentKeyMap = parentKeyMap
 	// if m.focussedIndex == Focus(-1) {
 	// 	cmds := make([]tea.Cmd, len(m.items))
 	// 	keyMaps := make([]help.KeyMap, len(m.items))
@@ -136,7 +136,7 @@ func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
 
 	// 	return tea.Batch(cmds...), util.MergeKeyMaps(keyMaps...)
 	// } else {
-	return (*m.items[m.focussedIndex].Model).Focus(baseKeyMap)
+	return (*m.items[m.focussedIndex].Model).Focus(parentKeyMap)
 	// }
 }
 
@@ -163,5 +163,5 @@ func (m *Model) SetFocus(index int) tea.Cmd {
 	// blur old index and focus new one
 	m.Blur()
 	m.focussedIndex = newIndex
-	return m.Focus(m.baseKeyMap)
+	return m.Focus(m.parentKeyMap)
 }

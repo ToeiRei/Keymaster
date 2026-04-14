@@ -15,6 +15,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 type editFormData struct {
@@ -54,9 +55,17 @@ func (m *EditModel) Init() tea.Cmd {
 			form.WithItem[editFormData]("tags", formelement.NewText("Tags", "comma seperated list of tags")),
 		),
 		form.WithRow(
-			form.WithItem[editFormData]("_reset", formelement.NewButton("Reset", formelement.WithButtonActionReset())),
-			form.WithItem[editFormData]("_cancel", formelement.NewButton("Cancel", formelement.WithButtonActionCancel())),
-			form.WithItem[editFormData]("_save", formelement.NewButton("Save", formelement.WithButtonActionSubmit())),
+			form.WithItem[editFormData]("_reset", formelement.NewButton("Reset",
+				formelement.WithButtonActionReset(),
+			)),
+			form.WithItem[editFormData]("_cancel", formelement.NewButton("Cancel",
+				formelement.WithButtonActionCancel(),
+				formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
+			)),
+			form.WithItem[editFormData]("_save", formelement.NewButton("Save",
+				formelement.WithButtonActionSubmit(),
+				formelement.WithButtonGlobalKeyBindings(keys.Save()),
+			)),
 		),
 		form.WithOnSubmit(func(result editFormData, err error) tea.Cmd {
 			m.locked = util.NewPointer("Updating PublicKey...")
@@ -86,7 +95,7 @@ func (m *EditModel) Init() tea.Cmd {
 		}),
 	))
 
-	return m.load()
+	return tea.Sequence(m.form.Init(), m.load())
 }
 
 // Update implements util.Model.
@@ -147,9 +156,9 @@ func (m *EditModel) View() string {
 }
 
 // Focus implements util.Model.
-func (m *EditModel) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+func (m *EditModel) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focussed = true
-	return m.form.Focus(baseKeyMap)
+	return m.form.Focus(parentKeyMap)
 }
 
 // Blur implements util.Model.

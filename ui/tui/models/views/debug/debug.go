@@ -42,9 +42,9 @@ func (m Model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
 }
 
-func (m *Model) Focus(baseKeyMap help.KeyMap) tea.Cmd {
+func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.msgs = append(m.msgs, tea.Msg("i got focussed bitch!"))
-	return util.AnnounceKeyMapCmd(baseKeyMap)
+	return util.AnnounceKeyMapCmd(parentKeyMap )
 }
 
 func (m *Model) Blur() {

@@ -27,7 +27,7 @@ type Injector struct {
 	child      *util.Model
 	popups     []popup
 	size       util.Size
-	baseKeyMap help.KeyMap
+	parentKeyMap  help.KeyMap
 }
 
 func NewInjector(child *util.Model) *Injector {
@@ -109,9 +109,9 @@ func (m Injector) View() string {
 	return m.applyView(childView, popupView)
 }
 
-func (m *Injector) Focus(baseKeyMap help.KeyMap) tea.Cmd {
-	m.baseKeyMap = baseKeyMap
-	return (*m.activeModel()).Focus(baseKeyMap)
+func (m *Injector) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+	m.parentKeyMap  = parentKeyMap 
+	return (*m.activeModel()).Focus(parentKeyMap )
 }
 func (m *Injector) Blur() {
 	(*m.activeModel()).Blur()
@@ -158,7 +158,7 @@ func (m *Injector) activeModel() *util.Model {
 	}
 }
 func (m *Injector) focusActiveModel() tea.Cmd {
-	return m.Focus(m.baseKeyMap)
+	return m.Focus(m.parentKeyMap )
 }
 func (m *Injector) blurActiveModel() {
 	m.Blur()
