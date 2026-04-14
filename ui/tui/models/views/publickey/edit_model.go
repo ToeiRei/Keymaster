@@ -5,9 +5,7 @@ package publickey
 
 import (
 	"context"
-	"strings"
 
-	"github.com/bobg/go-generics/v4/slices"
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
@@ -74,13 +72,7 @@ func (m *EditModel) Init() tea.Cmd {
 					context.Background(),
 					m.publicKeyId,
 					result.Comment,
-					slices.Filter( // remove empty user provided tags
-						slices.Map( // trim user provided tags
-							strings.Split(result.Tags, ","), // split user provided tags
-							func(tag string) string { return strings.TrimSpace(tag) },
-						),
-						func(tag string) bool { return tag != "" },
-					),
+					parseTags(result.Tags),
 				)
 
 				return editMsgUpdateResult{err}
@@ -132,16 +124,8 @@ func (m *EditModel) Update(msg tea.Msg) tea.Cmd {
 		if !m.focussed || m.locked != nil {
 			return nil
 		}
-		switch {
-		// case key.Matches(msg, ListBaseKeyMap.Edit):
-		// 	// TODO replace mock with open edit page
-		// 	return m.rc.Push(util.ModelPointer(NewList(m.client, m.rc)))
-
-		default:
-			// pass key msg to form
-			return m.form.Update(msg)
-		}
-
+		// pass key msg to form
+		return m.form.Update(msg)
 	}
 
 	return nil
@@ -181,6 +165,6 @@ func (m *EditModel) load() tea.Cmd {
 func (m *EditModel) refreshForm() error {
 	return m.form.Set(editFormData{
 		m.publicKey.Comment,
-		strings.Join(m.publicKey.Tags, ", "),
+		stringifyTags(m.publicKey.Tags),
 	})
 }

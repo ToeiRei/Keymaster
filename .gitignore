@@ -25,6 +25,7 @@ internal_db_coverage
 coverage
 coverage.out
 keymaster.exe
+__debug_bin*
 
 // CLIPBOARD.md is for tracking local tasks and should not be committed
 CLIPBOARD.md

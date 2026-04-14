@@ -142,6 +142,12 @@ func Edit() key.Binding {
 		key.WithHelp("e/enter", "edit"),
 	)
 }
+func Duplicate() key.Binding {
+	return key.NewBinding(
+		key.WithKeys("d"),
+		key.WithHelp("d", "duplicate"),
+	)
+}
 func Delete() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("delete"),

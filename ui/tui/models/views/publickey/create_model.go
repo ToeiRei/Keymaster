@@ -7,7 +7,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/bobg/go-generics/v4/slices"
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
@@ -36,6 +35,7 @@ type CreateModel struct {
 	publicKey client.PublicKey
 	locked    *string
 	focussed  bool
+	preset    *createFormData
 
 	// util
 	client client.Client
@@ -46,10 +46,11 @@ type CreateModel struct {
 	form *form.Form[createFormData]
 }
 
-func NewCreate(c client.Client, rc router.Controll) *CreateModel {
+func NewCreate(c client.Client, rc router.Controll, preset *createFormData) *CreateModel {
 	return &CreateModel{
 		client: c,
 		rc:     rc,
+		preset: preset,
 	}
 }
 
@@ -124,13 +125,7 @@ func (m *CreateModel) Init() tea.Cmd {
 					context.Background(),
 					result.Algorithm+" "+result.Data,
 					result.Comment,
-					slices.Filter( // remove empty user provided tags
-						slices.Map( // trim user provided tags
-							strings.Split(result.Tags, ","), // split user provided tags
-							func(tag string) string { return strings.TrimSpace(tag) },
-						),
-						func(tag string) bool { return tag != "" },
-					),
+					parseTags(result.Tags),
 				)
 
 				return createMsgCreateResult{publicKey.Id, err}
@@ -141,7 +136,13 @@ func (m *CreateModel) Init() tea.Cmd {
 		}),
 	))
 
-	return m.form.Init()
+	initCmd := m.form.Init()
+
+	if m.preset != nil {
+		_ = m.form.Set(*m.preset)
+	}
+
+	return initCmd
 }
 
 // Update implements util.Model.
@@ -177,16 +178,8 @@ func (m *CreateModel) Update(msg tea.Msg) tea.Cmd {
 		if !m.focussed || m.locked != nil {
 			return nil
 		}
-		switch {
-		// case key.Matches(msg, ListBaseKeyMap.Create):
-		// 	// TODO replace mock with open create page
-		// 	return m.rc.Push(util.ModelPointer(NewList(m.client, m.rc)))
-
-		default:
-			// pass key msg to form
-			return m.form.Update(msg)
-		}
-
+		// pass key msg to form
+		return m.form.Update(msg)
 	}
 
 	return nil

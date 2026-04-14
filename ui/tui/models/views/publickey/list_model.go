@@ -91,10 +91,7 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 		}
 		switch {
 		case key.Matches(msg, ListBaseKeyMap.Create):
-			return m.rc.Push(util.ModelPointer(NewCreate(
-				m.client,
-				m.rc,
-			)))
+			return m.rc.Push(util.ModelPointer(NewCreate(m.client, m.rc, nil)))
 
 		case key.Matches(msg, ListBaseKeyMap.Edit):
 			if m.table.Cursor() == -1 {
@@ -105,6 +102,13 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 				m.rc,
 				m.publicKeys[m.table.Cursor()].Id,
 			)))
+
+		case key.Matches(msg, ListBaseKeyMap.Duplicate):
+			if m.table.Cursor() == -1 {
+				return nil // TODO open popup with "please select a public key" text
+			}
+			publicKey := m.publicKeys[m.table.Cursor()]
+			return m.rc.Push(util.ModelPointer(NewCreate(m.client, m.rc, &createFormData{publicKey.Data, publicKey.Algorithm, publicKey.Comment, stringifyTags(publicKey.Tags)})))
 
 		case key.Matches(msg, ListBaseKeyMap.Delete):
 			publicKey := m.publicKeys[m.table.Cursor()]

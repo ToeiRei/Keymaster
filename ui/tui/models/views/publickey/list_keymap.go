@@ -20,22 +20,23 @@ type ListKeyMap struct {
 	GotoBottom   key.Binding
 	Create       key.Binding
 	Edit         key.Binding
+	Duplicate    key.Binding
 	Delete       key.Binding
 	Exit         key.Binding
 }
 
 func (km ListKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.LineUp, km.LineDown, km.Create, km.Edit, km.Delete, km.Exit}
+	return []key.Binding{km.LineUp, km.LineDown, km.Create, km.Edit, km.Duplicate, km.Delete, km.Exit}
 }
 
 func (km ListKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{km.LineUp, km.LineDown, km.PageUp, km.PageDown, km.HalfPageUp, km.HalfPageDown, km.GotoTop, km.GotoBottom},
-		{km.Create, km.Edit, km.Delete, km.Exit},
+		{km.Create, km.Edit, km.Duplicate, km.Delete, km.Exit},
 	}
 }
 
-// *[KeyMap] implements [help.KeyMap]
+// *[ListKeyMap] implements [help.KeyMap]
 var _ help.KeyMap = (*ListKeyMap)(nil)
 
 var ListBaseKeyMap = ListKeyMap{
@@ -49,6 +50,7 @@ var ListBaseKeyMap = ListKeyMap{
 	GotoBottom:   keys.GotoBottom(),
 	Create:       keys.Create(),
 	Edit:         keys.Edit(),
+	Duplicate:    keys.Duplicate(),
 	Delete:       keys.Delete(),
 	Exit:         keys.Exit(),
 }
