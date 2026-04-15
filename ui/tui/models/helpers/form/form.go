@@ -15,6 +15,10 @@ import (
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
+// TODO implement cancel saveguard, on unsaved changes
+// TODO implement dafault data
+// TODO implement optional reset to default data
+
 const (
 	Left RowAlign = iota
 	Right
