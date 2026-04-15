@@ -8,12 +8,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type FormOpt[T any] = func(form *Form[T])
+type FormOpt[T comparable] = func(form *Form[T])
 
-type RowOpt[T any] = func(form *Form[T], row *row)
+type RowOpt[T comparable] = func(form *Form[T], row *row)
 
-func New[T any](opts ...FormOpt[T]) Form[T] {
-	form := Form[T]{}
+func New[T comparable](opts ...FormOpt[T]) Form[T] {
+	form := Form[T]{resetToInitialData: true}
 	for _, opt := range opts {
 		opt(&form)
 	}
@@ -21,37 +21,52 @@ func New[T any](opts ...FormOpt[T]) Form[T] {
 	return form
 }
 
-func WithOnSubmit[T any](fn func(result T, err error) tea.Cmd) FormOpt[T] {
+func WithOnSubmit[T comparable](fn func(result T, err error) tea.Cmd) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.OnSubmit = fn
 	}
 }
 
-func WithOnCancel[T any](fn func() tea.Cmd) FormOpt[T] {
+func WithOnCancel[T comparable](fn func() tea.Cmd) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.OnCancel = fn
 	}
 }
 
-func WithOnReset[T any](fn func() tea.Cmd) FormOpt[T] {
+func WithOnReset[T comparable](fn func() tea.Cmd) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.OnReset = fn
 	}
 }
 
-func WithResetAfterSubmit[T any]() FormOpt[T] {
+func WithResetAfterSubmit[T comparable]() FormOpt[T] {
 	return func(form *Form[T]) {
 		form.ResetAfterSubmit = true
 	}
 }
 
-func WithFocusI[T any](i int) FormOpt[T] {
+func WithInitialData[T comparable](data T) FormOpt[T] {
+	return func(form *Form[T]) {
+		form.SetInitialData(data)
+	}
+}
+
+// If the guard returns a non nil value, the loss of data will be prevented.
+// Action will be [ActionReset] or [ActionCancel].
+// Send [ConfirmCancelMsg] or [ConfirmResetMsg] msg to confirm the intend.
+func WithDiscardGuard[T comparable](guard func(action Action) tea.Cmd) FormOpt[T] {
+	return func(form *Form[T]) {
+		form.DiscardGuard = guard
+	}
+}
+
+func WithFocusI[T comparable](i int) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.activeIndex = i
 	}
 }
 
-func WithFocus[T any](id string) FormOpt[T] {
+func WithFocus[T comparable](id string) FormOpt[T] {
 	return func(form *Form[T]) {
 		i := slices.IndexFunc(form.items, func(item Item) bool { return item.Id == id })
 		if i >= 0 {
@@ -60,7 +75,7 @@ func WithFocus[T any](id string) FormOpt[T] {
 	}
 }
 
-func WithRowItem[T any](id string, element FormElement, opts ...RowOpt[T]) FormOpt[T] {
+func WithRowItem[T comparable](id string, element FormElement, opts ...RowOpt[T]) FormOpt[T] {
 	_opts := make([]RowOpt[T], 1, len(opts)+1)
 	_opts[0] = WithItem[T](id, element)
 	_opts = append(_opts, opts...)
@@ -68,7 +83,7 @@ func WithRowItem[T any](id string, element FormElement, opts ...RowOpt[T]) FormO
 	return WithRow(_opts...)
 }
 
-func WithRow[T any](opts ...RowOpt[T]) FormOpt[T] {
+func WithRow[T comparable](opts ...RowOpt[T]) FormOpt[T] {
 	return func(form *Form[T]) {
 		row := row{align: Strech}
 		for _, opt := range opts {
@@ -79,11 +94,11 @@ func WithRow[T any](opts ...RowOpt[T]) FormOpt[T] {
 	}
 }
 
-func WithAlign[T any](align RowAlign) RowOpt[T] {
+func WithAlign[T comparable](align RowAlign) RowOpt[T] {
 	return func(form *Form[T], row *row) { row.align = align }
 }
 
-func WithItem[T any](id string, element FormElement) RowOpt[T] {
+func WithItem[T comparable](id string, element FormElement) RowOpt[T] {
 	return func(form *Form[T], row *row) {
 		row.items = append(row.items, len(form.items))
 		form.items = append(form.items, Item{id, element, nil})

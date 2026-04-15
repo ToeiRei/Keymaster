@@ -134,13 +134,14 @@ func (m *CreateModel) Init() tea.Cmd {
 		form.WithOnCancel[createFormData](func() tea.Cmd {
 			return m.rc.Pop(1)
 		}),
+		form.WithInitialData(util.DerefOrNullValue(m.preset)),
 	))
 
 	initCmd := m.form.Init()
 
-	if m.preset != nil {
-		_ = m.form.Set(*m.preset)
-	}
+	// if m.preset != nil {
+	// 	_ = m.form.Set(*m.preset)
+	// }
 
 	return initCmd
 }

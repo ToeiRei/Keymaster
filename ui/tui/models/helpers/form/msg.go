@@ -3,13 +3,5 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package form
 
-type Action int
-
-const (
-	ActionNone Action = iota
-	ActionNext
-	ActionPrev
-	ActionSubmit
-	ActionCancel
-	ActionReset
-)
+type ConfirmCancelMsg struct{}
+type ConfirmResetMsg struct{}

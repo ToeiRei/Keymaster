@@ -12,17 +12,17 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
-type FormModel[T any] struct {
+type FormModel[T comparable] struct {
 	form      form.Form[T]
 	innerSize util.Size
 	size      util.Size
 }
 
-func OpenForm[T any](form form.Form[T], width, height int) tea.Cmd {
+func OpenForm[T comparable](form form.Form[T], width, height int) tea.Cmd {
 	return popup.Open(util.ModelPointer(newForm(form, width, height)))
 }
 
-func newForm[T any](form form.Form[T], width, height int) *FormModel[T] {
+func newForm[T comparable](form form.Form[T], width, height int) *FormModel[T] {
 	return &FormModel[T]{
 		form: form,
 		innerSize: util.Size{

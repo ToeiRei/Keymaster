@@ -15,10 +15,6 @@ import (
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
-// TODO implement cancel saveguard, on unsaved changes
-// TODO implement dafault data
-// TODO implement optional reset to default data
-
 const (
 	Left RowAlign = iota
 	Right
@@ -44,7 +40,6 @@ type FormElement interface {
 	Get() any
 	View(width int, eager bool) string
 	Focusable() bool
-	// GlobalKeyMap() GlobalKeyMap
 }
 
 type Item struct {
@@ -58,21 +53,26 @@ type row struct {
 	align RowAlign
 }
 
-type Form[T any] struct {
+type Form[T comparable] struct {
 	OnSubmit         func(result T, err error) tea.Cmd
 	OnCancel         func() tea.Cmd
 	OnReset          func() tea.Cmd
+	DiscardGuard     func(action Action) tea.Cmd
 	ResetAfterSubmit bool
 
-	items        []Item
-	rows         []row
-	activeIndex  int
-	focused      bool
-	parentKeyMap help.KeyMap
-	size         util.Size
+	items              []Item
+	rows               []row
+	activeIndex        int
+	parentKeyMap       help.KeyMap
+	resetToInitialData bool
+	initialData        T
+	focused            bool
+	size               util.Size
 }
 
 func (f Form[T]) Init() tea.Cmd {
+	_ = f.Set(f.initialData)
+
 	return tea.Batch(slicest.MapI(f.items, func(i int, item Item) tea.Cmd {
 		var cmd tea.Cmd
 		cmd, f.items[i].globalKeyMap = item.Element.Init()
@@ -87,22 +87,29 @@ func (f *Form[T]) Update(msg tea.Msg) tea.Cmd {
 	}
 
 	if f.focused {
-		// handle key msgs
-		if kmsg, ok := msg.(tea.KeyMsg); ok {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
 			// handle key updates for form
 			switch {
-			case key.Matches(kmsg, DefaultKeyMap.Next):
+			case key.Matches(msg, DefaultKeyMap.Next):
 				return f.changeActiveIndex(1)
-			case key.Matches(kmsg, DefaultKeyMap.Prev):
+			case key.Matches(msg, DefaultKeyMap.Prev):
 				return f.changeActiveIndex(-1)
 			}
 
 			// handle global keymaps
 			for i, item := range f.items {
-				if key.Matches(kmsg, item.globalKeyMap...) {
-					return f.updateElement(i, kmsg)
+				if key.Matches(msg, item.globalKeyMap...) {
+					return f.updateElement(i, msg)
 				}
 			}
+
+			// pass remaining key msg to active input
+			return f.updateElement(f.activeIndex, msg)
+		case ConfirmCancelMsg:
+			return f.Cancel(true)
+		case ConfirmResetMsg:
+			return f.Reset(true)
 		}
 
 		// pass msg to active input
@@ -186,9 +193,47 @@ func (f *Form[T]) keymap() help.KeyMap {
 	)
 }
 
-func (f *Form[T]) Reset() tea.Cmd {
+func (f *Form[T]) Submit() tea.Cmd {
+	var onSubmitCmd tea.Cmd
+	if f.OnSubmit != nil {
+		data, err := f.Get()
+		onSubmitCmd = f.OnSubmit(data, err)
+	}
+
+	var resetCmd tea.Cmd
+	if f.ResetAfterSubmit {
+		resetCmd = f.Reset(true)
+	}
+
+	return tea.Sequence(onSubmitCmd, resetCmd)
+}
+
+func (f *Form[T]) Cancel(force bool) tea.Cmd {
+	if !force {
+		if cmd := f.guardUnsavedChanges(ActionCancel); cmd != nil {
+			return cmd
+		}
+	}
+
+	if f.OnCancel != nil {
+		return f.OnCancel()
+	}
+	return nil
+}
+
+func (f *Form[T]) Reset(force bool) tea.Cmd {
+	if !force {
+		if cmd := f.guardUnsavedChanges(ActionReset); cmd != nil {
+			return cmd
+		}
+	}
+
 	for _, item := range f.items {
 		item.Element.Reset()
+	}
+
+	if f.resetToInitialData {
+		_ = f.Set(f.initialData)
 	}
 
 	var onResetCmd tea.Cmd
@@ -203,24 +248,9 @@ func (f *Form[T]) Reset() tea.Cmd {
 	)
 }
 
-func (f *Form[T]) Submit() tea.Cmd {
-	var onSubmitCmd tea.Cmd
-	if f.OnSubmit != nil {
-		data, err := f.Get()
-		onSubmitCmd = f.OnSubmit(data, err)
-	}
-
-	var resetCmd tea.Cmd
-	if f.ResetAfterSubmit {
-		resetCmd = f.Reset()
-	}
-
-	return tea.Sequence(onSubmitCmd, resetCmd)
-}
-
-func (f *Form[T]) Cancel() tea.Cmd {
-	if f.OnCancel != nil {
-		return f.OnCancel()
+func (f *Form[T]) guardUnsavedChanges(action Action) tea.Cmd {
+	if data, _ := f.Get(); data != f.initialData && f.DiscardGuard != nil {
+		return f.DiscardGuard(action)
 	}
 	return nil
 }
@@ -239,9 +269,9 @@ func (f *Form[T]) updateElement(index int, msg tea.Msg) tea.Cmd {
 	case ActionSubmit:
 		actionCmd = f.Submit()
 	case ActionCancel:
-		actionCmd = f.Cancel()
+		actionCmd = f.Cancel(false)
 	case ActionReset:
-		actionCmd = f.Reset()
+		actionCmd = f.Reset(false)
 	}
 
 	return tea.Batch(updateCmd, actionCmd)
@@ -275,20 +305,6 @@ func (f *Form[T]) changeActiveIndex(index_delta int) tea.Cmd {
 	f.items[f.activeIndex].Element.Blur()
 	f.activeIndex = newActiveIndex
 
-	// if index_delta != 0 {
-	// 	oldActiveIndex := f.activeIndex
-	// 	f.activeIndex += index_delta
-
-	// 	if f.activeIndex > len(f.items)-1 {
-	// 		f.activeIndex = 0
-	// 	}
-	// 	if f.activeIndex < 0 {
-	// 		f.activeIndex = len(f.items) - 1
-	// 	}
-
-	// 	f.items[oldActiveIndex].input.Blur()
-	// }
-
 	return f.items[f.activeIndex].Element.Focus(f.keymap())
 }
 
@@ -318,6 +334,8 @@ func (f *Form[T]) Set(data T) error {
 
 	return nil
 }
+
+func (f *Form[T]) SetInitialData(data T) { f.initialData = data }
 
 func decode(input any, output any) error {
 	config := &mapstructure.DecoderConfig{
