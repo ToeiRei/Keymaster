@@ -4,6 +4,8 @@
 package form
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,7 +19,8 @@ const (
 	Left RowAlign = iota
 	Right
 	Center
-	// Strech
+	Strech
+	SpaceBetween
 )
 
 type RowAlign int
@@ -35,7 +38,7 @@ type FormElement interface {
 	Update(msg tea.Msg) (tea.Cmd, Action)
 	Set(any)
 	Get() any
-	View(width int) string
+	View(width int, eager bool) string
 	Focusable() bool
 	// GlobalKeyMap() GlobalKeyMap
 }
@@ -106,16 +109,49 @@ func (f *Form[T]) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (f Form[T]) View() string {
-	// TODO refine (this is only a basic implementation)
+	rowViews := func(rowIndex int, eager bool) []string {
+		availableWidth := f.size.Width
+		return slicest.MapI(f.rows[rowIndex].items, func(i int, itemIndex int) string {
+			width := availableWidth / (len(f.rows[rowIndex].items) - i)
+			availableWidth -= width
+			return f.items[itemIndex].Element.View(width, eager)
+		})
+	}
+
 	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		slicest.Map(f.rows, func(row row) string {
-			return lipgloss.JoinHorizontal(
-				lipgloss.Left,
-				slicest.Map(row.items, func(item_index int) string {
-					return f.items[item_index].Element.View(f.size.Width / len(row.items))
-				})...,
-			)
+		lipgloss.Left, // irrelevant
+		slicest.MapI(f.rows, func(rowIndex int, row row) string {
+			var views []string
+
+			switch row.align {
+			case Left, Right, Center, SpaceBetween:
+				views = rowViews(rowIndex, false)
+			case Strech:
+				views = rowViews(rowIndex, true)
+			}
+
+			switch row.align {
+			case Left, Right, Center:
+				return lipgloss.PlaceHorizontal(
+					f.size.Width,
+					rowAlignments[row.align],
+					lipgloss.JoinHorizontal(lipgloss.Top, views...),
+				)
+			case Strech, SpaceBetween:
+				viewsWidth := lipgloss.Width(lipgloss.JoinHorizontal(lipgloss.Top, views...))
+				remainingWidth := max(0, f.size.Width-viewsWidth)
+				spacedViews := make([]string, 0, (len(views)*2)-1)
+				for i, view := range views {
+					spacedViews = append(spacedViews, view)
+					if i < len(views)-1 {
+						spaceWidth := remainingWidth / (len(views) - i - 1)
+						remainingWidth -= spaceWidth
+						spacedViews = append(spacedViews, strings.Repeat(" ", spaceWidth))
+					}
+				}
+				return lipgloss.JoinHorizontal(lipgloss.Top, spacedViews...)
+			}
+			return ""
 		})...,
 	)
 }

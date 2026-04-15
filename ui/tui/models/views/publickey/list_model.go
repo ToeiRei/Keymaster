@@ -108,7 +108,7 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 				return nil // TODO open popup with "please select a public key" text
 			}
 			publicKey := m.publicKeys[m.table.Cursor()]
-			return m.rc.Push(util.ModelPointer(NewCreate(m.client, m.rc, &createFormData{publicKey.Data, publicKey.Algorithm, publicKey.Comment, stringifyTags(publicKey.Tags)})))
+			return m.rc.Push(util.ModelPointer(NewCreate(m.client, m.rc, &createFormData{publicKey.Data, publicKey.Algorithm, publicKey.Comment, tagsStringify(publicKey.Tags)})))
 
 		case key.Matches(msg, ListBaseKeyMap.Delete):
 			publicKey := m.publicKeys[m.table.Cursor()]

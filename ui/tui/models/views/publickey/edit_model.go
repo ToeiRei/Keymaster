@@ -72,7 +72,7 @@ func (m *EditModel) Init() tea.Cmd {
 					context.Background(),
 					m.publicKeyId,
 					result.Comment,
-					parseTags(result.Tags),
+					tagsParse(result.Tags),
 				)
 
 				return editMsgUpdateResult{err}
@@ -165,6 +165,6 @@ func (m *EditModel) load() tea.Cmd {
 func (m *EditModel) refreshForm() error {
 	return m.form.Set(editFormData{
 		m.publicKey.Comment,
-		stringifyTags(m.publicKey.Tags),
+		tagsStringify(m.publicKey.Tags),
 	})
 }

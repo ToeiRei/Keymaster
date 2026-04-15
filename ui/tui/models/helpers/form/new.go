@@ -68,17 +68,9 @@ func WithRowItem[T any](id string, element FormElement, opts ...RowOpt[T]) FormO
 	return WithRow(_opts...)
 }
 
-// func WithSingleElementRows[T any](opts ...RowOpt[T]) FormOpt[T] {
-// 	return func(form *Form[T]) {
-// 		for _, item := range items {
-// 			WithRow([]Item{item}, opts...)(form)
-// 		}
-// 	}
-// }
-
 func WithRow[T any](opts ...RowOpt[T]) FormOpt[T] {
 	return func(form *Form[T]) {
-		row := row{}
+		row := row{align: Strech}
 		for _, opt := range opts {
 			opt(form, &row)
 		}

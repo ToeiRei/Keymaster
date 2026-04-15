@@ -6,6 +6,7 @@ package formelement
 import (
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 )
 
@@ -20,21 +21,25 @@ func NewLabel(text string) form.FormElement {
 	return &Label{text}
 }
 
-func (b *Label) View(width int) string {
-	return b.Text
+func (l *Label) View(width int, eager bool) string {
+	style := lipgloss.NewStyle().MaxWidth(width - 2)
+	if eager {
+		style = style.Width(width - 2)
+	}
+	return style.Render(l.Text)
 }
 
-func (b *Label) Focusable() bool {
+func (l *Label) Focusable() bool {
 	return false
 }
 
 // not needed
-func (b *Label) Get() any                                  { return nil }
-func (b *Label) Init() (tea.Cmd, form.GlobalKeyMap)        { return nil, nil }
-func (b *Label) Update(msg tea.Msg) (tea.Cmd, form.Action) { return nil, form.ActionNone }
-func (b *Label) Reset()                                    {}
-func (b *Label) Set(any)                                   {}
-func (b *Label) Focus(parentKeyMap help.KeyMap) tea.Cmd      { return nil }
-func (b *Label) Blur()                                     {}
+func (l *Label) Get() any                                  { return nil }
+func (l *Label) Init() (tea.Cmd, form.GlobalKeyMap)        { return nil, nil }
+func (l *Label) Update(msg tea.Msg) (tea.Cmd, form.Action) { return nil, form.ActionNone }
+func (l *Label) Reset()                                    {}
+func (l *Label) Set(any)                                   {}
+func (l *Label) Focus(parentKeyMap help.KeyMap) tea.Cmd    { return nil }
+func (l *Label) Blur()                                     {}
 
 var _ form.FormElement = (*Label)(nil)

@@ -42,7 +42,7 @@ func (k *Keybind) Init() (tea.Cmd, form.GlobalKeyMap) {
 // not needed
 func (k *Keybind) Focus(parentKeyMap help.KeyMap) tea.Cmd { return nil }
 func (k *Keybind) Blur()                                  {}
-func (k *Keybind) View(width int) string                  { return "" }
+func (k *Keybind) View(width int, eager bool) string      { return "" }
 func (k *Keybind) Focusable() bool                        { return false }
 func (k *Keybind) Get() any                               { return nil }
 func (k *Keybind) Reset()                                 {}

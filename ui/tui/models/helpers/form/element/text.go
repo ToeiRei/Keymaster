@@ -52,7 +52,7 @@ func (t *Text) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	t.focused = true
 	return tea.Batch(
 		t.input.Focus(),
-		util.AnnounceKeyMapCmd(parentKeyMap , t.KeyMap),
+		util.AnnounceKeyMapCmd(parentKeyMap, t.KeyMap),
 	)
 }
 
@@ -89,26 +89,34 @@ func (t *Text) Update(msg tea.Msg) (tea.Cmd, form.Action) {
 	return cmd, form.ActionNone
 }
 
-func (t *Text) View(width int) string {
-	labelStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
-		Width(width)
+func (t *Text) View(width int, eager bool) string {
+	views := make([]string, 0, 2)
 
-	focusedStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("205")).
-		Bold(true)
-
-	label := t.Label
-	if t.focused {
-		label = focusedStyle.Render(label)
-	} else {
-		label = labelStyle.Render(label)
+	// render label
+	if t.Label != "" {
+		labelStyle := lipgloss.NewStyle().MaxWidth(width).Foreground(lipgloss.Color("240"))
+		if eager {
+			labelStyle = labelStyle.Width(width)
+		}
+		if t.focused {
+			labelStyle = labelStyle.Foreground(lipgloss.Color("205")).Bold(true)
+		}
+		views = append(views, labelStyle.Render(t.Label))
 	}
 
+	// render input
 	t.input.Width = width - 2
+	if !eager {
+		t.input.Width = min(t.input.Width, max(
+			len(t.Placeholder),
+			len(t.Label),
+			len(t.input.Value()),
+		))
+	}
 	t.input.Placeholder = t.Placeholder
+	views = append(views, t.input.View())
 
-	return lipgloss.JoinVertical(lipgloss.Left, label, t.input.View())
+	return lipgloss.JoinVertical(lipgloss.Left, views...)
 }
 
 func (t *Text) Focusable() bool {

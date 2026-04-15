@@ -9,7 +9,7 @@ import (
 	"github.com/bobg/go-generics/v4/slices"
 )
 
-func parseTags(tags string) []string {
+func tagsParse(tags string) []string {
 	return slices.Filter( // remove empty user provided tags
 		slices.Map( // trim user provided tags
 			strings.Split(tags, ","), // split user provided tags
@@ -19,6 +19,6 @@ func parseTags(tags string) []string {
 	)
 }
 
-func stringifyTags(tags []string) string {
+func tagsStringify(tags []string) string {
 	return strings.Join(tags, ", ")
 }

@@ -125,7 +125,7 @@ func (m *CreateModel) Init() tea.Cmd {
 					context.Background(),
 					result.Algorithm+" "+result.Data,
 					result.Comment,
-					parseTags(result.Tags),
+					tagsParse(result.Tags),
 				)
 
 				return createMsgCreateResult{publicKey.Id, err}

@@ -39,7 +39,7 @@ func New() *Model {
 	_, _ = client.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb", "69", []string{"user:somebodyelse", "company:evilgoogle"})
 
 	menuPtr := util.ModelPointer(menu.New(
-		menu.WithItem("dashboard", "Dashboard"),
+		// menu.WithItem("dashboard", "Dashboard"),
 		menu.WithItem("publickey.list", "Public Keys"),
 	))
 	dashboardPtr := util.ModelPointer(dashboard.New(client))

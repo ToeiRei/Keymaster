@@ -117,14 +117,24 @@ func (b *Button) Update(msg tea.Msg) (tea.Cmd, form.Action) {
 	return nil, form.ActionNone
 }
 
-func (b *Button) View(width int) string {
+func (b *Button) View(width int, eager bool) string {
+	var style lipgloss.Style
 	if b.Disabled {
-		return b.DisabledStyle.MaxWidth(width - 2).Render(b.Label)
+		style = b.DisabledStyle
 	} else if b.focused {
-		return b.FocusedStyle.MaxWidth(width - 2).Render(b.Label)
+		style = b.FocusedStyle
 	} else {
-		return b.BlurredStyle.MaxWidth(width - 2).Render(b.Label)
+		style = b.BlurredStyle
 	}
+
+	style = style.MaxWidth(width)
+	content := b.Label
+	if eager {
+		style = style.Width(width - 2)
+		content = lipgloss.PlaceHorizontal(width-6, lipgloss.Center, b.Label)
+	}
+
+	return style.Render(content)
 }
 
 func (b *Button) Focusable() bool {
