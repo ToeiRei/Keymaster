@@ -33,7 +33,7 @@ var _ help.KeyMap = (*KeyMap)(nil)
 var DefaultKeyMap = KeyMap{
 	Up:    keys.Up(),
 	Down:  keys.Down(),
-	Left:  keys.Left(),
-	Right: keys.Right(),
+	Left:  keys.LeftBack(),
+	Right: keys.RightOpen(),
 	Quit:  keys.Quit(),
 }

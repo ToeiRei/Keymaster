@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 // *[Button] implements [form.FormElement]
@@ -107,13 +108,20 @@ func (b *Button) Blur() {
 }
 
 func (b *Button) Update(msg tea.Msg) (tea.Cmd, form.Action) {
-	// msg is KeyMsg
-	// not disabled
-	// key matches click or global binding
-	// OnClick not nil
-	if msg, ok := msg.(tea.KeyMsg); ok && !b.Disabled && (key.Matches(msg, b.KeyMap.Click) || key.Matches(msg, b.globalKeyBindings...)) && b.Action != nil {
-		return b.Action()
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		switch {
+		// not disabled
+		// OnClick not nil
+		// key matches click or global binding
+		case !b.Disabled && b.Action != nil && (key.Matches(msg, b.KeyMap.Click) || key.Matches(msg, b.globalKeyBindings...)):
+			return b.Action()
+		case key.Matches(msg, keys.Down(), keys.Right()):
+			return nil, form.ActionNext
+		case key.Matches(msg, keys.Up(), keys.Left()):
+			return nil, form.ActionPrev
+		}
 	}
+
 	return nil, form.ActionNone
 }
 

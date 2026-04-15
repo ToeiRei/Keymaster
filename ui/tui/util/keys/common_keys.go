@@ -51,14 +51,27 @@ func Down() key.Binding {
 }
 func Left() key.Binding {
 	return key.NewBinding(
-		key.WithKeys("left", "backspace", "esc"),
-		key.WithHelp("←/esc", "back"),
+		key.WithKeys("left"),
+		key.WithHelp("←", "left"),
 	)
 }
 func Right() key.Binding {
 	return key.NewBinding(
+		key.WithKeys("right"),
+		key.WithHelp("→", "right"),
+	)
+}
+
+func LeftBack() key.Binding {
+	return key.NewBinding(
+		key.WithKeys("left", "backspace", "esc"),
+		key.WithHelp("←/esc", "back"),
+	)
+}
+func RightOpen() key.Binding {
+	return key.NewBinding(
 		key.WithKeys("right", "enter"),
-		key.WithHelp("→/enter", "select/open"),
+		key.WithHelp("→/enter", "open"),
 	)
 }
 
