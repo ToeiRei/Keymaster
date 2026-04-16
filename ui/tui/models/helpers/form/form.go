@@ -54,24 +54,24 @@ type row struct {
 }
 
 type Form[T comparable] struct {
-	OnSubmit         func(result T, err error) tea.Cmd
-	OnCancel         func() tea.Cmd
-	OnReset          func() tea.Cmd
-	DiscardGuard     func(action Action) tea.Cmd
-	ResetAfterSubmit bool
+	OnSubmit           func(result T, err error) tea.Cmd
+	OnCancel           func() tea.Cmd
+	OnReset            func() tea.Cmd
+	DiscardGuard       func(confirmCmd tea.Cmd) tea.Cmd
+	InitialData        T
+	ResetAfterSubmit   bool
+	ResetToInitialData bool
 
-	items              []Item
-	rows               []row
-	activeIndex        int
-	parentKeyMap       help.KeyMap
-	resetToInitialData bool
-	initialData        T
-	focused            bool
-	size               util.Size
+	items        []Item
+	rows         []row
+	activeIndex  int
+	parentKeyMap help.KeyMap
+	focused      bool
+	size         util.Size
 }
 
 func (f Form[T]) Init() tea.Cmd {
-	_ = f.Set(f.initialData)
+	_ = f.Set(f.InitialData)
 
 	return tea.Batch(slicest.MapI(f.items, func(i int, item Item) tea.Cmd {
 		var cmd tea.Cmd
@@ -106,10 +106,13 @@ func (f *Form[T]) Update(msg tea.Msg) tea.Cmd {
 
 			// pass remaining key msg to active input
 			return f.updateElement(f.activeIndex, msg)
-		case ConfirmCancelMsg:
-			return f.Cancel(true)
-		case ConfirmResetMsg:
-			return f.Reset(true)
+		case confirmDiscardMsg:
+			switch msg.action {
+			case ActionCancel:
+				return f.Cancel(true)
+			case ActionReset:
+				return f.Reset(true)
+			}
 		}
 
 		// pass msg to active input
@@ -232,8 +235,8 @@ func (f *Form[T]) Reset(force bool) tea.Cmd {
 		item.Element.Reset()
 	}
 
-	if f.resetToInitialData {
-		_ = f.Set(f.initialData)
+	if f.ResetToInitialData {
+		_ = f.Set(f.InitialData)
 	}
 
 	var onResetCmd tea.Cmd
@@ -249,8 +252,8 @@ func (f *Form[T]) Reset(force bool) tea.Cmd {
 }
 
 func (f *Form[T]) guardUnsavedChanges(action Action) tea.Cmd {
-	if data, _ := f.Get(); data != f.initialData && f.DiscardGuard != nil {
-		return f.DiscardGuard(action)
+	if data, _ := f.Get(); data != f.InitialData && f.DiscardGuard != nil {
+		return f.DiscardGuard(func() tea.Msg { return confirmDiscardMsg{action} })
 	}
 	return nil
 }
@@ -335,7 +338,7 @@ func (f *Form[T]) Set(data T) error {
 	return nil
 }
 
-func (f *Form[T]) SetInitialData(data T) { f.initialData = data }
+func (f *Form[T]) SetInitialData(data T) { f.InitialData = data }
 
 func decode(input any, output any) error {
 	config := &mapstructure.DecoderConfig{

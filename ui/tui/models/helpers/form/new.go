@@ -13,7 +13,7 @@ type FormOpt[T comparable] = func(form *Form[T])
 type RowOpt[T comparable] = func(form *Form[T], row *row)
 
 func New[T comparable](opts ...FormOpt[T]) Form[T] {
-	form := Form[T]{resetToInitialData: true}
+	form := Form[T]{ResetToInitialData: true}
 	for _, opt := range opts {
 		opt(&form)
 	}
@@ -51,12 +51,17 @@ func WithInitialData[T comparable](data T) FormOpt[T] {
 	}
 }
 
-// If the guard returns a non nil value, the loss of data will be prevented.
-// Action will be [ActionReset] or [ActionCancel].
-// Send [ConfirmCancelMsg] or [ConfirmResetMsg] msg to confirm the intend.
-func WithDiscardGuard[T comparable](guard func(action Action) tea.Cmd) FormOpt[T] {
+// If the guard returns the provided confirmCmd, the loss of data will be CONFIRMED.
+// Return nil to PREVENT data loss.
+func WithDiscardGuard[T comparable](guard func(confirmCmd tea.Cmd) tea.Cmd) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.DiscardGuard = guard
+	}
+}
+
+func WithResetToInitialData[T comparable](b bool) FormOpt[T] {
+	return func(form *Form[T]) {
+		form.ResetToInitialData = b
 	}
 }
 

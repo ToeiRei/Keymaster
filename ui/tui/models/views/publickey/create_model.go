@@ -57,6 +57,7 @@ func NewCreate(c client.Client, rc router.Controll, preset *createFormData) *Cre
 // Init implements util.Model.
 func (m *CreateModel) Init() tea.Cmd {
 	m.form = util.NewPointer(form.New(
+		// rows
 		form.WithRowItem[createFormData]("_import", formelement.NewButton("Import", formelement.WithButtonAction(func() (tea.Cmd, form.Action) {
 			return popupviews.OpenForm(form.New(
 				form.WithRowItem[createFormImport]("key", formelement.NewText("", "")),
@@ -70,24 +71,14 @@ func (m *CreateModel) Init() tea.Cmd {
 				form.WithOnCancel[createFormImport](func() tea.Cmd { return popup.Close() }),
 				form.WithOnSubmit(func(result createFormImport, err error) tea.Cmd {
 					if err != nil {
-						return popupviews.OpenMessage(
-							popupviews.MessageError,
-							err.Error(),
-							nil,
-							50, 20,
-						)
+						return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil, 50, 20)
 					}
 
 					// TODO parse result.key
 					parts := strings.Split(result.Key, " ")
 
 					if len(parts) < 2 || len(parts) > 3 {
-						return popupviews.OpenMessage(
-							popupviews.MessageError,
-							"unable to parse public key",
-							nil,
-							50, 20,
-						)
+						return popupviews.OpenMessage(popupviews.MessageError, "unable to parse public key", nil, 50, 20)
 					}
 
 					var data, algorithm, comment string
@@ -106,6 +97,7 @@ func (m *CreateModel) Init() tea.Cmd {
 		form.WithRowItem[createFormData]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
 		form.WithRowItem[createFormData]("tags", formelement.NewText("Tags", "comma seperated list of tags")),
 		form.WithRow(
+			form.WithAlign[createFormData](form.Strech),
 			form.WithItem[createFormData]("_reset", formelement.NewButton("Reset",
 				formelement.WithButtonActionReset(),
 			)),
@@ -118,6 +110,7 @@ func (m *CreateModel) Init() tea.Cmd {
 				formelement.WithButtonGlobalKeyBindings(keys.Save()),
 			)),
 		),
+		// events
 		form.WithOnSubmit(func(result createFormData, err error) tea.Cmd {
 			m.locked = util.NewPointer("Creating PublicKey...")
 			return func() tea.Msg {
@@ -131,9 +124,18 @@ func (m *CreateModel) Init() tea.Cmd {
 				return createMsgCreateResult{publicKey.Id, err}
 			}
 		}),
-		form.WithOnCancel[createFormData](func() tea.Cmd {
-			return m.rc.Pop(1)
+		form.WithOnCancel[createFormData](func() tea.Cmd { return m.rc.Pop(1) }),
+		form.WithDiscardGuard[createFormData](func(confirmCmd tea.Cmd) tea.Cmd {
+			return popupviews.OpenChoice(
+				"You have unsaved changes. Do you want to discard them?",
+				popupviews.Choices{
+					{Name: "Cancel", Cmd: nil, KeyBindings: form.GlobalKeyMap{keys.Cancel()}},
+					{Name: "Discard", Cmd: confirmCmd},
+				},
+				40, 40,
+			)
 		}),
+		// data
 		form.WithInitialData(util.DerefOrNullValue(m.preset)),
 	))
 
@@ -175,15 +177,15 @@ func (m *CreateModel) Update(msg tea.Msg) tea.Cmd {
 		}
 		return tea.Sequence(m.rc.Pop(1), func() tea.Msg { return CreateMsgCreated{msg.publicKeyId} })
 
-	case tea.KeyMsg:
-		if !m.focussed || m.locked != nil {
-			return nil
-		}
-		// pass key msg to form
-		return m.form.Update(msg)
+		// case tea.KeyMsg:
 	}
 
-	return nil
+	if !m.focussed || m.locked != nil {
+		return nil
+	}
+
+	// pass key msg to form
+	return m.form.Update(msg)
 }
 
 // View implements util.Model.

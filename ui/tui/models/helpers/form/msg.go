@@ -3,5 +3,4 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package form
 
-type ConfirmCancelMsg struct{}
-type ConfirmResetMsg struct{}
+type confirmDiscardMsg struct{ action Action }
