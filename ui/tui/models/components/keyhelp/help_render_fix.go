@@ -53,9 +53,11 @@ func ShortHelpView(m help.Model, bindings []key.Binding) string {
 			// when not last
 			if usedWidth+itemLen+tailLen <= m.Width {
 				// when next items and at least the tail fit
+				usedWidth += itemLen
 				b.WriteString(item)
 			} else {
 				// else just add the tail
+				usedWidth += tailLen
 				b.WriteString(tail)
 				break
 			}
