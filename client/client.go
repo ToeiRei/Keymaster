@@ -34,16 +34,22 @@ type Client interface {
 
 	// --- Target Management ---
 
+	// DEPRECATED
 	CreateTarget(ctx context.Context, host string, port int /* , gateway string, plugin string */) (Target, error)
 
+	// DEPRECATED
 	GetTarget(ctx context.Context, id ID) (Target, error)
 
+	// DEPRECATED
 	GetTargets(ctx context.Context, ids ...ID) ([]Target, error)
 
+	// DEPRECATED
 	ListTargets(ctx context.Context) ([]Target, error)
 
+	// DEPRECATED
 	UpdateTarget(ctx context.Context, id ID, host string, port int) error
 
+	// DEPRECATED
 	DeleteTargets(ctx context.Context, ids ...ID) error
 
 	// --- Account Management ---
