@@ -14,8 +14,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 type ListModel struct {
@@ -65,6 +67,9 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 		m.publicKeys = msg.publicKeys
 		m.loadingError = msg.err
 		m.refreshTable()
+		if m.table.Cursor() <= 0 && len(m.publicKeys) > 0 {
+			m.table.MoveUp(1)
+		}
 		return nil
 
 	case listMsgDeleting:
@@ -115,8 +120,8 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 			return popupviews.OpenChoice(
 				"Do you realy want to delete this PublicKey?",
 				popupviews.Choices{
-					{"Cancel", nil},
-					{"Delete", tea.Sequence(
+					{Name: "Cancel", Cmd: nil, KeyBindings: form.GlobalKeyMap{keys.Cancel()}},
+					{Name: "Delete", Cmd: tea.Sequence(
 						func() tea.Msg { return listMsgDeleting{} },
 						func() tea.Msg {
 							return listMsgDeleteResult{
