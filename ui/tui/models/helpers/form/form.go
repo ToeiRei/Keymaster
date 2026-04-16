@@ -6,6 +6,7 @@ package form
 import (
 	"strings"
 
+	"github.com/bobg/go-generics/v4/slices"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -123,50 +124,61 @@ func (f *Form[T]) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (f Form[T]) View() string {
-	rowViews := func(rowIndex int, eager bool) []string {
-		availableWidth := f.size.Width
-		return slicest.MapI(f.rows[rowIndex].items, func(i int, itemIndex int) string {
-			width := availableWidth / (len(f.rows[rowIndex].items) - i)
-			availableWidth -= width
-			return f.items[itemIndex].Element.View(width, eager)
-		})
+	if len(f.rows) <= 0 {
+		return ""
 	}
 
-	return lipgloss.JoinVertical(
-		lipgloss.Left, // irrelevant
-		slicest.MapI(f.rows, func(rowIndex int, row row) string {
-			var views []string
+	// render rows
+	rowViews := slicest.MapI(f.rows, func(rowIndex int, row row) string {
+		var views []string
 
-			switch row.align {
-			case Left, Right, Center, SpaceBetween:
-				views = rowViews(rowIndex, false)
-			case Strech:
-				views = rowViews(rowIndex, true)
-			}
+		switch row.align {
+		case Left, Right, Center, SpaceBetween:
+			views = f.viewRow(rowIndex, false)
+		case Strech:
+			views = f.viewRow(rowIndex, true)
+		}
 
-			switch row.align {
-			case Left, Right, Center:
-				return lipgloss.PlaceHorizontal(
-					f.size.Width,
-					rowAlignments[row.align],
-					lipgloss.JoinHorizontal(lipgloss.Top, views...),
-				)
-			case Strech, SpaceBetween:
-				viewsWidth := lipgloss.Width(lipgloss.JoinHorizontal(lipgloss.Top, views...))
-				remainingWidth := max(0, f.size.Width-viewsWidth)
-				spacedViews := make([]string, 0, (len(views)*2)-1)
-				for i, view := range views {
-					spacedViews = append(spacedViews, view)
-					if i < len(views)-1 {
-						spaceWidth := remainingWidth / (len(views) - i - 1)
-						remainingWidth -= spaceWidth
-						spacedViews = append(spacedViews, strings.Repeat(" ", spaceWidth))
-					}
+		switch row.align {
+		case Left, Right, Center:
+			return lipgloss.PlaceHorizontal(
+				f.size.Width,
+				rowAlignments[row.align],
+				lipgloss.JoinHorizontal(lipgloss.Top, views...),
+			)
+		case Strech, SpaceBetween:
+			viewsWidth := lipgloss.Width(lipgloss.JoinHorizontal(lipgloss.Top, views...))
+			remainingWidth := max(0, f.size.Width-viewsWidth)
+			spacedViews := make([]string, 0, (len(views)*2)-1)
+			for i, view := range views {
+				spacedViews = append(spacedViews, view)
+				if i < len(views)-1 {
+					spaceWidth := remainingWidth / (len(views) - i - 1)
+					remainingWidth -= spaceWidth
+					spacedViews = append(spacedViews, strings.Repeat(" ", spaceWidth))
 				}
-				return lipgloss.JoinHorizontal(lipgloss.Top, spacedViews...)
 			}
-			return ""
-		})...,
+			return lipgloss.JoinHorizontal(lipgloss.Top, spacedViews...)
+		}
+		return ""
+	})
+
+	// find active row, its offset and height
+	activeRowIndex := max(0, slices.IndexFunc(f.rows, func(row row) bool {
+		return slices.Contains(row.items, f.activeIndex)
+	}))
+	var activeRowOffset int
+	for i := range activeRowIndex {
+		activeRowOffset += lipgloss.Height(rowViews[i])
+	}
+	activeRowHeight := lipgloss.Height(rowViews[activeRowIndex])
+
+	// combine rendered rows and render in limited viewport
+	return util.RenderContentInViewport(
+		lipgloss.JoinVertical(lipgloss.Left, rowViews...),
+		f.size.Height,
+		activeRowOffset,
+		activeRowHeight,
 	)
 }
 
@@ -185,6 +197,15 @@ func (f *Form[T]) Blur() {
 
 // *[Model] implements [util.Focusable]
 var _ util.Focusable = (*Form[any])(nil)
+
+func (f *Form[T]) viewRow(rowIndex int, eager bool) []string {
+	availableWidth := f.size.Width
+	return slicest.MapI(f.rows[rowIndex].items, func(i int, itemIndex int) string {
+		width := availableWidth / (len(f.rows[rowIndex].items) - i)
+		availableWidth -= width
+		return f.items[itemIndex].Element.View(width, eager)
+	})
+}
 
 func (f *Form[T]) keymap() help.KeyMap {
 	return util.MergeKeyMaps(
