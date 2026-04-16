@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 // *[Text] implements [form.FormElement]
@@ -80,8 +81,13 @@ func (t *Text) Set(value any) {
 }
 
 func (t *Text) Update(msg tea.Msg) (tea.Cmd, form.Action) {
-	if msg, ok := msg.(tea.KeyMsg); ok && key.Matches(msg, t.KeyMap.Next) {
-		return nil, form.ActionNext
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		switch {
+		case key.Matches(msg, t.KeyMap.Next), key.Matches(msg, keys.Down()):
+			return nil, form.ActionNext
+		case key.Matches(msg, keys.Up()):
+			return nil, form.ActionPrev
+		}
 	}
 
 	var cmd tea.Cmd
