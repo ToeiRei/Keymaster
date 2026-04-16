@@ -85,6 +85,7 @@ func (m *EditModel) Init() tea.Cmd {
 			_ = m.refreshForm()
 			return nil
 		}),
+		form.WithDiscardGuard[editFormData](discardGuard),
 	))
 
 	return tea.Sequence(m.form.Init(), m.load())
@@ -120,15 +121,15 @@ func (m *EditModel) Update(msg tea.Msg) tea.Cmd {
 		}
 		return tea.Sequence(m.rc.Pop(1), func() tea.Msg { return EditMsgUpdated{m.publicKeyId} })
 
-	case tea.KeyMsg:
-		if !m.focussed || m.locked != nil {
-			return nil
-		}
-		// pass key msg to form
-		return m.form.Update(msg)
+		// case tea.KeyMsg:
 	}
 
-	return nil
+	if !m.focussed || m.locked != nil {
+		return nil
+	}
+
+	// pass key msg to form
+	return m.form.Update(msg)
 }
 
 // View implements util.Model.
@@ -163,8 +164,11 @@ func (m *EditModel) load() tea.Cmd {
 }
 
 func (m *EditModel) refreshForm() error {
-	return m.form.Set(editFormData{
+	data := editFormData{
 		m.publicKey.Comment,
 		tagsStringify(m.publicKey.Tags),
-	})
+	}
+
+	m.form.InitialData = data
+	return m.form.Set(data)
 }

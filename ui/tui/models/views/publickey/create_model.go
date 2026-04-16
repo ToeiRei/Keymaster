@@ -125,16 +125,7 @@ func (m *CreateModel) Init() tea.Cmd {
 			}
 		}),
 		form.WithOnCancel[createFormData](func() tea.Cmd { return m.rc.Pop(1) }),
-		form.WithDiscardGuard[createFormData](func(confirmCmd tea.Cmd) tea.Cmd {
-			return popupviews.OpenChoice(
-				"You have unsaved changes. Do you want to discard them?",
-				popupviews.Choices{
-					{Name: "Cancel", Cmd: nil, KeyBindings: form.GlobalKeyMap{keys.Cancel()}},
-					{Name: "Discard", Cmd: confirmCmd},
-				},
-				40, 40,
-			)
-		}),
+		form.WithDiscardGuard[createFormData](discardGuard),
 		// data
 		form.WithInitialData(util.DerefOrNullValue(m.preset)),
 	))
