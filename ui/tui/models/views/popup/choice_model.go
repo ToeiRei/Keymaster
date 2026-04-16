@@ -23,8 +23,9 @@ type ChoiceModel struct {
 }
 
 type Choice struct {
-	Name string
-	Cmd  tea.Cmd
+	Name       string
+	Cmd        tea.Cmd
+	KeyBindings form.GlobalKeyMap
 }
 type Choices []Choice
 
@@ -39,6 +40,7 @@ func newChoice(question string, choices Choices, width, height int) *ChoiceModel
 			formelement.WithButtonAction(func() (tea.Cmd, form.Action) {
 				return tea.Sequence(popup.Close(), choice.Cmd), form.ActionNone
 			}),
+			formelement.WithButtonGlobalKeyBindings(choice.KeyBindings...),
 		))
 	})
 	rowOpts = append(rowOpts, form.WithAlign[struct{}](form.Center))
