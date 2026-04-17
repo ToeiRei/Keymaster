@@ -174,7 +174,7 @@ func (f Form[T]) View() string {
 	activeRowHeight := lipgloss.Height(rowViews[activeRowIndex])
 
 	// combine rendered rows and render in limited viewport
-	return util.RenderContentInViewportAligned(
+	return util.RenderContentInViewportAlignY(
 		lipgloss.JoinVertical(lipgloss.Left, rowViews...),
 		f.size.Height,
 		activeRowOffset,

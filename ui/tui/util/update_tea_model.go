@@ -4,6 +4,8 @@
 package util
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/util/slicest"
 )
@@ -26,8 +28,7 @@ func UpdateTeaModelInplace[M any](msg tea.Msg, model *M) tea.Cmd {
 		return cmd
 	}
 
-	// no supported update method
-	return nil
+	panic(fmt.Sprintf("no supported update method in provided type %T", &model))
 }
 
 func UpdateTeaModelsInplace[M any](msg tea.Msg, models ...*M) tea.Cmd {

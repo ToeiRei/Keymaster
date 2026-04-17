@@ -5,10 +5,9 @@ package util
 
 import tea "github.com/charmbracelet/bubbletea"
 
-type Size struct {
-	Width  int
-	Height int
-}
+type Vec[T comparable] struct{ X, Y T }
+
+type Size struct{ Width, Height int }
 
 func (s *Size) UpdateFromMsg(msg tea.Msg) bool {
 	if msg, ok := msg.(tea.WindowSizeMsg); ok {

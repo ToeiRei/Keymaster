@@ -62,6 +62,31 @@ func Right() key.Binding {
 	)
 }
 
+func UpArrow() key.Binding {
+	return key.NewBinding(
+		key.WithKeys("up"),
+		key.WithHelp("↑", "up"),
+	)
+}
+func DownArrow() key.Binding {
+	return key.NewBinding(
+		key.WithKeys("down"),
+		key.WithHelp("↓", "down"),
+	)
+}
+func LeftArrow() key.Binding {
+	return key.NewBinding(
+		key.WithKeys("left"),
+		key.WithHelp("←", "left"),
+	)
+}
+func RightArrow() key.Binding {
+	return key.NewBinding(
+		key.WithKeys("right"),
+		key.WithHelp("→", "right"),
+	)
+}
+
 func LeftBack() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("left", "backspace", "esc"),
