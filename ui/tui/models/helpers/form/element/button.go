@@ -115,9 +115,9 @@ func (b *Button) Update(msg tea.Msg) (tea.Cmd, form.Action) {
 		// key matches click or global binding
 		case !b.Disabled && b.Action != nil && (key.Matches(msg, b.KeyMap.Click) || key.Matches(msg, b.globalKeyBindings...)):
 			return b.Action()
-		case key.Matches(msg, keys.Down(), keys.Right()):
+		case key.Matches(msg, keys.DownArrow(), keys.RightArrow()):
 			return nil, form.ActionNext
-		case key.Matches(msg, keys.Up(), keys.Left()):
+		case key.Matches(msg, keys.UpArrow(), keys.LeftArrow()):
 			return nil, form.ActionPrev
 		}
 	}

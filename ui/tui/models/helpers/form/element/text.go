@@ -83,16 +83,14 @@ func (t *Text) Set(value any) {
 func (t *Text) Update(msg tea.Msg) (tea.Cmd, form.Action) {
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch {
-		case key.Matches(msg, t.KeyMap.Next), key.Matches(msg, keys.Down()):
+		case key.Matches(msg, t.KeyMap.Next), key.Matches(msg, keys.DownArrow()):
 			return nil, form.ActionNext
-		case key.Matches(msg, keys.Up()):
+		case key.Matches(msg, keys.UpArrow()):
 			return nil, form.ActionPrev
 		}
 	}
 
-	var cmd tea.Cmd
-	t.input, cmd = t.input.Update(msg)
-	return cmd, form.ActionNone
+	return util.UpdateTeaModelInplace(msg, &t.input), form.ActionNone
 }
 
 func (t *Text) View(width int, eager bool) string {
@@ -111,7 +109,7 @@ func (t *Text) View(width int, eager bool) string {
 	}
 
 	// render input
-	t.input.Width = width - 2
+	t.input.Width = width - 2 - 1 // -1 because bubbles doesn't think a cursor takes up any space
 	if !eager {
 		t.input.Width = min(t.input.Width, max(
 			len(t.Placeholder),
