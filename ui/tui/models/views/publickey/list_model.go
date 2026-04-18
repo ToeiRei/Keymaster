@@ -18,6 +18,7 @@ import (
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
+	"github.com/toeirei/keymaster/util/slicest"
 )
 
 type ListModel struct {
@@ -78,12 +79,10 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 	case listMsgDeleteResult:
 		m.locked = nil
 		if msg.err != nil {
-			// TODO show popup with error
-			return nil
+			return popupviews.OpenMessage(popupviews.MessageError, "Error deleting Public Key:\n"+msg.err.Error(), nil)
 		}
 		m.publicKeys = slices.DeleteFunc(m.publicKeys, func(pk client.PublicKey) bool { return pk.Id == msg.publicKey.Id })
 		m.refreshTable()
-		// TODO does not work for some reason
 		return nil
 
 	case EditMsgUpdated, CreateMsgCreated:
@@ -100,7 +99,7 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 
 		case key.Matches(msg, ListBaseKeyMap.Edit):
 			if m.table.Cursor() == -1 {
-				return nil // TODO open popup with "please select a public key" text
+				return popupviews.OpenMessage(popupviews.MessageInfo, "Please select a Public Key to edit.", nil)
 			}
 			return m.rc.Push(util.ModelPointer(NewEdit(
 				m.client,
@@ -110,7 +109,7 @@ func (m *ListModel) Update(msg tea.Msg) tea.Cmd {
 
 		case key.Matches(msg, ListBaseKeyMap.Duplicate):
 			if m.table.Cursor() == -1 {
-				return nil // TODO open popup with "please select a public key" text
+				return popupviews.OpenMessage(popupviews.MessageInfo, "Please select a Public Key to duplicate.", nil)
 			}
 			publicKey := m.publicKeys[m.table.Cursor()]
 			return m.rc.Push(util.ModelPointer(NewCreate(m.client, m.rc, &createFormData{publicKey.Data, publicKey.Algorithm, publicKey.Comment, tagsStringify(publicKey.Tags)})))
@@ -197,11 +196,19 @@ func (m *ListModel) reload() tea.Cmd {
 }
 
 func (m *ListModel) refreshTable() {
-	// TODO this code is just a prove of concept and needs improvements like dynamic scaling!
+	algorithmWidth := slicest.Reduce(m.publicKeys, func(k client.PublicKey, w int) int { return max(w, len(k.Algorithm)) })
+	commentWidth := slicest.Reduce(m.publicKeys, func(k client.PublicKey, w int) int { return max(w, len(k.Comment)) })
+	tagsWidth := slicest.Reduce(m.publicKeys, func(k client.PublicKey, w int) int { return max(w, len(strings.Join(k.Tags, ", "))) })
+
+	// tags take 50% screen max
+	tagsWidth = min((m.size.Width-6)/2, tagsWidth)
+
+	remainingWidth := m.size.Width - 6 - algorithmWidth - commentWidth - tagsWidth
+
 	m.table.SetColumns([]table.Column{
-		{Title: "Algorithm", Width: 10},
-		{Title: "Comment", Width: 10},
-		{Title: "Tags", Width: m.size.Width - 20 - 6},
+		{Title: "Algorithm", Width: algorithmWidth + remainingWidth/3},
+		{Title: "Comment", Width: commentWidth + remainingWidth/3},
+		{Title: "Tags", Width: tagsWidth + remainingWidth/3},
 	})
 
 	m.table.SetRows(slices.Map(m.publicKeys, func(publicKey client.PublicKey) table.Row {

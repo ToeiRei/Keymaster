@@ -22,21 +22,18 @@ const (
 type MessageSeverity int
 
 type MessageModel struct {
-	form      form.Form[struct{}]
-	innerSize util.Size
-	size      util.Size
+	form form.Form[struct{}]
+	size util.Size
 }
 
-func OpenMessage(severity MessageSeverity, message string, cmd tea.Cmd, width, height int) tea.Cmd {
-	return popup.Open(util.ModelPointer(newMessage(severity, message, cmd, width, height)))
+func OpenMessage(severity MessageSeverity, message string, cmd tea.Cmd) tea.Cmd {
+	return popup.Open(util.ModelPointer(newMessage(severity, message, cmd)))
 }
 
 func newMessage(
 	severity MessageSeverity,
 	message string,
 	cmd tea.Cmd,
-	width int,
-	height int,
 ) *MessageModel {
 	switch severity {
 	case MessageInfo:
@@ -56,10 +53,6 @@ func newMessage(
 				return tea.Sequence(popup.Close(), cmd)
 			}),
 		),
-		innerSize: util.Size{
-			Width:  width,
-			Height: height,
-		},
 	}
 }
 
@@ -70,8 +63,8 @@ func (m MessageModel) Init() tea.Cmd {
 func (m *MessageModel) Update(msg tea.Msg) tea.Cmd {
 	if m.size.UpdateFromMsg(msg) {
 		size := util.Size{
-			Width:  min(m.innerSize.Width, m.size.Width),
-			Height: min(m.innerSize.Height, m.size.Height),
+			Width:  util.Clamp(6, m.size.Width/2, m.size.Width),
+			Height: util.Clamp(7, m.size.Height/2, m.size.Height),
 		}
 		return m.form.Update(size.ToMsg())
 	}
@@ -79,17 +72,15 @@ func (m *MessageModel) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m MessageModel) View() string {
-	// TODO only for testing... size of form needs to be made non greedy
-	return lipgloss.NewStyle().MaxWidth(40).Render(m.form.View())
-	// return m.form.View()
+	return lipgloss.NewStyle().
+		MaxWidth(m.size.Width).
+		MaxHeight(m.size.Height).
+		Render(m.form.View())
 }
 
-func (m *MessageModel) Focus(parentKeyMap help.KeyMap) tea.Cmd {
-	return m.form.Focus(parentKeyMap)
-}
-func (m *MessageModel) Blur() {
-	m.form.Blur()
-}
+func (m *MessageModel) Focus(parentKeyMap help.KeyMap) tea.Cmd { return m.form.Focus(parentKeyMap) }
+
+func (m *MessageModel) Blur() { m.form.Blur() }
 
 // *[MessageModel] implements [util.Model]
 var _ util.Model = (*MessageModel)(nil)

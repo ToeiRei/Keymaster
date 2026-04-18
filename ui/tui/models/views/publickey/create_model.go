@@ -71,20 +71,22 @@ func (m *CreateModel) Init() tea.Cmd {
 				form.WithOnCancel[createFormImport](func() tea.Cmd { return popup.Close() }),
 				form.WithOnSubmit(func(result createFormImport, err error) tea.Cmd {
 					if err != nil {
-						return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil, 50, 20)
-					}
-
-					// TODO parse result.key
-					parts := strings.Split(result.Key, " ")
-
-					if len(parts) < 2 || len(parts) > 3 {
-						return popupviews.OpenMessage(popupviews.MessageError, "unable to parse public key", nil, 50, 20)
+						return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil)
 					}
 
 					var data, algorithm, comment string
-					data, algorithm = parts[0], parts[1]
-					if len(parts) == 3 {
-						comment = parts[2]
+					// TODO parse result.key... using this mock for now:
+					{
+						parts := strings.Split(result.Key, " ")
+
+						if len(parts) < 2 || len(parts) > 3 {
+							return popupviews.OpenMessage(popupviews.MessageError, "unable to parse public key", nil)
+						}
+
+						data, algorithm = parts[0], parts[1]
+						if len(parts) == 3 {
+							comment = parts[2]
+						}
 					}
 
 					return tea.Sequence(popup.Close(), func() tea.Msg { return createMsgImportResult{data, algorithm, comment} })
@@ -130,13 +132,7 @@ func (m *CreateModel) Init() tea.Cmd {
 		form.WithInitialData(util.DerefOrNullValue(m.preset)),
 	))
 
-	initCmd := m.form.Init()
-
-	// if m.preset != nil {
-	// 	_ = m.form.Set(*m.preset)
-	// }
-
-	return initCmd
+	return m.form.Init()
 }
 
 // Update implements util.Model.
@@ -163,8 +159,7 @@ func (m *CreateModel) Update(msg tea.Msg) tea.Cmd {
 	case createMsgCreateResult:
 		m.locked = nil
 		if msg.err != nil {
-			// TODO open popup displaying error
-			return nil
+			return popupviews.OpenMessage(popupviews.MessageError, "Error creating Public Key:\n"+msg.err.Error(), nil)
 		}
 		return tea.Sequence(m.rc.Pop(1), func() tea.Msg { return CreateMsgCreated{msg.publicKeyId} })
 
@@ -175,7 +170,7 @@ func (m *CreateModel) Update(msg tea.Msg) tea.Cmd {
 		return nil
 	}
 
-	// pass key msg to form
+	// pass remaining msgs to form
 	return m.form.Update(msg)
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
+	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
@@ -105,8 +106,7 @@ func (m *EditModel) Update(msg tea.Msg) tea.Cmd {
 		m.publicKey = msg.publicKey
 		_ = m.refreshForm()
 		if msg.err != nil {
-			// TODO open popup displaying error
-			return nil
+			return popupviews.OpenMessage(popupviews.MessageError, "Error loading Public Key:\n"+msg.err.Error(), nil)
 		}
 		return nil
 
@@ -114,8 +114,7 @@ func (m *EditModel) Update(msg tea.Msg) tea.Cmd {
 		m.locked = nil
 		if msg.err != nil {
 			if msg.err != nil {
-				// TODO open popup displaying error
-				return nil
+				return popupviews.OpenMessage(popupviews.MessageError, "Error updating Public Key:\n"+msg.err.Error(), nil)
 			}
 			return nil
 		}
