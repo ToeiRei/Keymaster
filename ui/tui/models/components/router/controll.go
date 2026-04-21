@@ -9,7 +9,7 @@ import (
 )
 
 type Controll struct {
-	rid int
+	rid uint32
 }
 
 func (c *Controll) Push(model *util.Model) tea.Cmd {

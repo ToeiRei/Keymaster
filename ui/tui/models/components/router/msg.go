@@ -18,23 +18,35 @@ type InitMsg struct {
 // Model-RouterControll -> Router
 
 type PushMsg struct {
-	rid   int
+	rid   uint32
 	Model *util.Model
 }
 type PopMsg struct {
-	rid   int
+	rid   uint32
 	Count int
 }
 type ChangeMsg struct {
-	rid   int
+	rid   uint32
 	Model *util.Model
 }
 
-func (m InitMsg) routerID() int   { return m.RouterControll.rid }
-func (m PushMsg) routerID() int   { return m.rid }
-func (m PopMsg) routerID() int    { return m.rid }
-func (m ChangeMsg) routerID() int { return m.rid }
+func (m InitMsg) routerID() uint32   { return m.RouterControll.rid }
+func (m PushMsg) routerID() uint32   { return m.rid }
+func (m PopMsg) routerID() uint32    { return m.rid }
+func (m ChangeMsg) routerID() uint32 { return m.rid }
+
+// *[InitMsg] implements [RouterMsg]
+var _ RouterMsg = (*InitMsg)(nil)
+
+// *[PushMsg] implements [RouterMsg]
+var _ RouterMsg = (*PushMsg)(nil)
+
+// *[PopMsg] implements [RouterMsg]
+var _ RouterMsg = (*PopMsg)(nil)
+
+// *[ChangeMsg] implements [RouterMsg]
+var _ RouterMsg = (*ChangeMsg)(nil)
 
 type RouterMsg interface {
-	routerID() int
+	routerID() uint32
 }

@@ -23,3 +23,9 @@ func (s *Size) ToMsg() tea.WindowSizeMsg {
 		Height: s.Height,
 	}
 }
+
+// type DynamicView interface {
+// 	EagerWidth(width int, members int)
+// 	LazyWidth(width int, members int)
+// 	Weight() int
+// }

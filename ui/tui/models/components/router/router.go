@@ -4,28 +4,28 @@
 package router
 
 import (
+	"sync/atomic"
+
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
-var routerID = 1 // TODO change to atomic int... just to be sure
+var routerId atomic.Uint32
 
 type Model struct {
-	id         int
-	size       util.Size
-	modelStack []*util.Model
-	parentKeyMap  help.KeyMap
+	id           uint32
+	size         util.Size
+	modelStack   []*util.Model
+	parentKeyMap help.KeyMap
 }
 
 func New(initialModel *util.Model) (*Model, Controll) {
-	routerID++
+	rid := routerId.Add(1)
 	return &Model{
-			id:         routerID - 1,
-			modelStack: []*util.Model{initialModel},
-		}, Controll{
-			rid: routerID - 1,
-		}
+		id:         rid,
+		modelStack: []*util.Model{initialModel},
+	}, Controll{rid}
 }
 
 func (m Model) Init() tea.Cmd {
@@ -71,7 +71,7 @@ func (m Model) View() string {
 }
 
 func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
-	m.parentKeyMap  = parentKeyMap 
+	m.parentKeyMap = parentKeyMap
 	return (*m.activeModelGet()).Focus(parentKeyMap)
 }
 
