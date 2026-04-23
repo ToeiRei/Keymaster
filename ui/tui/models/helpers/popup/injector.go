@@ -24,10 +24,10 @@ type popup struct {
 }
 
 type Injector struct {
-	child      *util.Model
-	popups     []popup
-	size       util.Size
-	parentKeyMap  help.KeyMap
+	child        *util.Model
+	popups       []popup
+	size         util.Size
+	parentKeyMap help.KeyMap
 }
 
 func NewInjector(child *util.Model) *Injector {
@@ -44,10 +44,7 @@ func (m *Injector) Update(msg tea.Msg) tea.Cmd {
 	if m.size.UpdateFromMsg(msg) {
 		if len(m.popups) > 0 {
 			return tea.Batch(
-				(*m.activeModel()).Update(tea.WindowSizeMsg{
-					Width:  m.size.Width - reservedWidth,
-					Height: m.size.Height - reservedHeight,
-				}),
+				(*m.activeModel()).Update(m.innerSizeMsg()),
 				(*m.child).Update(msg),
 			)
 		}
@@ -65,6 +62,13 @@ func (m *Injector) Update(msg tea.Msg) tea.Cmd {
 	}
 
 	return (*m.activeModel()).Update(msg)
+}
+
+func (m *Injector) innerSizeMsg() tea.WindowSizeMsg {
+	return tea.WindowSizeMsg{
+		Width:  m.size.Width - reservedWidth,
+		Height: m.size.Height - reservedHeight,
+	}
 }
 
 func (m *Injector) applyView(v1, v2 string) string {
@@ -110,7 +114,7 @@ func (m Injector) View() string {
 }
 
 func (m *Injector) Focus(parentKeyMap help.KeyMap) tea.Cmd {
-	m.parentKeyMap  = parentKeyMap 
+	m.parentKeyMap = parentKeyMap
 	return (*m.activeModel()).Focus(parentKeyMap)
 }
 func (m *Injector) Blur() {
@@ -129,7 +133,7 @@ func (m *Injector) open(popup popup) tea.Cmd {
 	return tea.Batch(
 		(*popup.model).Init(),
 		m.focusActiveModel(),
-		(*m.activeModel()).Update(m.size.ToMsg()),
+		(*m.activeModel()).Update(m.innerSizeMsg()),
 	)
 }
 
