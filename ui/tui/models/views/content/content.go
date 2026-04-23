@@ -5,6 +5,7 @@ package content
 
 import (
 	"context"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,6 +14,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
 	"github.com/toeirei/keymaster/ui/tui/models/components/stack"
 	"github.com/toeirei/keymaster/ui/tui/models/views/dashboard"
+	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/models/views/publickey"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
@@ -41,6 +43,7 @@ func New() *Model {
 	menuPtr := util.ModelPointer(menu.New(
 		// menu.WithItem("dashboard", "Dashboard"),
 		menu.WithItem("publickey.list", "Public Keys"),
+		menu.WithItem("test.progress_popup", "Test Progress"),
 	))
 	dashboardPtr := util.ModelPointer(dashboard.New(client))
 	routerModel, routerControll := router.New(dashboardPtr)
@@ -68,15 +71,24 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	// handle menu messages
 	if msg, ok := msg.(menu.ItemSelected); ok {
 		switch msg.Id {
-		// case "test.popup1":
-		// 	// popup example 1
-		// 	return popup.Open(util.ModelPointer(testpopup1.New()))
-		// case "test.view1":
-		// 	// view example 1
-		// 	return m.routerControll.Push(util.ModelPointer(testview1.New(m.routerControll)))
-		// }
 		case "publickey.list":
 			return m.routerControll.Push(util.ModelPointer(publickey.NewList(m.client, m.routerControll)))
+		case "test.progress_popup":
+			cmd, pc := popupviews.OpenProgress("Test Progress")
+
+			go func() {
+				time.Sleep(time.Second)
+				for i := range 100 {
+					pc <- popupviews.Progress{
+						Progress: float64(i) / 100,
+					}
+					time.Sleep(time.Second / 10)
+
+				}
+				close(pc)
+			}()
+
+			return cmd
 		}
 	}
 
