@@ -12,7 +12,7 @@ require (
 	github.com/charmbracelet/log v1.0.0
 	github.com/davidmz/go-pageant v1.0.2
 	github.com/go-sql-driver/mysql v1.9.3
-	github.com/jackc/pgx/v5 v5.9.1
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/klauspost/compress v1.18.5
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/pkg/sftp v1.13.10
