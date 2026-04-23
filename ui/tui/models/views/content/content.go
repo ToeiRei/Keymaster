@@ -5,6 +5,7 @@ package content
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -74,18 +75,18 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		case "publickey.list":
 			return m.routerControll.Push(util.ModelPointer(publickey.NewList(m.client, m.routerControll)))
 		case "test.progress_popup":
-			cmd, pc := popupviews.OpenProgress("Test Progress")
+			cmd, progress := popupviews.OpenProgress("Test Progress")
 
 			go func() {
-				time.Sleep(time.Second)
 				for i := range 100 {
-					pc <- popupviews.Progress{
-						Progress: float64(i) / 100,
+					progress <- popupviews.Progress{
+						Progress: float64(i+1) / 100,
+						Status:   fmt.Sprintf("%d / 100", i+1),
 					}
-					time.Sleep(time.Second / 10)
+					time.Sleep(time.Second / 40)
 
 				}
-				close(pc)
+				close(progress)
 			}()
 
 			return cmd

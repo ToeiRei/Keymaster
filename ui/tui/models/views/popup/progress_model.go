@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
@@ -50,11 +51,13 @@ func OpenProgress(title string) (tea.Cmd, ProgressChan) {
 
 func newProgress(title string) (*ProgressModel, ProgressChan) {
 	progressChan := make(ProgressChan)
+	progressModel := progress.New()
+	progressModel.ShowPercentage = false
 	return &ProgressModel{
 		id:            progressId.Add(1),
 		title:         title,
 		progressChan:  progressChan,
-		progressModel: progress.New(),
+		progressModel: progressModel,
 	}, progressChan
 }
 
@@ -67,7 +70,7 @@ func (m ProgressModel) Init() tea.Cmd {
 
 func (m *ProgressModel) Update(msg tea.Msg) tea.Cmd {
 	if m.size.UpdateFromMsg(msg) {
-		m.progressModel.Width = m.size.Width
+		m.progressModel.Width = util.Clamp(20, m.size.Width/2, m.size.Width)
 		return nil
 	}
 
@@ -94,9 +97,17 @@ func (m *ProgressModel) ListenProgressCmd() tea.Msg {
 }
 
 func (m ProgressModel) View() string {
-	// TODO only for testing... size of form needs to be made non greedy
-	// return lipgloss.NewStyle().MaxWidth(40).Render(m.form.View())
-	return m.progressModel.ViewAs(m.progress)
+	lines := make([]string, 0, 3)
+
+	if m.title != "" {
+		lines = append(lines, lipgloss.NewStyle().Bold(true).Render(m.title))
+	}
+	lines = append(lines, m.progressModel.ViewAs(m.progress))
+	if m.status != "" {
+		lines = append(lines, lipgloss.NewStyle().Italic(true).Render(m.status))
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Center, lines...)
 }
 
 func (m *ProgressModel) Focus(parentKeyMap help.KeyMap) tea.Cmd {
