@@ -53,7 +53,7 @@ func WithInitialData[T comparable](data T) FormOpt[T] {
 
 // If the guard returns the provided confirmCmd, the loss of data will be CONFIRMED.
 // Return nil to PREVENT data loss.
-func WithDiscardGuard[T comparable](guard func(confirmCmd tea.Cmd) tea.Cmd) FormOpt[T] {
+func WithOnDiscardGuard[T comparable](guard func(confirmCmd tea.Cmd) tea.Cmd) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.DiscardGuard = guard
 	}

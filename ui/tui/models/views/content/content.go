@@ -14,6 +14,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/components/menu"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
 	"github.com/toeirei/keymaster/ui/tui/models/components/stack"
+	"github.com/toeirei/keymaster/ui/tui/models/views/crud"
 	"github.com/toeirei/keymaster/ui/tui/models/views/dashboard"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/models/views/publickey"
@@ -73,7 +74,8 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(menu.ItemSelected); ok {
 		switch msg.Id {
 		case "publickey.list":
-			return m.routerControll.Push(util.ModelPointer(publickey.NewList(m.client, m.routerControll)))
+			publicKeyCrud := publickey.NewCrud(m.client, m.routerControll)
+			return m.routerControll.Push(util.ModelPointer(crud.NewList(publicKeyCrud)))
 		case "test.progress_popup":
 			cmd, progress := popupviews.OpenProgress("Test Progress")
 
