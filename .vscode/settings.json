@@ -19,4 +19,5 @@
   "explorer.fileNesting.patterns": {
     "*.go": "${capture}*_test.go"
   },
+  "go.inlayHints.parameterNames": true,
 }
