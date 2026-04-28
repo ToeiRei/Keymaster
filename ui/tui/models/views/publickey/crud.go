@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/bobg/go-generics/v4/slices"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
@@ -22,8 +23,8 @@ import (
 )
 
 type createFormData struct {
-	Data      string `form:"data"`
 	Algorithm string `form:"algorithm"`
+	Data      string `form:"data"`
 	Comment   string `form:"comment"`
 	Tags      string `form:"tags"`
 }
@@ -75,8 +76,8 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 			return c.DeletePublicKeys(context.Background(), id)
 		},
 		func(record []client.PublicKey, width int) ([]table.Column, []table.Row) {
-			algorithmWidth := slicest.Reduce(record, func(k client.PublicKey, w int) int { return max(w, len(k.Algorithm)) })
 			commentWidth := slicest.Reduce(record, func(k client.PublicKey, w int) int { return max(w, len(k.Comment)) })
+			algorithmWidth := slicest.Reduce(record, func(k client.PublicKey, w int) int { return max(w, len(k.Algorithm)) })
 			tagsWidth := slicest.Reduce(record, func(k client.PublicKey, w int) int { return max(w, len(strings.Join(k.Tags, ", "))) })
 			// tags take 50% screen max
 			tagsWidth = min((width-6)/2, tagsWidth)
@@ -84,17 +85,17 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 			remainingWidth := width - 6 - algorithmWidth - commentWidth - tagsWidth
 
 			columns := []table.Column{
-				{Title: "Algorithm", Width: algorithmWidth + remainingWidth/3},
 				{Title: "Comment", Width: commentWidth + remainingWidth/3},
+				{Title: "Algorithm", Width: algorithmWidth + remainingWidth/3},
 				{Title: "Tags", Width: tagsWidth + remainingWidth/3},
 			}
 
 			rows := slices.Map(record, func(publicKey client.PublicKey) table.Row {
 				return table.Row{
-					// column: Algorithm
-					publicKey.Algorithm,
 					// column: Comment
 					publicKey.Comment,
+					// column: Algorithm
+					publicKey.Algorithm,
 					// column: Tags
 					strings.Join(publicKey.Tags, ", "),
 				}
@@ -136,7 +137,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 									return popupviews.OpenMessage(popupviews.MessageError, "unable to parse public key", nil)
 								}
 
-								data, algorithm = parts[0], parts[1]
+								algorithm, data = parts[0], parts[1]
 								if len(parts) == 3 {
 									comment = parts[2]
 								}
@@ -147,9 +148,9 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 					), 50, 20,
 					), form.ActionNone
 				}))),
-				form.WithRowItem[createFormData]("data", formelement.NewText("Data", "public key content")),
-				form.WithRowItem[createFormData]("algorithm", formelement.NewText("Algorithm", "public key algorithm")),
 				form.WithRowItem[createFormData]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
+				form.WithRowItem[createFormData]("algorithm", formelement.NewText("Algorithm", "public key algorithm")),
+				form.WithRowItem[createFormData]("data", formelement.NewText("Data", "public key content")),
 				form.WithRowItem[createFormData]("tags", formelement.NewText("Tags", "comma seperated list of tags")),
 			}
 		},
@@ -161,19 +162,35 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 		},
 
 		rc,
-		crud.WithCreateMsgInterceptor[client.PublicKey, createFormData, editFormData, client.ID, struct{}](func(msg tea.Msg, ctx *form.Form[createFormData]) (cmd tea.Cmd, done bool) {
+		crud.WithListKeyBindings[client.PublicKey, createFormData, editFormData, client.ID, struct{}](keys.Duplicate()),
+		crud.WithListMsgInterceptor(func(msg tea.Msg, ctx crud.ListMsgInterceptorCtx[client.PublicKey, createFormData, editFormData, client.ID, struct{}]) (tea.Cmd, bool) {
+			if msg, ok := msg.(tea.KeyMsg); ok && key.Matches(msg, keys.Duplicate()) {
+				if ctx.SelectedRecord == nil {
+					return popupviews.OpenMessage(popupviews.MessageError, "Please select a Record to duplicate.", nil), true
+				}
+				return ctx.Crud.OpenCreate(&createFormData{
+					ctx.SelectedRecord.Algorithm,
+					ctx.SelectedRecord.Data,
+					ctx.SelectedRecord.Comment,
+					tagsStringify(ctx.SelectedRecord.Tags),
+				}), true
+			}
+			return nil, false
+		}),
+		crud.WithCreateMsgInterceptor(func(msg tea.Msg, ctx crud.CreateMsgInterceptorCtx[client.PublicKey, createFormData, editFormData, client.ID, struct{}]) (tea.Cmd, bool) {
 			if msg, ok := msg.(msgImportResult); ok {
-				done = true
 
-				data, _ := ctx.Get()
+				data, _ := ctx.Form.Get()
 				data.Data = msg.data
 				data.Algorithm = msg.algorithm
 				if msg.comment != "" {
 					data.Comment = msg.comment
 				}
-				_ = ctx.Set(data)
+				_ = ctx.Form.Set(data)
+
+				return nil, true
 			}
-			return
+			return nil, false
 		}),
 	)
 }

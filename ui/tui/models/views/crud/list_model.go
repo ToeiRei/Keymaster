@@ -68,7 +68,12 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 	}
 
 	// Intercept messages
-	if cmd, done := Intercept(msg, struct{}{}, m.crud.listMsgInterceptors...); cmd != nil || done {
+	selectedRecord := m.selectedRecord()
+	if cmd, done := Intercept(
+		msg,
+		ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]{m.crud, selectedRecord},
+		m.crud.listMsgInterceptors...,
+	); cmd != nil || done {
 		return cmd
 	}
 
@@ -109,16 +114,20 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 			return m.crud.routerControll.Push(util.ModelPointer(NewCreate(m.crud, nil)))
 
 		case key.Matches(msg, ListBaseKeyMap.Edit):
-			if m.table.Cursor() == -1 {
+			selectedRecord := m.selectedRecord()
+			if selectedRecord == nil {
 				return popupviews.OpenMessage(popupviews.MessageInfo, "Please select a Record to edit.", nil)
 			}
 			return m.crud.routerControll.Push(util.ModelPointer(NewEdit(
 				m.crud,
-				m.records[m.table.Cursor()],
+				*selectedRecord,
 			)))
 
 		case key.Matches(msg, ListBaseKeyMap.Delete):
-			record := m.records[m.table.Cursor()]
+			selectedRecord := m.selectedRecord()
+			if selectedRecord == nil {
+				return popupviews.OpenMessage(popupviews.MessageInfo, "Please select a Record to delete.", nil)
+			}
 			return popupviews.OpenChoice(
 				"Do you realy want to delete this Record?",
 				popupviews.Choices{
@@ -127,8 +136,8 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 						func() tea.Msg { return listMsgDeleting{} },
 						func() tea.Msg {
 							return listMsgDeleteResult[TRecord]{
-								record: record,
-								err:    m.crud.deleteRecord(m.crud.getRecordId(record)),
+								record: *selectedRecord,
+								err:    m.crud.deleteRecord(m.crud.getRecordId(*selectedRecord)),
 							}
 						},
 					)},
@@ -173,7 +182,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) View() st
 func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focussed = true
 	m.table.Focus()
-	return util.AnnounceKeyMapCmd(parentKeyMap, ListBaseKeyMap)
+	return util.AnnounceKeyMapCmd(parentKeyMap, ListBaseKeyMap, m.crud.listGlobalKeyMap)
 }
 
 // Blur implements util.Model.
@@ -204,4 +213,13 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) refreshTa
 
 	m.table.SetColumns(columns)
 	m.table.SetRows(rows)
+}
+
+func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) selectedRecord() *TRecord {
+	if m.table.Cursor() == -1 {
+		return nil
+	}
+	// copy selectedRecord to avoid unwanted changes by weird devs
+	selectedRecord := m.records[m.table.Cursor()]
+	return &selectedRecord
 }

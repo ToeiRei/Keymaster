@@ -45,9 +45,11 @@ func newMessage(
 	}
 	return &MessageModel{
 		form: form.New(
-			form.WithRow(
-				form.WithItem[struct{}]("_message", formelement.NewLabel(message)),
-				form.WithItem[struct{}]("_ok", formelement.NewButton("Ok", formelement.WithButtonActionSubmit())),
+			form.WithRowItem[struct{}]("_message", formelement.NewLabel(message)),
+			form.WithRowItem(
+				"_ok",
+				formelement.NewButton("Ok", formelement.WithButtonActionSubmit()),
+				form.WithAlign[struct{}](form.Center),
 			),
 			form.WithOnSubmit(func(_ struct{}, _ error) tea.Cmd {
 				return tea.Sequence(popup.Close(), cmd)

@@ -96,7 +96,11 @@ func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 	}
 
 	// Intercept messages
-	if cmd, done := Intercept(msg, m.form, m.crud.editMsgInterceptors...); cmd != nil || done {
+	if cmd, done := Intercept(
+		msg,
+		EditMsgInterceptorCtx[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]{m.crud, m.form},
+		m.crud.editMsgInterceptors...,
+	); cmd != nil || done {
 		return cmd
 	}
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bobg/go-generics/v4/slices"
+	"github.com/toeirei/keymaster/util/slicest"
 )
 
 //lint:ignore U1000 Placeholder for future test grant fields.
@@ -23,13 +24,11 @@ type TestUIGrant struct {
 type TestUIClient struct {
 	// local temporary repository for testing ui features
 	publicKeys []PublicKey
-	targets    []Target
 	accounts   []Account
 	//lint:ignore U1000 Placeholder for future grant-related features.
 	grants []TestUIGrant
 	// id counter to simulate serial
 	publicKeysID ID
-	targetsID    ID
 	accountsID   ID
 }
 
@@ -97,16 +96,6 @@ func (c *TestUIClient) UpdatePublicKey(ctx context.Context, id ID, comment strin
 	return fmt.Errorf("public key with id %v not found", id)
 }
 
-func (c *TestUIClient) UpdatePublicKeyTags(ctx context.Context, id ID, tags []string) error {
-	if i, ok := slices.BinarySearchFunc(c.publicKeys, id, func(publicKey PublicKey, id ID) int {
-		return int(publicKey.Id - id)
-	}); ok {
-		c.publicKeys[i].Tags = tags
-		return nil
-	}
-	return fmt.Errorf("public key with id %v not found", id)
-}
-
 func (c *TestUIClient) DeletePublicKeys(ctx context.Context, ids ...ID) error {
 	indexs := make([]int, 0, len(c.publicKeys))
 	for i, publicKey := range c.publicKeys {
@@ -121,63 +110,10 @@ func (c *TestUIClient) DeletePublicKeys(ctx context.Context, ids ...ID) error {
 	return nil
 }
 
-// --- Target Management ---
-
-func (c *TestUIClient) CreateTarget(ctx context.Context, host string, port int /* , gateway string, plugin string */) (Target, error) {
-	target := Target{c.targetsID, host, port}
-	c.targets = append(c.targets, target)
-	c.targetsID++
-	return target, nil
-}
-
-func (c *TestUIClient) GetTarget(ctx context.Context, id ID) (Target, error) {
-	if i, ok := slices.BinarySearchFunc(c.targets, id, func(target Target, id ID) int {
-		return int(target.Id - id)
-	}); ok {
-		return c.targets[i], nil
-	}
-	return Target{}, fmt.Errorf("target with id %v not found", id)
-}
-
-func (c *TestUIClient) GetTargets(ctx context.Context, ids ...ID) ([]Target, error) {
-	return slices.Filter(c.targets, func(target Target) bool {
-		return slices.Contains(ids, target.Id)
-	}), nil
-}
-
-func (c *TestUIClient) ListTargets(ctx context.Context) ([]Target, error) {
-	return slices.Filter(c.targets, func(target Target) bool { return true }), nil
-}
-
-func (c *TestUIClient) UpdateTarget(ctx context.Context, id ID, host string, port int) error {
-	if i, ok := slices.BinarySearchFunc(c.targets, id, func(target Target, id ID) int {
-		return int(target.Id - id)
-	}); ok {
-		c.targets[i].Host = host
-		c.targets[i].Port = port
-		return nil
-	}
-	return fmt.Errorf("target with id %v not found", id)
-}
-
-func (c *TestUIClient) DeleteTargets(ctx context.Context, ids ...ID) error {
-	indexs := make([]int, 0, len(c.targets))
-	for i, target := range c.targets {
-		if slices.Contains(ids, target.Id) {
-			indexs = append(indexs, i)
-		}
-	}
-	slices.Reverse(indexs)
-	for _, i := range indexs {
-		c.targets = slices.Delete(c.targets, i, i)
-	}
-	return nil
-}
-
 // --- Account Management ---
 
-func (c *TestUIClient) CreateAccount(ctx context.Context, targetID ID, name string, deploymentKey string) (Account, error) {
-	account := Account{c.accountsID, targetID, name, deploymentKey, nil}
+func (c *TestUIClient) CreateAccount(ctx context.Context, name string, host string, port int, deploymentMethod string, deploymentSecret string) (Account, error) {
+	account := Account{c.accountsID, name, host, port, deploymentMethod, deploymentSecret, ""}
 	c.accounts = append(c.accounts, account)
 	c.accountsID++
 	return account, nil
@@ -198,10 +134,23 @@ func (c *TestUIClient) GetAccounts(ctx context.Context, ids ...ID) ([]Account, e
 	}), nil
 }
 
-func (c *TestUIClient) ListAccountsByTarget(ctx context.Context, targetID ID) ([]Account, error) {
-	return slices.Filter(c.accounts, func(account Account) bool {
-		return account.TargetID == targetID
-	}), nil
+func (c *TestUIClient) ListAccounts(ctx context.Context) ([]Account, error) {
+	return slices.Clone(c.accounts), nil
+}
+
+func (c *TestUIClient) UpdateAccount(ctx context.Context, id ID, name string, host string, port int, deploymentMethod string, deploymentSecret string) error {
+	if i, ok := slices.BinarySearchFunc(c.accounts, id, func(account Account, id ID) int {
+		return int(account.Id - id)
+	}); ok {
+		c.accounts[i].Name = name
+		c.accounts[i].Name = name
+		c.accounts[i].Host = host
+		c.accounts[i].Port = port
+		c.accounts[i].DeployMethod = deploymentMethod
+		c.accounts[i].DeploySecret = deploymentSecret
+		return nil
+	}
+	return fmt.Errorf("account with id %v not found", id)
 }
 
 func (c *TestUIClient) DeleteAccounts(ctx context.Context, ids ...ID) error {
@@ -228,7 +177,13 @@ func (c *TestUIClient) GetDirtyAccounts(ctx context.Context) ([]Account, error) 
 	})
 }
 
-// --- Tag to Account Management ---
+// --- Tag & Account-PublicKey relation Management ---
+
+func (c *TestUIClient) ListExistingTags(ctx context.Context) []string {
+	return slicest.Reduce(c.publicKeys, func(publicKey PublicKey, tags []string) []string {
+		return append(tags, publicKey.Tags...)
+	})
+}
 
 // LinkTagAccount associates a tag filter (e.g. "device:mobile&company:telekom") with
 // an `accountID` until `expiresAt`.
@@ -239,6 +194,14 @@ func (c *TestUIClient) LinkTagAccount(ctx context.Context, accountID ID, filter 
 // UnLinkTagAccount removes previously created tag-account links.
 func (c *TestUIClient) UnLinkTagAccount(ctx context.Context, linkIDs ...ID) error {
 	return errors.New("client.UnLinkTagAccount not implemented")
+}
+
+func (c *TestUIClient) ResolvePublicKeyLinks(ctx context.Context, accountID ID) ([]Link, error) {
+	return nil, errors.New("client.ResolvePublicKeyLinks not implemented")
+}
+
+func (c *TestUIClient) ResolveAccountLinks(ctx context.Context, publicKeyID ID) ([]Link, error) {
+	return nil, errors.New("client.ResolveAccountLinks not implemented")
 }
 
 // ResolvePublicKeysForAccount returns public keys applicable to `accountID`.
@@ -258,11 +221,6 @@ func (c *TestUIClient) OnboardHost(ctx context.Context, host string, port int /*
 	return nil, errors.New("client.OnboardHost not implemented")
 }
 
-// DecommisionTarget decommissions a deployment target and streams progress.
-func (c *TestUIClient) DecommisionTarget(ctx context.Context, id ID) (chan DecommisionTargetProgress, error) {
-	return nil, errors.New("client.DecommisionTarget not implemented")
-}
-
 // DecommisionAccount decommissions an account and streams progress.
 func (c *TestUIClient) DecommisionAccount(ctx context.Context, id ID) (chan DecommisionAccountProgress, error) {
 	return nil, errors.New("client.DecommisionAccount not implemented")
@@ -270,15 +228,9 @@ func (c *TestUIClient) DecommisionAccount(ctx context.Context, id ID) (chan Deco
 
 // --- Deploy stuff ---
 
-// DeployPublicKeys deploys public keys to their target accounts and reports
-// progress on the returned channel.
+// DeployPublicKeys deploys public keys to their accounts and reports progress on the returned channel.
 func (c *TestUIClient) DeployPublicKeys(ctx context.Context, publicKeyID ...ID) (chan DeployProgress, error) {
 	return nil, errors.New("client.DeployPublicKeys not implemented")
-}
-
-// DeployTargets deploys to the specified target ids and streams progress.
-func (c *TestUIClient) DeployTargets(ctx context.Context, targetID ...ID) (chan DeployProgress, error) {
-	return nil, errors.New("client.DeployTargets not implemented")
 }
 
 // DeployAccounts deploys to the specified account ids and streams progress.
@@ -290,18 +242,18 @@ func (c *TestUIClient) DeployAccounts(ctx context.Context, accountID ...ID) (cha
 func (c *TestUIClient) DeployAll(ctx context.Context) (chan DeployProgress, error) {
 	ch := make(chan DeployProgress)
 
-	targetProgress := make(map[Target]float32, len(c.targets))
-	for _, target := range c.targets {
-		targetProgress[target] = 0
+	accountProgress := make(map[*Account]float64, len(c.accounts))
+	for _, account := range c.accounts {
+		accountProgress[&account] = 0
 	}
 
 	go func() {
-		for i := float32(0); i <= 1; i += 0.2 {
+		for i := float64(0); i <= 1; i += 0.2 {
 			time.Sleep(time.Second)
-			for target := range targetProgress {
-				targetProgress[target] = i
+			for account := range accountProgress {
+				accountProgress[account] = i
 			}
-			ch <- DeployProgress{i, targetProgress}
+			ch <- DeployProgress{i, accountProgress}
 		}
 		close(ch)
 	}()

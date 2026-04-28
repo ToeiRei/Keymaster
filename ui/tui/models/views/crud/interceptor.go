@@ -8,13 +8,66 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 )
 
-type MsgInterceptor[T any] = func(msg tea.Msg, ctx T) (cmd tea.Cmd, done bool)
+type MsgInterceptor[TCtx any] = func(msg tea.Msg, ctx TCtx) (cmd tea.Cmd, done bool)
 
-type ListMsgInterceptor = MsgInterceptor[struct{}]
-type CreateMsgInterceptor[T comparable] = MsgInterceptor[*form.Form[T]]
-type EditMsgInterceptor[T comparable] = MsgInterceptor[*form.Form[T]]
+type ListMsgInterceptor[
+	TRecord any,
+	TRecordCreate comparable,
+	TRecordEdit comparable,
+	TId comparable,
+	TFilter comparable,
+] = MsgInterceptor[ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]]
 
-func Intercept[T any](msg tea.Msg, ctx T, interceptors ...MsgInterceptor[T]) (cmd tea.Cmd, done bool) {
+type CreateMsgInterceptor[
+	TRecord any,
+	TRecordCreate comparable,
+	TRecordEdit comparable,
+	TId comparable,
+	TFilter comparable,
+] = MsgInterceptor[CreateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]]
+
+type EditMsgInterceptor[
+	TRecord any,
+	TRecordCreate comparable,
+	TRecordEdit comparable,
+	TId comparable,
+	TFilter comparable,
+] = MsgInterceptor[EditMsgInterceptorCtx[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]]
+
+type ListMsgInterceptorCtx[
+	TRecord any,
+	TRecordCreate comparable,
+	TRecordEdit comparable,
+	TId comparable,
+	TFilter comparable,
+] struct {
+	Crud           *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]
+	SelectedRecord *TRecord
+}
+
+type CreateMsgInterceptorCtx[
+	TRecord any,
+	TRecordCreate comparable,
+	TRecordEdit comparable,
+	TId comparable,
+	TFilter comparable,
+] struct {
+	Crud *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]
+	Form *form.Form[TRecordCreate]
+}
+
+type EditMsgInterceptorCtx[
+	TRecord any,
+	TRecordCreate comparable,
+	TRecordEdit comparable,
+	TId comparable,
+	TFilter comparable,
+] struct {
+	Crud *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]
+	Form *form.Form[TRecordEdit]
+}
+
+func Intercept[TCtx any](msg tea.Msg, ctx TCtx, interceptors ...MsgInterceptor[TCtx]) (cmd tea.Cmd, done bool) {
 	var cmds []tea.Cmd
 
 	for _, interceptor := range interceptors {

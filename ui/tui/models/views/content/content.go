@@ -14,7 +14,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/components/menu"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
 	"github.com/toeirei/keymaster/ui/tui/models/components/stack"
-	"github.com/toeirei/keymaster/ui/tui/models/views/crud"
+	"github.com/toeirei/keymaster/ui/tui/models/views/account"
 	"github.com/toeirei/keymaster/ui/tui/models/views/dashboard"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/models/views/publickey"
@@ -43,8 +43,8 @@ func New() *Model {
 	_, _ = client.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb", "69", []string{"user:somebodyelse", "company:evilgoogle"})
 
 	menuPtr := util.ModelPointer(menu.New(
-		// menu.WithItem("dashboard", "Dashboard"),
 		menu.WithItem("publickey.list", "Public Keys"),
+		menu.WithItem("account.list", "Accounts"),
 		menu.WithItem("test.progress_popup", "Test Progress"),
 	))
 	dashboardPtr := util.ModelPointer(dashboard.New(client))
@@ -74,8 +74,9 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(menu.ItemSelected); ok {
 		switch msg.Id {
 		case "publickey.list":
-			publicKeyCrud := publickey.NewCrud(m.client, m.routerControll)
-			return m.routerControll.Push(util.ModelPointer(crud.NewList(publicKeyCrud)))
+			return publickey.NewCrud(m.client, m.routerControll).OpenList()
+		case "account.list":
+			return account.NewCrud(m.client, m.routerControll).OpenList()
 		case "test.progress_popup":
 			cmd, progress := popupviews.OpenProgress("Test Progress")
 

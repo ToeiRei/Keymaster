@@ -11,8 +11,7 @@ import (
 type Client interface {
 	// --- Lifecycle & Initialization ---
 
-	// Close cleans up resources held by the client and closes any open
-	// connections. Calls should pass a context for cancellation/timeouts.
+	// Close cleans up resources held by the client and closes any open connections.
 	Close(ctx context.Context) error
 
 	// --- PublicKey Management ---
@@ -27,40 +26,19 @@ type Client interface {
 
 	UpdatePublicKey(ctx context.Context, id ID, comment string, tags []string) error
 
-	// DEPRECATED
-	UpdatePublicKeyTags(ctx context.Context, id ID, tags []string) error
-
 	DeletePublicKeys(ctx context.Context, ids ...ID) error
-
-	// --- Target Management ---
-
-	// DEPRECATED
-	CreateTarget(ctx context.Context, host string, port int /* , gateway string, plugin string */) (Target, error)
-
-	// DEPRECATED
-	GetTarget(ctx context.Context, id ID) (Target, error)
-
-	// DEPRECATED
-	GetTargets(ctx context.Context, ids ...ID) ([]Target, error)
-
-	// DEPRECATED
-	ListTargets(ctx context.Context) ([]Target, error)
-
-	// DEPRECATED
-	UpdateTarget(ctx context.Context, id ID, host string, port int) error
-
-	// DEPRECATED
-	DeleteTargets(ctx context.Context, ids ...ID) error
 
 	// --- Account Management ---
 
-	CreateAccount(ctx context.Context, targetID ID, name string, deploymentKey string) (Account, error)
+	CreateAccount(ctx context.Context, name string, host string, port int, deploymentMethod string, deploymentSecret string) (Account, error)
 
 	GetAccount(ctx context.Context, id ID) (Account, error)
 
 	GetAccounts(ctx context.Context, ids ...ID) ([]Account, error)
 
-	ListAccountsByTarget(ctx context.Context, targetID ID) ([]Account, error)
+	ListAccounts(ctx context.Context) ([]Account, error)
+
+	UpdateAccount(ctx context.Context, id ID, name string, host string, port int, deploymentMethod string, deploymentSecret string) error
 
 	DeleteAccounts(ctx context.Context, ids ...ID) error
 
@@ -68,11 +46,17 @@ type Client interface {
 
 	GetDirtyAccounts(ctx context.Context) ([]Account, error)
 
-	// --- Tag to Account Management ---
+	// --- Tag & Account-PublicKey relation Management ---
+
+	ListExistingTags(ctx context.Context) []string
 
 	LinkTagAccount(ctx context.Context, accountID ID, filter string, expiresAt time.Time) (ID, error)
 
 	UnLinkTagAccount(ctx context.Context, linkIDs ...ID) error
+
+	ResolvePublicKeyLinks(ctx context.Context, accountID ID) ([]Link, error)
+
+	ResolveAccountLinks(ctx context.Context, publicKeyID ID) ([]Link, error)
 
 	ResolvePublicKeysForAccount(ctx context.Context, accountID ID) ([]PublicKey, error)
 
@@ -82,15 +66,11 @@ type Client interface {
 
 	OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountName string, deploymentKey string) (chan OnboardHostProgress, error)
 
-	DecommisionTarget(ctx context.Context, id ID) (chan DecommisionTargetProgress, error)
-
 	DecommisionAccount(ctx context.Context, id ID) (chan DecommisionAccountProgress, error)
 
 	// --- Deploy stuff ---
 
 	DeployPublicKeys(ctx context.Context, publicKeyID ...ID) (chan DeployProgress, error)
-
-	DeployTargets(ctx context.Context, targetID ...ID) (chan DeployProgress, error)
 
 	DeployAccounts(ctx context.Context, accountID ...ID) (chan DeployProgress, error)
 
@@ -110,50 +90,47 @@ type PublicKey struct {
 	// ...
 }
 
-// Target represents a remote host or endpoint to deploy keys to.
-type Target struct {
-	Id   ID
-	Host string
-	Port int
-	// PluginType   string // shh,cmd,cisco-switch
-	// PluginConfig string // freetext plugin configuration (parsed and used by plugin, not core)
-	// PluginData   string // data/cache seved by plugin
+// Account represents an account on a target host.
+type Account struct {
+	Id           ID
+	Name         string
+	Host         string
+	Port         int
+	DeployMethod string // ssh, cisco, ...
+	DeploySecret string
+	DeployCache  string
 	// ...
 }
 
-// Account represents an account on a target host.
-type Account struct {
-	Id                               ID
-	TargetID                         ID
-	Name                             string
-	DeploymentKey                    string
-	DeploymentLastAuthorizedKeysHash *string
-	// PluginConfig string // freetext plugin configuration OVERWRITE (parsed and used by plugin, not core)
-	// PluginData   string // data/cache seved by plugin
+type Link struct {
+	Id        ID
+	accountID ID
+	tagFilter string
+	expiresAt time.Time
 	// ...
 }
 
 // DeployProgress reports incremental progress for a deployment operation.
 type DeployProgress struct {
-	Percent float32
-	Targets map[Target]float32
+	Percent float64
+	Targets map[*Account]float64
 	// ...
 }
 
 // OnboardHostProgress reports progress during host onboarding.
 type OnboardHostProgress struct {
-	Percent float32
+	Percent float64
 	// ...
 }
 
 // DecommisionTargetProgress reports progress for target decommissioning.
 type DecommisionTargetProgress struct {
-	Percent float32
+	Percent float64
 	// ...
 }
 
 // DecommisionAccountProgress reports progress for account decommissioning.
 type DecommisionAccountProgress struct {
-	Percent float32
+	Percent float64
 	// ...
 }

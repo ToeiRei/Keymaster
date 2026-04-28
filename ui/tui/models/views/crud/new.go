@@ -4,6 +4,7 @@
 package crud
 
 import (
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
@@ -41,12 +42,13 @@ func New[
 	opts ...Option[TRecord, TRecordCreate, TRecordEdit, TId, TFilter],
 ) *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
 	crud := &Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]{
-		getRecordId:    getRecordId,
-		getRecords:     getRecords,
-		getRecord:      getRecord,
-		createRecord:   createRecord,
-		editRecord:     editRecord,
-		deleteRecord:   deleteRecord,
+		getRecordId:  getRecordId,
+		getRecords:   getRecords,
+		getRecord:    getRecord,
+		createRecord: createRecord,
+		editRecord:   editRecord,
+		deleteRecord: deleteRecord,
+
 		makeListTable:  makeListTable,
 		makeRecordEdit: makeRecordEdit,
 
@@ -63,13 +65,25 @@ func New[
 	return crud
 }
 
+func WithListKeyBindings[
+	TRecord any,
+	TRecordCreate comparable,
+	TRecordEdit comparable,
+	TId comparable,
+	TFilter comparable,
+](bindings ...key.Binding) Option[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
+	return func(c *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) {
+		c.listGlobalKeyMap = append(c.listGlobalKeyMap, bindings...)
+	}
+}
+
 func WithListMsgInterceptor[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordEdit comparable,
 	TId comparable,
 	TFilter comparable,
-](mi ListMsgInterceptor) Option[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
+](mi ListMsgInterceptor[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Option[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
 	return func(c *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) {
 		c.listMsgInterceptors = append(c.listMsgInterceptors, mi)
 	}
@@ -81,7 +95,7 @@ func WithCreateMsgInterceptor[
 	TRecordEdit comparable,
 	TId comparable,
 	TFilter comparable,
-](mi CreateMsgInterceptor[TRecordCreate]) Option[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
+](mi CreateMsgInterceptor[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Option[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
 	return func(c *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) {
 		c.createMsgInterceptors = append(c.createMsgInterceptors, mi)
 	}
@@ -93,7 +107,7 @@ func WithEditMsgInterceptor[
 	TRecordEdit comparable,
 	TId comparable,
 	TFilter comparable,
-](mi EditMsgInterceptor[TRecordEdit]) Option[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
+](mi EditMsgInterceptor[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Option[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
 	return func(c *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) {
 		c.editMsgInterceptors = append(c.editMsgInterceptors, mi)
 	}
