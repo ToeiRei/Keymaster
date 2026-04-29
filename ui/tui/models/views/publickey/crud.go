@@ -96,7 +96,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 					// column: Comment
 					publicKey.Comment,
 					// column: Tags
-					strings.Join(publicKey.Tags, ", "),
+					tagsStringify(publicKey.Tags),
 					// column: Algorithm
 					publicKey.Algorithm,
 				}
