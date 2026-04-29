@@ -98,12 +98,17 @@ func (m Injector) View() string {
 		return childView
 	}
 
+	popupContentView := (*m.activeModel()).View()
+	if popupContentView == "" {
+		return childView
+	}
+
 	popupView := lipgloss.
 		NewStyle().
 		Padding(0, 1).
 		Border(lipgloss.NormalBorder()).
 		Margin(0, 1).
-		Render((*m.activeModel()).View())
+		Render(popupContentView)
 
 	childView = lipgloss.
 		NewStyle().
