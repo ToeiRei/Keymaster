@@ -82,7 +82,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Init() 
 		}),
 		form.WithOnDiscardGuard[TRecordCreate](discardGuard),
 		// data
-		form.WithInitialData(util.DerefOrNullValue(m.preset)),
+		form.WithInitialData(util.DerefOrZeroValue(m.preset)),
 	)
 
 	m.form = util.NewPointer(form.New(formOpts...))

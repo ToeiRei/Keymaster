@@ -20,7 +20,7 @@ func ModelPointer[T any, PT interface {
 	*T
 	Model
 }](v PT) *Model {
-	return new(Model(v))
+	return NewPointer(Model(v))
 }
 
 func BorrowModel[T any, PT interface {
@@ -42,7 +42,7 @@ func BorrowModelFunc[T any, PT interface {
 
 func BorrowModelSafe[T Model](m *Model) (*T, func(), error) {
 	if t, ok := (*m).(T); ok {
-		t := new(t)
+		t := NewPointer(t)
 		return t, func() { *m = Model(*t) }, nil
 	} else {
 		return nil, nil, fmt.Errorf("type mismatch inferring model: %T != %T", m, t)
@@ -51,7 +51,7 @@ func BorrowModelSafe[T Model](m *Model) (*T, func(), error) {
 
 func BorrowModelFuncSafe[T Model](m *Model, fn func(*T)) error {
 	if t, ok := (*m).(T); ok {
-		t := new(t)
+		t := NewPointer(t)
 		fn(t)
 		*m = Model(*t)
 		return nil
