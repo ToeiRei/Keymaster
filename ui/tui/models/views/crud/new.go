@@ -6,8 +6,12 @@ package crud
 import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
+	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
+	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 type Option[
@@ -44,7 +48,7 @@ func New[
 	opts ...Option[TRecord, TRecordCreate, TRecordEdit, TId, TFilter],
 ) *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
 	crud := &Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]{
-		texts: texts,
+		Texts: texts,
 
 		getRecordId:  getRecordId,
 		getRecords:   getRecords,
@@ -114,5 +118,29 @@ func WithEditMsgInterceptor[
 ](mi EditMsgInterceptor[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Option[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
 	return func(c *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) {
 		c.editMsgInterceptors = append(c.editMsgInterceptors, mi)
+	}
+}
+
+func WithListDuplicateAction[
+	TRecord any,
+	TRecordCreate comparable,
+	TRecordEdit comparable,
+	TId comparable,
+	TFilter comparable,
+](fn func(record TRecord) TRecordCreate) Option[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
+	return func(c *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) {
+		// add list key binding
+		WithListKeyBindings[TRecord, TRecordCreate, TRecordEdit, TId, TFilter](keys.Duplicate())(c)
+
+		// add list msg interceptor
+		WithListMsgInterceptor(func(msg tea.Msg, ctx ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) (tea.Cmd, bool) {
+			if msg, ok := msg.(tea.KeyMsg); ok && key.Matches(msg, keys.Duplicate()) {
+				if ctx.SelectedRecord == nil {
+					return popupviews.OpenMessage(popupviews.MessageError, "Please select a "+ctx.Crud.Texts.EntityNameSingular+" to duplicate.", nil), true
+				}
+				return ctx.Crud.OpenCreate(util.NewPointer(fn(*ctx.SelectedRecord))), true
+			}
+			return nil, false
+		})(c)
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/bobg/go-generics/v4/slices"
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
@@ -164,24 +163,19 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 		},
 
 		rc,
-		crud.WithListKeyBindings[client.PublicKey, createFormData, editFormData, client.ID, struct{}](keys.Duplicate()),
-		crud.WithListMsgInterceptor(func(msg tea.Msg, ctx crud.ListMsgInterceptorCtx[client.PublicKey, createFormData, editFormData, client.ID, struct{}]) (tea.Cmd, bool) {
-			if msg, ok := msg.(tea.KeyMsg); ok && key.Matches(msg, keys.Duplicate()) {
-				if ctx.SelectedRecord == nil {
-					return popupviews.OpenMessage(popupviews.MessageError, "Please select a Record to duplicate.", nil), true
-				}
-				return ctx.Crud.OpenCreate(&createFormData{
-					ctx.SelectedRecord.Algorithm,
-					ctx.SelectedRecord.Data,
-					ctx.SelectedRecord.Comment,
-					tagsStringify(ctx.SelectedRecord.Tags),
-				}), true
+
+		crud.WithListDuplicateAction[client.PublicKey, createFormData, editFormData, client.ID, struct{}](func(record client.PublicKey) createFormData {
+			return createFormData{
+				record.Algorithm,
+				record.Data,
+				record.Comment,
+				tagsStringify(record.Tags),
 			}
-			return nil, false
 		}),
+
 		crud.WithCreateMsgInterceptor(func(msg tea.Msg, ctx crud.CreateMsgInterceptorCtx[client.PublicKey, createFormData, editFormData, client.ID, struct{}]) (tea.Cmd, bool) {
 			if msg, ok := msg.(msgImportResult); ok {
-
+				// apply import popup result to form
 				data, _ := ctx.Form.Get()
 				data.Data = msg.data
 				data.Algorithm = msg.algorithm
@@ -189,7 +183,6 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 					data.Comment = msg.comment
 				}
 				_ = ctx.Form.Set(data)
-
 				return nil, true
 			}
 			return nil, false

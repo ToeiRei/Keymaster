@@ -9,16 +9,12 @@ import (
 	"strconv"
 
 	"github.com/bobg/go-generics/v4/slices"
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/models/views/crud"
-	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
-	"github.com/toeirei/keymaster/ui/tui/util/keys"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
@@ -30,12 +26,16 @@ type createFormData struct {
 	DeploySecret string `form:"deploy_secret"`
 }
 
-type editFormData struct {
-	Name         string `form:"name"`
-	Host         string `form:"host"`
-	Port         string `form:"port"`
-	DeployMethod string `form:"deploy_method"`
-	DeploySecret string `form:"deploy_secret"`
+type editFormData = createFormData
+
+func formRows[T comparable]() []form.FormOpt[T] {
+	return []form.FormOpt[T]{
+		form.WithRowItem[T]("name", formelement.NewText("Name", "eg. user/root/...")),
+		form.WithRowItem[T]("host", formelement.NewText("Host", "ip/domain to connect to")),
+		form.WithRowItem[T]("port", formelement.NewText("Port", "eg. 22")),
+		form.WithRowItem[T]("deploy_method", formelement.NewText("Deploy Method", "ssh/cisco/...")),
+		form.WithRowItem[T]("deploy_secret", formelement.NewTextarea("Deploy Secret", "", 3, 5)),
+	}
 }
 
 func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, createFormData, editFormData, client.ID, struct{}] {
@@ -122,42 +122,19 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, cre
 			}
 		},
 
-		func() []form.FormOpt[createFormData] {
-			return []form.FormOpt[createFormData]{
-				form.WithRowItem[createFormData]("name", formelement.NewText("Name", "eg. user/root/...")),
-				form.WithRowItem[createFormData]("host", formelement.NewText("Host", "ip/domain to connect to")),
-				form.WithRowItem[createFormData]("port", formelement.NewText("Port", "eg. 22")),
-				form.WithRowItem[createFormData]("deploy_method", formelement.NewText("Deploy Method", "ssh/cisco/...")),
-				form.WithRowItem[createFormData]("deploy_secret", formelement.NewText("Deploy Secret", "")),
-			}
-		},
-		func() []form.FormOpt[editFormData] {
-			return []form.FormOpt[editFormData]{
-				form.WithRowItem[editFormData]("name", formelement.NewText("Name", "eg. user/root/...")),
-				form.WithRowItem[editFormData]("host", formelement.NewText("Host", "ip/domain to connect to")),
-				form.WithRowItem[editFormData]("port", formelement.NewText("Port", "eg. 22")),
-				form.WithRowItem[editFormData]("deploy_method", formelement.NewText("Deploy Method", "ssh/cisco/...")),
-				form.WithRowItem[editFormData]("deploy_secret", formelement.NewText("Deploy Secret", "")),
-			}
-		},
+		formRows[createFormData],
+		formRows[editFormData],
 
 		rc,
 
-		crud.WithListKeyBindings[client.Account, createFormData, editFormData, client.ID, struct{}](keys.Duplicate()),
-		crud.WithListMsgInterceptor(func(msg tea.Msg, ctx crud.ListMsgInterceptorCtx[client.Account, createFormData, editFormData, client.ID, struct{}]) (tea.Cmd, bool) {
-			if msg, ok := msg.(tea.KeyMsg); ok && key.Matches(msg, keys.Duplicate()) {
-				if ctx.SelectedRecord == nil {
-					return popupviews.OpenMessage(popupviews.MessageError, "Please select a Record to duplicate.", nil), true
-				}
-				return ctx.Crud.OpenCreate(&createFormData{
-					ctx.SelectedRecord.Name,
-					ctx.SelectedRecord.Host,
-					fmt.Sprint(ctx.SelectedRecord.Port),
-					ctx.SelectedRecord.DeployMethod,
-					ctx.SelectedRecord.DeploySecret,
-				}), true
+		crud.WithListDuplicateAction[client.Account, createFormData, editFormData, client.ID, struct{}](func(record client.Account) createFormData {
+			return createFormData{
+				record.Name,
+				record.Host,
+				fmt.Sprint(record.Port),
+				record.DeployMethod,
+				record.DeploySecret,
 			}
-			return nil, false
 		}),
 	)
 }

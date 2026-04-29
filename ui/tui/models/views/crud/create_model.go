@@ -68,7 +68,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Init() 
 		),
 		// events
 		form.WithOnSubmit(func(result TRecordCreate, err error) tea.Cmd {
-			return popupviews.OpenProgress("Creating "+m.crud.texts.EntityNameSingular+"...", func(_ popupviews.ProgressChan) tea.Msg {
+			return popupviews.OpenProgress("Creating "+m.crud.Texts.EntityNameSingular+"...", func(_ popupviews.ProgressChan) tea.Msg {
 				record, err := m.crud.createRecord(result)
 				return createMsgCreateResult[TRecord]{record, err}
 			})
@@ -105,7 +105,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(
 	switch msg := msg.(type) {
 	case createMsgCreateResult[TRecord]:
 		if msg.err != nil {
-			return popupviews.OpenMessage(popupviews.MessageError, "Error creating "+m.crud.texts.EntityNameSingular+":\n"+msg.err.Error(), nil)
+			return popupviews.OpenMessage(popupviews.MessageError, "Error creating "+m.crud.Texts.EntityNameSingular+":\n"+msg.err.Error(), nil)
 		}
 		return tea.Sequence(m.crud.routerControll.Pop(1), func() tea.Msg { return createMsgCreated[TRecord]{msg.record} })
 	}
