@@ -49,8 +49,12 @@ func New() *Model {
 	menuPtr := util.ModelPointer(menu.New(
 		menu.WithItem("publickey.list", "Public Keys"),
 		menu.WithItem("account.list", "Accounts"),
-		menu.WithItem("test.popup.progress.spinner", "Test Progress Spinner"),
-		menu.WithItem("test.popup.progress.bar", "Test Progress Bar"),
+		menu.WithItem("", "Test",
+			menu.WithItem("", "Popup",
+				menu.WithItem("test.popup.progress.spinner", "Progress Spinner"),
+				menu.WithItem("test.popup.progress.bar", "Progress Bar"),
+			),
+		),
 	))
 	dashboardPtr := util.ModelPointer(dashboard.New(c))
 	routerModel, routerControll := router.New(dashboardPtr)
@@ -82,10 +86,19 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			return publickey.NewCrud(m.client, m.routerControll).OpenList()
 		case "account.list":
 			return account.NewCrud(m.client, m.routerControll).OpenList()
+		case "test.popup.progress.spinner":
+			return popupviews.OpenProgress(
+				popupviews.ProgressSpinner,
+				"Test Progress Spinner",
+				func(_ popupviews.ProgressChan) tea.Msg {
+					time.Sleep(time.Second * 2)
+					return nil
+				},
+			)
 		case "test.popup.progress.bar":
 			return popupviews.OpenProgress(
 				popupviews.ProgressBar,
-				"Test Progress",
+				"Test Progress Bar",
 				func(pc popupviews.ProgressChan) tea.Msg {
 					for i := range 100 {
 						pc <- popupviews.Progress{
