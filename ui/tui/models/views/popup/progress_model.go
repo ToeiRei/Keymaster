@@ -15,10 +15,12 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
-var progressId atomic.Uint32
+type progressId uint32
+
+var progressIdCounter atomic.Uint32
 
 type ProgressModel struct {
-	id     uint32
+	id     progressId
 	title  string
 	status string
 
@@ -38,7 +40,7 @@ type Progress struct {
 type ProgressChan = chan Progress
 
 func OpenProgress(title string, fn func(ProgressChan) tea.Msg) tea.Cmd {
-	id := progressId.Add(1)
+	id := progressId(progressIdCounter.Add(1))
 	progressChan := make(ProgressChan, 1)
 	model := &ProgressModel{
 		id:            id,

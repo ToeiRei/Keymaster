@@ -6,25 +6,25 @@ package popupviews
 import tea "github.com/charmbracelet/bubbletea"
 
 type progressMsg interface {
-	id() uint32
+	id() progressId
 }
 
 type progressFadeInMsg struct {
-	pid uint32
+	pid progressId
 }
 type progressProgressMsg struct {
-	pid      uint32
+	pid      progressId
 	progress float64
 	status   string
 }
 type progressDoneMsg struct {
-	pid uint32
+	pid progressId
 	msg tea.Msg
 }
 
-func (m progressFadeInMsg) id() uint32   { return m.pid }
-func (m progressProgressMsg) id() uint32 { return m.pid }
-func (m progressDoneMsg) id() uint32     { return m.pid }
+func (m progressFadeInMsg) id() progressId   { return m.pid }
+func (m progressProgressMsg) id() progressId { return m.pid }
+func (m progressDoneMsg) id() progressId     { return m.pid }
 
 // [progressMsgFadeIn] implements [progressMsg]
 // [progressMsgProgress] implements [progressMsg]

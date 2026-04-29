@@ -38,14 +38,14 @@ func formRows[T comparable]() []form.FormOpt[T] {
 	}
 }
 
-func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, createFormData, editFormData, client.ID, struct{}] {
+func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, createFormData, editFormData, client.AccountId, struct{}] {
 	return crud.New(
 		crud.Texts{"Account", "Accounts"},
-		func(record client.Account) client.ID { return record.Id },
+		func(record client.Account) client.AccountId { return record.Id },
 		func(filter struct{}) ([]client.Account, error) {
 			return c.ListAccounts(context.Background())
 		},
-		func(id client.ID) (client.Account, error) {
+		func(id client.AccountId) (client.Account, error) {
 			return c.GetAccount(context.Background(), id)
 		},
 		func(record createFormData) (client.Account, error) {
@@ -59,7 +59,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, cre
 				record.DeploySecret,
 			)
 		},
-		func(id client.ID, record editFormData) (client.Account, error) {
+		func(id client.AccountId, record editFormData) (client.Account, error) {
 			port, err := strconv.Atoi(record.Port)
 			if err != nil {
 				return client.Account{}, err
@@ -79,7 +79,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, cre
 
 			return c.GetAccount(context.Background(), id)
 		},
-		func(id client.ID) error {
+		func(id client.AccountId) error {
 			return c.DeleteAccounts(context.Background(), id)
 		},
 		func(record []client.Account, width int) ([]table.Column, []table.Row) {
@@ -127,7 +127,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, cre
 
 		rc,
 
-		crud.WithListDuplicateAction[client.Account, createFormData, editFormData, client.ID, struct{}](func(record client.Account) createFormData {
+		crud.WithListDuplicateAction[client.Account, createFormData, editFormData, client.AccountId, struct{}](func(record client.Account) createFormData {
 			return createFormData{
 				record.Name,
 				record.Host,

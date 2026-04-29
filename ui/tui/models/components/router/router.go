@@ -11,17 +11,19 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
-var routerId atomic.Uint32
+type routerId uint32
+
+var routerIdCounter atomic.Uint32
 
 type Model struct {
-	id           uint32
+	id           routerId
 	size         util.Size
 	modelStack   []*util.Model
 	parentKeyMap help.KeyMap
 }
 
 func New(initialModel *util.Model) (*Model, Controll) {
-	rid := routerId.Add(1)
+	rid := routerId(routerIdCounter.Add(1))
 	return &Model{
 		id:         rid,
 		modelStack: []*util.Model{initialModel},
@@ -86,7 +88,6 @@ func (m *Model) GetStack() []*util.Model {
 	stack := make([]*util.Model, len(m.modelStack))
 	copy(stack, m.modelStack)
 	return stack
-	// return append(make([]*util.Model, 0, len(m.modelStack)), m.modelStack...)
 }
 
 func (m *Model) isMsgOwner(msg tea.Msg) bool {

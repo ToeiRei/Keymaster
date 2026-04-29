@@ -19,34 +19,34 @@ type MockClientOverwrites struct {
 	Close func(ctx context.Context) error
 	// --- PublicKey Management ---
 	CreatePublicKey  func(ctx context.Context, key string, comment string, tags []string) (PublicKey, error)
-	GetPublicKey     func(ctx context.Context, id ID) (PublicKey, error)
-	GetPublicKeys    func(ctx context.Context, ids ...ID) ([]PublicKey, error)
+	GetPublicKey     func(ctx context.Context, id PublicKeyId) (PublicKey, error)
+	GetPublicKeys    func(ctx context.Context, ids ...PublicKeyId) ([]PublicKey, error)
 	ListPublicKeys   func(ctx context.Context, tagFilter string) ([]PublicKey, error)
-	UpdatePublicKey  func(ctx context.Context, id ID, comment string, tags []string) error
-	DeletePublicKeys func(ctx context.Context, ids ...ID) error
+	UpdatePublicKey  func(ctx context.Context, id PublicKeyId, comment string, tags []string) error
+	DeletePublicKeys func(ctx context.Context, ids ...PublicKeyId) error
 	// --- Account Management ---
 	CreateAccount    func(ctx context.Context, name string, host string, port int, deploymentMethod string, deploymentSecret string) (Account, error)
-	GetAccount       func(ctx context.Context, id ID) (Account, error)
-	GetAccounts      func(ctx context.Context, ids ...ID) ([]Account, error)
+	GetAccount       func(ctx context.Context, id AccountId) (Account, error)
+	GetAccounts      func(ctx context.Context, ids ...AccountId) ([]Account, error)
 	ListAccounts     func(ctx context.Context) ([]Account, error)
-	UpdateAccount    func(ctx context.Context, id ID, name string, host string, port int, deploymentMethod string, deploymentSecret string) error
-	DeleteAccounts   func(ctx context.Context, ids ...ID) error
+	UpdateAccount    func(ctx context.Context, id AccountId, name string, host string, port int, deploymentMethod string, deploymentSecret string) error
+	DeleteAccounts   func(ctx context.Context, ids ...AccountId) error
 	IsAccountDirty   func(ctx context.Context, account Account) (bool, error)
 	GetDirtyAccounts func(ctx context.Context) ([]Account, error)
 	// --- Tag & Account-PublicKey relation Management ---
 	ListExistingTags            func(ctx context.Context) []string
-	LinkTagAccount              func(ctx context.Context, accountID ID, filter string, expiresAt time.Time) (ID, error)
-	UnLinkTagAccount            func(ctx context.Context, linkIDs ...ID) error
-	ResolvePublicKeyLinks       func(ctx context.Context, accountID ID) ([]Link, error)
-	ResolveAccountLinks         func(ctx context.Context, publicKeyID ID) ([]Link, error)
-	ResolvePublicKeysForAccount func(ctx context.Context, accountID ID) ([]PublicKey, error)
-	ResolveAccountsForPublicKey func(ctx context.Context, publicKeyID ID) ([]Account, error)
+	CreateLink                  func(ctx context.Context, accountID AccountId, filter string, expiresAt time.Time) (Link, error)
+	DeleteLinks                 func(ctx context.Context, linkIDs ...LinkId) error
+	ResolvePublicKeyLinks       func(ctx context.Context, accountID AccountId) ([]Link, error)
+	ResolveAccountLinks         func(ctx context.Context, publicKeyID PublicKeyId) ([]Link, error)
+	ResolvePublicKeysForAccount func(ctx context.Context, accountID AccountId) ([]PublicKey, error)
+	ResolveAccountsForPublicKey func(ctx context.Context, publicKeyID PublicKeyId) ([]Account, error)
 	// --- Onboarding & Decommision ---
 	OnboardHost        func(ctx context.Context, host string, port int, accountName string, deploymentKey string) (chan OnboardHostProgress, error)
-	DecommisionAccount func(ctx context.Context, id ID) (chan DecommisionAccountProgress, error)
+	DecommisionAccount func(ctx context.Context, id AccountId) (chan DecommisionAccountProgress, error)
 	// --- Deploy stuff ---
-	DeployPublicKeys func(ctx context.Context, publicKeyID ...ID) (chan DeployProgress, error)
-	DeployAccounts   func(ctx context.Context, accountID ...ID) (chan DeployProgress, error)
+	DeployPublicKeys func(ctx context.Context, publicKeyID ...PublicKeyId) (chan DeployProgress, error)
+	DeployAccounts   func(ctx context.Context, accountID ...AccountId) (chan DeployProgress, error)
 	DeployAll        func(ctx context.Context) (chan DeployProgress, error)
 }
 
@@ -115,7 +115,7 @@ func (m *MockClient) CreatePublicKey(ctx context.Context, key string, comment st
 	panic("MockClient.CreatePublicKey not implemented")
 }
 
-func (m *MockClient) GetPublicKey(ctx context.Context, id ID) (PublicKey, error) {
+func (m *MockClient) GetPublicKey(ctx context.Context, id PublicKeyId) (PublicKey, error) {
 	if m.Pre != nil {
 		m.Pre("GetPublicKey", map[string]any{"ctx": ctx, "id": id})
 	}
@@ -127,7 +127,7 @@ func (m *MockClient) GetPublicKey(ctx context.Context, id ID) (PublicKey, error)
 	panic("MockClient.GetPublicKey not implemented")
 }
 
-func (m *MockClient) GetPublicKeys(ctx context.Context, ids ...ID) ([]PublicKey, error) {
+func (m *MockClient) GetPublicKeys(ctx context.Context, ids ...PublicKeyId) ([]PublicKey, error) {
 	if m.Pre != nil {
 		m.Pre("GetPublicKeys", map[string]any{"ctx": ctx, "ids": ids})
 	}
@@ -151,7 +151,7 @@ func (m *MockClient) ListPublicKeys(ctx context.Context, tagFilter string) ([]Pu
 	panic("MockClient.ListPublicKeys not implemented")
 }
 
-func (m *MockClient) UpdatePublicKey(ctx context.Context, id ID, comment string, tags []string) error {
+func (m *MockClient) UpdatePublicKey(ctx context.Context, id PublicKeyId, comment string, tags []string) error {
 	if m.Pre != nil {
 		m.Pre("UpdatePublicKey", map[string]any{"ctx": ctx, "id": id, "comment": comment, "tags": tags})
 	}
@@ -163,7 +163,7 @@ func (m *MockClient) UpdatePublicKey(ctx context.Context, id ID, comment string,
 	panic("MockClient.UpdatePublicKey not implemented")
 }
 
-func (m *MockClient) DeletePublicKeys(ctx context.Context, ids ...ID) error {
+func (m *MockClient) DeletePublicKeys(ctx context.Context, ids ...PublicKeyId) error {
 	if m.Pre != nil {
 		m.Pre("DeletePublicKeys", map[string]any{"ctx": ctx, "ids": ids})
 	}
@@ -189,7 +189,7 @@ func (m *MockClient) CreateAccount(ctx context.Context, name string, host string
 	panic("MockClient.CreateAccount not implemented")
 }
 
-func (m *MockClient) GetAccount(ctx context.Context, id ID) (Account, error) {
+func (m *MockClient) GetAccount(ctx context.Context, id AccountId) (Account, error) {
 	if m.Pre != nil {
 		m.Pre("GetAccount", map[string]any{"ctx": ctx, "id": id})
 	}
@@ -201,7 +201,7 @@ func (m *MockClient) GetAccount(ctx context.Context, id ID) (Account, error) {
 	panic("MockClient.GetAccount not implemented")
 }
 
-func (m *MockClient) GetAccounts(ctx context.Context, ids ...ID) ([]Account, error) {
+func (m *MockClient) GetAccounts(ctx context.Context, ids ...AccountId) ([]Account, error) {
 	if m.Pre != nil {
 		m.Pre("GetAccounts", map[string]any{"ctx": ctx, "ids": ids})
 	}
@@ -225,7 +225,7 @@ func (m *MockClient) ListAccounts(ctx context.Context) ([]Account, error) {
 	panic("MockClient.ListAccounts not implemented")
 }
 
-func (m *MockClient) UpdateAccount(ctx context.Context, id ID, name string, host string, port int, deploymentMethod string, deploymentSecret string) error {
+func (m *MockClient) UpdateAccount(ctx context.Context, id AccountId, name string, host string, port int, deploymentMethod string, deploymentSecret string) error {
 	if m.Pre != nil {
 		m.Pre("UpdateAccount", map[string]any{"ctx": ctx, "id": id, "name": name, "host": host, "port": port, "deploymentMethod": deploymentMethod, "deploymentSecret": deploymentSecret})
 	}
@@ -237,7 +237,7 @@ func (m *MockClient) UpdateAccount(ctx context.Context, id ID, name string, host
 	panic("MockClient.UpdateAccount not implemented")
 }
 
-func (m *MockClient) DeleteAccounts(ctx context.Context, ids ...ID) error {
+func (m *MockClient) DeleteAccounts(ctx context.Context, ids ...AccountId) error {
 	if m.Pre != nil {
 		m.Pre("DeleteAccounts", map[string]any{"ctx": ctx, "ids": ids})
 	}
@@ -287,31 +287,31 @@ func (m *MockClient) ListExistingTags(ctx context.Context) []string {
 	panic("MockClient.ListExistingTags not implemented")
 }
 
-func (m *MockClient) LinkTagAccount(ctx context.Context, accountID ID, filter string, expiresAt time.Time) (ID, error) {
+func (m *MockClient) CreateLink(ctx context.Context, accountID AccountId, filter string, expiresAt time.Time) (Link, error) {
 	if m.Pre != nil {
-		m.Pre("LinkTagAccount", map[string]any{"ctx": ctx, "accountID": accountID, "filter": filter, "expiresAt": expiresAt})
+		m.Pre("CreateLink", map[string]any{"ctx": ctx, "accountID": accountID, "filter": filter, "expiresAt": expiresAt})
 	}
-	if m.Overwrites.LinkTagAccount != nil {
-		return m.Overwrites.LinkTagAccount(ctx, accountID, filter, expiresAt)
+	if m.Overwrites.CreateLink != nil {
+		return m.Overwrites.CreateLink(ctx, accountID, filter, expiresAt)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.LinkTagAccount(ctx, accountID, filter, expiresAt)
+		return m.BaseClient.CreateLink(ctx, accountID, filter, expiresAt)
 	}
-	panic("MockClient.LinkTagAccount not implemented")
+	panic("MockClient.CreateLink not implemented")
 }
 
-func (m *MockClient) UnLinkTagAccount(ctx context.Context, linkIDs ...ID) error {
+func (m *MockClient) DeleteLinks(ctx context.Context, linkIDs ...LinkId) error {
 	if m.Pre != nil {
-		m.Pre("UnLinkTagAccount", map[string]any{"ctx": ctx, "linkIDs": linkIDs})
+		m.Pre("DeleteLinks", map[string]any{"ctx": ctx, "linkIDs": linkIDs})
 	}
-	if m.Overwrites.UnLinkTagAccount != nil {
-		return m.Overwrites.UnLinkTagAccount(ctx, linkIDs...)
+	if m.Overwrites.DeleteLinks != nil {
+		return m.Overwrites.DeleteLinks(ctx, linkIDs...)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.UnLinkTagAccount(ctx, linkIDs...)
+		return m.BaseClient.DeleteLinks(ctx, linkIDs...)
 	}
-	panic("MockClient.UnLinkTagAccount not implemented")
+	panic("MockClient.DeleteLinks not implemented")
 }
 
-func (m *MockClient) ResolvePublicKeyLinks(ctx context.Context, accountID ID) ([]Link, error) {
+func (m *MockClient) ResolvePublicKeyLinks(ctx context.Context, accountID AccountId) ([]Link, error) {
 	if m.Pre != nil {
 		m.Pre("ResolvePublicKeyLinks", map[string]any{"ctx": ctx, "accountID": accountID})
 	}
@@ -323,7 +323,7 @@ func (m *MockClient) ResolvePublicKeyLinks(ctx context.Context, accountID ID) ([
 	panic("MockClient.ResolvePublicKeyLinks not implemented")
 }
 
-func (m *MockClient) ResolveAccountLinks(ctx context.Context, publicKeyID ID) ([]Link, error) {
+func (m *MockClient) ResolveAccountLinks(ctx context.Context, publicKeyID PublicKeyId) ([]Link, error) {
 	if m.Pre != nil {
 		m.Pre("ResolveAccountLinks", map[string]any{"ctx": ctx, "publicKeyID": publicKeyID})
 	}
@@ -335,7 +335,7 @@ func (m *MockClient) ResolveAccountLinks(ctx context.Context, publicKeyID ID) ([
 	panic("MockClient.ResolveAccountLinks not implemented")
 }
 
-func (m *MockClient) ResolvePublicKeysForAccount(ctx context.Context, accountID ID) ([]PublicKey, error) {
+func (m *MockClient) ResolvePublicKeysForAccount(ctx context.Context, accountID AccountId) ([]PublicKey, error) {
 	if m.Pre != nil {
 		m.Pre("ResolvePublicKeysForAccount", map[string]any{"ctx": ctx, "accountID": accountID})
 	}
@@ -347,7 +347,7 @@ func (m *MockClient) ResolvePublicKeysForAccount(ctx context.Context, accountID 
 	panic("MockClient.ResolvePublicKeysForAccount not implemented")
 }
 
-func (m *MockClient) ResolveAccountsForPublicKey(ctx context.Context, publicKeyID ID) ([]Account, error) {
+func (m *MockClient) ResolveAccountsForPublicKey(ctx context.Context, publicKeyID PublicKeyId) ([]Account, error) {
 	if m.Pre != nil {
 		m.Pre("ResolveAccountsForPublicKey", map[string]any{"ctx": ctx, "publicKeyID": publicKeyID})
 	}
@@ -373,7 +373,7 @@ func (m *MockClient) OnboardHost(ctx context.Context, host string, port int, acc
 	panic("MockClient.OnboardHost not implemented")
 }
 
-func (m *MockClient) DecommisionAccount(ctx context.Context, id ID) (chan DecommisionAccountProgress, error) {
+func (m *MockClient) DecommisionAccount(ctx context.Context, id AccountId) (chan DecommisionAccountProgress, error) {
 	if m.Pre != nil {
 		m.Pre("DecommisionAccount", map[string]any{"ctx": ctx, "id": id})
 	}
@@ -387,7 +387,7 @@ func (m *MockClient) DecommisionAccount(ctx context.Context, id ID) (chan Decomm
 
 // --- Deploy stuff ---
 
-func (m *MockClient) DeployPublicKeys(ctx context.Context, publicKeyID ...ID) (chan DeployProgress, error) {
+func (m *MockClient) DeployPublicKeys(ctx context.Context, publicKeyID ...PublicKeyId) (chan DeployProgress, error) {
 	if m.Pre != nil {
 		m.Pre("DeployPublicKeys", map[string]any{"ctx": ctx, "publicKeyID": publicKeyID})
 	}
@@ -399,7 +399,7 @@ func (m *MockClient) DeployPublicKeys(ctx context.Context, publicKeyID ...ID) (c
 	panic("MockClient.DeployPublicKeys not implemented")
 }
 
-func (m *MockClient) DeployAccounts(ctx context.Context, accountID ...ID) (chan DeployProgress, error) {
+func (m *MockClient) DeployAccounts(ctx context.Context, accountID ...AccountId) (chan DeployProgress, error) {
 	if m.Pre != nil {
 		m.Pre("DeployAccounts", map[string]any{"ctx": ctx, "accountID": accountID})
 	}

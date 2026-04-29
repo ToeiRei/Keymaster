@@ -18,29 +18,29 @@ type Client interface {
 
 	CreatePublicKey(ctx context.Context, key string, comment string, tags []string) (PublicKey, error)
 
-	GetPublicKey(ctx context.Context, id ID) (PublicKey, error)
+	GetPublicKey(ctx context.Context, id PublicKeyId) (PublicKey, error)
 
-	GetPublicKeys(ctx context.Context, ids ...ID) ([]PublicKey, error)
+	GetPublicKeys(ctx context.Context, ids ...PublicKeyId) ([]PublicKey, error)
 
 	ListPublicKeys(ctx context.Context, tagFilter string) ([]PublicKey, error)
 
-	UpdatePublicKey(ctx context.Context, id ID, comment string, tags []string) error
+	UpdatePublicKey(ctx context.Context, id PublicKeyId, comment string, tags []string) error
 
-	DeletePublicKeys(ctx context.Context, ids ...ID) error
+	DeletePublicKeys(ctx context.Context, ids ...PublicKeyId) error
 
 	// --- Account Management ---
 
 	CreateAccount(ctx context.Context, name string, host string, port int, deploymentMethod string, deploymentSecret string) (Account, error)
 
-	GetAccount(ctx context.Context, id ID) (Account, error)
+	GetAccount(ctx context.Context, id AccountId) (Account, error)
 
-	GetAccounts(ctx context.Context, ids ...ID) ([]Account, error)
+	GetAccounts(ctx context.Context, ids ...AccountId) ([]Account, error)
 
 	ListAccounts(ctx context.Context) ([]Account, error)
 
-	UpdateAccount(ctx context.Context, id ID, name string, host string, port int, deploymentMethod string, deploymentSecret string) error
+	UpdateAccount(ctx context.Context, id AccountId, name string, host string, port int, deploymentMethod string, deploymentSecret string) error
 
-	DeleteAccounts(ctx context.Context, ids ...ID) error
+	DeleteAccounts(ctx context.Context, ids ...AccountId) error
 
 	IsAccountDirty(ctx context.Context, account Account) (bool, error)
 
@@ -50,39 +50,40 @@ type Client interface {
 
 	ListExistingTags(ctx context.Context) []string
 
-	LinkTagAccount(ctx context.Context, accountID ID, filter string, expiresAt time.Time) (ID, error)
+	CreateLink(ctx context.Context, accountID AccountId, filter string, expiresAt time.Time) (Link, error)
 
-	UnLinkTagAccount(ctx context.Context, linkIDs ...ID) error
+	DeleteLinks(ctx context.Context, linkIDs ...LinkId) error
 
-	ResolvePublicKeyLinks(ctx context.Context, accountID ID) ([]Link, error)
+	ResolvePublicKeyLinks(ctx context.Context, accountID AccountId) ([]Link, error)
 
-	ResolveAccountLinks(ctx context.Context, publicKeyID ID) ([]Link, error)
+	ResolveAccountLinks(ctx context.Context, publicKeyID PublicKeyId) ([]Link, error)
 
-	ResolvePublicKeysForAccount(ctx context.Context, accountID ID) ([]PublicKey, error)
+	ResolvePublicKeysForAccount(ctx context.Context, accountID AccountId) ([]PublicKey, error)
 
-	ResolveAccountsForPublicKey(ctx context.Context, publicKeyID ID) ([]Account, error)
+	ResolveAccountsForPublicKey(ctx context.Context, publicKeyID PublicKeyId) ([]Account, error)
 
 	// --- Onboarding & Decommision ---
 
 	OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountName string, deploymentKey string) (chan OnboardHostProgress, error)
 
-	DecommisionAccount(ctx context.Context, id ID) (chan DecommisionAccountProgress, error)
+	DecommisionAccount(ctx context.Context, id AccountId) (chan DecommisionAccountProgress, error)
 
 	// --- Deploy stuff ---
 
-	DeployPublicKeys(ctx context.Context, publicKeyID ...ID) (chan DeployProgress, error)
+	DeployPublicKeys(ctx context.Context, publicKeyID ...PublicKeyId) (chan DeployProgress, error)
 
-	DeployAccounts(ctx context.Context, accountID ...ID) (chan DeployProgress, error)
+	DeployAccounts(ctx context.Context, accountID ...AccountId) (chan DeployProgress, error)
 
 	DeployAll(ctx context.Context) (chan DeployProgress, error)
 }
 
 // ID is a local identifier type used by the client API.
-type ID int
+type id = int
 
 // PublicKey represents a public key record.
+type PublicKeyId id
 type PublicKey struct {
-	Id        ID
+	Id        PublicKeyId
 	Algorithm string
 	Data      string
 	Comment   string
@@ -91,8 +92,9 @@ type PublicKey struct {
 }
 
 // Account represents an account on a target host.
+type AccountId id
 type Account struct {
-	Id           ID
+	Id           AccountId
 	Name         string
 	Host         string
 	Port         int
@@ -102,9 +104,10 @@ type Account struct {
 	// ...
 }
 
+type LinkId id
 type Link struct {
-	Id        ID
-	accountID ID
+	Id        LinkId
+	accountID AccountId
 	tagFilter string
 	expiresAt time.Time
 	// ...

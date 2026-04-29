@@ -43,15 +43,15 @@ type msgImportResult struct {
 	comment   string
 }
 
-func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, createFormData, editFormData, client.ID, struct{}] {
+func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, createFormData, editFormData, client.PublicKeyId, struct{}] {
 	return crud.New(
 		crud.Texts{"Public Key", "Public Keys"},
 
-		func(record client.PublicKey) client.ID { return record.Id },
+		func(record client.PublicKey) client.PublicKeyId { return record.Id },
 		func(filter struct{}) ([]client.PublicKey, error) {
 			return c.ListPublicKeys(context.Background(), "")
 		},
-		func(id client.ID) (client.PublicKey, error) {
+		func(id client.PublicKeyId) (client.PublicKey, error) {
 			return c.GetPublicKey(context.Background(), id)
 		},
 		func(record createFormData) (client.PublicKey, error) {
@@ -62,7 +62,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 				tagsParse(record.Tags),
 			)
 		},
-		func(id client.ID, record editFormData) (client.PublicKey, error) {
+		func(id client.PublicKeyId, record editFormData) (client.PublicKey, error) {
 			if err := c.UpdatePublicKey(
 				context.Background(),
 				id,
@@ -73,7 +73,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 			}
 			return c.GetPublicKey(context.Background(), id)
 		},
-		func(id client.ID) error {
+		func(id client.PublicKeyId) error {
 			return c.DeletePublicKeys(context.Background(), id)
 		},
 		func(record []client.PublicKey, width int) ([]table.Column, []table.Row) {
@@ -164,7 +164,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 
 		rc,
 
-		crud.WithListDuplicateAction[client.PublicKey, createFormData, editFormData, client.ID, struct{}](func(record client.PublicKey) createFormData {
+		crud.WithListDuplicateAction[client.PublicKey, createFormData, editFormData, client.PublicKeyId, struct{}](func(record client.PublicKey) createFormData {
 			return createFormData{
 				record.Algorithm,
 				record.Data,
@@ -173,7 +173,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 			}
 		}),
 
-		crud.WithCreateMsgInterceptor(func(msg tea.Msg, ctx crud.CreateMsgInterceptorCtx[client.PublicKey, createFormData, editFormData, client.ID, struct{}]) (tea.Cmd, bool) {
+		crud.WithCreateMsgInterceptor(func(msg tea.Msg, ctx crud.CreateMsgInterceptorCtx[client.PublicKey, createFormData, editFormData, client.PublicKeyId, struct{}]) (tea.Cmd, bool) {
 			if msg, ok := msg.(msgImportResult); ok {
 				// apply import popup result to form
 				data, _ := ctx.Form.Get()
