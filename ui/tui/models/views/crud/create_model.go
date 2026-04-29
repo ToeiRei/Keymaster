@@ -68,10 +68,14 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Init() 
 		),
 		// events
 		form.WithOnSubmit(func(result TRecordCreate, err error) tea.Cmd {
-			return popupviews.OpenProgress("Creating "+m.crud.Texts.EntityNameSingular+"...", func(_ popupviews.ProgressChan) tea.Msg {
-				record, err := m.crud.createRecord(result)
-				return createMsgCreateResult[TRecord]{record, err}
-			})
+			return popupviews.OpenProgress(
+				popupviews.ProgressSpinner,
+				"Creating "+m.crud.Texts.EntityNameSingular,
+				func(_ popupviews.ProgressChan) tea.Msg {
+					record, err := m.crud.createRecord(result)
+					return createMsgCreateResult[TRecord]{record, err}
+				},
+			)
 		}),
 		form.WithOnCancel[TRecordCreate](func() tea.Cmd {
 			return m.crud.routerControll.Pop(1)

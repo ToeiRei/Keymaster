@@ -134,12 +134,16 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 				"Do you realy want to delete this "+m.crud.Texts.EntityNameSingular+"?",
 				popupviews.Choices{
 					{Name: "Cancel", Cmd: nil, KeyBindings: form.GlobalKeyMap{keys.Cancel()}},
-					{Name: "Delete", Cmd: popupviews.OpenProgress("Deleting "+m.crud.Texts.EntityNameSingular+"...", func(_ popupviews.ProgressChan) tea.Msg {
-						return listMsgDeleteResult[TRecord]{
-							record: *selectedRecord,
-							err:    m.crud.deleteRecord(m.crud.getRecordId(*selectedRecord)),
-						}
-					})},
+					{Name: "Delete", Cmd: popupviews.OpenProgress(
+						popupviews.ProgressSpinner,
+						"Deleting "+m.crud.Texts.EntityNameSingular,
+						func(_ popupviews.ProgressChan) tea.Msg {
+							return listMsgDeleteResult[TRecord]{
+								record: *selectedRecord,
+								err:    m.crud.deleteRecord(m.crud.getRecordId(*selectedRecord)),
+							}
+						},
+					)},
 				},
 				40, 40,
 			)
@@ -191,10 +195,13 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Blur() {
 var _ util.Model = (*ListModel[any, any, any, any, any])(nil)
 
 func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) reload() tea.Cmd {
-	return popupviews.OpenProgress("Loading "+m.crud.Texts.EntityNameMultiple+"...", func(pc popupviews.ProgressChan) tea.Msg {
-		records, err := m.crud.getRecords(util.NewZero[TFilter]())
-		return listMsgReloaded[TRecord]{records, err}
-	})
+	return popupviews.OpenProgress(
+		popupviews.ProgressSpinner,
+		"Loading "+m.crud.Texts.EntityNameMultiple, func(pc popupviews.ProgressChan) tea.Msg {
+			records, err := m.crud.getRecords(util.NewZero[TFilter]())
+			return listMsgReloaded[TRecord]{records, err}
+		},
+	)
 }
 
 func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) refreshTable() {

@@ -65,10 +65,14 @@ func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Init() te
 		),
 		// events
 		form.WithOnSubmit(func(result TRecordEdit, err error) tea.Cmd {
-			return popupviews.OpenProgress("Updating "+m.crud.Texts.EntityNameSingular+"...", func(_ popupviews.ProgressChan) tea.Msg {
-				record, err := m.crud.editRecord(m.crud.getRecordId(m.record), result)
-				return editMsgUpdateResult[TRecord]{record, err}
-			})
+			return popupviews.OpenProgress(
+				popupviews.ProgressSpinner,
+				"Updating "+m.crud.Texts.EntityNameSingular,
+				func(_ popupviews.ProgressChan) tea.Msg {
+					record, err := m.crud.editRecord(m.crud.getRecordId(m.record), result)
+					return editMsgUpdateResult[TRecord]{record, err}
+				},
+			)
 		}),
 		form.WithOnCancel[TRecordEdit](func() tea.Cmd {
 			return m.crud.routerControll.Pop(1)

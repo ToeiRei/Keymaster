@@ -9,10 +9,18 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/progress"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
+)
+
+type progressMode int
+
+const (
+	ProgressSpinner = iota
+	ProgressBar
 )
 
 type progressId uint32
@@ -24,11 +32,14 @@ type ProgressModel struct {
 	title  string
 	status string
 
-	show          bool
-	size          util.Size
-	progress      float64
-	progressChan  ProgressChan
-	progressModel progress.Model
+	mode         progressMode
+	show         bool
+	size         util.Size
+	progress     float64
+	progressChan ProgressChan
+
+	spinnerModel spinner.Model
+	barModel     progress.Model
 }
 
 type Progress struct {
@@ -39,14 +50,21 @@ type Progress struct {
 // This channel is for reporting progress to the Progress-Popup-Listener. Do not close the channel, as this will be done by the Progress Popup after returning!
 type ProgressChan = chan Progress
 
-func OpenProgress(title string, fn func(ProgressChan) tea.Msg) tea.Cmd {
+func OpenProgress(mode progressMode, title string, fn func(ProgressChan) tea.Msg) tea.Cmd {
 	id := progressId(progressIdCounter.Add(1))
 	progressChan := make(ProgressChan, 1)
 	model := &ProgressModel{
-		id:            id,
-		title:         title,
-		progressChan:  progressChan,
-		progressModel: progress.New(progress.WithoutPercentage()),
+		id:           id,
+		title:        title,
+		mode:         mode,
+		progressChan: progressChan,
+	}
+
+	switch mode {
+	case ProgressSpinner:
+		model.spinnerModel = spinner.New(spinner.WithSpinner(spinner.Points))
+	case ProgressBar:
+		model.barModel = progress.New(progress.WithoutPercentage())
 	}
 
 	return tea.Sequence(
@@ -59,8 +77,16 @@ func OpenProgress(title string, fn func(ProgressChan) tea.Msg) tea.Cmd {
 }
 
 func (m ProgressModel) Init() tea.Cmd {
+	var subModelCmd tea.Cmd
+	switch m.mode {
+	case ProgressSpinner:
+		subModelCmd = m.spinnerModel.Tick
+	case ProgressBar:
+		subModelCmd = m.barModel.Init()
+	}
+
 	return tea.Sequence(
-		m.progressModel.Init(),
+		subModelCmd,
 		tea.Batch(
 			m.ListenProgressCmd,
 			func() tea.Msg {
@@ -74,7 +100,7 @@ func (m ProgressModel) Init() tea.Cmd {
 
 func (m *ProgressModel) Update(msg tea.Msg) tea.Cmd {
 	if m.size.UpdateFromMsg(msg) {
-		m.progressModel.Width = util.Clamp(20, m.size.Width/2, m.size.Width)
+		m.barModel.Width = util.Clamp(20, m.size.Width/2, m.size.Width)
 		return nil
 	}
 
@@ -98,6 +124,10 @@ func (m *ProgressModel) Update(msg tea.Msg) tea.Cmd {
 		}
 	}
 
+	if m.mode == ProgressSpinner {
+		return util.UpdateTeaModelInplace(msg, &m.spinnerModel)
+	}
+
 	return nil
 }
 
@@ -115,10 +145,16 @@ func (m ProgressModel) View() string {
 
 	blocks := make([]string, 0, 3)
 
-	if m.title != "" {
-		blocks = append(blocks, lipgloss.NewStyle().Bold(true).Render(m.title))
+	switch m.mode {
+	case ProgressSpinner:
+		blocks = append(blocks, m.spinnerModel.View()+" "+lipgloss.NewStyle().Bold(true).Render(m.title))
+	case ProgressBar:
+		if m.title != "" {
+			blocks = append(blocks, lipgloss.NewStyle().Bold(true).Render(m.title))
+		}
+		blocks = append(blocks, m.barModel.ViewAs(m.progress))
 	}
-	blocks = append(blocks, m.progressModel.ViewAs(m.progress))
+
 	if m.status != "" {
 		blocks = append(blocks, lipgloss.NewStyle().Italic(true).Render(m.status))
 	}
