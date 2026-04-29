@@ -14,22 +14,16 @@ import (
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
-//lint:ignore U1000 Placeholder for future test grant fields.
-type TestUIGrant struct {
-	accountID AccountId
-	matcher   string
-	expiresAt time.Time
-}
-
 type TestUIClient struct {
 	// local temporary repository for testing ui features
 	publicKeys []PublicKey
 	accounts   []Account
-	//lint:ignore U1000 Placeholder for future grant-related features.
-	grants []TestUIGrant
+	links      []Link
+
 	// id counter to simulate serial
-	publicKeysID PublicKeyId
-	accountsID   AccountId
+	publicKeyIdCounter PublicKeyId
+	accountIdCounter   AccountId
+	linkIdCounter      LinkId
 }
 
 // *[TestUIClient] implements [Client]
@@ -48,15 +42,15 @@ func (c *TestUIClient) Close(ctx context.Context) error {
 // --- PublicKey Management ---
 
 func (c *TestUIClient) CreatePublicKey(ctx context.Context, key string, comment string, tags []string) (PublicKey, error) {
+	c.publicKeyIdCounter++
 	keyParts := strings.Split(key, " ")
 	if len(keyParts) < 2 {
 		return PublicKey{}, errors.New("invalid key provided")
 	}
 	// algorithm, data := keyParts[0], strings.Join(slices.SliceTo(keyParts, 1, len(keyParts)), " ")
 	algorithm, data := keyParts[0], keyParts[1]
-	publicKey := PublicKey{c.publicKeysID, algorithm, data, comment, tags}
+	publicKey := PublicKey{c.publicKeyIdCounter, algorithm, data, comment, tags}
 	c.publicKeys = append(c.publicKeys, publicKey)
-	c.publicKeysID++
 	return publicKey, nil
 }
 
@@ -104,9 +98,9 @@ func (c *TestUIClient) DeletePublicKeys(ctx context.Context, ids ...PublicKeyId)
 // --- Account Management ---
 
 func (c *TestUIClient) CreateAccount(ctx context.Context, name string, host string, port int, deploymentMethod string, deploymentSecret string) (Account, error) {
-	account := Account{c.accountsID, name, host, port, deploymentMethod, deploymentSecret, ""}
+	c.accountIdCounter++
+	account := Account{c.accountIdCounter, name, host, port, deploymentMethod, deploymentSecret, ""}
 	c.accounts = append(c.accounts, account)
-	c.accountsID++
 	return account, nil
 }
 
@@ -127,6 +121,12 @@ func (c *TestUIClient) GetAccounts(ctx context.Context, ids ...AccountId) ([]Acc
 
 func (c *TestUIClient) ListAccounts(ctx context.Context) ([]Account, error) {
 	return slices.Clone(c.accounts), nil
+}
+
+func (c *TestUIClient) ListDirtyAccounts(ctx context.Context) ([]Account, error) {
+	return slices.Filterx(c.accounts, func(account Account) (bool, error) {
+		return c.IsAccountDirty(ctx, account)
+	})
 }
 
 func (c *TestUIClient) UpdateAccount(ctx context.Context, id AccountId, name string, host string, port int, deploymentMethod string, deploymentSecret string) error {
@@ -153,13 +153,64 @@ func (c *TestUIClient) IsAccountDirty(ctx context.Context, account Account) (boo
 	return false, nil
 }
 
-func (c *TestUIClient) GetDirtyAccounts(ctx context.Context) ([]Account, error) {
-	return slices.Filterx(c.accounts, func(account Account) (bool, error) {
-		return c.IsAccountDirty(ctx, account)
-	})
+// --- Link Management ---
+
+func (c *TestUIClient) CreateLink(ctx context.Context, accountID AccountId, tagFilter string, expiresAt time.Time) (Link, error) {
+	c.linkIdCounter++
+	link := Link{c.linkIdCounter, accountID, tagFilter, expiresAt}
+	c.links = append(c.links, link)
+	return link, nil
 }
 
-// --- Tag & Account-PublicKey relation Management ---
+func (c *TestUIClient) GetLink(ctx context.Context, id LinkId) (Link, error) {
+	if i, ok := slices.BinarySearchFunc(c.links, id, func(link Link, id LinkId) int {
+		return int(link.Id - id)
+	}); ok {
+		return c.links[i], nil
+	}
+	return Link{}, fmt.Errorf("link with id %v not found", id)
+}
+
+func (c *TestUIClient) GetLinks(ctx context.Context, ids ...LinkId) ([]Link, error) {
+	return slices.Filter(c.links, func(link Link) bool {
+		return slices.Contains(ids, link.Id)
+	}), nil
+}
+
+func (c *TestUIClient) ListPublicKeyLinks(ctx context.Context, accountID AccountId) ([]Link, error) {
+	return nil, errors.New("client.ListPublicKeyLinks not implemented")
+}
+
+func (c *TestUIClient) ListAccountLinks(ctx context.Context, publicKeyID PublicKeyId) ([]Link, error) {
+	return nil, errors.New("client.ListAccountLinks not implemented")
+}
+
+func (c *TestUIClient) ListPublicKeysForAccount(ctx context.Context, accountID AccountId) ([]PublicKey, error) {
+	return nil, errors.New("client.ListPublicKeysForAccount not implemented")
+}
+
+func (c *TestUIClient) ListAccountsForPublicKey(ctx context.Context, publicKeyID PublicKeyId) ([]Account, error) {
+	return nil, errors.New("client.ListAccountsForPublicKey not implemented")
+}
+
+func (c *TestUIClient) UpdateLink(ctx context.Context, id LinkId, accountId AccountId, tagFilter string, expiresAt time.Time) error {
+	if i, ok := slices.BinarySearchFunc(c.links, id, func(link Link, id LinkId) int {
+		return int(link.Id - id)
+	}); ok {
+		c.links[i].AccountId = accountId
+		c.links[i].TagFilter = tagFilter
+		c.links[i].ExpiresAt = expiresAt
+		return nil
+	}
+	return fmt.Errorf("account with id %v not found", id)
+}
+
+func (c *TestUIClient) DeleteLinks(ctx context.Context, ids ...LinkId) error {
+	c.links = slices.Filter(c.links, func(link Link) bool { return !slices.Contains(ids, link.Id) })
+	return nil
+}
+
+// --- Other ---
 
 func (c *TestUIClient) ListExistingTags(ctx context.Context) []string {
 	return slicest.Reduce(c.publicKeys, func(publicKey PublicKey, tags []string) []string {
@@ -167,60 +218,22 @@ func (c *TestUIClient) ListExistingTags(ctx context.Context) []string {
 	})
 }
 
-// LinkTagAccount associates a tag filter (e.g. "device:mobile&company:telekom") with
-// an `accountID` until `expiresAt`.
-func (c *TestUIClient) CreateLink(ctx context.Context, accountID AccountId, filter string, expiresAt time.Time) (Link, error) {
-	return Link{}, errors.New("client.LinkTagAccount not implemented")
-}
-
-// UnLinkTagAccount removes previously created tag-account links.
-func (c *TestUIClient) DeleteLinks(ctx context.Context, linkIDs ...LinkId) error {
-	return errors.New("client.UnLinkTagAccount not implemented")
-}
-
-func (c *TestUIClient) ResolvePublicKeyLinks(ctx context.Context, accountID AccountId) ([]Link, error) {
-	return nil, errors.New("client.ResolvePublicKeyLinks not implemented")
-}
-
-func (c *TestUIClient) ResolveAccountLinks(ctx context.Context, publicKeyID PublicKeyId) ([]Link, error) {
-	return nil, errors.New("client.ResolveAccountLinks not implemented")
-}
-
-// ResolvePublicKeysForAccount returns public keys applicable to `accountID`.
-func (c *TestUIClient) ResolvePublicKeysForAccount(ctx context.Context, accountID AccountId) ([]PublicKey, error) {
-	return nil, errors.New("client.ResolvePublicKeysForAccount not implemented")
-}
-
-// ResolveAccountsForPublicKey returns accounts that a public key applies to.
-func (c *TestUIClient) ResolveAccountsForPublicKey(ctx context.Context, publicKeyID PublicKeyId) ([]Account, error) {
-	return nil, errors.New("client.ResolveAccountsForPublicKey not implemented")
-}
-
-// --- Onboarding & Decommision ---
-
-// OnboardHost starts onboarding of a host and returns a progress channel.
 func (c *TestUIClient) OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountName string, deploymentKey string) (chan OnboardHostProgress, error) {
 	return nil, errors.New("client.OnboardHost not implemented")
 }
 
-// DecommisionAccount decommissions an account and streams progress.
 func (c *TestUIClient) DecommisionAccount(ctx context.Context, id AccountId) (chan DecommisionAccountProgress, error) {
 	return nil, errors.New("client.DecommisionAccount not implemented")
 }
 
-// --- Deploy stuff ---
-
-// DeployPublicKeys deploys public keys to their accounts and reports progress on the returned channel.
 func (c *TestUIClient) DeployPublicKeys(ctx context.Context, publicKeyID ...PublicKeyId) (chan DeployProgress, error) {
 	return nil, errors.New("client.DeployPublicKeys not implemented")
 }
 
-// DeployAccounts deploys to the specified account ids and streams progress.
 func (c *TestUIClient) DeployAccounts(ctx context.Context, accountID ...AccountId) (chan DeployProgress, error) {
 	return nil, errors.New("client.DeployAccounts not implemented")
 }
 
-// DeployAll triggers deployment for all pending targets/accounts.
 func (c *TestUIClient) DeployAll(ctx context.Context) (chan DeployProgress, error) {
 	ch := make(chan DeployProgress)
 

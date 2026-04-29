@@ -94,7 +94,7 @@ func (m *Model) reload() tea.Cmd {
 	return func() tea.Msg {
 		// TODO implement dashboard data loader
 		accounts, err1 := m.client.GetAccounts(context.Background())
-		accountsDirty, err2 := m.client.GetDirtyAccounts(context.Background())
+		accountsDirty, err2 := m.client.ListDirtyAccounts(context.Background())
 		_ = accountsDirty
 		// _, _ := m.client.GetAccounts(context.Background())
 

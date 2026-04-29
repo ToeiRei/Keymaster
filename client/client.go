@@ -11,7 +11,6 @@ import (
 type Client interface {
 	// --- Lifecycle & Initialization ---
 
-	// Close cleans up resources held by the client and closes any open connections.
 	Close(ctx context.Context) error
 
 	// --- PublicKey Management ---
@@ -38,37 +37,41 @@ type Client interface {
 
 	ListAccounts(ctx context.Context) ([]Account, error)
 
+	ListDirtyAccounts(ctx context.Context) ([]Account, error)
+
 	UpdateAccount(ctx context.Context, id AccountId, name string, host string, port int, deploymentMethod string, deploymentSecret string) error
 
 	DeleteAccounts(ctx context.Context, ids ...AccountId) error
 
 	IsAccountDirty(ctx context.Context, account Account) (bool, error)
 
-	GetDirtyAccounts(ctx context.Context) ([]Account, error)
+	// --- Link Management ---
 
-	// --- Tag & Account-PublicKey relation Management ---
+	CreateLink(ctx context.Context, accountID AccountId, tagFilter string, expiresAt time.Time) (Link, error)
+
+	GetLink(ctx context.Context, id LinkId) (Link, error)
+
+	GetLinks(ctx context.Context, ids ...LinkId) ([]Link, error)
+
+	ListPublicKeyLinks(ctx context.Context, accountID AccountId) ([]Link, error)
+
+	ListAccountLinks(ctx context.Context, publicKeyID PublicKeyId) ([]Link, error)
+
+	ListPublicKeysForAccount(ctx context.Context, accountID AccountId) ([]PublicKey, error)
+
+	ListAccountsForPublicKey(ctx context.Context, publicKeyID PublicKeyId) ([]Account, error)
+
+	UpdateLink(ctx context.Context, id LinkId, accountId AccountId, tagFilter string, expiresAt time.Time) error
+
+	DeleteLinks(ctx context.Context, ids ...LinkId) error
+
+	// --- Other ---
 
 	ListExistingTags(ctx context.Context) []string
-
-	CreateLink(ctx context.Context, accountID AccountId, filter string, expiresAt time.Time) (Link, error)
-
-	DeleteLinks(ctx context.Context, linkIDs ...LinkId) error
-
-	ResolvePublicKeyLinks(ctx context.Context, accountID AccountId) ([]Link, error)
-
-	ResolveAccountLinks(ctx context.Context, publicKeyID PublicKeyId) ([]Link, error)
-
-	ResolvePublicKeysForAccount(ctx context.Context, accountID AccountId) ([]PublicKey, error)
-
-	ResolveAccountsForPublicKey(ctx context.Context, publicKeyID PublicKeyId) ([]Account, error)
-
-	// --- Onboarding & Decommision ---
 
 	OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountName string, deploymentKey string) (chan OnboardHostProgress, error)
 
 	DecommisionAccount(ctx context.Context, id AccountId) (chan DecommisionAccountProgress, error)
-
-	// --- Deploy stuff ---
 
 	DeployPublicKeys(ctx context.Context, publicKeyID ...PublicKeyId) (chan DeployProgress, error)
 
@@ -107,9 +110,9 @@ type Account struct {
 type LinkId id
 type Link struct {
 	Id        LinkId
-	accountID AccountId
-	tagFilter string
-	expiresAt time.Time
+	AccountId AccountId
+	TagFilter string
+	ExpiresAt time.Time
 	// ...
 }
 
