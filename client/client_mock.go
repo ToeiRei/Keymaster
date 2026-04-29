@@ -9,8 +9,9 @@ import (
 )
 
 type MockClient struct {
-	BaseClient Client
 	Overwrites MockClientOverwrites
+	BaseClient Client
+	Pre        func(method string, args map[string]any)
 }
 
 type MockClientOverwrites struct {
@@ -49,14 +50,29 @@ type MockClientOverwrites struct {
 	DeployAll        func(ctx context.Context) (chan DeployProgress, error)
 }
 
+// *[MockClient] implements [Client]
 var _ Client = (*MockClient)(nil)
 
-// client := NewMockClient(nil, MockClientOverwrites{ /* overwrite Client methods here... */ })
-func NewMockClient(base Client, overwrites MockClientOverwrites) *MockClient {
-	return &MockClient{
-		BaseClient: base,
-		Overwrites: overwrites,
+type MockOption func(*MockClient)
+
+func NewMockClient(opts ...MockOption) *MockClient {
+	c := &MockClient{}
+	for _, opt := range opts {
+		opt(c)
 	}
+	return c
+}
+
+func WitchMockBaseClient(base Client) MockOption {
+	return func(mc *MockClient) { mc.BaseClient = base }
+}
+
+func WitchMockOverwrites(overwrites MockClientOverwrites) MockOption {
+	return func(mc *MockClient) { mc.Overwrites = overwrites }
+}
+
+func WitchMockPre(fn func(method string, args map[string]any)) MockOption {
+	return func(mc *MockClient) { mc.Pre = fn }
 }
 
 // --- Client implementation ---
@@ -74,6 +90,9 @@ func NewMockClient(base Client, overwrites MockClientOverwrites) *MockClient {
 // --- Lifecycle & Initialization ---
 
 func (m *MockClient) Close(ctx context.Context) error {
+	if m.Pre != nil {
+		m.Pre("Close", map[string]any{"ctx": ctx})
+	}
 	if m.Overwrites.Close != nil {
 		return m.Overwrites.Close(ctx)
 	} else if m.BaseClient != nil {
@@ -85,6 +104,9 @@ func (m *MockClient) Close(ctx context.Context) error {
 // --- PublicKey Management ---
 
 func (m *MockClient) CreatePublicKey(ctx context.Context, key string, comment string, tags []string) (PublicKey, error) {
+	if m.Pre != nil {
+		m.Pre("CreatePublicKey", map[string]any{"ctx": ctx, "key": key, "comment": comment, "tags": tags})
+	}
 	if m.Overwrites.CreatePublicKey != nil {
 		return m.Overwrites.CreatePublicKey(ctx, key, comment, tags)
 	} else if m.BaseClient != nil {
@@ -94,6 +116,9 @@ func (m *MockClient) CreatePublicKey(ctx context.Context, key string, comment st
 }
 
 func (m *MockClient) GetPublicKey(ctx context.Context, id ID) (PublicKey, error) {
+	if m.Pre != nil {
+		m.Pre("GetPublicKey", map[string]any{"ctx": ctx, "id": id})
+	}
 	if m.Overwrites.GetPublicKey != nil {
 		return m.Overwrites.GetPublicKey(ctx, id)
 	} else if m.BaseClient != nil {
@@ -103,6 +128,9 @@ func (m *MockClient) GetPublicKey(ctx context.Context, id ID) (PublicKey, error)
 }
 
 func (m *MockClient) GetPublicKeys(ctx context.Context, ids ...ID) ([]PublicKey, error) {
+	if m.Pre != nil {
+		m.Pre("GetPublicKeys", map[string]any{"ctx": ctx, "ids": ids})
+	}
 	if m.Overwrites.GetPublicKeys != nil {
 		return m.Overwrites.GetPublicKeys(ctx, ids...)
 	} else if m.BaseClient != nil {
@@ -112,6 +140,9 @@ func (m *MockClient) GetPublicKeys(ctx context.Context, ids ...ID) ([]PublicKey,
 }
 
 func (m *MockClient) ListPublicKeys(ctx context.Context, tagFilter string) ([]PublicKey, error) {
+	if m.Pre != nil {
+		m.Pre("ListPublicKeys", map[string]any{"ctx": ctx, "tagFilter": tagFilter})
+	}
 	if m.Overwrites.ListPublicKeys != nil {
 		return m.Overwrites.ListPublicKeys(ctx, tagFilter)
 	} else if m.BaseClient != nil {
@@ -121,6 +152,9 @@ func (m *MockClient) ListPublicKeys(ctx context.Context, tagFilter string) ([]Pu
 }
 
 func (m *MockClient) UpdatePublicKey(ctx context.Context, id ID, comment string, tags []string) error {
+	if m.Pre != nil {
+		m.Pre("UpdatePublicKey", map[string]any{"ctx": ctx, "id": id, "comment": comment, "tags": tags})
+	}
 	if m.Overwrites.UpdatePublicKey != nil {
 		return m.Overwrites.UpdatePublicKey(ctx, id, comment, tags)
 	} else if m.BaseClient != nil {
@@ -130,6 +164,9 @@ func (m *MockClient) UpdatePublicKey(ctx context.Context, id ID, comment string,
 }
 
 func (m *MockClient) DeletePublicKeys(ctx context.Context, ids ...ID) error {
+	if m.Pre != nil {
+		m.Pre("DeletePublicKeys", map[string]any{"ctx": ctx, "ids": ids})
+	}
 	if m.Overwrites.DeletePublicKeys != nil {
 		return m.Overwrites.DeletePublicKeys(ctx, ids...)
 	} else if m.BaseClient != nil {
@@ -141,6 +178,9 @@ func (m *MockClient) DeletePublicKeys(ctx context.Context, ids ...ID) error {
 // --- Account Management ---
 
 func (m *MockClient) CreateAccount(ctx context.Context, name string, host string, port int, deploymentMethod string, deploymentSecret string) (Account, error) {
+	if m.Pre != nil {
+		m.Pre("CreateAccount", map[string]any{"ctx": ctx, "name": name, "host": host, "port": port, "deploymentMethod": deploymentMethod, "deploymentSecret": deploymentSecret})
+	}
 	if m.Overwrites.CreateAccount != nil {
 		return m.Overwrites.CreateAccount(ctx, name, host, port, deploymentMethod, deploymentSecret)
 	} else if m.BaseClient != nil {
@@ -150,6 +190,9 @@ func (m *MockClient) CreateAccount(ctx context.Context, name string, host string
 }
 
 func (m *MockClient) GetAccount(ctx context.Context, id ID) (Account, error) {
+	if m.Pre != nil {
+		m.Pre("GetAccount", map[string]any{"ctx": ctx, "id": id})
+	}
 	if m.Overwrites.GetAccount != nil {
 		return m.Overwrites.GetAccount(ctx, id)
 	} else if m.BaseClient != nil {
@@ -159,6 +202,9 @@ func (m *MockClient) GetAccount(ctx context.Context, id ID) (Account, error) {
 }
 
 func (m *MockClient) GetAccounts(ctx context.Context, ids ...ID) ([]Account, error) {
+	if m.Pre != nil {
+		m.Pre("GetAccounts", map[string]any{"ctx": ctx, "ids": ids})
+	}
 	if m.Overwrites.GetAccounts != nil {
 		return m.Overwrites.GetAccounts(ctx, ids...)
 	} else if m.BaseClient != nil {
@@ -168,6 +214,9 @@ func (m *MockClient) GetAccounts(ctx context.Context, ids ...ID) ([]Account, err
 }
 
 func (m *MockClient) ListAccounts(ctx context.Context) ([]Account, error) {
+	if m.Pre != nil {
+		m.Pre("ListAccounts", map[string]any{"ctx": ctx})
+	}
 	if m.Overwrites.ListAccounts != nil {
 		return m.Overwrites.ListAccounts(ctx)
 	} else if m.BaseClient != nil {
@@ -177,6 +226,9 @@ func (m *MockClient) ListAccounts(ctx context.Context) ([]Account, error) {
 }
 
 func (m *MockClient) UpdateAccount(ctx context.Context, id ID, name string, host string, port int, deploymentMethod string, deploymentSecret string) error {
+	if m.Pre != nil {
+		m.Pre("UpdateAccount", map[string]any{"ctx": ctx, "id": id, "name": name, "host": host, "port": port, "deploymentMethod": deploymentMethod, "deploymentSecret": deploymentSecret})
+	}
 	if m.Overwrites.UpdateAccount != nil {
 		return m.Overwrites.UpdateAccount(ctx, id, name, host, port, deploymentMethod, deploymentSecret)
 	} else if m.BaseClient != nil {
@@ -186,6 +238,9 @@ func (m *MockClient) UpdateAccount(ctx context.Context, id ID, name string, host
 }
 
 func (m *MockClient) DeleteAccounts(ctx context.Context, ids ...ID) error {
+	if m.Pre != nil {
+		m.Pre("DeleteAccounts", map[string]any{"ctx": ctx, "ids": ids})
+	}
 	if m.Overwrites.DeleteAccounts != nil {
 		return m.Overwrites.DeleteAccounts(ctx, ids...)
 	} else if m.BaseClient != nil {
@@ -195,6 +250,9 @@ func (m *MockClient) DeleteAccounts(ctx context.Context, ids ...ID) error {
 }
 
 func (m *MockClient) IsAccountDirty(ctx context.Context, account Account) (bool, error) {
+	if m.Pre != nil {
+		m.Pre("IsAccountDirty", map[string]any{"ctx": ctx, "account": account})
+	}
 	if m.Overwrites.IsAccountDirty != nil {
 		return m.Overwrites.IsAccountDirty(ctx, account)
 	} else if m.BaseClient != nil {
@@ -204,6 +262,9 @@ func (m *MockClient) IsAccountDirty(ctx context.Context, account Account) (bool,
 }
 
 func (m *MockClient) GetDirtyAccounts(ctx context.Context) ([]Account, error) {
+	if m.Pre != nil {
+		m.Pre("GetDirtyAccounts", map[string]any{"ctx": ctx})
+	}
 	if m.Overwrites.GetDirtyAccounts != nil {
 		return m.Overwrites.GetDirtyAccounts(ctx)
 	} else if m.BaseClient != nil {
@@ -215,6 +276,9 @@ func (m *MockClient) GetDirtyAccounts(ctx context.Context) ([]Account, error) {
 // --- Tag & Account-PublicKey relation Management ---
 
 func (m *MockClient) ListExistingTags(ctx context.Context) []string {
+	if m.Pre != nil {
+		m.Pre("ListExistingTags", map[string]any{"ctx": ctx})
+	}
 	if m.Overwrites.ListExistingTags != nil {
 		return m.Overwrites.ListExistingTags(ctx)
 	} else if m.BaseClient != nil {
@@ -224,6 +288,9 @@ func (m *MockClient) ListExistingTags(ctx context.Context) []string {
 }
 
 func (m *MockClient) LinkTagAccount(ctx context.Context, accountID ID, filter string, expiresAt time.Time) (ID, error) {
+	if m.Pre != nil {
+		m.Pre("LinkTagAccount", map[string]any{"ctx": ctx, "accountID": accountID, "filter": filter, "expiresAt": expiresAt})
+	}
 	if m.Overwrites.LinkTagAccount != nil {
 		return m.Overwrites.LinkTagAccount(ctx, accountID, filter, expiresAt)
 	} else if m.BaseClient != nil {
@@ -233,6 +300,9 @@ func (m *MockClient) LinkTagAccount(ctx context.Context, accountID ID, filter st
 }
 
 func (m *MockClient) UnLinkTagAccount(ctx context.Context, linkIDs ...ID) error {
+	if m.Pre != nil {
+		m.Pre("UnLinkTagAccount", map[string]any{"ctx": ctx, "linkIDs": linkIDs})
+	}
 	if m.Overwrites.UnLinkTagAccount != nil {
 		return m.Overwrites.UnLinkTagAccount(ctx, linkIDs...)
 	} else if m.BaseClient != nil {
@@ -242,6 +312,9 @@ func (m *MockClient) UnLinkTagAccount(ctx context.Context, linkIDs ...ID) error 
 }
 
 func (m *MockClient) ResolvePublicKeyLinks(ctx context.Context, accountID ID) ([]Link, error) {
+	if m.Pre != nil {
+		m.Pre("ResolvePublicKeyLinks", map[string]any{"ctx": ctx, "accountID": accountID})
+	}
 	if m.Overwrites.ResolvePublicKeyLinks != nil {
 		return m.Overwrites.ResolvePublicKeyLinks(ctx, accountID)
 	} else if m.BaseClient != nil {
@@ -251,6 +324,9 @@ func (m *MockClient) ResolvePublicKeyLinks(ctx context.Context, accountID ID) ([
 }
 
 func (m *MockClient) ResolveAccountLinks(ctx context.Context, publicKeyID ID) ([]Link, error) {
+	if m.Pre != nil {
+		m.Pre("ResolveAccountLinks", map[string]any{"ctx": ctx, "publicKeyID": publicKeyID})
+	}
 	if m.Overwrites.ResolveAccountLinks != nil {
 		return m.Overwrites.ResolveAccountLinks(ctx, publicKeyID)
 	} else if m.BaseClient != nil {
@@ -260,6 +336,9 @@ func (m *MockClient) ResolveAccountLinks(ctx context.Context, publicKeyID ID) ([
 }
 
 func (m *MockClient) ResolvePublicKeysForAccount(ctx context.Context, accountID ID) ([]PublicKey, error) {
+	if m.Pre != nil {
+		m.Pre("ResolvePublicKeysForAccount", map[string]any{"ctx": ctx, "accountID": accountID})
+	}
 	if m.Overwrites.ResolvePublicKeysForAccount != nil {
 		return m.Overwrites.ResolvePublicKeysForAccount(ctx, accountID)
 	} else if m.BaseClient != nil {
@@ -269,6 +348,9 @@ func (m *MockClient) ResolvePublicKeysForAccount(ctx context.Context, accountID 
 }
 
 func (m *MockClient) ResolveAccountsForPublicKey(ctx context.Context, publicKeyID ID) ([]Account, error) {
+	if m.Pre != nil {
+		m.Pre("ResolveAccountsForPublicKey", map[string]any{"ctx": ctx, "publicKeyID": publicKeyID})
+	}
 	if m.Overwrites.ResolveAccountsForPublicKey != nil {
 		return m.Overwrites.ResolveAccountsForPublicKey(ctx, publicKeyID)
 	} else if m.BaseClient != nil {
@@ -280,6 +362,9 @@ func (m *MockClient) ResolveAccountsForPublicKey(ctx context.Context, publicKeyI
 // --- Onboarding & Decommision ---
 
 func (m *MockClient) OnboardHost(ctx context.Context, host string, port int, accountName string, deploymentKey string) (chan OnboardHostProgress, error) {
+	if m.Pre != nil {
+		m.Pre("OnboardHost", map[string]any{"ctx": ctx, "host": host, "port": port, "accountName": accountName, "deploymentKey": deploymentKey})
+	}
 	if m.Overwrites.OnboardHost != nil {
 		return m.Overwrites.OnboardHost(ctx, host, port, accountName, deploymentKey)
 	} else if m.BaseClient != nil {
@@ -289,6 +374,9 @@ func (m *MockClient) OnboardHost(ctx context.Context, host string, port int, acc
 }
 
 func (m *MockClient) DecommisionAccount(ctx context.Context, id ID) (chan DecommisionAccountProgress, error) {
+	if m.Pre != nil {
+		m.Pre("DecommisionAccount", map[string]any{"ctx": ctx, "id": id})
+	}
 	if m.Overwrites.DecommisionAccount != nil {
 		return m.Overwrites.DecommisionAccount(ctx, id)
 	} else if m.BaseClient != nil {
@@ -300,6 +388,9 @@ func (m *MockClient) DecommisionAccount(ctx context.Context, id ID) (chan Decomm
 // --- Deploy stuff ---
 
 func (m *MockClient) DeployPublicKeys(ctx context.Context, publicKeyID ...ID) (chan DeployProgress, error) {
+	if m.Pre != nil {
+		m.Pre("DeployPublicKeys", map[string]any{"ctx": ctx, "publicKeyID": publicKeyID})
+	}
 	if m.Overwrites.DeployPublicKeys != nil {
 		return m.Overwrites.DeployPublicKeys(ctx, publicKeyID...)
 	} else if m.BaseClient != nil {
@@ -309,6 +400,9 @@ func (m *MockClient) DeployPublicKeys(ctx context.Context, publicKeyID ...ID) (c
 }
 
 func (m *MockClient) DeployAccounts(ctx context.Context, accountID ...ID) (chan DeployProgress, error) {
+	if m.Pre != nil {
+		m.Pre("DeployAccounts", map[string]any{"ctx": ctx, "accountID": accountID})
+	}
 	if m.Overwrites.DeployAccounts != nil {
 		return m.Overwrites.DeployAccounts(ctx, accountID...)
 	} else if m.BaseClient != nil {
@@ -318,6 +412,9 @@ func (m *MockClient) DeployAccounts(ctx context.Context, accountID ...ID) (chan 
 }
 
 func (m *MockClient) DeployAll(ctx context.Context) (chan DeployProgress, error) {
+	if m.Pre != nil {
+		m.Pre("DeployAll", map[string]any{"ctx": ctx})
+	}
 	if m.Overwrites.DeployAll != nil {
 		return m.Overwrites.DeployAll(ctx)
 	} else if m.BaseClient != nil {
