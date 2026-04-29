@@ -97,16 +97,7 @@ func (c *TestUIClient) UpdatePublicKey(ctx context.Context, id PublicKeyId, comm
 }
 
 func (c *TestUIClient) DeletePublicKeys(ctx context.Context, ids ...PublicKeyId) error {
-	indexs := make([]int, 0, len(c.publicKeys))
-	for i, publicKey := range c.publicKeys {
-		if slices.Contains(ids, publicKey.Id) {
-			indexs = append(indexs, i)
-		}
-	}
-	slices.Reverse(indexs)
-	for _, i := range indexs {
-		c.publicKeys = slices.Delete(c.publicKeys, i, i)
-	}
+	c.publicKeys = slices.Filter(c.publicKeys, func(publicKey PublicKey) bool { return !slices.Contains(ids, publicKey.Id) })
 	return nil
 }
 
@@ -154,16 +145,7 @@ func (c *TestUIClient) UpdateAccount(ctx context.Context, id AccountId, name str
 }
 
 func (c *TestUIClient) DeleteAccounts(ctx context.Context, ids ...AccountId) error {
-	indexs := make([]int, 0, len(c.accounts))
-	for i, account := range c.accounts {
-		if slices.Contains(ids, account.Id) {
-			indexs = append(indexs, i)
-		}
-	}
-	slices.Reverse(indexs)
-	for _, i := range indexs {
-		c.accounts = slices.Delete(c.accounts, i, i)
-	}
+	c.accounts = slices.Filter(c.accounts, func(account Account) bool { return !slices.Contains(ids, account.Id) })
 	return nil
 }
 
