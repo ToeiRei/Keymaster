@@ -78,6 +78,9 @@ func WitchMockPre(fn func(method string, args map[string]any)) MockOption {
 // --- Client implementation ---
 
 // func (m *MockClient) <MethodName>(ctx context.Context, <Args>) <ReturnValues> {
+//     if m.Pre != nil {
+//         m.Pre("<MethodName>", map[string]any{"<ArgName>": <ArgValue>, ...})
+//     }
 //     if m.Overwrites.<MethodName> != nil {
 //         return m.Overwrites.<MethodName>(ctx, <Args>)
 //     }
