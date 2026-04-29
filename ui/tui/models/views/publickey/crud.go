@@ -88,18 +88,18 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 
 			columns := []table.Column{
 				{Title: "Comment", Width: commentWidth + remainingWidth/3},
-				{Title: "Algorithm", Width: algorithmWidth + remainingWidth/3},
 				{Title: "Tags", Width: tagsWidth + remainingWidth/3},
+				{Title: "Algorithm", Width: algorithmWidth + remainingWidth/3},
 			}
 
 			rows := slices.Map(record, func(publicKey client.PublicKey) table.Row {
 				return table.Row{
 					// column: Comment
 					publicKey.Comment,
-					// column: Algorithm
-					publicKey.Algorithm,
 					// column: Tags
 					strings.Join(publicKey.Tags, ", "),
+					// column: Algorithm
+					publicKey.Algorithm,
 				}
 			})
 
