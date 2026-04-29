@@ -11,6 +11,11 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
+type Texts struct {
+	EntityNameSingular string
+	EntityNameMultiple string
+}
+
 type Crud[
 	TRecord any,
 	TRecordCreate comparable,
@@ -18,6 +23,8 @@ type Crud[
 	TId comparable,
 	TFilter comparable,
 ] struct {
+	texts Texts
+
 	getRecordId  func(record TRecord) TId
 	getRecords   func(filter TFilter) ([]TRecord, error)
 	getRecord    func(id TId) (TRecord, error)

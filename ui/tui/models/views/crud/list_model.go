@@ -27,7 +27,6 @@ type ListModel[
 
 	// state
 	records      []TRecord
-	locked       *string
 	loadingError error
 	focussed     bool
 
@@ -80,7 +79,6 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 	// Handle messages
 	switch msg := msg.(type) {
 	case listMsgReloaded[TRecord]:
-		m.locked = nil
 		m.records = msg.records
 		m.loadingError = msg.err
 		m.refreshTable()
@@ -89,24 +87,28 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 		}
 		return nil
 
-	case listMsgDeleting:
-		m.locked = util.NewPointer("Deleting Record...")
+	case createMsgCreated[TRecord]:
+		// TODO optimize by only fetching the updated item inplace
+		m.records = append(m.records, msg.Record)
+		m.refreshTable()
+		return nil
+
+	case editMsgUpdated[TRecord]:
+		i := slices.IndexFunc(m.records, func(record TRecord) bool { return m.crud.getRecordId(record) == m.crud.getRecordId(msg.Record) })
+		m.records[i] = msg.Record
+		m.refreshTable()
+		return nil
 
 	case listMsgDeleteResult[TRecord]:
-		m.locked = nil
 		if msg.err != nil {
-			return popupviews.OpenMessage(popupviews.MessageError, "Error deleting Record:\n"+msg.err.Error(), nil)
+			return popupviews.OpenMessage(popupviews.MessageError, "Error deleting "+m.crud.texts.EntityNameSingular+":\n"+msg.err.Error(), nil)
 		}
 		m.records = slices.DeleteFunc(m.records, func(record TRecord) bool { return m.crud.getRecordId(record) == m.crud.getRecordId(msg.record) })
 		m.refreshTable()
 		return nil
 
-	case editMsgUpdated[TId], createMsgCreated[TRecord]:
-		// TODO optimize by only fetching the updated item inplace
-		return m.reload()
-
 	case tea.KeyMsg:
-		if !m.focussed || m.locked != nil {
+		if !m.focussed {
 			return nil
 		}
 		switch {
@@ -116,7 +118,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 		case key.Matches(msg, ListBaseKeyMap.Edit):
 			selectedRecord := m.selectedRecord()
 			if selectedRecord == nil {
-				return popupviews.OpenMessage(popupviews.MessageInfo, "Please select a Record to edit.", nil)
+				return popupviews.OpenMessage(popupviews.MessageInfo, "Please select a "+m.crud.texts.EntityNameSingular+" to edit.", nil)
 			}
 			return m.crud.routerControll.Push(util.ModelPointer(NewEdit(
 				m.crud,
@@ -126,21 +128,18 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 		case key.Matches(msg, ListBaseKeyMap.Delete):
 			selectedRecord := m.selectedRecord()
 			if selectedRecord == nil {
-				return popupviews.OpenMessage(popupviews.MessageInfo, "Please select a Record to delete.", nil)
+				return popupviews.OpenMessage(popupviews.MessageInfo, "Please select a "+m.crud.texts.EntityNameSingular+" to delete.", nil)
 			}
 			return popupviews.OpenChoice(
-				"Do you realy want to delete this Record?",
+				"Do you realy want to delete this "+m.crud.texts.EntityNameSingular+"?",
 				popupviews.Choices{
 					{Name: "Cancel", Cmd: nil, KeyBindings: form.GlobalKeyMap{keys.Cancel()}},
-					{Name: "Delete", Cmd: tea.Sequence(
-						func() tea.Msg { return listMsgDeleting{} },
-						func() tea.Msg {
-							return listMsgDeleteResult[TRecord]{
-								record: *selectedRecord,
-								err:    m.crud.deleteRecord(m.crud.getRecordId(*selectedRecord)),
-							}
-						},
-					)},
+					{Name: "Delete", Cmd: popupviews.OpenProgress("Deleting "+m.crud.texts.EntityNameSingular+"...", func(_ popupviews.ProgressChan) tea.Msg {
+						return listMsgDeleteResult[TRecord]{
+							record: *selectedRecord,
+							err:    m.crud.deleteRecord(m.crud.getRecordId(*selectedRecord)),
+						}
+					})},
 				},
 				40, 40,
 			)
@@ -169,9 +168,6 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 
 // View implements util.Model.
 func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) View() string {
-	if m.locked != nil {
-		return *m.locked
-	}
 	if m.loadingError != nil {
 		return m.loadingError.Error()
 	}
@@ -195,17 +191,10 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Blur() {
 var _ util.Model = (*ListModel[any, any, any, any, any])(nil)
 
 func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) reload() tea.Cmd {
-	if m.locked != nil {
-		return nil
-	}
-
-	m.locked = util.NewPointer("Loading Records...")
-
-	return func() tea.Msg {
-		var filter TFilter
-		records, err := m.crud.getRecords(filter)
+	return popupviews.OpenProgress("Loading "+m.crud.texts.EntityNameMultiple+"...", func(pc popupviews.ProgressChan) tea.Msg {
+		records, err := m.crud.getRecords(util.NewZero[TFilter]())
 		return listMsgReloaded[TRecord]{records, err}
-	}
+	})
 }
 
 func (m *ListModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) refreshTable() {

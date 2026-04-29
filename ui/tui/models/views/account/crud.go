@@ -40,6 +40,7 @@ type editFormData struct {
 
 func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, createFormData, editFormData, client.ID, struct{}] {
 	return crud.New(
+		crud.Texts{"Account", "Accounts"},
 		func(record client.Account) client.ID { return record.Id },
 		func(filter struct{}) ([]client.Account, error) {
 			return c.ListAccounts(context.Background())

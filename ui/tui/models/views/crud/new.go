@@ -25,6 +25,8 @@ func New[
 	TId comparable,
 	TFilter comparable,
 ](
+	texts Texts,
+
 	getRecordId func(record TRecord) TId,
 	getRecords func(filter TFilter) ([]TRecord, error),
 	getRecord func(id TId) (TRecord, error),
@@ -42,6 +44,8 @@ func New[
 	opts ...Option[TRecord, TRecordCreate, TRecordEdit, TId, TFilter],
 ) *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
 	crud := &Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]{
+		texts: texts,
+
 		getRecordId:  getRecordId,
 		getRecords:   getRecords,
 		getRecord:    getRecord,

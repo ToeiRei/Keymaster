@@ -36,18 +36,22 @@ func New() *Model {
 	// 	 }
 	// }
 
-	client := client.NewTestUIClient()
+	c := client.Client(client.NewTestUIClient())
 	// create development test data
-	_, _ = client.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-ödtjfb", "my-key", []string{"user:jannes", "company:none"})
-	_, _ = client.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjdfhal_sdvkhathrösdljhask-ödjfb", "420", []string{"user:toeirei", "company:another"})
-	_, _ = client.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb", "69", []string{"user:somebodyelse", "company:evilgoogle"})
+	_, _ = c.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-ödtjfb", "my-key", []string{"user:jannes", "company:none"})
+	_, _ = c.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjdfhal_sdvkhathrösdljhask-ödjfb", "420", []string{"user:toeirei", "company:another"})
+	_, _ = c.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb", "69", []string{"user:somebodyelse", "company:evilgoogle"})
+
+	c = client.NewMockClient(client.WitchMockBaseClient(c), client.WitchMockPre(func(method string, args map[string]any) {
+		time.Sleep(time.Second)
+	}))
 
 	menuPtr := util.ModelPointer(menu.New(
 		menu.WithItem("publickey.list", "Public Keys"),
 		menu.WithItem("account.list", "Accounts"),
 		menu.WithItem("test.progress_popup", "Test Progress"),
 	))
-	dashboardPtr := util.ModelPointer(dashboard.New(client))
+	dashboardPtr := util.ModelPointer(dashboard.New(c))
 	routerModel, routerControll := router.New(dashboardPtr)
 	routerPtr := util.ModelPointer(routerModel)
 	stackModel := stack.New(
@@ -61,7 +65,7 @@ func New() *Model {
 		stack:          stackModel,
 		router:         routerPtr,
 		routerControll: routerControll,
-		client:         client,
+		client:         c,
 	}
 }
 
@@ -78,21 +82,16 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		case "account.list":
 			return account.NewCrud(m.client, m.routerControll).OpenList()
 		case "test.progress_popup":
-			cmd, progress := popupviews.OpenProgress("Test Progress")
-
-			go func() {
+			return popupviews.OpenProgress("Test Progress", func(pc popupviews.ProgressChan) tea.Msg {
 				for i := range 100 {
-					progress <- popupviews.Progress{
+					pc <- popupviews.Progress{
 						Progress: float64(i+1) / 100,
 						Status:   fmt.Sprintf("%d / 100", i+1),
 					}
 					time.Sleep(time.Second / 40)
-
 				}
-				close(progress)
-			}()
-
-			return cmd
+				return nil
+			})
 		}
 	}
 

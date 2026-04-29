@@ -25,7 +25,6 @@ type EditModel[
 
 	// state
 	record   TRecord
-	locked   *string
 	focussed bool
 
 	// util
@@ -66,11 +65,10 @@ func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Init() te
 		),
 		// events
 		form.WithOnSubmit(func(result TRecordEdit, err error) tea.Cmd {
-			m.locked = util.NewPointer("Updating Record...")
-			return func() tea.Msg {
+			return popupviews.OpenProgress("Updating "+m.crud.texts.EntityNameSingular+"...", func(_ popupviews.ProgressChan) tea.Msg {
 				record, err := m.crud.editRecord(m.crud.getRecordId(m.record), result)
 				return editMsgUpdateResult[TRecord]{record, err}
-			}
+			})
 		}),
 		form.WithOnCancel[TRecordEdit](func() tea.Cmd {
 			return m.crud.routerControll.Pop(1)
@@ -107,17 +105,16 @@ func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 	// Handle messages
 	switch msg := msg.(type) {
 	case editMsgUpdateResult[TRecord]:
-		m.locked = nil
 		if msg.err != nil {
 			if msg.err != nil {
-				return popupviews.OpenMessage(popupviews.MessageError, "Error updating Record:\n"+msg.err.Error(), nil)
+				return popupviews.OpenMessage(popupviews.MessageError, "Error updating "+m.crud.texts.EntityNameSingular+":\n"+msg.err.Error(), nil)
 			}
 			return nil
 		}
 		return tea.Sequence(m.crud.routerControll.Pop(1), func() tea.Msg { return editMsgUpdated[TRecord]{msg.record} })
 	}
 
-	if !m.focussed || m.locked != nil {
+	if !m.focussed {
 		return nil
 	}
 
@@ -126,9 +123,6 @@ func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 }
 
 func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) View() string {
-	if m.locked != nil {
-		return *m.locked
-	}
 	return m.form.View()
 }
 

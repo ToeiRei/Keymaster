@@ -5,6 +5,7 @@ package popupviews
 
 import (
 	"sync/atomic"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/progress"
@@ -21,6 +22,7 @@ type ProgressModel struct {
 	title  string
 	status string
 
+	show          bool
 	size          util.Size
 	progress      float64
 	progressChan  ProgressChan
@@ -32,39 +34,39 @@ type Progress struct {
 	Status   string
 }
 
-type ProgressMsg struct {
-	pid      uint32
-	progress Progress
-}
+// This channel is for reporting progress to the Progress-Popup-Listener. Do not close the channel, as this will be done by the Progress Popup after returning!
+type ProgressChan = chan Progress
 
-type ProgressDoneMsg struct {
-	pid uint32
-}
-
-// use to send current progress and close to finish task/close progress popup
-type ProgressChan chan Progress
-
-func OpenProgress(title string) (tea.Cmd, ProgressChan) {
-	model, progressChan := newProgress(title)
-	return popup.Open(util.ModelPointer(model)), progressChan
-}
-
-func newProgress(title string) (*ProgressModel, ProgressChan) {
-	progressChan := make(ProgressChan)
-	progressModel := progress.New()
-	progressModel.ShowPercentage = false
-	return &ProgressModel{
-		id:            progressId.Add(1),
+func OpenProgress(title string, fn func(ProgressChan) tea.Msg) tea.Cmd {
+	id := progressId.Add(1)
+	progressChan := make(ProgressChan, 1)
+	model := &ProgressModel{
+		id:            id,
 		title:         title,
 		progressChan:  progressChan,
-		progressModel: progressModel,
-	}, progressChan
+		progressModel: progress.New(progress.WithoutPercentage()),
+	}
+
+	return tea.Sequence(
+		popup.Open(util.ModelPointer(model)),
+		func() tea.Msg {
+			msg := fn(model.progressChan)
+			return progressDoneMsg{model.id, msg}
+		},
+	)
 }
 
 func (m ProgressModel) Init() tea.Cmd {
 	return tea.Sequence(
 		m.progressModel.Init(),
-		m.ListenProgressCmd,
+		tea.Batch(
+			m.ListenProgressCmd,
+			func() tea.Msg {
+				// give a graceperiod until the progress popup fades in, or show on first [progressProgressMsg]
+				time.Sleep(time.Millisecond * 0) // TODO confirm thes is even wanted/needed
+				return progressFadeInMsg{m.id}
+			},
+		),
 	)
 }
 
@@ -74,40 +76,52 @@ func (m *ProgressModel) Update(msg tea.Msg) tea.Cmd {
 		return nil
 	}
 
-	if msg, ok := msg.(ProgressMsg); ok && msg.pid == m.id {
-		m.progress = msg.progress.Progress
-		m.status = msg.progress.Status
+	if msg, ok := msg.(progressMsg); ok && msg.id() == m.id {
+		switch msg := msg.(type) {
+		case progressFadeInMsg:
+			m.show = true
 
-		return m.ListenProgressCmd
-	}
+		case progressProgressMsg:
+			m.show = true
+			m.progress = msg.progress
+			m.status = msg.status
 
-	if msg, ok := msg.(ProgressDoneMsg); ok && msg.pid == m.id {
-		return popup.Close()
+			return m.ListenProgressCmd
+
+		case progressDoneMsg:
+			return tea.Sequence(
+				popup.Close(),
+				func() tea.Msg { return msg.msg },
+			)
+		}
 	}
 
 	return nil
 }
 
 func (m *ProgressModel) ListenProgressCmd() tea.Msg {
-	progress, ok := <-m.progressChan
-	if !ok {
-		return ProgressDoneMsg{m.id}
+	if progress, ok := <-m.progressChan; ok {
+		return progressProgressMsg{m.id, progress.Progress, progress.Status}
 	}
-	return ProgressMsg{m.id, progress}
+	return nil
 }
 
 func (m ProgressModel) View() string {
-	lines := make([]string, 0, 3)
+	if !m.show {
+		return ""
+	}
+
+	blocks := make([]string, 0, 3)
 
 	if m.title != "" {
-		lines = append(lines, lipgloss.NewStyle().Bold(true).Render(m.title))
+		blocks = append(blocks, lipgloss.NewStyle().Bold(true).Render(m.title))
 	}
-	lines = append(lines, m.progressModel.ViewAs(m.progress))
+	blocks = append(blocks, m.progressModel.ViewAs(m.progress))
 	if m.status != "" {
-		lines = append(lines, lipgloss.NewStyle().Italic(true).Render(m.status))
+		blocks = append(blocks, lipgloss.NewStyle().Italic(true).Render(m.status))
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Center, lines...)
+	return lipgloss.JoinVertical(lipgloss.Center, blocks...)
 }
 
 func (m *ProgressModel) Focus(parentKeyMap help.KeyMap) tea.Cmd {

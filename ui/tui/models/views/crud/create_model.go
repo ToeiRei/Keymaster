@@ -26,7 +26,6 @@ type CreateModel[
 
 	// state
 	publicKey client.PublicKey
-	locked    *string
 	focussed  bool
 	preset    *TRecordCreate
 
@@ -69,11 +68,10 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Init() 
 		),
 		// events
 		form.WithOnSubmit(func(result TRecordCreate, err error) tea.Cmd {
-			m.locked = util.NewPointer("Creating Record...")
-			return func() tea.Msg {
+			return popupviews.OpenProgress("Creating "+m.crud.texts.EntityNameSingular+"...", func(_ popupviews.ProgressChan) tea.Msg {
 				record, err := m.crud.createRecord(result)
 				return createMsgCreateResult[TRecord]{record, err}
-			}
+			})
 		}),
 		form.WithOnCancel[TRecordCreate](func() tea.Cmd {
 			return m.crud.routerControll.Pop(1)
@@ -106,14 +104,13 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(
 	// Handle messages
 	switch msg := msg.(type) {
 	case createMsgCreateResult[TRecord]:
-		m.locked = nil
 		if msg.err != nil {
-			return popupviews.OpenMessage(popupviews.MessageError, "Error creating Record:\n"+msg.err.Error(), nil)
+			return popupviews.OpenMessage(popupviews.MessageError, "Error creating "+m.crud.texts.EntityNameSingular+":\n"+msg.err.Error(), nil)
 		}
 		return tea.Sequence(m.crud.routerControll.Pop(1), func() tea.Msg { return createMsgCreated[TRecord]{msg.record} })
 	}
 
-	if !m.focussed || m.locked != nil {
+	if !m.focussed {
 		return nil
 	}
 
@@ -122,9 +119,6 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(
 }
 
 func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) View() string {
-	if m.locked != nil {
-		return *m.locked
-	}
 	return m.form.View()
 }
 

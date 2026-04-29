@@ -46,6 +46,8 @@ type msgImportResult struct {
 
 func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, createFormData, editFormData, client.ID, struct{}] {
 	return crud.New(
+		crud.Texts{"Public Key", "Public Keys"},
+
 		func(record client.PublicKey) client.ID { return record.Id },
 		func(filter struct{}) ([]client.PublicKey, error) {
 			return c.ListPublicKeys(context.Background(), "")

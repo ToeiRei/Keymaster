@@ -5,12 +5,10 @@ package crud
 
 type listMsgReloaded[TDataGet any] struct {
 	records []TDataGet
-	err  error
+	err     error
 }
 
 type listMsgDeleteResult[TDataGet any] struct {
 	record TDataGet
-	err  error
+	err    error
 }
-
-type listMsgDeleting struct{}
