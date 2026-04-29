@@ -8,6 +8,8 @@ func new[T any](v T) *T { return &v }
 
 func NewPointer[T any](v T) *T { return &v }
 
+func NewZero[T any]() (v T) { return }
+
 func DerefOrNullValue[T any](p *T) T {
 	var null T
 	if p != nil {
