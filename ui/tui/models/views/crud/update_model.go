@@ -13,15 +13,15 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
-type EditModel[
+type UpdateModel[
 	TRecord any,
 	TRecordCreate comparable,
-	TRecordEdit comparable,
+	TRecordUpdate comparable,
 	TId comparable,
 	TFilter comparable,
 ] struct {
 	// configuration
-	crud *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]
+	crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
 
 	// state
 	record   TRecord
@@ -31,59 +31,58 @@ type EditModel[
 	size util.Size
 
 	// sub models
-	form *form.Form[TRecordEdit]
+	form *form.Form[TRecordUpdate]
 }
 
-func NewEdit[
+func NewUpdate[
 	TRecord any,
 	TRecordCreate comparable,
-	TRecordEdit comparable,
+	TRecordUpdate comparable,
 	TId comparable,
 	TFilter comparable,
-](crud *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter], record TRecord) *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
-	return &EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]{
+](crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter], record TRecord) *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter] {
+	return &UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]{
 		crud:   crud,
 		record: record,
 	}
 }
 
-func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Init() tea.Cmd {
-	formOpts := m.crud.editFormRows()
-	formOpts = append(formOpts,
+func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Init() tea.Cmd {
+	formOpts := append(m.crud.updateFormRows(),
 		form.WithRow(
-			form.WithItem[TRecordEdit]("_reset", formelement.NewButton("Reset",
+			form.WithItem[TRecordUpdate]("_reset", formelement.NewButton("Reset",
 				formelement.WithButtonActionReset(),
 			)),
-			form.WithItem[TRecordEdit]("_cancel", formelement.NewButton("Cancel",
+			form.WithItem[TRecordUpdate]("_cancel", formelement.NewButton("Cancel",
 				formelement.WithButtonActionCancel(),
 				formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
 			)),
-			form.WithItem[TRecordEdit]("_save", formelement.NewButton("Save",
+			form.WithItem[TRecordUpdate]("_save", formelement.NewButton("Save",
 				formelement.WithButtonActionSubmit(),
 				formelement.WithButtonGlobalKeyBindings(keys.Save()),
 			)),
 		),
 		// events
-		form.WithOnSubmit(func(result TRecordEdit, err error) tea.Cmd {
+		form.WithOnSubmit(func(result TRecordUpdate, err error) tea.Cmd {
 			return popupviews.OpenProgress(
 				popupviews.ProgressSpinner,
 				"Updating "+m.crud.Texts.EntityNameSingular,
 				func(_ popupviews.ProgressChan) tea.Msg {
-					record, err := m.crud.editRecord(m.crud.getRecordId(m.record), result)
-					return editMsgUpdateResult[TRecord]{record, err}
+					record, err := m.crud.updateRecord(m.crud.getRecordId(m.record), result)
+					return updateMsgUpdateResult[TRecord]{record, err}
 				},
 			)
 		}),
-		form.WithOnCancel[TRecordEdit](func() tea.Cmd {
+		form.WithOnCancel[TRecordUpdate](func() tea.Cmd {
 			return m.crud.routerControll.Pop(1)
 		}),
-		form.WithOnReset[TRecordEdit](func() tea.Cmd {
+		form.WithOnReset[TRecordUpdate](func() tea.Cmd {
 			_ = m.refreshForm()
 			return nil
 		}),
-		form.WithOnDiscardGuard[TRecordEdit](discardGuard),
+		form.WithOnDiscardGuard[TRecordUpdate](discardGuard),
 		// data
-		form.WithInitialData(m.crud.makeRecordEdit(m.record)),
+		form.WithInitialData(m.crud.makeRecordUpdate(m.record)),
 	)
 
 	m.form = util.NewPointer(form.New(formOpts...))
@@ -91,7 +90,7 @@ func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Init() te
 	return m.form.Init()
 }
 
-func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(msg tea.Msg) tea.Cmd {
+func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Update(msg tea.Msg) tea.Cmd {
 	// Handle resizing
 	if m.size.UpdateFromMsg(msg) {
 		return m.form.Update(msg)
@@ -100,22 +99,22 @@ func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 	// Intercept messages
 	if cmd, done := Intercept(
 		msg,
-		EditMsgInterceptorCtx[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]{m.crud, m.form},
-		m.crud.editMsgInterceptors...,
+		UpdateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]{m.crud, m.form},
+		m.crud.updateMsgInterceptors...,
 	); cmd != nil || done {
 		return cmd
 	}
 
 	// Handle messages
 	switch msg := msg.(type) {
-	case editMsgUpdateResult[TRecord]:
+	case updateMsgUpdateResult[TRecord]:
 		if msg.err != nil {
 			if msg.err != nil {
 				return popupviews.OpenMessage(popupviews.MessageError, "Error updating "+m.crud.Texts.EntityNameSingular+":\n"+msg.err.Error(), nil)
 			}
 			return nil
 		}
-		return tea.Sequence(m.crud.routerControll.Pop(1), func() tea.Msg { return editMsgUpdated[TRecord]{msg.record} })
+		return tea.Sequence(m.crud.routerControll.Pop(1), func() tea.Msg { return UpdateMsgUpdated[TRecord]{msg.record} })
 	}
 
 	if !m.focussed {
@@ -126,25 +125,25 @@ func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(ms
 	return m.form.Update(msg)
 }
 
-func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) View() string {
+func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) View() string {
 	return m.form.View()
 }
 
-func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focussed = true
 	return m.form.Focus(parentKeyMap)
 }
 
-func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Blur() {
+func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Blur() {
 	m.focussed = false
 	m.form.Blur()
 }
 
-// *[EditModel] implements [util.Model]
-var _ util.Model = (*EditModel[any, any, any, any, any])(nil)
+// *[UpdateModel] implements [util.Model]
+var _ util.Model = (*UpdateModel[any, any, any, any, any])(nil)
 
-func (m *EditModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) refreshForm() error {
-	data := m.crud.makeRecordEdit(m.record)
+func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) refreshForm() error {
+	data := m.crud.makeRecordUpdate(m.record)
 	m.form.InitialData = data
 	return m.form.Set(data)
 }

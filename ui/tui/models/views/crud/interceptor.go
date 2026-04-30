@@ -13,58 +13,58 @@ type MsgInterceptor[TCtx any] = func(msg tea.Msg, ctx TCtx) (cmd tea.Cmd, done b
 type ListMsgInterceptor[
 	TRecord any,
 	TRecordCreate comparable,
-	TRecordEdit comparable,
+	TRecordUpdate comparable,
 	TId comparable,
 	TFilter comparable,
-] = MsgInterceptor[ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]]
+] = MsgInterceptor[ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]]
 
 type CreateMsgInterceptor[
 	TRecord any,
 	TRecordCreate comparable,
-	TRecordEdit comparable,
+	TRecordUpdate comparable,
 	TId comparable,
 	TFilter comparable,
-] = MsgInterceptor[CreateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]]
+] = MsgInterceptor[CreateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]]
 
-type EditMsgInterceptor[
+type UpdateMsgInterceptor[
 	TRecord any,
 	TRecordCreate comparable,
-	TRecordEdit comparable,
+	TRecordUpdate comparable,
 	TId comparable,
 	TFilter comparable,
-] = MsgInterceptor[EditMsgInterceptorCtx[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]]
+] = MsgInterceptor[UpdateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]]
 
 type ListMsgInterceptorCtx[
 	TRecord any,
 	TRecordCreate comparable,
-	TRecordEdit comparable,
+	TRecordUpdate comparable,
 	TId comparable,
 	TFilter comparable,
 ] struct {
-	Crud           *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]
+	Crud           *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
 	SelectedRecord *TRecord
 }
 
 type CreateMsgInterceptorCtx[
 	TRecord any,
 	TRecordCreate comparable,
-	TRecordEdit comparable,
+	TRecordUpdate comparable,
 	TId comparable,
 	TFilter comparable,
 ] struct {
-	Crud *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]
+	Crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
 	Form *form.Form[TRecordCreate]
 }
 
-type EditMsgInterceptorCtx[
+type UpdateMsgInterceptorCtx[
 	TRecord any,
 	TRecordCreate comparable,
-	TRecordEdit comparable,
+	TRecordUpdate comparable,
 	TId comparable,
 	TFilter comparable,
 ] struct {
-	Crud *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]
-	Form *form.Form[TRecordEdit]
+	Crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
+	Form *form.Form[TRecordUpdate]
 }
 
 func Intercept[TCtx any](msg tea.Msg, ctx TCtx, interceptors ...MsgInterceptor[TCtx]) (cmd tea.Cmd, done bool) {

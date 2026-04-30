@@ -3,12 +3,12 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package crud
 
-type listMsgReloaded[TDataGet any] struct {
-	records []TDataGet
+type listMsgReloaded[TRecord any] struct {
+	records []TRecord
 	err     error
 }
 
-type listMsgDeleteResult[TDataGet any] struct {
-	record TDataGet
+type listMsgDeleteResult[TRecord any] struct {
+	record TRecord
 	err    error
 }

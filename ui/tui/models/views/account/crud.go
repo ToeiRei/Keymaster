@@ -26,7 +26,7 @@ type createFormData struct {
 	DeploySecret string `form:"deploy_secret"`
 }
 
-type editFormData = createFormData
+type updateFormData = createFormData
 
 func formRows[T comparable]() []form.FormOpt[T] {
 	return []form.FormOpt[T]{
@@ -38,7 +38,7 @@ func formRows[T comparable]() []form.FormOpt[T] {
 	}
 }
 
-func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, createFormData, editFormData, client.AccountId, struct{}] {
+func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, createFormData, updateFormData, client.AccountId, struct{}] {
 	return crud.New(
 		crud.Texts{"Account", "Accounts"},
 		func(record client.Account) client.AccountId { return record.Id },
@@ -59,7 +59,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, cre
 				record.DeploySecret,
 			)
 		},
-		func(id client.AccountId, record editFormData) (client.Account, error) {
+		func(id client.AccountId, record updateFormData) (client.Account, error) {
 			port, err := strconv.Atoi(record.Port)
 			if err != nil {
 				return client.Account{}, err
@@ -112,8 +112,8 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, cre
 
 			return columns, rows
 		},
-		func(record client.Account) editFormData {
-			return editFormData{
+		func(record client.Account) updateFormData {
+			return updateFormData{
 				record.Name,
 				record.Host,
 				fmt.Sprint(record.Port),
@@ -123,11 +123,11 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, cre
 		},
 
 		formRows[createFormData],
-		formRows[editFormData],
+		formRows[updateFormData],
 
 		rc,
 
-		crud.WithListDuplicateAction[client.Account, createFormData, editFormData, client.AccountId, struct{}](func(record client.Account) createFormData {
+		crud.WithListDuplicateAction[client.Account, createFormData, updateFormData, client.AccountId, struct{}](func(record client.Account) createFormData {
 			return createFormData{
 				record.Name,
 				record.Host,

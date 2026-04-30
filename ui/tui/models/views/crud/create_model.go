@@ -17,12 +17,12 @@ import (
 type CreateModel[
 	TRecord any,
 	TRecordCreate comparable,
-	TRecordEdit comparable,
+	TRecordUpdate comparable,
 	TId comparable,
 	TFilter comparable,
 ] struct {
 	// configuration
-	crud *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]
+	crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
 
 	// state
 	publicKey client.PublicKey
@@ -39,17 +39,17 @@ type CreateModel[
 func NewCreate[
 	TRecord any,
 	TRecordCreate comparable,
-	TRecordEdit comparable,
+	TRecordUpdate comparable,
 	TId comparable,
 	TFilter comparable,
-](crud *Crud[TRecord, TRecordCreate, TRecordEdit, TId, TFilter], preset *TRecordCreate) *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter] {
-	return &CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]{
+](crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter], preset *TRecordCreate) *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter] {
+	return &CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]{
 		crud:   crud,
 		preset: preset,
 	}
 }
 
-func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Init() tea.Cmd {
+func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Init() tea.Cmd {
 	formOpts := m.crud.createFormRows()
 	formOpts = append(formOpts,
 		form.WithRow(
@@ -90,7 +90,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Init() 
 	return m.form.Init()
 }
 
-func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(msg tea.Msg) tea.Cmd {
+func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Update(msg tea.Msg) tea.Cmd {
 	// Handle resizing
 	if m.size.UpdateFromMsg(msg) {
 		return m.form.Update(msg)
@@ -99,7 +99,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(
 	// Intercept messages
 	if cmd, done := Intercept(
 		msg,
-		CreateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]{m.crud, m.form},
+		CreateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]{m.crud, m.form},
 		m.crud.createMsgInterceptors...,
 	); cmd != nil || done {
 		return cmd
@@ -111,7 +111,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(
 		if msg.err != nil {
 			return popupviews.OpenMessage(popupviews.MessageError, "Error creating "+m.crud.Texts.EntityNameSingular+":\n"+msg.err.Error(), nil)
 		}
-		return tea.Sequence(m.crud.routerControll.Pop(1), func() tea.Msg { return createMsgCreated[TRecord]{msg.record} })
+		return tea.Sequence(m.crud.routerControll.Pop(1), func() tea.Msg { return CreateMsgCreated[TRecord]{msg.record} })
 	}
 
 	if !m.focussed {
@@ -122,16 +122,16 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Update(
 	return m.form.Update(msg)
 }
 
-func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) View() string {
+func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) View() string {
 	return m.form.View()
 }
 
-func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focussed = true
 	return m.form.Focus(parentKeyMap)
 }
 
-func (m *CreateModel[TRecord, TRecordCreate, TRecordEdit, TId, TFilter]) Blur() {
+func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Blur() {
 	m.focussed = false
 	m.form.Blur()
 }

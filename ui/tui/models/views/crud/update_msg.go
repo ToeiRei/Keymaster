@@ -3,11 +3,11 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package crud
 
-type editMsgUpdateResult[TRecord any] struct {
+type updateMsgUpdateResult[TRecord any] struct {
 	record TRecord
 	err    error
 }
 
-type editMsgUpdated[TRecord any] struct {
+type UpdateMsgUpdated[TRecord any] struct {
 	Record TRecord
 }

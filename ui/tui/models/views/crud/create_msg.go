@@ -8,6 +8,6 @@ type createMsgCreateResult[TRecord any] struct {
 	err    error
 }
 
-type createMsgCreated[TRecord any] struct {
+type CreateMsgCreated[TRecord any] struct {
 	Record TRecord
 }
