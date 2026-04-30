@@ -28,7 +28,7 @@ type createFormData struct {
 	Tags      string `form:"tags"`
 }
 
-type editFormData struct {
+type updateFormData struct {
 	Comment string `form:"comment"`
 	Tags    string `form:"tags"`
 }
@@ -43,7 +43,7 @@ type msgImportResult struct {
 	comment   string
 }
 
-func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, createFormData, editFormData, client.PublicKeyId, struct{}] {
+func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, createFormData, updateFormData, client.PublicKeyId, struct{}] {
 	return crud.New(
 		crud.Texts{"Public Key", "Public Keys"},
 
@@ -62,7 +62,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 				tagsParse(record.Tags),
 			)
 		},
-		func(id client.PublicKeyId, record editFormData) (client.PublicKey, error) {
+		func(id client.PublicKeyId, record updateFormData) (client.PublicKey, error) {
 			if err := c.UpdatePublicKey(
 				context.Background(),
 				id,
@@ -104,8 +104,8 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 
 			return columns, rows
 		},
-		func(record client.PublicKey) editFormData {
-			return editFormData{
+		func(record client.PublicKey) updateFormData {
+			return updateFormData{
 				record.Comment,
 				tagsStringify(record.Tags),
 			}
@@ -155,16 +155,16 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 				form.WithRowItem[createFormData]("tags", formelement.NewText("Tags", "comma seperated list of tags")),
 			}
 		},
-		func() []form.FormOpt[editFormData] {
-			return []form.FormOpt[editFormData]{
-				form.WithRowItem[editFormData]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
-				form.WithRowItem[editFormData]("tags", formelement.NewText("Tags", "comma seperated list of tags")),
+		func() []form.FormOpt[updateFormData] {
+			return []form.FormOpt[updateFormData]{
+				form.WithRowItem[updateFormData]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
+				form.WithRowItem[updateFormData]("tags", formelement.NewText("Tags", "comma seperated list of tags")),
 			}
 		},
 
 		rc,
 
-		crud.WithListDuplicateAction[client.PublicKey, createFormData, editFormData, client.PublicKeyId, struct{}](func(record client.PublicKey) createFormData {
+		crud.WithListDuplicateAction[client.PublicKey, createFormData, updateFormData, client.PublicKeyId, struct{}](func(record client.PublicKey) createFormData {
 			return createFormData{
 				record.Algorithm,
 				record.Data,
@@ -173,7 +173,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.PublicKey, c
 			}
 		}),
 
-		crud.WithCreateMsgInterceptor(func(msg tea.Msg, ctx crud.CreateMsgInterceptorCtx[client.PublicKey, createFormData, editFormData, client.PublicKeyId, struct{}]) (tea.Cmd, bool) {
+		crud.WithCreateMsgInterceptor(func(msg tea.Msg, ctx crud.CreateMsgInterceptorCtx[client.PublicKey, createFormData, updateFormData, client.PublicKeyId, struct{}]) (tea.Cmd, bool) {
 			if msg, ok := msg.(msgImportResult); ok {
 				// apply import popup result to form
 				data, _ := ctx.Form.Get()
