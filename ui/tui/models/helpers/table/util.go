@@ -72,7 +72,7 @@ func NewBubblesTableRenderer[T any](columns Columns[T]) BubblesTableRenderer[T] 
 			return slicest.MapI(columns, func(i int, column Column[T]) table.Column {
 				return table.Column{
 					Title: column.Title,
-					Width: int(float64(availableWidth) * (float64(columnWidths[i]) / float64(totalColumnWidth))),
+					Width: (availableWidth * columnWidths[i]) / totalColumnWidth,
 				}
 			}), bubblesRows
 		}
