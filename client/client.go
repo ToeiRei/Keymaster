@@ -6,12 +6,16 @@ package client
 import (
 	"context"
 	"time"
+
+	"github.com/toeirei/keymaster/util/slicest"
 )
 
 type Client interface {
 	// --- Lifecycle & Initialization ---
 
 	Close(ctx context.Context) error
+
+	WithTransaction(ctx context.Context, fn func(c Client) error) error
 
 	// --- PublicKey Management ---
 
@@ -47,19 +51,19 @@ type Client interface {
 
 	// --- Link Management ---
 
-	CreateLink(ctx context.Context, accountID AccountId, tagFilter string, expiresAt time.Time) (Link, error)
+	CreateLink(ctx context.Context, accountId AccountId, tagFilter string, expiresAt time.Time) (Link, error)
 
 	GetLink(ctx context.Context, id LinkId) (Link, error)
 
 	GetLinks(ctx context.Context, ids ...LinkId) ([]Link, error)
 
-	ListLinksAccount(ctx context.Context, accountID AccountId) ([]Link, error)
+	ListLinksAccount(ctx context.Context, accountId AccountId) ([]Link, error)
 
-	ListLinksPublicKey(ctx context.Context, publicKeyID PublicKeyId) ([]Link, error)
+	ListLinksPublicKey(ctx context.Context, publicKeyId PublicKeyId) ([]Link, error)
 
-	ListPublicKeysForAccount(ctx context.Context, accountID AccountId) ([]PublicKey, error)
+	ListPublicKeysForAccount(ctx context.Context, accountId AccountId) ([]PublicKey, error)
 
-	ListAccountsForPublicKey(ctx context.Context, publicKeyID PublicKeyId) ([]Account, error)
+	ListAccountsForPublicKey(ctx context.Context, publicKeyId PublicKeyId) ([]Account, error)
 
 	UpdateLink(ctx context.Context, id LinkId, accountId AccountId, tagFilter string, expiresAt time.Time) error
 
@@ -73,14 +77,14 @@ type Client interface {
 
 	DecommisionAccount(ctx context.Context, id AccountId) (chan DecommisionAccountProgress, error)
 
-	DeployPublicKeys(ctx context.Context, publicKeyID ...PublicKeyId) (chan DeployProgress, error)
+	DeployPublicKeys(ctx context.Context, publicKeyId ...PublicKeyId) (chan DeployProgress, error)
 
-	DeployAccounts(ctx context.Context, accountID ...AccountId) (chan DeployProgress, error)
+	DeployAccounts(ctx context.Context, accountId ...AccountId) (chan DeployProgress, error)
 
 	DeployAll(ctx context.Context) (chan DeployProgress, error)
 }
 
-// ID is a local identifier type used by the client API.
+// id is a local identifier type used by the client API.
 type id = int
 
 // PublicKey represents a public key record.
@@ -116,11 +120,22 @@ type Link struct {
 	// ...
 }
 
+type DeployAccountProgress struct {
+	Progress float64
+	Status   string
+	Err      error
+}
+
 // DeployProgress reports incremental progress for a deployment operation.
 type DeployProgress struct {
-	Percent float64
-	Targets map[*Account]float64
-	// ...
+	Accounts map[AccountId]*DeployAccountProgress
+}
+
+func (dp DeployProgress) TotalProgress() float64 {
+	return slicest.Reduce(
+		slicest.MapValues(dp.Accounts),
+		func(dap *DeployAccountProgress, total float64) float64 { return total + dap.Progress },
+	) / float64(len(dp.Accounts))
 }
 
 // OnboardHostProgress reports progress during host onboarding.

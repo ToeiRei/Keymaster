@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bobg/go-generics/v4/slices"
+	"github.com/jinzhu/copier"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/util/slicest"
 )
@@ -27,7 +28,7 @@ type Client struct {
 	linkIdCounter      client.LinkId
 }
 
-// *[Client] implements [Client]
+// *[Client] implements [client.Client]
 var _ client.Client = (*Client)(nil)
 
 // --- utils ---
@@ -44,7 +45,60 @@ func (c *Client) accountDeployData(ctx context.Context, account client.Account) 
 }
 
 func (c *Client) accountDeployCache(account client.Account, deployCache string) string {
-	return fmt.Sprintf("%s %s:%d\n%s", account.DeployMethod, account.Host, account.Port, deployCache)
+	return fmt.Sprintf("%s %s@%s:%d\n%s", account.DeployMethod, account.Name, account.Host, account.Port, deployCache)
+}
+
+func (c *Client) deployAccounts(ctx context.Context, accounts ...client.Account) (chan client.DeployProgress, error) {
+	deployDatas, err := slicest.MapX(accounts, func(a client.Account) (string, error) {
+		return c.accountDeployData(ctx, a)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	deployProgressChan := make(chan client.DeployProgress)
+	deployProgress := client.DeployProgress{
+		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.DeployAccountProgress) {
+			return account.Id, &client.DeployAccountProgress{0, "not started", nil}
+		}),
+	}
+
+	go func() {
+		for i, account := range accounts {
+			deployProgress.Accounts[account.Id].Status = "deploying"
+			deployProgressChan <- deployProgress
+
+			// simulate deplay
+			for _i := range 5 {
+				time.Sleep(time.Millisecond * 100)
+				deployProgress.Accounts[account.Id].Progress = float64(_i+1) / 10
+				deployProgressChan <- deployProgress
+			}
+
+			_i, ok := slices.BinarySearchFunc(c.accounts, account.Id, func(a client.Account, id client.AccountId) int { return int(a.Id - id) })
+			if !ok {
+				deployProgress.Accounts[account.Id].Status = "error"
+				deployProgress.Accounts[account.Id].Progress = 1
+				deployProgress.Accounts[account.Id].Err = fmt.Errorf("account with id %v not found", account.Id)
+				deployProgressChan <- deployProgress
+				continue
+			}
+
+			// simulate deplay
+			for _i := range 5 {
+				time.Sleep(time.Millisecond * 100)
+				deployProgress.Accounts[account.Id].Progress = float64(_i+6) / 10
+				deployProgressChan <- deployProgress
+			}
+
+			c.accounts[_i].DeployCache = c.accountDeployCache(account, deployDatas[i])
+			deployProgress.Accounts[account.Id].Status = "finished"
+			deployProgress.Accounts[account.Id].Progress = 1
+			deployProgressChan <- deployProgress
+		}
+	}()
+
+	return deployProgressChan, nil
 }
 
 // --- Lifecycle & Initialization ---
@@ -54,6 +108,23 @@ func NewClient() *Client {
 }
 
 func (c *Client) Close(ctx context.Context) error {
+	return nil
+}
+
+// NOT THREAD SAFE! ONLY FOR TESTING!
+func (c *Client) WithTransaction(ctx context.Context, fn func(c client.Client) error) error {
+	// create copy of client to use in transaction
+	var transactionClient *Client
+	copier.Copy(transactionClient, c)
+
+	// run callback with transaction client
+	err := fn(c)
+	if err != nil {
+		return err
+	}
+
+	// apply changes
+	c = transactionClient
 	return nil
 }
 
@@ -178,9 +249,9 @@ func (c *Client) IsAccountDirty(ctx context.Context, account client.Account) (bo
 
 // --- client.Link Management ---
 
-func (c *Client) CreateLink(ctx context.Context, accountID client.AccountId, tagFilter string, expiresAt time.Time) (client.Link, error) {
+func (c *Client) CreateLink(ctx context.Context, accountId client.AccountId, tagFilter string, expiresAt time.Time) (client.Link, error) {
 	c.linkIdCounter++
-	link := client.Link{c.linkIdCounter, accountID, tagFilter, expiresAt}
+	link := client.Link{c.linkIdCounter, accountId, tagFilter, expiresAt}
 	c.links = append(c.links, link)
 	return link, nil
 }
@@ -200,18 +271,18 @@ func (c *Client) GetLinks(ctx context.Context, ids ...client.LinkId) ([]client.L
 	}), nil
 }
 
-func (c *Client) ListLinksAccount(ctx context.Context, accountID client.AccountId) ([]client.Link, error) {
+func (c *Client) ListLinksAccount(ctx context.Context, accountId client.AccountId) ([]client.Link, error) {
 	return slices.Filter(c.links, func(link client.Link) bool {
-		return link.AccountId == accountID
+		return link.AccountId == accountId
 	}), nil
 }
 
-func (c *Client) ListLinksPublicKey(ctx context.Context, publicKeyID client.PublicKeyId) ([]client.Link, error) {
+func (c *Client) ListLinksPublicKey(ctx context.Context, publicKeyId client.PublicKeyId) ([]client.Link, error) {
 	return nil, errors.New("client.ListAccountLinks not implemented")
 }
 
-func (c *Client) ListPublicKeysForAccount(ctx context.Context, accountID client.AccountId) ([]client.PublicKey, error) {
-	links, err := c.ListLinksAccount(ctx, accountID)
+func (c *Client) ListPublicKeysForAccount(ctx context.Context, accountId client.AccountId) ([]client.PublicKey, error) {
+	links, err := c.ListLinksAccount(ctx, accountId)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +297,7 @@ func (c *Client) ListPublicKeysForAccount(ctx context.Context, accountID client.
 	return slicest.Flatten(publicKeyss), nil
 }
 
-func (c *Client) ListAccountsForPublicKey(ctx context.Context, publicKeyID client.PublicKeyId) ([]client.Account, error) {
+func (c *Client) ListAccountsForPublicKey(ctx context.Context, publicKeyId client.PublicKeyId) ([]client.Account, error) {
 	return nil, errors.New("client.ListAccountsForPublicKey not implemented")
 }
 
@@ -263,31 +334,24 @@ func (c *Client) DecommisionAccount(ctx context.Context, id client.AccountId) (c
 	return nil, errors.New("client.DecommisionAccount not implemented")
 }
 
-func (c *Client) DeployPublicKeys(ctx context.Context, publicKeyID ...client.PublicKeyId) (chan client.DeployProgress, error) {
+func (c *Client) DeployPublicKeys(ctx context.Context, publicKeyId ...client.PublicKeyId) (chan client.DeployProgress, error) {
 	return nil, errors.New("client.DeployPublicKeys not implemented")
 }
 
-func (c *Client) DeployAccounts(ctx context.Context, accountID ...client.AccountId) (chan client.DeployProgress, error) {
-	return nil, errors.New("client.DeployAccounts not implemented")
+func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.AccountId) (chan client.DeployProgress, error) {
+	accounts, err := c.GetAccounts(ctx, accountIds...)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.deployAccounts(ctx, accounts...)
 }
 
 func (c *Client) DeployAll(ctx context.Context) (chan client.DeployProgress, error) {
-	ch := make(chan client.DeployProgress)
-
-	accountProgress := make(map[*client.Account]float64, len(c.accounts))
-	for _, account := range c.accounts {
-		accountProgress[&account] = 0
+	accounts, err := c.ListAccounts(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	go func() {
-		for i := float64(0); i <= 1; i += 0.2 {
-			time.Sleep(time.Second)
-			for account := range accountProgress {
-				accountProgress[account] = i
-			}
-			ch <- client.DeployProgress{i, accountProgress}
-		}
-		close(ch)
-	}()
-	return ch, nil
+	return c.deployAccounts(ctx, accounts...)
 }

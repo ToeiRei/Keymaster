@@ -14,6 +14,22 @@ func ToMap[T any, K comparable, V any, S ~[]T](s S, fn func(T) (K, V)) map[K]V {
 	return result
 }
 
+func MapKeys[K comparable, V any, M ~map[K]V](m M) []K {
+	result := make([]K, 0, len(m))
+	for k := range m {
+		result = append(result, k)
+	}
+	return result
+}
+
+func MapValues[K comparable, V any, M ~map[K]V](m M) []V {
+	result := make([]V, 0, len(m))
+	for _, v := range m {
+		result = append(result, v)
+	}
+	return result
+}
+
 // Flatten
 
 func Flatten[T any, S ~[][]T](ss S) []T {

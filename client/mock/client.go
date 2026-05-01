@@ -18,7 +18,8 @@ type Client struct {
 
 type ClientOverwrites struct {
 	// --- Lifecycle & Initialization ---
-	Close func(ctx context.Context) error
+	Close           func(ctx context.Context) error
+	WithTransaction func(ctx context.Context, fn func(c client.Client) error) error
 
 	// --- PublicKey Management ---
 	CreatePublicKey  func(ctx context.Context, key string, comment string, tags []string) (client.PublicKey, error)
@@ -39,13 +40,13 @@ type ClientOverwrites struct {
 	IsAccountDirty    func(ctx context.Context, account client.Account) (bool, error)
 
 	// --- Link Management ---
-	CreateLink               func(ctx context.Context, accountID client.AccountId, tagFilter string, expiresAt time.Time) (client.Link, error)
+	CreateLink               func(ctx context.Context, accountId client.AccountId, tagFilter string, expiresAt time.Time) (client.Link, error)
 	GetLink                  func(ctx context.Context, id client.LinkId) (client.Link, error)
 	GetLinks                 func(ctx context.Context, ids ...client.LinkId) ([]client.Link, error)
-	ListLinksAccount         func(ctx context.Context, accountID client.AccountId) ([]client.Link, error)
-	ListLinksPublicKey       func(ctx context.Context, publicKeyID client.PublicKeyId) ([]client.Link, error)
-	ListPublicKeysForAccount func(ctx context.Context, accountID client.AccountId) ([]client.PublicKey, error)
-	ListAccountsForPublicKey func(ctx context.Context, publicKeyID client.PublicKeyId) ([]client.Account, error)
+	ListLinksAccount         func(ctx context.Context, accountId client.AccountId) ([]client.Link, error)
+	ListLinksPublicKey       func(ctx context.Context, publicKeyId client.PublicKeyId) ([]client.Link, error)
+	ListPublicKeysForAccount func(ctx context.Context, accountId client.AccountId) ([]client.PublicKey, error)
+	ListAccountsForPublicKey func(ctx context.Context, publicKeyId client.PublicKeyId) ([]client.Account, error)
 	UpdateLink               func(ctx context.Context, id client.LinkId, accountId client.AccountId, tagFilter string, expiresAt time.Time) error
 	DeleteLinks              func(ctx context.Context, ids ...client.LinkId) error
 
@@ -53,8 +54,8 @@ type ClientOverwrites struct {
 	ListExistingTags   func(ctx context.Context) []string
 	OnboardHost        func(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountName string, deploymentKey string) (chan client.OnboardHostProgress, error)
 	DecommisionAccount func(ctx context.Context, id client.AccountId) (chan client.DecommisionAccountProgress, error)
-	DeployPublicKeys   func(ctx context.Context, publicKeyID ...client.PublicKeyId) (chan client.DeployProgress, error)
-	DeployAccounts     func(ctx context.Context, accountID ...client.AccountId) (chan client.DeployProgress, error)
+	DeployPublicKeys   func(ctx context.Context, publicKeyId ...client.PublicKeyId) (chan client.DeployProgress, error)
+	DeployAccounts     func(ctx context.Context, accountId ...client.AccountId) (chan client.DeployProgress, error)
 	DeployAll          func(ctx context.Context) (chan client.DeployProgress, error)
 }
 
@@ -110,6 +111,18 @@ func (m *Client) Close(ctx context.Context) error {
 		return m.BaseClient.Close(ctx)
 	}
 	panic("Client.Close not implemented")
+}
+
+func (m *Client) WithTransaction(ctx context.Context, fn func(c client.Client) error) error {
+	if m.Pre != nil {
+		m.Pre("WithTransaction", map[string]any{"ctx": ctx, "fn": fn})
+	}
+	if m.Overwrites.WithTransaction != nil {
+		return m.Overwrites.WithTransaction(ctx, fn)
+	} else if m.BaseClient != nil {
+		return m.BaseClient.WithTransaction(ctx, fn)
+	}
+	panic("Client.WithTransaction not implemented")
 }
 
 // --- PublicKey Management ---
@@ -292,14 +305,14 @@ func (m *Client) IsAccountDirty(ctx context.Context, account client.Account) (bo
 
 // --- Link Management ---
 
-func (m *Client) CreateLink(ctx context.Context, accountID client.AccountId, tagFilter string, expiresAt time.Time) (client.Link, error) {
+func (m *Client) CreateLink(ctx context.Context, accountId client.AccountId, tagFilter string, expiresAt time.Time) (client.Link, error) {
 	if m.Pre != nil {
-		m.Pre("CreateLink", map[string]any{"ctx": ctx, "accountID": accountID, "tagFilter": tagFilter, "expiresAt": expiresAt})
+		m.Pre("CreateLink", map[string]any{"ctx": ctx, "accountId": accountId, "tagFilter": tagFilter, "expiresAt": expiresAt})
 	}
 	if m.Overwrites.CreateLink != nil {
-		return m.Overwrites.CreateLink(ctx, accountID, tagFilter, expiresAt)
+		return m.Overwrites.CreateLink(ctx, accountId, tagFilter, expiresAt)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.CreateLink(ctx, accountID, tagFilter, expiresAt)
+		return m.BaseClient.CreateLink(ctx, accountId, tagFilter, expiresAt)
 	}
 	panic("Client.CreateLink not implemented")
 }
@@ -328,50 +341,50 @@ func (m *Client) GetLinks(ctx context.Context, ids ...client.LinkId) ([]client.L
 	panic("Client.GetLinks not implemented")
 }
 
-func (m *Client) ListLinksAccount(ctx context.Context, accountID client.AccountId) ([]client.Link, error) {
+func (m *Client) ListLinksAccount(ctx context.Context, accountId client.AccountId) ([]client.Link, error) {
 	if m.Pre != nil {
-		m.Pre("ListLinksAccount", map[string]any{"ctx": ctx, "accountID": accountID})
+		m.Pre("ListLinksAccount", map[string]any{"ctx": ctx, "accountId": accountId})
 	}
 	if m.Overwrites.ListLinksAccount != nil {
-		return m.Overwrites.ListLinksAccount(ctx, accountID)
+		return m.Overwrites.ListLinksAccount(ctx, accountId)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.ListLinksAccount(ctx, accountID)
+		return m.BaseClient.ListLinksAccount(ctx, accountId)
 	}
 	panic("Client.ListLinksAccount not implemented")
 }
 
-func (m *Client) ListLinksPublicKey(ctx context.Context, publicKeyID client.PublicKeyId) ([]client.Link, error) {
+func (m *Client) ListLinksPublicKey(ctx context.Context, publicKeyId client.PublicKeyId) ([]client.Link, error) {
 	if m.Pre != nil {
-		m.Pre("ListLinksPublicKey", map[string]any{"ctx": ctx, "publicKeyID": publicKeyID})
+		m.Pre("ListLinksPublicKey", map[string]any{"ctx": ctx, "publicKeyId": publicKeyId})
 	}
 	if m.Overwrites.ListLinksPublicKey != nil {
-		return m.Overwrites.ListLinksPublicKey(ctx, publicKeyID)
+		return m.Overwrites.ListLinksPublicKey(ctx, publicKeyId)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.ListLinksPublicKey(ctx, publicKeyID)
+		return m.BaseClient.ListLinksPublicKey(ctx, publicKeyId)
 	}
 	panic("Client.ListLinksPublicKey not implemented")
 }
 
-func (m *Client) ListPublicKeysForAccount(ctx context.Context, accountID client.AccountId) ([]client.PublicKey, error) {
+func (m *Client) ListPublicKeysForAccount(ctx context.Context, accountId client.AccountId) ([]client.PublicKey, error) {
 	if m.Pre != nil {
-		m.Pre("ListPublicKeysForAccount", map[string]any{"ctx": ctx, "accountID": accountID})
+		m.Pre("ListPublicKeysForAccount", map[string]any{"ctx": ctx, "accountId": accountId})
 	}
 	if m.Overwrites.ListPublicKeysForAccount != nil {
-		return m.Overwrites.ListPublicKeysForAccount(ctx, accountID)
+		return m.Overwrites.ListPublicKeysForAccount(ctx, accountId)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.ListPublicKeysForAccount(ctx, accountID)
+		return m.BaseClient.ListPublicKeysForAccount(ctx, accountId)
 	}
 	panic("Client.ListPublicKeysForAccount not implemented")
 }
 
-func (m *Client) ListAccountsForPublicKey(ctx context.Context, publicKeyID client.PublicKeyId) ([]client.Account, error) {
+func (m *Client) ListAccountsForPublicKey(ctx context.Context, publicKeyId client.PublicKeyId) ([]client.Account, error) {
 	if m.Pre != nil {
-		m.Pre("ListAccountsForPublicKey", map[string]any{"ctx": ctx, "publicKeyID": publicKeyID})
+		m.Pre("ListAccountsForPublicKey", map[string]any{"ctx": ctx, "publicKeyId": publicKeyId})
 	}
 	if m.Overwrites.ListAccountsForPublicKey != nil {
-		return m.Overwrites.ListAccountsForPublicKey(ctx, publicKeyID)
+		return m.Overwrites.ListAccountsForPublicKey(ctx, publicKeyId)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.ListAccountsForPublicKey(ctx, publicKeyID)
+		return m.BaseClient.ListAccountsForPublicKey(ctx, publicKeyId)
 	}
 	panic("Client.ListAccountsForPublicKey not implemented")
 }
@@ -438,26 +451,26 @@ func (m *Client) DecommisionAccount(ctx context.Context, id client.AccountId) (c
 	panic("Client.DecommisionAccount not implemented")
 }
 
-func (m *Client) DeployPublicKeys(ctx context.Context, publicKeyID ...client.PublicKeyId) (chan client.DeployProgress, error) {
+func (m *Client) DeployPublicKeys(ctx context.Context, publicKeyId ...client.PublicKeyId) (chan client.DeployProgress, error) {
 	if m.Pre != nil {
-		m.Pre("DeployPublicKeys", map[string]any{"ctx": ctx, "publicKeyID": publicKeyID})
+		m.Pre("DeployPublicKeys", map[string]any{"ctx": ctx, "publicKeyId": publicKeyId})
 	}
 	if m.Overwrites.DeployPublicKeys != nil {
-		return m.Overwrites.DeployPublicKeys(ctx, publicKeyID...)
+		return m.Overwrites.DeployPublicKeys(ctx, publicKeyId...)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.DeployPublicKeys(ctx, publicKeyID...)
+		return m.BaseClient.DeployPublicKeys(ctx, publicKeyId...)
 	}
 	panic("Client.DeployPublicKeys not implemented")
 }
 
-func (m *Client) DeployAccounts(ctx context.Context, accountID ...client.AccountId) (chan client.DeployProgress, error) {
+func (m *Client) DeployAccounts(ctx context.Context, accountId ...client.AccountId) (chan client.DeployProgress, error) {
 	if m.Pre != nil {
-		m.Pre("DeployAccounts", map[string]any{"ctx": ctx, "accountID": accountID})
+		m.Pre("DeployAccounts", map[string]any{"ctx": ctx, "accountId": accountId})
 	}
 	if m.Overwrites.DeployAccounts != nil {
-		return m.Overwrites.DeployAccounts(ctx, accountID...)
+		return m.Overwrites.DeployAccounts(ctx, accountId...)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.DeployAccounts(ctx, accountID...)
+		return m.BaseClient.DeployAccounts(ctx, accountId...)
 	}
 	panic("Client.DeployAccounts not implemented")
 }
