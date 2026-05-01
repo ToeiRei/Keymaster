@@ -11,6 +11,8 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/client/mock"
+	"github.com/toeirei/keymaster/client/testui"
 	"github.com/toeirei/keymaster/ui/tui/models/components/menu"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
 	"github.com/toeirei/keymaster/ui/tui/models/components/stack"
@@ -36,14 +38,14 @@ func New() *Model {
 	// 	 }
 	// }
 
-	c := client.Client(client.NewTestUIClient())
+	c := client.Client(testui.NewClient())
 	// create development test data
 	_, _ = c.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-ödtjfb", "my-key", []string{"user:jannes", "company:none"})
 	_, _ = c.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjdfhal_sdvkhathrösdljhask-ödjfb", "420", []string{"user:toeirei", "company:another"})
 	_, _ = c.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb", "69", []string{"user:somebodyelse", "company:evilgoogle"})
 	_, _ = c.CreateAccount(context.Background(), "sdvkhaösdljhask-ödjhtfb", "1.2.3.4", 22, "ssh", "password")
 
-	c = client.NewMockClient(client.WitchMockBaseClient(c), client.WitchMockPre(func(method string, args map[string]any) {
+	c = mock.NewClient(mock.WitchBaseClient(c), mock.WitchPre(func(method string, args map[string]any) {
 		time.Sleep(time.Second)
 	}))
 

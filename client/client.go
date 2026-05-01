@@ -53,9 +53,9 @@ type Client interface {
 
 	GetLinks(ctx context.Context, ids ...LinkId) ([]Link, error)
 
-	ListPublicKeyLinks(ctx context.Context, accountID AccountId) ([]Link, error)
+	ListLinksAccount(ctx context.Context, accountID AccountId) ([]Link, error)
 
-	ListAccountLinks(ctx context.Context, publicKeyID PublicKeyId) ([]Link, error)
+	ListLinksPublicKey(ctx context.Context, publicKeyID PublicKeyId) ([]Link, error)
 
 	ListPublicKeysForAccount(ctx context.Context, accountID AccountId) ([]PublicKey, error)
 

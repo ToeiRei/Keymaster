@@ -39,7 +39,7 @@ type recordIdT = client.AccountId
 type filterT = struct{}
 
 func accountToRecord(ctx context.Context, c client.Client, account client.Account) (recordT, error) {
-	links, err := c.ListPublicKeyLinks(ctx, account.Id)
+	links, err := c.ListLinksAccount(ctx, account.Id)
 	if err != nil {
 		return recordT{}, err
 	}
