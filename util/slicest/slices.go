@@ -14,6 +14,29 @@ func ToMap[T any, K comparable, V any, S ~[]T](s S, fn func(T) (K, V)) map[K]V {
 	return result
 }
 
+// Flatten
+
+func Flatten[T any, S ~[][]T](ss S) []T {
+	var length int
+	for _, s := range ss {
+		length += len(s)
+	}
+	result := make([]T, 0, length)
+	for _, s := range ss {
+		result = append(result, s...)
+	}
+	return result
+}
+
+// TODO benchmark wich one is faster
+func Flatten2[T any, S ~[][]T](ss S) []T {
+	result := make([]T, 0, len(ss))
+	for _, s := range ss {
+		result = append(result, s...)
+	}
+	return result
+}
+
 // Reduce
 
 // Reduce reduces slice S to type U.
