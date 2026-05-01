@@ -17,11 +17,11 @@ type UpdateModel[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
-	TId comparable,
+	TRecordId comparable,
 	TFilter comparable,
 ] struct {
 	// configuration
-	crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
+	crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 
 	// state
 	record   TRecord
@@ -38,17 +38,18 @@ func NewUpdate[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
-	TId comparable,
+	TRecordId comparable,
 	TFilter comparable,
-](crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter], record TRecord) *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter] {
-	return &UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]{
+](crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter], record TRecord) *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
+	return &UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]{
 		crud:   crud,
 		record: record,
 	}
 }
 
-func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Init() tea.Cmd {
+func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Init() tea.Cmd {
 	formOpts := append(m.crud.updateFormRows(),
+		// buttons
 		form.WithRow(
 			form.WithItem[TRecordUpdate]("_reset", formelement.NewButton("Reset",
 				formelement.WithButtonActionReset(),
@@ -82,7 +83,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Init(
 		}),
 		form.WithOnDiscardGuard[TRecordUpdate](discardGuard),
 		// data
-		form.WithInitialData(m.crud.makeRecordUpdate(m.record)),
+		form.WithInitialData(m.crud.recordToRecordUpdate(m.record)),
 	)
 
 	m.form = util.NewPointer(form.New(formOpts...))
@@ -90,7 +91,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Init(
 	return m.form.Init()
 }
 
-func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Update(msg tea.Msg) tea.Cmd {
+func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Update(msg tea.Msg) tea.Cmd {
 	// Handle resizing
 	if m.size.UpdateFromMsg(msg) {
 		return m.form.Update(msg)
@@ -99,7 +100,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Updat
 	// Intercept messages
 	if cmd, done := Intercept(
 		msg,
-		UpdateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]{m.crud, m.form},
+		UpdateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]{m.crud, m.form},
 		m.crud.updateMsgInterceptors...,
 	); cmd != nil || done {
 		return cmd
@@ -125,16 +126,16 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Updat
 	return m.form.Update(msg)
 }
 
-func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) View() string {
+func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) View() string {
 	return m.form.View()
 }
 
-func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focussed = true
 	return m.form.Focus(parentKeyMap)
 }
 
-func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Blur() {
+func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Blur() {
 	m.focussed = false
 	m.form.Blur()
 }
@@ -142,8 +143,8 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Blur(
 // *[UpdateModel] implements [util.Model]
 var _ util.Model = (*UpdateModel[any, any, any, any, any])(nil)
 
-func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) refreshForm() error {
-	data := m.crud.makeRecordUpdate(m.record)
+func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) refreshForm() error {
+	data := m.crud.recordToRecordUpdate(m.record)
 	m.form.InitialData = data
 	return m.form.Set(data)
 }

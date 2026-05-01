@@ -22,9 +22,9 @@ func NewLabel(text string) form.FormElement {
 }
 
 func (l *Label) View(width int, eager bool) string {
-	style := lipgloss.NewStyle().MaxWidth(width - 2)
+	style := lipgloss.NewStyle().MaxWidth(width)
 	if eager {
-		style = style.Width(width - 2)
+		style = style.Width(width)
 	}
 	return style.Render(l.Text)
 }

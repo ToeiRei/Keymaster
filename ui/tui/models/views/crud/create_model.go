@@ -18,11 +18,11 @@ type CreateModel[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
-	TId comparable,
+	TRecordId comparable,
 	TFilter comparable,
 ] struct {
 	// configuration
-	crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
+	crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 
 	// state
 	publicKey client.PublicKey
@@ -40,18 +40,18 @@ func NewCreate[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
-	TId comparable,
+	TRecordId comparable,
 	TFilter comparable,
-](crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter], preset *TRecordCreate) *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter] {
-	return &CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]{
+](crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter], preset *TRecordCreate) *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
+	return &CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]{
 		crud:   crud,
 		preset: preset,
 	}
 }
 
-func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Init() tea.Cmd {
-	formOpts := m.crud.createFormRows()
-	formOpts = append(formOpts,
+func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Init() tea.Cmd {
+	formOpts := append(m.crud.createFormRows(),
+		// buttons
 		form.WithRow(
 			form.WithAlign[TRecordCreate](form.Strech),
 			form.WithItem[TRecordCreate]("_reset", formelement.NewButton("Reset",
@@ -61,9 +61,9 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Init(
 				formelement.WithButtonActionCancel(),
 				formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
 			)),
-			form.WithItem[TRecordCreate]("_save", formelement.NewButton("Save",
+			form.WithItem[TRecordCreate]("_create", formelement.NewButton("Create",
 				formelement.WithButtonActionSubmit(),
-				formelement.WithButtonGlobalKeyBindings(keys.Save()),
+				formelement.WithButtonGlobalKeyBindings(keys.SaveCreate()),
 			)),
 		),
 		// events
@@ -90,7 +90,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Init(
 	return m.form.Init()
 }
 
-func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Update(msg tea.Msg) tea.Cmd {
+func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Update(msg tea.Msg) tea.Cmd {
 	// Handle resizing
 	if m.size.UpdateFromMsg(msg) {
 		return m.form.Update(msg)
@@ -99,7 +99,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Updat
 	// Intercept messages
 	if cmd, done := Intercept(
 		msg,
-		CreateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]{m.crud, m.form},
+		CreateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]{m.crud, m.form},
 		m.crud.createMsgInterceptors...,
 	); cmd != nil || done {
 		return cmd
@@ -122,16 +122,16 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Updat
 	return m.form.Update(msg)
 }
 
-func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) View() string {
+func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) View() string {
 	return m.form.View()
 }
 
-func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focussed = true
 	return m.form.Focus(parentKeyMap)
 }
 
-func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Blur() {
+func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Blur() {
 	m.focussed = false
 	m.form.Blur()
 }

@@ -17,6 +17,5 @@ func discardGuard(confirmCmd tea.Cmd) tea.Cmd {
 			{Name: "Cancel", Cmd: nil, KeyBindings: form.GlobalKeyMap{keys.Cancel()}},
 			{Name: "Discard", Cmd: confirmCmd},
 		},
-		40, 40,
 	)
 }

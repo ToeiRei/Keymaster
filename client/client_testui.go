@@ -178,7 +178,9 @@ func (c *TestUIClient) GetLinks(ctx context.Context, ids ...LinkId) ([]Link, err
 }
 
 func (c *TestUIClient) ListPublicKeyLinks(ctx context.Context, accountID AccountId) ([]Link, error) {
-	return nil, errors.New("client.ListPublicKeyLinks not implemented")
+	return slices.Filter(c.links, func(link Link) bool {
+		return link.AccountId == accountID
+	}), nil
 }
 
 func (c *TestUIClient) ListAccountLinks(ctx context.Context, publicKeyID PublicKeyId) ([]Link, error) {
@@ -186,7 +188,19 @@ func (c *TestUIClient) ListAccountLinks(ctx context.Context, publicKeyID PublicK
 }
 
 func (c *TestUIClient) ListPublicKeysForAccount(ctx context.Context, accountID AccountId) ([]PublicKey, error) {
-	return nil, errors.New("client.ListPublicKeysForAccount not implemented")
+	links, err := c.ListPublicKeyLinks(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	publicKeyss, err := slices.Mapx(links, func(_ int, link Link) ([]PublicKey, error) {
+		return c.ListPublicKeys(ctx, link.TagFilter)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return slicest.Flatten(publicKeyss), nil
 }
 
 func (c *TestUIClient) ListAccountsForPublicKey(ctx context.Context, publicKeyID PublicKeyId) ([]Account, error) {

@@ -6,59 +6,34 @@ package popupviews
 import (
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
 type FormModel[T comparable] struct {
-	form      form.Form[T]
-	innerSize util.Size
-	size      util.Size
+	form form.Form[T]
 }
 
-func OpenForm[T comparable](form form.Form[T], width, height int) tea.Cmd {
-	return popup.Open(util.ModelPointer(newForm(form, width, height)))
+func OpenForm[T comparable](form form.Form[T]) tea.Cmd {
+	return popup.Open(util.ModelPointer(newForm(form)))
 }
 
-func newForm[T comparable](form form.Form[T], width, height int) *FormModel[T] {
-	return &FormModel[T]{
-		form: form,
-		innerSize: util.Size{
-			Width:  width,
-			Height: height,
-		},
-	}
+func newForm[T comparable](form form.Form[T]) *FormModel[T] {
+	return &FormModel[T]{form}
 }
 
-func (m FormModel[T]) Init() tea.Cmd {
-	return m.form.Init()
-}
+func (m FormModel[T]) Init() tea.Cmd { return m.form.Init() }
 
 func (m *FormModel[T]) Update(msg tea.Msg) tea.Cmd {
-	if m.size.UpdateFromMsg(msg) {
-		size := util.Size{
-			Width:  min(m.innerSize.Width, m.size.Width),
-			Height: min(m.innerSize.Height, m.size.Height),
-		}
-		return m.form.Update(size.ToMsg())
-	}
 	return m.form.Update(msg)
 }
 
-func (m FormModel[T]) View() string {
-	// TODO only for testing... size of form needs to be made non greedy
-	return lipgloss.NewStyle().MaxWidth(40).Render(m.form.View())
-	// return m.form.View()
-}
+func (m FormModel[T]) View() string { return m.form.ViewLazy() }
 
-func (m *FormModel[T]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
-	return m.form.Focus(parentKeyMap)
-}
-func (m *FormModel[T]) Blur() {
-	m.form.Blur()
-}
+func (m *FormModel[T]) Focus(km help.KeyMap) tea.Cmd { return m.form.Focus(km) }
+
+func (m *FormModel[T]) Blur() { m.form.Blur() }
 
 // *[FormModel] implements [util.Model]
 var _ util.Model = (*FormModel[any])(nil)

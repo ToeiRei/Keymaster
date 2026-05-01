@@ -19,11 +19,11 @@ type ListModel[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
-	TId comparable,
+	TRecordId comparable,
 	TFilter comparable,
 ] struct {
 	// configuration
-	crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
+	crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 
 	// state
 	records      []TRecord
@@ -41,23 +41,23 @@ func NewList[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
-	TId comparable,
+	TRecordId comparable,
 	TFilter comparable,
-](crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter] {
-	return &ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]{
+](crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
+	return &ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]{
 		crud:  crud,
 		table: util.NewPointer(table.New()),
 	}
 }
 
 // Init implements util.Model.
-func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Init() tea.Cmd {
+func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Init() tea.Cmd {
 	m.refreshTable()
 	return m.reload()
 }
 
 // Update implements util.Model.
-func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Update(msg tea.Msg) tea.Cmd {
+func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Update(msg tea.Msg) tea.Cmd {
 	// Handle resizing
 	if m.size.UpdateFromMsg(msg) {
 		m.table.SetWidth(m.size.Width)
@@ -70,7 +70,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Update(
 	selectedRecord := m.selectedRecord()
 	if cmd, done := Intercept(
 		msg,
-		ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]{m.crud, selectedRecord},
+		ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]{m.crud, selectedRecord},
 		m.crud.listMsgInterceptors...,
 	); cmd != nil || done {
 		return cmd
@@ -82,13 +82,9 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Update(
 		m.records = msg.records
 		m.loadingError = msg.err
 		m.refreshTable()
-		if m.table.Cursor() <= 0 && len(m.records) > 0 {
-			m.table.MoveUp(1)
-		}
 		return nil
 
 	case CreateMsgCreated[TRecord]:
-		// TODO optimize by only fetching the updated item inplace
 		m.records = append(m.records, msg.Record)
 		m.refreshTable()
 		return nil
@@ -145,7 +141,6 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Update(
 						},
 					)},
 				},
-				40, 40,
 			)
 
 		case key.Matches(msg, ListBaseKeyMap.Exit):
@@ -171,7 +166,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Update(
 }
 
 // View implements util.Model.
-func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) View() string {
+func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) View() string {
 	if m.loadingError != nil {
 		return m.loadingError.Error()
 	}
@@ -179,14 +174,14 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) View() 
 }
 
 // Focus implements util.Model.
-func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focussed = true
 	m.table.Focus()
 	return util.AnnounceKeyMapCmd(parentKeyMap, ListBaseKeyMap, m.crud.listGlobalKeyMap)
 }
 
 // Blur implements util.Model.
-func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Blur() {
+func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Blur() {
 	m.focussed = false
 	m.table.Blur()
 }
@@ -194,7 +189,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) Blur() 
 // *[ListModel] implements [util.Model]
 var _ util.Model = (*ListModel[any, any, any, any, any])(nil)
 
-func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) reload() tea.Cmd {
+func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) reload() tea.Cmd {
 	return popupviews.OpenProgress(
 		popupviews.ProgressSpinner,
 		"Loading "+m.crud.Texts.EntityNameMultiple, func(pc popupviews.ProgressChan) tea.Msg {
@@ -204,14 +199,19 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) reload(
 	)
 }
 
-func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) refreshTable() {
+func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) refreshTable() {
+	// generate and apply columns and rows
 	columns, rows := m.crud.makeListTable(m.records, m.size.Width)
-
 	m.table.SetColumns(columns)
 	m.table.SetRows(rows)
+
+	// reposition cursor
+	if m.table.Cursor() <= 0 && len(m.records) > 0 {
+		m.table.MoveUp(1)
+	}
 }
 
-func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) selectedRecord() *TRecord {
+func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) selectedRecord() *TRecord {
 	if m.table.Cursor() == -1 {
 		return nil
 	}

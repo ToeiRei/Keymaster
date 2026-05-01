@@ -8,17 +8,23 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/bobg/go-generics/v4/slices"
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/table"
 	"github.com/toeirei/keymaster/ui/tui/models/views/crud"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
-type createFormData struct {
+type recordT = struct {
+	account              client.Account
+	isDirty              bool
+	linkCount            int
+	linkedPublicKeyCount int
+}
+
+type recordCreateT = struct {
 	Name         string `form:"name"`
 	Host         string `form:"host"`
 	Port         string `form:"port"`
@@ -26,7 +32,30 @@ type createFormData struct {
 	DeploySecret string `form:"deploy_secret"`
 }
 
-type updateFormData = createFormData
+type recordUpdateT = recordCreateT
+
+type recordIdT = client.AccountId
+
+type filterT = struct{}
+
+func accountToRecord(ctx context.Context, c client.Client, account client.Account) (recordT, error) {
+	links, err := c.ListPublicKeyLinks(ctx, account.Id)
+	if err != nil {
+		return recordT{}, err
+	}
+
+	publicKeys, err := c.ListPublicKeysForAccount(ctx, account.Id)
+	if err != nil {
+		return recordT{}, err
+	}
+
+	isDirty, err := c.IsAccountDirty(ctx, account)
+	if err != nil {
+		return recordT{}, err
+	}
+
+	return recordT{account, isDirty, len(links), len(publicKeys)}, nil
+}
 
 func formRows[T comparable]() []form.FormOpt[T] {
 	return []form.FormOpt[T]{
@@ -38,102 +67,109 @@ func formRows[T comparable]() []form.FormOpt[T] {
 	}
 }
 
-func NewCrud(c client.Client, rc router.Controll) *crud.Crud[client.Account, createFormData, updateFormData, client.AccountId, struct{}] {
+func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
 		crud.Texts{"Account", "Accounts"},
-		func(record client.Account) client.AccountId { return record.Id },
-		func(filter struct{}) ([]client.Account, error) {
-			return c.ListAccounts(context.Background())
-		},
-		func(id client.AccountId) (client.Account, error) {
-			return c.GetAccount(context.Background(), id)
-		},
-		func(record createFormData) (client.Account, error) {
-			port, _ := strconv.Atoi(record.Port)
-			return c.CreateAccount(
-				context.Background(),
-				record.Name,
-				record.Host,
-				port,
-				record.DeployMethod,
-				record.DeploySecret,
-			)
-		},
-		func(id client.AccountId, record updateFormData) (client.Account, error) {
-			port, err := strconv.Atoi(record.Port)
+
+		func(record recordT) recordIdT { return record.account.Id },
+		func(filter filterT) ([]recordT, error) {
+			accounts, err := c.ListAccounts(context.Background())
 			if err != nil {
-				return client.Account{}, err
+				return nil, err
+			}
+
+			return slicest.MapX(accounts, func(account client.Account) (recordT, error) {
+				return accountToRecord(context.Background(), c, account)
+			})
+		},
+		func(id recordIdT) (recordT, error) {
+			account, err := c.GetAccount(context.Background(), id)
+			if err != nil {
+				return recordT{}, err
+			}
+
+			return accountToRecord(context.Background(), c, account)
+		},
+		func(recordCreate recordCreateT) (recordT, error) {
+			port, err := strconv.Atoi(recordCreate.Port)
+			if err != nil {
+				return recordT{}, err
+			}
+
+			account, err := c.CreateAccount(
+				context.Background(),
+				recordCreate.Name,
+				recordCreate.Host,
+				port,
+				recordCreate.DeployMethod,
+				recordCreate.DeploySecret,
+			)
+			if err != nil {
+				return recordT{}, err
+			}
+
+			return accountToRecord(context.Background(), c, account)
+		},
+		func(id recordIdT, recordUpdate recordUpdateT) (recordT, error) {
+			port, err := strconv.Atoi(recordUpdate.Port)
+			if err != nil {
+				return recordT{}, err
 			}
 
 			if err := c.UpdateAccount(
 				context.Background(),
 				id,
-				record.Name,
-				record.Host,
+				recordUpdate.Name,
+				recordUpdate.Host,
 				port,
-				record.DeployMethod,
-				record.DeploySecret,
+				recordUpdate.DeployMethod,
+				recordUpdate.DeploySecret,
 			); err != nil {
-				return client.Account{}, err
+				return recordT{}, err
 			}
 
-			return c.GetAccount(context.Background(), id)
+			account, err := c.GetAccount(context.Background(), id)
+			if err != nil {
+				return recordT{}, err
+			}
+
+			return accountToRecord(context.Background(), c, account)
 		},
-		func(id client.AccountId) error {
+		func(id recordIdT) error {
 			return c.DeleteAccounts(context.Background(), id)
 		},
-		func(record []client.Account, width int) ([]table.Column, []table.Row) {
-			nameWidth := slicest.Reduce(record, func(a client.Account, w int) int { return max(w, len(a.Name)) })
-			hostWidth := slicest.Reduce(record, func(a client.Account, w int) int { return max(w, len(a.Host)) })
-			portWidth := slicest.Reduce(record, func(a client.Account, w int) int { return max(w, len(fmt.Sprint(a.Port))) })
-			deployMethodWidth := slicest.Reduce(record, func(a client.Account, w int) int { return max(w, len(a.DeployMethod)) })
 
-			remainingWidth := width - 6 - nameWidth - hostWidth - portWidth - deployMethodWidth
-
-			columns := []table.Column{
-				{Title: "Name", Width: nameWidth + remainingWidth/4},
-				{Title: "Host", Width: hostWidth + remainingWidth/4},
-				{Title: "Port", Width: portWidth + remainingWidth/4},
-				{Title: "Deploy Method", Width: deployMethodWidth + remainingWidth/4},
-			}
-
-			rows := slices.Map(record, func(a client.Account) table.Row {
-				return table.Row{
-					// column: Name
-					a.Name,
-					// column: Host
-					a.Host,
-					// column: Port
-					fmt.Sprint(a.Port),
-					// column: Deploy Method
-					a.DeployMethod,
-				}
-			})
-
-			return columns, rows
-		},
-		func(record client.Account) updateFormData {
-			return updateFormData{
-				record.Name,
-				record.Host,
-				fmt.Sprint(record.Port),
-				record.DeployMethod,
-				record.DeploySecret,
+		table.NewBubblesTableRenderer(table.Columns[recordT]{
+			{Title: "Name", View: func(r recordT) string { return r.account.Name }},
+			{Title: "Host", View: func(r recordT) string { return r.account.Host }},
+			{Title: "Port", View: func(r recordT) string { return fmt.Sprint(r.account.Port) }},
+			{Title: "Deploy Method", View: func(r recordT) string { return r.account.DeployMethod }},
+			{Title: "Dirty", View: func(r recordT) string { return fmt.Sprint(r.isDirty) }},
+			{Title: "Links", View: func(r recordT) string { return fmt.Sprint(r.linkCount) }},
+			{Title: "Public Keys", View: func(r recordT) string { return fmt.Sprint(r.linkedPublicKeyCount) }},
+		}),
+		func(record recordT) recordUpdateT {
+			return recordUpdateT{
+				record.account.Name,
+				record.account.Host,
+				fmt.Sprint(record.account.Port),
+				record.account.DeployMethod,
+				record.account.DeploySecret,
 			}
 		},
 
-		formRows[createFormData],
-		formRows[updateFormData],
+		formRows[recordCreateT],
+		formRows[recordUpdateT],
 
 		rc,
 
-		crud.WithListDuplicateAction[client.Account, createFormData, updateFormData, client.AccountId, struct{}](func(record client.Account) createFormData {
-			return createFormData{
-				record.Name,
-				record.Host,
-				fmt.Sprint(record.Port),
-				record.DeployMethod,
-				record.DeploySecret,
+		crud.WithListDuplicateAction[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](func(record recordT) recordCreateT {
+			return recordCreateT{
+				record.account.Name,
+				record.account.Host,
+				fmt.Sprint(record.account.Port),
+				record.account.DeployMethod,
+				record.account.DeploySecret,
 			}
 		}),
 	)

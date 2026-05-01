@@ -20,39 +20,39 @@ type Crud[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
-	TId comparable,
+	TRecordId comparable,
 	TFilter comparable,
 ] struct {
 	Texts Texts
 
-	getRecordId  func(record TRecord) TId
+	getRecordId  func(record TRecord) TRecordId
 	getRecords   func(filter TFilter) ([]TRecord, error)
-	getRecord    func(id TId) (TRecord, error)
-	createRecord func(record TRecordCreate) (TRecord, error)
-	updateRecord   func(id TId, record TRecordUpdate) (TRecord, error)
-	deleteRecord func(id TId) error
+	getRecord    func(id TRecordId) (TRecord, error)
+	createRecord func(recordCreate TRecordCreate) (TRecord, error)
+	updateRecord func(id TRecordId, recordUpdate TRecordUpdate) (TRecord, error)
+	deleteRecord func(id TRecordId) error
 
-	makeListTable  func(record []TRecord, width int) ([]table.Column, []table.Row)
-	makeRecordUpdate func(record TRecord) TRecordUpdate
+	makeListTable        func(records []TRecord, width int) ([]table.Column, []table.Row)
+	recordToRecordUpdate func(record TRecord) TRecordUpdate
 
 	createFormRows func() []form.FormOpt[TRecordCreate]
-	updateFormRows   func() []form.FormOpt[TRecordUpdate]
+	updateFormRows func() []form.FormOpt[TRecordUpdate]
 
 	listGlobalKeyMap form.GlobalKeyMap
 
 	routerControll router.Controll
 
-	listMsgInterceptors   []ListMsgInterceptor[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
-	createMsgInterceptors []CreateMsgInterceptor[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
-	updateMsgInterceptors   []UpdateMsgInterceptor[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
+	listMsgInterceptors   []ListMsgInterceptor[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
+	createMsgInterceptors []CreateMsgInterceptor[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
+	updateMsgInterceptors []UpdateMsgInterceptor[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 }
 
-func (c *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) OpenList() tea.Cmd {
+func (c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) OpenList() tea.Cmd {
 	return c.routerControll.Push(util.ModelPointer(NewList(c)))
 }
-func (c *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) OpenCreate(preset *TRecordCreate) tea.Cmd {
+func (c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) OpenCreate(preset *TRecordCreate) tea.Cmd {
 	return c.routerControll.Push(util.ModelPointer(NewCreate(c, preset)))
 }
-func (c *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]) OpenEdit(record TRecord) tea.Cmd {
+func (c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) OpenEdit(record TRecord) tea.Cmd {
 	return c.routerControll.Push(util.ModelPointer(NewUpdate(c, record)))
 }

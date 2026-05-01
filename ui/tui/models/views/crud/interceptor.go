@@ -14,34 +14,34 @@ type ListMsgInterceptor[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
-	TId comparable,
+	TRecordId comparable,
 	TFilter comparable,
-] = MsgInterceptor[ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]]
+] = MsgInterceptor[ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]]
 
 type CreateMsgInterceptor[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
-	TId comparable,
+	TRecordId comparable,
 	TFilter comparable,
-] = MsgInterceptor[CreateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]]
+] = MsgInterceptor[CreateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]]
 
 type UpdateMsgInterceptor[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
-	TId comparable,
+	TRecordId comparable,
 	TFilter comparable,
-] = MsgInterceptor[UpdateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]]
+] = MsgInterceptor[UpdateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]]
 
 type ListMsgInterceptorCtx[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
-	TId comparable,
+	TRecordId comparable,
 	TFilter comparable,
 ] struct {
-	Crud           *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
+	Crud           *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 	SelectedRecord *TRecord
 }
 
@@ -49,10 +49,10 @@ type CreateMsgInterceptorCtx[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
-	TId comparable,
+	TRecordId comparable,
 	TFilter comparable,
 ] struct {
-	Crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
+	Crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 	Form *form.Form[TRecordCreate]
 }
 
@@ -60,10 +60,10 @@ type UpdateMsgInterceptorCtx[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
-	TId comparable,
+	TRecordId comparable,
 	TFilter comparable,
 ] struct {
-	Crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TId, TFilter]
+	Crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 	Form *form.Form[TRecordUpdate]
 }
 

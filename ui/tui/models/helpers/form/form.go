@@ -124,8 +124,25 @@ func (f *Form[T]) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (f Form[T]) View() string {
+	return f.view(true)
+}
+func (f Form[T]) ViewLazy() string {
+	return f.view(false)
+}
+
+func (f Form[T]) view(eager bool) string {
 	if len(f.rows) <= 0 {
 		return ""
+	}
+
+	width := f.size.Width
+	if !eager {
+		width = 0
+		for i := range len(f.rows) {
+			width = max(width, lipgloss.Width(lipgloss.JoinHorizontal(lipgloss.Top,
+				f.viewRow(i, f.size.Width, false)...,
+			)))
+		}
 	}
 
 	// render rows
@@ -134,21 +151,21 @@ func (f Form[T]) View() string {
 
 		switch row.align {
 		case Left, Right, Center, SpaceBetween:
-			views = f.viewRow(rowIndex, false)
+			views = f.viewRow(rowIndex, width, false)
 		case Strech:
-			views = f.viewRow(rowIndex, true)
+			views = f.viewRow(rowIndex, width, true)
 		}
 
 		switch row.align {
 		case Left, Right, Center:
 			return lipgloss.PlaceHorizontal(
-				f.size.Width,
+				width,
 				rowAlignments[row.align],
 				lipgloss.JoinHorizontal(lipgloss.Top, views...),
 			)
 		case Strech, SpaceBetween:
 			viewsWidth := lipgloss.Width(lipgloss.JoinHorizontal(lipgloss.Top, views...))
-			remainingWidth := max(0, f.size.Width-viewsWidth)
+			remainingWidth := max(0, width-viewsWidth)
 			spacedViews := make([]string, 0, (len(views)*2)-1)
 			for i, view := range views {
 				spacedViews = append(spacedViews, view)
@@ -199,8 +216,7 @@ func (f *Form[T]) Blur() {
 // *[Model] implements [util.Focusable]
 var _ util.Focusable = (*Form[any])(nil)
 
-func (f *Form[T]) viewRow(rowIndex int, eager bool) []string {
-	availableWidth := f.size.Width
+func (f *Form[T]) viewRow(rowIndex int, availableWidth int, eager bool) []string {
 	return slicest.MapI(f.rows[rowIndex].items, func(i int, itemIndex int) string {
 		width := availableWidth / (len(f.rows[rowIndex].items) - i)
 		availableWidth -= width

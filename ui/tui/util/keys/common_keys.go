@@ -161,6 +161,12 @@ func Save() key.Binding {
 		key.WithHelp("ctrl+s", "save"),
 	)
 }
+func SaveCreate() key.Binding {
+	return key.NewBinding(
+		key.WithKeys("ctrl+s"),
+		key.WithHelp("ctrl+s", "create"),
+	)
+}
 func Cancel() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("esc"),
