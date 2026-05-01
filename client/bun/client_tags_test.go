@@ -1,4 +1,4 @@
-package client
+package bun_test
 
 import (
 	"context"
