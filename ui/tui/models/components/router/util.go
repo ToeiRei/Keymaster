@@ -26,8 +26,11 @@ func (m *Model) activeModelUpdate(msg tea.Msg) tea.Cmd {
 	return (*m.activeModelGet()).Update(msg)
 }
 
-func (m *Model) activeModelFocus() tea.Cmd {
-	return (*m.activeModelGet()).Focus(m.parentKeyMap)
+func (m *Model) activeModelReinit() tea.Cmd {
+	return tea.Sequence(
+		m.activeModelUpdate(tea.WindowSizeMsg(m.size)),
+		(*m.activeModelGet()).Focus(m.parentKeyMap),
+	)
 }
 
 func (m *Model) activeModelInit() tea.Cmd {
@@ -35,6 +38,6 @@ func (m *Model) activeModelInit() tea.Cmd {
 		(*m.activeModelGet()).Init(),
 		m.activeModelUpdate(InitMsg{RouterControll: Controll{rid: m.id}}),
 		m.activeModelUpdate(tea.WindowSizeMsg(m.size)),
-		m.activeModelFocus(),
+		(*m.activeModelGet()).Focus(m.parentKeyMap),
 	)
 }

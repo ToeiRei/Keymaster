@@ -27,7 +27,7 @@ func (m *Model) handlePop(msg PopMsg) tea.Cmd {
 		(*m.activeModelPop()).Blur()
 	}
 	// focus active model
-	return m.activeModelFocus()
+	return m.activeModelReinit()
 }
 
 // handle ChangeMsg
