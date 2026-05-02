@@ -30,8 +30,6 @@ func New() *Model {
 	headerPtr := util.ModelPointer(header.New())
 	footerPtr := util.ModelPointer(footer.New(&BaseKeyMap))
 
-	titleHandler := windowtitle.NewHandler(fmt.Sprintf("%s %s", title, buildvars.Version), " | ")
-
 	return &Model{
 		stack: stack.New(
 			stack.WithOrientation(stack.Vertical),
@@ -45,7 +43,7 @@ func New() *Model {
 			stack.WithItem(footerPtr, footer.SizeConfig),
 		),
 		footer:       footerPtr,
-		titleHandler: titleHandler,
+		titleHandler: windowtitle.NewHandler(fmt.Sprintf("%s %s", title, buildvars.Version), " | "),
 	}
 }
 
@@ -69,10 +67,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, m.stack.Update(msg)
 	}
+
 	// handle window title messages
 	if cmd := m.titleHandler.Handle(msg); cmd != nil {
 		return m, cmd
 	}
+
 	// handle other messages
 	return m, m.stack.Update(msg)
 }

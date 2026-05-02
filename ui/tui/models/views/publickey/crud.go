@@ -108,9 +108,9 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 							form.WithItem[importForm]("_import", formelement.NewButton("Import", formelement.WithButtonActionSubmit())),
 						),
 						form.WithOnCancel[importForm](func() tea.Cmd { return popup.Close() }),
-						form.WithOnSubmit(func(result importForm, err error) tea.Cmd {
+						form.WithOnSubmit(func(result importForm, err error) (tea.Cmd, bool) {
 							if err != nil {
-								return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil)
+								return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil), false
 							}
 
 							var data, algorithm, comment string
@@ -119,7 +119,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 								parts := strings.Split(result.Key, " ")
 
 								if len(parts) < 2 || len(parts) > 3 {
-									return popupviews.OpenMessage(popupviews.MessageError, "unable to parse public key", nil)
+									return popupviews.OpenMessage(popupviews.MessageError, "unable to parse public key", nil), false
 								}
 
 								algorithm, data = parts[0], parts[1]
@@ -128,7 +128,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 								}
 							}
 
-							return tea.Sequence(popup.Close(), func() tea.Msg { return importMsg{data, algorithm, comment} })
+							return tea.Sequence(popup.Close(), func() tea.Msg { return importMsg{data, algorithm, comment} }), true
 						}),
 					)), form.ActionNone
 				}))),

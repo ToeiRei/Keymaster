@@ -5,8 +5,13 @@ package windowtitle
 
 import tea "github.com/charmbracelet/bubbletea"
 
-type titleMsg string
+type announceTitleMsg string
+type denounceTitleMsg string
 
-func Set(title string) tea.Cmd {
-	return func() tea.Msg { return titleMsg(title) }
+func Announce(title string) tea.Cmd {
+	return func() tea.Msg { return announceTitleMsg(title) }
+}
+
+func Denounce(title string) tea.Cmd {
+	return func() tea.Msg { return denounceTitleMsg(title) }
 }

@@ -31,11 +31,11 @@ func New() *Model {
 				form.WithItem[formData]("_cancel", formelement.NewButton("Cancel", formelement.WithButtonActionCancel())),
 				form.WithItem[formData]("_submit", formelement.NewButton("Submit", formelement.WithButtonActionSubmit())),
 			),
-			form.WithOnSubmit(func(result formData, err error) tea.Cmd {
+			form.WithOnSubmit(func(result formData, err error) (tea.Cmd, bool) {
 				return tea.Sequence(
 					popup.Close(),
 					func() tea.Msg { return result },
-				)
+				), true
 			}),
 			form.WithOnCancel[formData](func() tea.Cmd {
 				return popup.Close()

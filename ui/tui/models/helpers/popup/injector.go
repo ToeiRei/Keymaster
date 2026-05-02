@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
+	windowtitle "github.com/toeirei/keymaster/ui/tui/models/helpers/title"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
@@ -135,7 +136,8 @@ func (m *Injector) open(popup popup) tea.Cmd {
 	// append new popup
 	m.popups = append(m.popups, popup)
 	// init and focus new popup
-	return tea.Batch(
+	return tea.Sequence(
+		windowtitle.Announce(""),
 		(*popup.model).Init(),
 		m.focusActiveModel(),
 		(*m.activeModel()).Update(m.innerSizeMsg()),

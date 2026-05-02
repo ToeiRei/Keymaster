@@ -13,7 +13,10 @@ type FormOpt[T comparable] = func(form *Form[T])
 type RowOpt[T comparable] = func(form *Form[T], row *row)
 
 func New[T comparable](opts ...FormOpt[T]) Form[T] {
-	form := Form[T]{ResetToInitialData: true}
+	form := Form[T]{
+		ResetToInitialData: true,
+		DefaultRowAlign:    Strech,
+	}
 	for _, opt := range opts {
 		opt(&form)
 	}
@@ -21,7 +24,7 @@ func New[T comparable](opts ...FormOpt[T]) Form[T] {
 	return form
 }
 
-func WithOnSubmit[T comparable](fn func(result T, err error) tea.Cmd) FormOpt[T] {
+func WithOnSubmit[T comparable](fn func(result T, err error) (tea.Cmd, bool)) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.OnSubmit = fn
 	}
@@ -71,6 +74,15 @@ func WithFocusI[T comparable](i int) FormOpt[T] {
 	}
 }
 
+func WithDefaultRowAlign[T comparable](align RowAlign) FormOpt[T] {
+	if align == Default {
+		panic("Default is an invalid value for form.DefaultRowAlign")
+	}
+	return func(form *Form[T]) {
+		form.DefaultRowAlign = align
+	}
+}
+
 func WithFocus[T comparable](id string) FormOpt[T] {
 	return func(form *Form[T]) {
 		i := slices.IndexFunc(form.items, func(item Item) bool { return item.Id == id })
@@ -90,7 +102,7 @@ func WithRowItem[T comparable](id string, element FormElement, opts ...RowOpt[T]
 
 func WithRow[T comparable](opts ...RowOpt[T]) FormOpt[T] {
 	return func(form *Form[T]) {
-		row := row{align: Strech}
+		row := row{}
 		for _, opt := range opts {
 			opt(form, &row)
 		}

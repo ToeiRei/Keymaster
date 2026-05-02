@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
+	windowtitle "github.com/toeirei/keymaster/ui/tui/models/helpers/title"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
@@ -64,7 +65,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 			)),
 		),
 		// events
-		form.WithOnSubmit(func(result TRecordUpdate, err error) tea.Cmd {
+		form.WithOnSubmit(func(result TRecordUpdate, err error) (tea.Cmd, bool) {
 			return popupviews.OpenProgress(
 				popupviews.ProgressSpinner,
 				"Updating "+m.crud.Texts.EntityNameSingular,
@@ -72,7 +73,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 					record, err := m.crud.updateRecord(m.crud.getRecordId(m.record), result)
 					return updateMsgUpdateResult[TRecord]{record, err}
 				},
-			)
+			), true
 		}),
 		form.WithOnCancel[TRecordUpdate](func() tea.Cmd {
 			return m.crud.routerControll.Pop(1)
@@ -132,7 +133,10 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 
 func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focussed = true
-	return m.form.Focus(parentKeyMap)
+	return tea.Batch(
+		windowtitle.Announce(m.crud.Texts.EntityNameMultiple),
+		m.form.Focus(parentKeyMap),
+	)
 }
 
 func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Blur() {

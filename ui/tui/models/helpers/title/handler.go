@@ -31,9 +31,13 @@ func (t TitleHandler) Init() tea.Cmd {
 }
 
 func (t *TitleHandler) Handle(msg tea.Msg) tea.Cmd {
-	if title, ok := msg.(titleMsg); ok {
-		if t.current != string(title) {
-			t.current = string(title)
+	switch title := msg.(type) {
+	case announceTitleMsg:
+		t.current = string(title)
+		return t.render()
+	case denounceTitleMsg:
+		if t.current == string(title) {
+			t.current = ""
 			return t.render()
 		}
 	}

@@ -29,26 +29,20 @@ func newMessage(
 	message string,
 	cmd tea.Cmd,
 ) *FormModel[struct{}] {
+	var title string
 	switch severity {
 	case MessageInfo:
-		message = "INFO: " + message
+		title = "INFO"
 	case MessageWarning:
-		message = "WARNING: " + message
+		title = "WARNING"
 	case MessageError:
-		message = "ERROR: " + message
+		title = "ERROR"
 	}
 	return newForm(form.New(
+		form.WithRowItem[struct{}]("_title", formelement.NewLabel(title)),
 		form.WithRowItem[struct{}]("_message", formelement.NewLabel(message)),
-		form.WithRowItem(
-			"_ok",
-			formelement.NewButton("Ok",
-				formelement.WithButtonActionSubmit(),
-				formelement.WithButtonGlobalKeyBindings(keys.Exit()),
-			),
-			form.WithAlign[struct{}](form.Center),
-		),
-		form.WithOnSubmit(func(_ struct{}, _ error) tea.Cmd {
-			return tea.Sequence(popup.Close(), cmd)
-		}),
+		form.WithRowItem[struct{}]("_ok", formelement.NewButton("Ok", formelement.WithButtonActionSubmit(), formelement.WithButtonGlobalKeyBindings(keys.Close()))),
+		form.WithOnSubmit(func(_ struct{}, _ error) (tea.Cmd, bool) { return tea.Sequence(popup.Close(), cmd), true }),
+		form.WithDefaultRowAlign[struct{}](form.Center),
 	))
 }

@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	Left RowAlign = iota
+	Default RowAlign = iota
+	Left
 	Right
 	Center
 	Strech
@@ -55,13 +56,15 @@ type row struct {
 }
 
 type Form[T comparable] struct {
-	OnSubmit           func(result T, err error) tea.Cmd
+	// runs on FormAction submit, returns a optional tea.Cmd and true if the data is valid aka. if the submit was a success
+	OnSubmit           func(result T, err error) (tea.Cmd, bool)
 	OnCancel           func() tea.Cmd
 	OnReset            func() tea.Cmd
 	DiscardGuard       func(confirmCmd tea.Cmd) tea.Cmd
 	InitialData        T
 	ResetAfterSubmit   bool
 	ResetToInitialData bool
+	DefaultRowAlign    RowAlign
 
 	items        []Item
 	rows         []row
@@ -148,19 +151,23 @@ func (f Form[T]) view(eager bool) string {
 	// render rows
 	rowViews := slicest.MapI(f.rows, func(rowIndex int, row row) string {
 		var views []string
+		align := row.align
+		if align == Default {
+			align = f.DefaultRowAlign
+		}
 
-		switch row.align {
+		switch align {
 		case Left, Right, Center, SpaceBetween:
 			views = f.viewRow(rowIndex, width, false)
 		case Strech:
 			views = f.viewRow(rowIndex, width, true)
 		}
 
-		switch row.align {
+		switch align {
 		case Left, Right, Center:
 			return lipgloss.PlaceHorizontal(
 				width,
-				rowAlignments[row.align],
+				rowAlignments[align],
 				lipgloss.JoinHorizontal(lipgloss.Top, views...),
 			)
 		case Strech, SpaceBetween:
@@ -235,18 +242,22 @@ func (f *Form[T]) keymap() help.KeyMap {
 }
 
 func (f *Form[T]) Submit() tea.Cmd {
-	var onSubmitCmd tea.Cmd
+	var cmd tea.Cmd
+
 	if f.OnSubmit != nil {
+		var valid bool
 		data, err := f.Get()
-		onSubmitCmd = f.OnSubmit(data, err)
+		cmd, valid = f.OnSubmit(data, err)
+		if !valid {
+			return cmd
+		}
 	}
 
-	var resetCmd tea.Cmd
 	if f.ResetAfterSubmit {
-		resetCmd = f.Reset(true)
+		cmd = tea.Sequence(cmd, f.Reset(true))
 	}
 
-	return tea.Sequence(onSubmitCmd, resetCmd)
+	return cmd
 }
 
 func (f *Form[T]) Cancel(force bool) tea.Cmd {

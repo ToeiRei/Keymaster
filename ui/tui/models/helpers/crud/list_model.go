@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
+	windowtitle "github.com/toeirei/keymaster/ui/tui/models/helpers/title"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
@@ -193,7 +194,10 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) V
 func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focussed = true
 	m.table.Focus()
-	return util.AnnounceKeyMapCmd(parentKeyMap, ListBaseKeyMap, m.crud.listGlobalKeyMap)
+	return tea.Batch(
+		windowtitle.Announce(m.crud.Texts.EntityNameMultiple),
+		util.AnnounceKeyMapCmd(parentKeyMap, ListBaseKeyMap, m.crud.listGlobalKeyMap),
+	)
 }
 
 // Blur implements util.Model.

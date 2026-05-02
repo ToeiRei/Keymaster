@@ -9,6 +9,7 @@ import (
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
+	windowtitle "github.com/toeirei/keymaster/ui/tui/models/helpers/title"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
@@ -67,7 +68,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 			)),
 		),
 		// events
-		form.WithOnSubmit(func(result TRecordCreate, err error) tea.Cmd {
+		form.WithOnSubmit(func(result TRecordCreate, err error) (tea.Cmd, bool) {
 			return popupviews.OpenProgress(
 				popupviews.ProgressSpinner,
 				"Creating "+m.crud.Texts.EntityNameSingular,
@@ -75,7 +76,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 					record, err := m.crud.createRecord(result)
 					return createMsgCreateResult[TRecord]{record, err}
 				},
-			)
+			), true
 		}),
 		form.WithOnCancel[TRecordCreate](func() tea.Cmd {
 			return m.crud.routerControll.Pop(1)
@@ -128,7 +129,10 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 
 func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focussed = true
-	return m.form.Focus(parentKeyMap)
+	return tea.Batch(
+		windowtitle.Announce(m.crud.Texts.EntityNameMultiple),
+		m.form.Focus(parentKeyMap),
+	)
 }
 
 func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Blur() {
