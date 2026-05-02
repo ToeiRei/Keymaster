@@ -247,7 +247,14 @@ func (c *Client) ListAccounts(ctx context.Context) ([]client.Account, error) {
 }
 
 func (c *Client) ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Account, error) {
-	return nil, errors.New("client.ListAccountsForPublicKey not implemented")
+	links, err := c.ListLinksForPublicKey(ctx, publicKeyId, expired)
+	if err != nil {
+		return nil, err
+	}
+
+	accountIds := slicest.Map(links, func(link client.Link) client.AccountId { return link.AccountId })
+
+	return c.GetAccounts(ctx, accountIds...)
 }
 
 func (c *Client) ListAccountsDirty(ctx context.Context) ([]client.Account, error) {

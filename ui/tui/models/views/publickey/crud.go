@@ -5,6 +5,7 @@ package publickey
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -18,9 +19,16 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/table"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
+	"github.com/toeirei/keymaster/util/slicest"
 )
 
-type recordT = client.PublicKey
+type recordT = struct {
+	publicKey                 client.PublicKey
+	linkCount                 int
+	linkedAccountCount        int
+	expiredLinkCount          int
+	expiredLinkedAccountCount int
+}
 
 type recordCreateT = struct {
 	Algorithm string `form:"algorithm"`
@@ -48,24 +56,71 @@ type importMsg struct {
 	comment   string
 }
 
+func publicKeyToRecord(ctx context.Context, c client.Client, publicKey client.PublicKey) (recordT, error) {
+	links, err := c.ListLinksForPublicKey(ctx, publicKey.Id, false)
+	if err != nil {
+		return recordT{}, err
+	}
+
+	accounts, err := c.ListAccountsLinkedToPublicKey(ctx, publicKey.Id, false)
+	if err != nil {
+		return recordT{}, err
+	}
+
+	expiredLinks, err := c.ListLinksForPublicKey(ctx, publicKey.Id, true)
+	if err != nil {
+		return recordT{}, err
+	}
+
+	expiredaccounts, err := c.ListAccountsLinkedToPublicKey(ctx, publicKey.Id, true)
+	if err != nil {
+		return recordT{}, err
+	}
+
+	return recordT{
+		publicKey,
+		len(links),
+		len(accounts),
+		len(expiredLinks),
+		len(expiredaccounts),
+	}, nil
+}
+
 func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
 		crud.Texts{"Public Key", "Public Keys"},
 
-		func(record recordT) recordIdT { return record.Id },
+		func(record recordT) recordIdT { return record.publicKey.Id },
 		func(filter filterT) ([]recordT, error) {
-			return c.ListPublicKeys(context.Background(), "")
+			publicKeys, err := c.ListPublicKeys(context.Background(), "")
+			if err != nil {
+				return nil, err
+			}
+
+			return slicest.MapX(publicKeys, func(publicKey client.PublicKey) (recordT, error) {
+				return publicKeyToRecord(context.Background(), c, publicKey)
+			})
 		},
 		func(id recordIdT) (recordT, error) {
-			return c.GetPublicKey(context.Background(), id)
+			publicKey, err := c.GetPublicKey(context.Background(), id)
+			if err != nil {
+				return recordT{}, err
+			}
+
+			return publicKeyToRecord(context.Background(), c, publicKey)
 		},
 		func(recordCreate recordCreateT) (recordT, error) {
-			return c.CreatePublicKey(
+			publicKey, err := c.CreatePublicKey(
 				context.Background(),
 				recordCreate.Algorithm+" "+recordCreate.Data,
 				recordCreate.Comment,
 				tags.Parse(recordCreate.Tags),
 			)
+			if err != nil {
+				return recordT{}, err
+			}
+
+			return publicKeyToRecord(context.Background(), c, publicKey)
 		},
 		func(id recordIdT, recordCreate recordUpdateT) (recordT, error) {
 			if err := c.UpdatePublicKey(
@@ -77,21 +132,32 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 				return recordT{}, err
 			}
 
-			return c.GetPublicKey(context.Background(), id)
+			publicKey, err := c.GetPublicKey(context.Background(), id)
+			if err != nil {
+				return recordT{}, err
+			}
+
+			return publicKeyToRecord(context.Background(), c, publicKey)
 		},
 		func(id recordIdT) error {
 			return c.DeletePublicKeys(context.Background(), id)
 		},
 
 		table.NewBubblesTableRenderer(table.Columns[recordT]{
-			{Title: "Comment", View: func(r recordT) string { return r.Comment }},
-			{Title: "Tags", View: func(r recordT) string { return r.Tags.String() }, MaxWidth: 0.5},
-			{Title: "Algorithm", View: func(r recordT) string { return r.Algorithm }},
+			{Title: "Comment", View: func(r recordT) string { return r.publicKey.Comment }},
+			{Title: "Tags", View: func(r recordT) string { return r.publicKey.Tags.String() }, MaxWidth: 0.5},
+			{Title: "Algorithm", View: func(r recordT) string { return r.publicKey.Algorithm }},
+			{Title: "Links (active/total)", View: func(r recordT) string {
+				return fmt.Sprintf("%d/%d", r.linkCount-r.expiredLinkCount, r.linkCount)
+			}},
+			{Title: "Accounts (active/total)", View: func(r recordT) string {
+				return fmt.Sprintf("%d/%d", r.linkedAccountCount-r.expiredLinkedAccountCount, r.linkedAccountCount)
+			}},
 		}),
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{
-				record.Comment,
-				record.Tags.String(),
+				record.publicKey.Comment,
+				record.publicKey.Tags.String(),
 			}
 		},
 
@@ -149,10 +215,10 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 
 		crud.WithListDuplicateAction[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](func(record recordT) recordCreateT {
 			return recordCreateT{
-				record.Algorithm,
-				record.Data,
-				record.Comment,
-				record.Tags.String(),
+				record.publicKey.Algorithm,
+				record.publicKey.Data,
+				record.publicKey.Comment,
+				record.publicKey.Tags.String(),
 			}
 		}),
 		crud.WithCreateMsgInterceptor(func(msg tea.Msg, ctx crud.CreateMsgInterceptorCtx[recordT, recordCreateT, recordUpdateT, recordIdT, filterT]) (tea.Cmd, bool) {
@@ -169,5 +235,6 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			}
 			return nil, false
 		}),
+		crud.WithListReloadAfterChange[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](true),
 	)
 }

@@ -168,11 +168,11 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			{Title: "Port", View: func(r recordT) string { return fmt.Sprint(r.account.Port) }},
 			{Title: "Deploy Method", View: func(r recordT) string { return r.account.DeployMethod }},
 			{Title: "Dirty", View: func(r recordT) string { return fmt.Sprint(r.isDirty) }},
-			{Title: "Links", View: func(r recordT) string {
-				return fmt.Sprintf("%d/%d", r.linkCount, r.linkCount-r.expiredLinkCount)
+			{Title: "Links (active/total)", View: func(r recordT) string {
+				return fmt.Sprintf("%d/%d", r.linkCount-r.expiredLinkCount, r.linkCount)
 			}},
-			{Title: "Public Keys", View: func(r recordT) string {
-				return fmt.Sprintf("%d/%d", r.linkedPublicKeyCount, r.linkedPublicKeyCount-r.expiredLinkedPublicKeyCount)
+			{Title: "Public Keys (active/total)", View: func(r recordT) string {
+				return fmt.Sprintf("%d/%d", r.linkedPublicKeyCount-r.expiredLinkedPublicKeyCount, r.linkedPublicKeyCount)
 			}},
 		}),
 		func(record recordT) recordUpdateT {
@@ -212,7 +212,6 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 				key.WithHelp("l", "links"),
 			),
 		),
-
 		crud.WithListReloadAfterChange[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](true),
 	)
 }
