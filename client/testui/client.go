@@ -13,6 +13,7 @@ import (
 	"github.com/bobg/go-generics/v4/slices"
 	"github.com/jinzhu/copier"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/tags"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
@@ -34,7 +35,7 @@ var _ client.Client = (*Client)(nil)
 // --- utils ---
 
 func (c *Client) accountDeployData(ctx context.Context, account client.Account) (string, error) {
-	publicKeys, err := c.ListPublicKeysForAccount(ctx, account.Id)
+	publicKeys, err := c.ListPublicKeysLinkedToAccount(ctx, account.Id, false)
 	if err != nil {
 		return "", err
 	}
@@ -45,7 +46,7 @@ func (c *Client) accountDeployData(ctx context.Context, account client.Account) 
 }
 
 func (c *Client) accountDeployCache(account client.Account, deployCache string) string {
-	return fmt.Sprintf("%s %s@%s:%d\n%s", account.DeployMethod, account.Name, account.Host, account.Port, deployCache)
+	return fmt.Sprintf("%s %s@%s:%d\n%s", account.DeployMethod, account.Username, account.Host, account.Port, deployCache)
 }
 
 func (c *Client) deployAccounts(ctx context.Context, accounts ...client.Account) (chan client.DeployProgress, error) {
@@ -130,13 +131,13 @@ func (c *Client) WithTransaction(ctx context.Context, fn func(c client.Client) e
 
 // --- client.PublicKey Management ---
 
-func (c *Client) CreatePublicKey(ctx context.Context, key string, comment string, tags []string) (client.PublicKey, error) {
+func (c *Client) CreatePublicKey(ctx context.Context, key string, comment string, tags tags.Tags) (client.PublicKey, error) {
 	c.publicKeyIdCounter++
 	keyParts := strings.Split(key, " ")
 	if len(keyParts) < 2 {
 		return client.PublicKey{}, errors.New("invalid key provided")
 	}
-	// algorithm, data := keyParts[0], strings.Join(slices.SliceTo(keyParts, 1, len(keyParts)), " ")
+	// algorithm, data := keyParts[0], strings.Join(slicest.SliceTo(keyParts, 1, len(keyParts)), " ")
 	algorithm, data := keyParts[0], keyParts[1]
 	publicKey := client.PublicKey{c.publicKeyIdCounter, algorithm, data, comment, tags}
 	c.publicKeys = append(c.publicKeys, publicKey)
@@ -153,22 +154,55 @@ func (c *Client) GetPublicKey(ctx context.Context, id client.PublicKeyId) (clien
 }
 
 func (c *Client) GetPublicKeys(ctx context.Context, ids ...client.PublicKeyId) ([]client.PublicKey, error) {
-	return slices.Filter(c.publicKeys, func(publicKey client.PublicKey) bool {
+	return slicest.Filter(c.publicKeys, func(publicKey client.PublicKey) bool {
 		return slices.Contains(ids, publicKey.Id)
 	}), nil
 }
 
-func (c *Client) ListPublicKeys(ctx context.Context, tagFilter string) ([]client.PublicKey, error) {
-	if tagFilter == "" {
+func (c *Client) ListPublicKeys(ctx context.Context, tagMatcher string) ([]client.PublicKey, error) {
+	if len(tagMatcher) == 0 {
 		return slices.Clone(c.publicKeys), nil
 	}
-	// WARNING does not realy repect the tagFilter
-	return slices.Filter(c.publicKeys, func(publicKey client.PublicKey) bool {
-		return slices.Contains(publicKey.Tags, tagFilter)
+
+	expr, err := tags.ParseMatcher(tagMatcher)
+	if err != nil {
+		return nil, err
+	}
+
+	return slicest.Filter(c.publicKeys, func(publicKey client.PublicKey) bool {
+		return expr.Eval(publicKey.Tags)
 	}), nil
 }
 
-func (c *Client) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, comment string, tags []string) error {
+func (c *Client) ListPublicKeysLinkedToAccount(ctx context.Context, accountId client.AccountId, expired bool) ([]client.PublicKey, error) {
+	links, err := c.ListLinksForAccount(ctx, accountId, expired)
+	if err != nil {
+		return nil, err
+	}
+
+	publicKeyss, err := slicest.MapXI(links, func(_ int, link client.Link) ([]client.PublicKey, error) {
+		return c.ListPublicKeys(ctx, link.TagMatcher)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return slicest.Flatten(publicKeyss), nil
+}
+
+func (c *Client) UpdateLink(ctx context.Context, id client.LinkId, accountId client.AccountId, tagMatcher string, expiresAt time.Time) error {
+	if i, ok := slices.BinarySearchFunc(c.links, id, func(link client.Link, id client.LinkId) int {
+		return int(link.Id - id)
+	}); ok {
+		c.links[i].AccountId = accountId
+		c.links[i].TagMatcher = tagMatcher
+		c.links[i].ExpiresAt = expiresAt
+		return nil
+	}
+	return fmt.Errorf("account with id %v not found", id)
+}
+
+func (c *Client) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, comment string, tags tags.Tags) error {
 	if i, ok := slices.BinarySearchFunc(c.publicKeys, id, func(publicKey client.PublicKey, id client.PublicKeyId) int {
 		return int(publicKey.Id - id)
 	}); ok {
@@ -180,15 +214,15 @@ func (c *Client) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, com
 }
 
 func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId) error {
-	c.publicKeys = slices.Filter(c.publicKeys, func(publicKey client.PublicKey) bool { return !slices.Contains(ids, publicKey.Id) })
+	c.publicKeys = slicest.Filter(c.publicKeys, func(publicKey client.PublicKey) bool { return !slices.Contains(ids, publicKey.Id) })
 	return nil
 }
 
 // --- Account Management ---
 
-func (c *Client) CreateAccount(ctx context.Context, name string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
+func (c *Client) CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
 	c.accountIdCounter++
-	account := client.Account{c.accountIdCounter, name, host, port, deploymentMethod, deploymentSecret, ""}
+	account := client.Account{c.accountIdCounter, username, host, port, deploymentMethod, deploymentSecret, ""}
 	c.accounts = append(c.accounts, account)
 	return account, nil
 }
@@ -203,7 +237,7 @@ func (c *Client) GetAccount(ctx context.Context, id client.AccountId) (client.Ac
 }
 
 func (c *Client) GetAccounts(ctx context.Context, ids ...client.AccountId) ([]client.Account, error) {
-	return slices.Filter(c.accounts, func(account client.Account) bool {
+	return slicest.Filter(c.accounts, func(account client.Account) bool {
 		return slices.Contains(ids, account.Id)
 	}), nil
 }
@@ -212,18 +246,22 @@ func (c *Client) ListAccounts(ctx context.Context) ([]client.Account, error) {
 	return slices.Clone(c.accounts), nil
 }
 
-func (c *Client) ListDirtyAccounts(ctx context.Context) ([]client.Account, error) {
-	return slices.Filterx(c.accounts, func(account client.Account) (bool, error) {
+func (c *Client) ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Account, error) {
+	return nil, errors.New("client.ListAccountsForPublicKey not implemented")
+}
+
+func (c *Client) ListAccountsDirty(ctx context.Context) ([]client.Account, error) {
+	return slicest.FilterX(c.accounts, func(account client.Account) (bool, error) {
 		return c.IsAccountDirty(ctx, account)
 	})
 }
 
-func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, name string, host string, port int, deploymentMethod string, deploymentSecret string) error {
+func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) error {
 	if i, ok := slices.BinarySearchFunc(c.accounts, id, func(account client.Account, id client.AccountId) int {
 		return int(account.Id - id)
 	}); ok {
-		c.accounts[i].Name = name
-		c.accounts[i].Name = name
+		c.accounts[i].Username = username
+		c.accounts[i].Username = username
 		c.accounts[i].Host = host
 		c.accounts[i].Port = port
 		c.accounts[i].DeployMethod = deploymentMethod
@@ -234,7 +272,7 @@ func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, name st
 }
 
 func (c *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) error {
-	c.accounts = slices.Filter(c.accounts, func(account client.Account) bool { return !slices.Contains(ids, account.Id) })
+	c.accounts = slicest.Filter(c.accounts, func(account client.Account) bool { return !slices.Contains(ids, account.Id) })
 	return nil
 }
 
@@ -249,9 +287,9 @@ func (c *Client) IsAccountDirty(ctx context.Context, account client.Account) (bo
 
 // --- client.Link Management ---
 
-func (c *Client) CreateLink(ctx context.Context, accountId client.AccountId, tagFilter string, expiresAt time.Time) (client.Link, error) {
+func (c *Client) CreateLink(ctx context.Context, accountId client.AccountId, tagMatcher string, expiresAt time.Time) (client.Link, error) {
 	c.linkIdCounter++
-	link := client.Link{c.linkIdCounter, accountId, tagFilter, expiresAt}
+	link := client.Link{c.linkIdCounter, accountId, tagMatcher, expiresAt}
 	c.links = append(c.links, link)
 	return link, nil
 }
@@ -266,67 +304,47 @@ func (c *Client) GetLink(ctx context.Context, id client.LinkId) (client.Link, er
 }
 
 func (c *Client) GetLinks(ctx context.Context, ids ...client.LinkId) ([]client.Link, error) {
-	return slices.Filter(c.links, func(link client.Link) bool {
+	return slicest.Filter(c.links, func(link client.Link) bool {
 		return slices.Contains(ids, link.Id)
 	}), nil
 }
 
-func (c *Client) ListLinksAccount(ctx context.Context, accountId client.AccountId) ([]client.Link, error) {
-	return slices.Filter(c.links, func(link client.Link) bool {
-		return link.AccountId == accountId
+func (c *Client) ListLinksForAccount(ctx context.Context, accountId client.AccountId, expired bool) ([]client.Link, error) {
+	return slicest.Filter(c.links, func(link client.Link) bool {
+		return link.AccountId == accountId && (expired || time.Now().Before(link.ExpiresAt))
 	}), nil
 }
 
-func (c *Client) ListLinksPublicKey(ctx context.Context, publicKeyId client.PublicKeyId) ([]client.Link, error) {
-	return nil, errors.New("client.ListAccountLinks not implemented")
-}
-
-func (c *Client) ListPublicKeysForAccount(ctx context.Context, accountId client.AccountId) ([]client.PublicKey, error) {
-	links, err := c.ListLinksAccount(ctx, accountId)
+func (c *Client) ListLinksForPublicKey(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Link, error) {
+	publicKey, err := c.GetPublicKey(ctx, publicKeyId)
 	if err != nil {
 		return nil, err
 	}
 
-	publicKeyss, err := slices.Mapx(links, func(_ int, link client.Link) ([]client.PublicKey, error) {
-		return c.ListPublicKeys(ctx, link.TagFilter)
+	return slicest.FilterX(c.links, func(link client.Link) (bool, error) {
+		expr, err := tags.ParseMatcher(link.TagMatcher)
+		if err != nil {
+			return false, err
+		}
+
+		return expr.Eval(publicKey.Tags) && (expired || time.Now().Before(link.ExpiresAt)), nil
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	return slicest.Flatten(publicKeyss), nil
-}
-
-func (c *Client) ListAccountsForPublicKey(ctx context.Context, publicKeyId client.PublicKeyId) ([]client.Account, error) {
-	return nil, errors.New("client.ListAccountsForPublicKey not implemented")
-}
-
-func (c *Client) UpdateLink(ctx context.Context, id client.LinkId, accountId client.AccountId, tagFilter string, expiresAt time.Time) error {
-	if i, ok := slices.BinarySearchFunc(c.links, id, func(link client.Link, id client.LinkId) int {
-		return int(link.Id - id)
-	}); ok {
-		c.links[i].AccountId = accountId
-		c.links[i].TagFilter = tagFilter
-		c.links[i].ExpiresAt = expiresAt
-		return nil
-	}
-	return fmt.Errorf("account with id %v not found", id)
 }
 
 func (c *Client) DeleteLinks(ctx context.Context, ids ...client.LinkId) error {
-	c.links = slices.Filter(c.links, func(link client.Link) bool { return !slices.Contains(ids, link.Id) })
+	c.links = slicest.Filter(c.links, func(link client.Link) bool { return !slices.Contains(ids, link.Id) })
 	return nil
 }
 
 // --- Other ---
 
-func (c *Client) ListExistingTags(ctx context.Context) []string {
-	return slicest.Reduce(c.publicKeys, func(publicKey client.PublicKey, tags []string) []string {
+func (c *Client) ListExistingTags(ctx context.Context) tags.Tags {
+	return slicest.Reduce(c.publicKeys, func(publicKey client.PublicKey, tags tags.Tags) tags.Tags {
 		return append(tags, publicKey.Tags...)
 	})
 }
 
-func (c *Client) OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountName string, deploymentKey string) (chan client.OnboardHostProgress, error) {
+func (c *Client) OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {
 	return nil, errors.New("client.OnboardHost not implemented")
 }
 

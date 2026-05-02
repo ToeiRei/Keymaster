@@ -38,7 +38,7 @@ func New[
 	updateRecord func(id TRecordId, recordUpdate TRecordUpdate) (TRecord, error),
 	deleteRecord func(id TRecordId) error,
 
-	makeListTable func(records []TRecord, width int) ([]table.Column, []table.Row),
+	buildListTable func(records []TRecord, width int) ([]table.Column, []table.Row),
 	recordToRecordUpdate func(record TRecord) TRecordUpdate,
 
 	createFormRows func() []form.FormOpt[TRecordCreate],
@@ -58,7 +58,7 @@ func New[
 		updateRecord: updateRecord,
 		deleteRecord: deleteRecord,
 
-		makeListTable:        makeListTable,
+		buildListTable:       buildListTable,
 		recordToRecordUpdate: recordToRecordUpdate,
 
 		createFormRows: createFormRows,
@@ -122,7 +122,19 @@ func WithUpdateMsgInterceptor[
 	}
 }
 
-func WithListDuplicateAction[
+func WithListReloadAfterChange[
+	TRecord any,
+	TRecordCreate comparable,
+	TRecordUpdate comparable,
+	TRecordId comparable,
+	TFilter comparable,
+](reload bool) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
+	return func(c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) {
+		c.listReloadAfterChange = reload
+	}
+}
+
+func WithListDuplicateActionOld[
 	TRecord any,
 	TRecordCreate comparable,
 	TRecordUpdate comparable,
@@ -144,4 +156,41 @@ func WithListDuplicateAction[
 			return nil, false
 		})(c)
 	}
+}
+
+func WithListAction[
+	TRecord any,
+	TRecordCreate comparable,
+	TRecordUpdate comparable,
+	TRecordId comparable,
+	TFilter comparable,
+](action func(ctx ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) tea.Cmd, bindings ...key.Binding) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
+	return func(c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) {
+		// add list key binding
+		WithListKeyBindings[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter](bindings...)(c)
+
+		// add list msg interceptor
+		WithListMsgInterceptor(func(msg tea.Msg, ctx ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) (tea.Cmd, bool) {
+			if msg, ok := msg.(tea.KeyMsg); ok && key.Matches(msg, bindings...) {
+				return action(ctx), true
+			}
+			return nil, false
+		})(c)
+	}
+}
+
+func WithListDuplicateAction[
+	TRecord any,
+	TRecordCreate comparable,
+	TRecordUpdate comparable,
+	TRecordId comparable,
+	TFilter comparable,
+](recordToRecordCreate func(record TRecord) TRecordCreate) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
+	return WithListAction(func(ctx ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) tea.Cmd {
+		if ctx.SelectedRecord == nil {
+			return popupviews.OpenMessage(popupviews.MessageError, "Please select a "+ctx.Crud.Texts.EntityNameSingular+" to duplicate.", nil)
+		}
+
+		return ctx.Crud.OpenCreate(util.NewPointer(recordToRecordCreate(*ctx.SelectedRecord)))
+	}, keys.Duplicate())
 }

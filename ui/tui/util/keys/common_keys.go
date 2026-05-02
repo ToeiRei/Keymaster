@@ -17,6 +17,12 @@ func Exit() key.Binding {
 		key.WithHelp("esc", "exit"),
 	)
 }
+func Close() key.Binding {
+	return key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "close"),
+	)
+}
 func Help() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("?"),

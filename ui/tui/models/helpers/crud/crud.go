@@ -32,7 +32,7 @@ type Crud[
 	updateRecord func(id TRecordId, recordUpdate TRecordUpdate) (TRecord, error)
 	deleteRecord func(id TRecordId) error
 
-	makeListTable        func(records []TRecord, width int) ([]table.Column, []table.Row)
+	buildListTable       func(records []TRecord, width int) ([]table.Column, []table.Row)
 	recordToRecordUpdate func(record TRecord) TRecordUpdate
 
 	createFormRows func() []form.FormOpt[TRecordCreate]
@@ -42,9 +42,13 @@ type Crud[
 
 	routerControll router.Controll
 
+	// extra options
+
 	listMsgInterceptors   []ListMsgInterceptor[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 	createMsgInterceptors []CreateMsgInterceptor[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 	updateMsgInterceptors []UpdateMsgInterceptor[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
+
+	listReloadAfterChange bool
 }
 
 func (c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) OpenList() tea.Cmd {

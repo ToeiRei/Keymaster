@@ -14,12 +14,24 @@ import (
 var tagValidationRegexpr = regexp.MustCompile(`^[a-zA-Z0-9_\-+*/.:~=]+$`)
 
 func ParseMatcher(matcher string) (Expr, error) {
+	return parseMatcher(matcher, matcher, 0)
+}
+
+func parseMatcher(matcher string, originalMatcher string, pos int) (Expr, error) {
+	matcherPrev := matcher
 	matcher = strings.TrimSpace(matcher)
+
+	// add removed whitespace to position
+	if parts := strings.SplitN(matcherPrev, matcher, 2); len(parts) > 0 {
+		pos += len(parts[0])
+	}
 
 	// and
 	if parts := splitOnTopLevelChar(matcher, exprAnd); len(parts) > 1 {
 		exprs, err := slicest.MapX(parts, func(part string) (Expr, error) {
-			return ParseMatcher(part)
+			expr, err := parseMatcher(part, originalMatcher, pos)
+			pos += len(part) + 1
+			return expr, err
 		})
 		return AndExpr{exprs}, err
 	}
@@ -27,21 +39,23 @@ func ParseMatcher(matcher string) (Expr, error) {
 	// or
 	if parts := splitOnTopLevelChar(matcher, exprOr); len(parts) > 1 {
 		exprs, err := slicest.MapX(parts, func(part string) (Expr, error) {
-			return ParseMatcher(part)
+			expr, err := parseMatcher(part, originalMatcher, pos)
+			pos += len(part) + 1
+			return expr, err
 		})
 		return OrExpr{exprs}, err
 	}
 
 	// negation
 	if matcher, negated := strings.CutPrefix(matcher, exprNot); negated {
-		expr, err := ParseMatcher(matcher)
+		expr, err := parseMatcher(matcher, originalMatcher, pos+1)
 		return NotExpr{expr}, err
 	}
 
 	// braces
 	if strings.HasPrefix(matcher, exprBracesOpen) && strings.HasSuffix(matcher, exprBracesClose) {
 		matcher = matcher[1 : len(matcher)-1]
-		expr, err := ParseMatcher(matcher)
+		expr, err := parseMatcher(matcher, originalMatcher, pos+1)
 		return BracesExpr{expr}, err
 	}
 
@@ -50,7 +64,12 @@ func ParseMatcher(matcher string) (Expr, error) {
 		return ValueExpr{matcher}, nil
 	}
 
-	return nil, fmt.Errorf(`invalid tag: "%s"`, matcher)
+	// invalid matcher string
+	posFrom, posTo := pos+1, pos+len(matcher)
+	if len(matcher) == 0 {
+		return nil, fmt.Errorf("invalid tag %q in matcher %q at position %d", matcher, originalMatcher, posFrom)
+	}
+	return nil, fmt.Errorf("invalid tag %q in matcher %q at position %d-%d", matcher, originalMatcher, posFrom, posTo)
 }
 
 func splitOnTopLevelChar(expr string, char rune) []string {
@@ -65,7 +84,7 @@ func splitOnTopLevelChar(expr string, char rune) []string {
 		case ')':
 			depth--
 		case char:
-			if depth == 0 {
+			if depth <= 0 {
 				result = append(result, expr[start:i])
 				start = i + 1
 			}

@@ -8,24 +8,30 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/crud"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/table"
-	"github.com/toeirei/keymaster/ui/tui/models/views/crud"
+	"github.com/toeirei/keymaster/ui/tui/models/views/linkaccount"
+	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
 type recordT = struct {
-	account              client.Account
-	isDirty              bool
-	linkCount            int
-	linkedPublicKeyCount int
+	account                     client.Account
+	isDirty                     bool
+	linkCount                   int
+	linkedPublicKeyCount        int
+	expiredLinkCount            int
+	expiredLinkedPublicKeyCount int
 }
 
 type recordCreateT = struct {
-	Name         string `form:"name"`
+	Username     string `form:"username"`
 	Host         string `form:"host"`
 	Port         string `form:"port"`
 	DeployMethod string `form:"deploy_method"`
@@ -39,12 +45,22 @@ type recordIdT = client.AccountId
 type filterT = struct{}
 
 func accountToRecord(ctx context.Context, c client.Client, account client.Account) (recordT, error) {
-	links, err := c.ListLinksAccount(ctx, account.Id)
+	links, err := c.ListLinksForAccount(ctx, account.Id, false)
 	if err != nil {
 		return recordT{}, err
 	}
 
-	publicKeys, err := c.ListPublicKeysForAccount(ctx, account.Id)
+	publicKeys, err := c.ListPublicKeysLinkedToAccount(ctx, account.Id, false)
+	if err != nil {
+		return recordT{}, err
+	}
+
+	expiredLinks, err := c.ListLinksForAccount(ctx, account.Id, true)
+	if err != nil {
+		return recordT{}, err
+	}
+
+	expiredPublicKeys, err := c.ListPublicKeysLinkedToAccount(ctx, account.Id, true)
 	if err != nil {
 		return recordT{}, err
 	}
@@ -54,12 +70,19 @@ func accountToRecord(ctx context.Context, c client.Client, account client.Accoun
 		return recordT{}, err
 	}
 
-	return recordT{account, isDirty, len(links), len(publicKeys)}, nil
+	return recordT{
+		account,
+		isDirty,
+		len(links),
+		len(publicKeys),
+		len(expiredLinks),
+		len(expiredPublicKeys),
+	}, nil
 }
 
 func formRows[T comparable]() []form.FormOpt[T] {
 	return []form.FormOpt[T]{
-		form.WithRowItem[T]("name", formelement.NewText("Name", "eg. user/root/...")),
+		form.WithRowItem[T]("username", formelement.NewText("Username", "eg. user/root/...")),
 		form.WithRowItem[T]("host", formelement.NewText("Host", "ip/domain to connect to")),
 		form.WithRowItem[T]("port", formelement.NewText("Port", "eg. 22")),
 		form.WithRowItem[T]("deploy_method", formelement.NewText("Deploy Method", "ssh/cisco/...")),
@@ -98,7 +121,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 
 			account, err := c.CreateAccount(
 				context.Background(),
-				recordCreate.Name,
+				recordCreate.Username,
 				recordCreate.Host,
 				port,
 				recordCreate.DeployMethod,
@@ -119,7 +142,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			if err := c.UpdateAccount(
 				context.Background(),
 				id,
-				recordUpdate.Name,
+				recordUpdate.Username,
 				recordUpdate.Host,
 				port,
 				recordUpdate.DeployMethod,
@@ -140,17 +163,21 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		},
 
 		table.NewBubblesTableRenderer(table.Columns[recordT]{
-			{Title: "Name", View: func(r recordT) string { return r.account.Name }},
+			{Title: "Username", View: func(r recordT) string { return r.account.Username }},
 			{Title: "Host", View: func(r recordT) string { return r.account.Host }},
 			{Title: "Port", View: func(r recordT) string { return fmt.Sprint(r.account.Port) }},
 			{Title: "Deploy Method", View: func(r recordT) string { return r.account.DeployMethod }},
 			{Title: "Dirty", View: func(r recordT) string { return fmt.Sprint(r.isDirty) }},
-			{Title: "Links", View: func(r recordT) string { return fmt.Sprint(r.linkCount) }},
-			{Title: "Public Keys", View: func(r recordT) string { return fmt.Sprint(r.linkedPublicKeyCount) }},
+			{Title: "Links", View: func(r recordT) string {
+				return fmt.Sprintf("%d/%d", r.linkCount, r.linkCount-r.expiredLinkCount)
+			}},
+			{Title: "Public Keys", View: func(r recordT) string {
+				return fmt.Sprintf("%d/%d", r.linkedPublicKeyCount, r.linkedPublicKeyCount-r.expiredLinkedPublicKeyCount)
+			}},
 		}),
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{
-				record.account.Name,
+				record.account.Username,
 				record.account.Host,
 				fmt.Sprint(record.account.Port),
 				record.account.DeployMethod,
@@ -165,12 +192,27 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 
 		crud.WithListDuplicateAction[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](func(record recordT) recordCreateT {
 			return recordCreateT{
-				record.account.Name,
+				record.account.Username,
 				record.account.Host,
 				fmt.Sprint(record.account.Port),
 				record.account.DeployMethod,
 				record.account.DeploySecret,
 			}
 		}),
+		crud.WithListAction(
+			func(ctx crud.ListMsgInterceptorCtx[recordT, recordCreateT, recordUpdateT, recordIdT, filterT]) tea.Cmd {
+				if ctx.SelectedRecord == nil {
+					return popupviews.OpenMessage(popupviews.MessageError, "Please select a "+ctx.Crud.Texts.EntityNameSingular+".", nil)
+				}
+
+				return linkaccount.NewCrud(c, rc, ctx.SelectedRecord.account).OpenList()
+			},
+			key.NewBinding(
+				key.WithKeys("l"),
+				key.WithHelp("l", "links"),
+			),
+		),
+
+		crud.WithListReloadAfterChange[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](true),
 	)
 }

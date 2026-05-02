@@ -5,8 +5,10 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/toeirei/keymaster/tags"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
@@ -19,31 +21,32 @@ type Client interface {
 
 	// --- PublicKey Management ---
 
-	CreatePublicKey(ctx context.Context, key string, comment string, tags []string) (PublicKey, error)
+	CreatePublicKey(ctx context.Context, key string, comment string, tags tags.Tags) (PublicKey, error)
 
 	GetPublicKey(ctx context.Context, id PublicKeyId) (PublicKey, error)
 
 	GetPublicKeys(ctx context.Context, ids ...PublicKeyId) ([]PublicKey, error)
 
-	ListPublicKeys(ctx context.Context, tagFilter string) ([]PublicKey, error)
+	ListPublicKeys(ctx context.Context, tagMatcher string) ([]PublicKey, error)
+	ListPublicKeysLinkedToAccount(ctx context.Context, accountId AccountId, expired bool) ([]PublicKey, error)
 
-	UpdatePublicKey(ctx context.Context, id PublicKeyId, comment string, tags []string) error
+	UpdatePublicKey(ctx context.Context, id PublicKeyId, comment string, tags tags.Tags) error
 
 	DeletePublicKeys(ctx context.Context, ids ...PublicKeyId) error
 
 	// --- Account Management ---
 
-	CreateAccount(ctx context.Context, name string, host string, port int, deploymentMethod string, deploymentSecret string) (Account, error)
+	CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret string) (Account, error)
 
 	GetAccount(ctx context.Context, id AccountId) (Account, error)
 
 	GetAccounts(ctx context.Context, ids ...AccountId) ([]Account, error)
 
 	ListAccounts(ctx context.Context) ([]Account, error)
+	ListAccountsDirty(ctx context.Context) ([]Account, error)
+	ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId PublicKeyId, expired bool) ([]Account, error)
 
-	ListDirtyAccounts(ctx context.Context) ([]Account, error)
-
-	UpdateAccount(ctx context.Context, id AccountId, name string, host string, port int, deploymentMethod string, deploymentSecret string) error
+	UpdateAccount(ctx context.Context, id AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) error
 
 	DeleteAccounts(ctx context.Context, ids ...AccountId) error
 
@@ -51,29 +54,24 @@ type Client interface {
 
 	// --- Link Management ---
 
-	CreateLink(ctx context.Context, accountId AccountId, tagFilter string, expiresAt time.Time) (Link, error)
+	CreateLink(ctx context.Context, accountId AccountId, tagMatcher string, expiresAt time.Time) (Link, error)
 
 	GetLink(ctx context.Context, id LinkId) (Link, error)
 
 	GetLinks(ctx context.Context, ids ...LinkId) ([]Link, error)
 
-	ListLinksAccount(ctx context.Context, accountId AccountId) ([]Link, error)
+	ListLinksForAccount(ctx context.Context, accountId AccountId, expired bool) ([]Link, error)
+	ListLinksForPublicKey(ctx context.Context, publicKeyId PublicKeyId, expired bool) ([]Link, error)
 
-	ListLinksPublicKey(ctx context.Context, publicKeyId PublicKeyId) ([]Link, error)
-
-	ListPublicKeysForAccount(ctx context.Context, accountId AccountId) ([]PublicKey, error)
-
-	ListAccountsForPublicKey(ctx context.Context, publicKeyId PublicKeyId) ([]Account, error)
-
-	UpdateLink(ctx context.Context, id LinkId, accountId AccountId, tagFilter string, expiresAt time.Time) error
+	UpdateLink(ctx context.Context, id LinkId, accountId AccountId, tagMatcher string, expiresAt time.Time) error
 
 	DeleteLinks(ctx context.Context, ids ...LinkId) error
 
 	// --- Other ---
 
-	ListExistingTags(ctx context.Context) []string
+	ListExistingTags(ctx context.Context) tags.Tags
 
-	OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountName string, deploymentKey string) (chan OnboardHostProgress, error)
+	OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan OnboardHostProgress, error)
 
 	DecommisionAccount(ctx context.Context, id AccountId) (chan DecommisionAccountProgress, error)
 
@@ -94,7 +92,7 @@ type PublicKey struct {
 	Algorithm string
 	Data      string
 	Comment   string
-	Tags      []string
+	Tags      tags.Tags
 	// ...
 }
 
@@ -102,7 +100,7 @@ type PublicKey struct {
 type AccountId id
 type Account struct {
 	Id           AccountId
-	Name         string
+	Username     string
 	Host         string
 	Port         int
 	DeployMethod string // ssh, cisco, ...
@@ -111,12 +109,16 @@ type Account struct {
 	// ...
 }
 
+func (a Account) String() string {
+	return fmt.Sprintf("%s %s@%s:%d", a.DeployMethod, a.Username, a.Host, a.Port)
+}
+
 type LinkId id
 type Link struct {
-	Id        LinkId
-	AccountId AccountId
-	TagFilter string
-	ExpiresAt time.Time
+	Id         LinkId
+	AccountId  AccountId
+	TagMatcher string
+	ExpiresAt  time.Time
 	// ...
 }
 

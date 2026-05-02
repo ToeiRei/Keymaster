@@ -9,12 +9,13 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/tags"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/crud"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/table"
-	"github.com/toeirei/keymaster/ui/tui/models/views/crud"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
@@ -63,7 +64,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 				context.Background(),
 				recordCreate.Algorithm+" "+recordCreate.Data,
 				recordCreate.Comment,
-				tagsParse(recordCreate.Tags),
+				tags.Parse(recordCreate.Tags),
 			)
 		},
 		func(id recordIdT, recordCreate recordUpdateT) (recordT, error) {
@@ -71,7 +72,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 				context.Background(),
 				id,
 				recordCreate.Comment,
-				tagsParse(recordCreate.Tags),
+				tags.Parse(recordCreate.Tags),
 			); err != nil {
 				return recordT{}, err
 			}
@@ -84,13 +85,13 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 
 		table.NewBubblesTableRenderer(table.Columns[recordT]{
 			{Title: "Comment", View: func(r recordT) string { return r.Comment }},
-			{Title: "Tags", View: func(r recordT) string { return tagsStringify(r.Tags) }, MaxWidth: 0.5},
+			{Title: "Tags", View: func(r recordT) string { return r.Tags.String() }, MaxWidth: 0.5},
 			{Title: "Algorithm", View: func(r recordT) string { return r.Algorithm }},
 		}),
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{
 				record.Comment,
-				tagsStringify(record.Tags),
+				record.Tags.String(),
 			}
 		},
 
@@ -151,7 +152,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 				record.Algorithm,
 				record.Data,
 				record.Comment,
-				tagsStringify(record.Tags),
+				record.Tags.String(),
 			}
 		}),
 		crud.WithCreateMsgInterceptor(func(msg tea.Msg, ctx crud.CreateMsgInterceptorCtx[recordT, recordCreateT, recordUpdateT, recordIdT, filterT]) (tea.Cmd, bool) {

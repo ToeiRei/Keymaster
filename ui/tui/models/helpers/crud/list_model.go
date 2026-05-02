@@ -26,9 +26,8 @@ type ListModel[
 	crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 
 	// state
-	records      []TRecord
-	loadingError error
-	focussed     bool
+	records  []TRecord
+	focussed bool
 
 	// util
 	size util.Size
@@ -80,16 +79,31 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 	switch msg := msg.(type) {
 	case listMsgReloaded[TRecord]:
 		m.records = msg.records
-		m.loadingError = msg.err
 		m.refreshTable()
+		if msg.err != nil {
+			return popupviews.OpenChoice("Error loading "+m.crud.Texts.EntityNameMultiple+":\n"+msg.err.Error(), popupviews.Choices{
+				popupviews.Choice{"Close", m.crud.routerControll.Pop(1), form.GlobalKeyMap{keys.Close()}},
+				popupviews.Choice{"Reload", m.reload(), nil},
+			})
+		}
 		return nil
 
 	case CreateMsgCreated[TRecord]:
+		// full reload
+		if m.crud.listReloadAfterChange {
+			return m.reload()
+		}
+		// partial update
 		m.records = append(m.records, msg.Record)
 		m.refreshTable()
 		return nil
 
 	case UpdateMsgUpdated[TRecord]:
+		// full reload
+		if m.crud.listReloadAfterChange {
+			return m.reload()
+		}
+		// partial update
 		i := slices.IndexFunc(m.records, func(record TRecord) bool { return m.crud.getRecordId(record) == m.crud.getRecordId(msg.Record) })
 		m.records[i] = msg.Record
 		m.refreshTable()
@@ -99,6 +113,11 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 		if msg.err != nil {
 			return popupviews.OpenMessage(popupviews.MessageError, "Error deleting "+m.crud.Texts.EntityNameSingular+":\n"+msg.err.Error(), nil)
 		}
+		// full reload
+		if m.crud.listReloadAfterChange {
+			return m.reload()
+		}
+		// partial update
 		m.records = slices.DeleteFunc(m.records, func(record TRecord) bool { return m.crud.getRecordId(record) == m.crud.getRecordId(msg.record) })
 		m.refreshTable()
 		return nil
@@ -167,9 +186,6 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 
 // View implements util.Model.
 func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) View() string {
-	if m.loadingError != nil {
-		return m.loadingError.Error()
-	}
 	return m.table.View()
 }
 
@@ -201,7 +217,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) r
 
 func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) refreshTable() {
 	// generate and apply columns and rows
-	columns, rows := m.crud.makeListTable(m.records, m.size.Width)
+	columns, rows := m.crud.buildListTable(m.records, m.size.Width)
 	m.table.SetColumns(columns)
 	m.table.SetRows(rows)
 
