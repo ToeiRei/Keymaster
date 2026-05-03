@@ -140,7 +140,7 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 
 		table.NewBubblesTableRenderer(table.Columns[recordT]{
 			{Title: "Tag Matcher", View: func(r recordT) string { return r.link.TagMatcher }},
-			{Title: "Expires At", View: func(r recordT) string { return fmt.Sprint(r.link.ExpiresAt) }},
+			{Title: "Expires At", View: func(r recordT) string { return util.StringifyTime(r.link.ExpiresAt) }},
 			{Title: "Account", View: func(r recordT) string { return account.String() }},
 			{Title: "Public Keys", View: func(r recordT) string { return fmt.Sprint(r.linkedPublicKeyCount) }},
 		}),

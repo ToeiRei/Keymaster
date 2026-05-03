@@ -179,7 +179,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			{Title: "Deploy Method", View: func(r recordT) string { return r.account.DeployMethod }},
 			{Title: "Dirty", View: func(r recordT) string { return fmt.Sprint(r.isDirty) }},
 			{Title: "Links (active/total)", View: func(r recordT) string {
-				return fmt.Sprintf("%d/%d", r.activeLinkCount, r.totalLinkedPublicKeyCount)
+				return fmt.Sprintf("%d/%d", r.activeLinkCount, r.totalLinkCount)
 			}},
 			{Title: "Public Keys (active/total)", View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkedPublicKeyCount, r.totalLinkedPublicKeyCount)
