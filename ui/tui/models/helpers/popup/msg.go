@@ -25,12 +25,12 @@ type closeMsg struct{}
 // TODO add option parameters for title callback and other popup extensions
 func Open(m *util.Model) tea.Cmd {
 	// Open opens a popup with the given message.
-	return func() tea.Msg { return openMsg{Model: m} }
+	return util.TeaMsgToCmd(openMsg{Model: m})
 }
 func OpenWithCallback(m *util.Model, cb func(*util.Model) tea.Cmd) tea.Cmd {
-	return func() tea.Msg { return openMsg{Model: m, OnClose: cb} }
+	return util.TeaMsgToCmd(openMsg{Model: m, OnClose: cb})
 }
 
 func Close() tea.Cmd {
-	return func() tea.Msg { return closeMsg{} }
+	return util.TeaMsgToCmd(closeMsg{})
 }

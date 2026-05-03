@@ -19,7 +19,7 @@ type progressProgressMsg struct {
 }
 type progressDoneMsg struct {
 	pid progressId
-	msg tea.Msg
+	cmd tea.Cmd
 }
 
 func (m progressFadeInMsg) id() progressId   { return m.pid }

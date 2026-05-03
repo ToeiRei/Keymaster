@@ -17,6 +17,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/components/menu"
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
 	"github.com/toeirei/keymaster/ui/tui/models/components/stack"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/deploy"
 	"github.com/toeirei/keymaster/ui/tui/models/views/account"
 	"github.com/toeirei/keymaster/ui/tui/models/views/dashboard"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
@@ -53,6 +54,11 @@ func New() *Model {
 	menuPtr := util.ModelPointer(menu.New(
 		menu.WithItem("publickey.list", "Public Keys"),
 		menu.WithItem("account.list", "Accounts"),
+		menu.WithItem("deploy", "Deploy",
+			menu.WithItem("deploy.dirty", "Deploy dirty"),
+			menu.WithItem("deploy.all", "Deploy all"),
+			menu.WithItem("deploy.verify", "Verify all"),
+		),
 		menu.WithItem("", "Test",
 			menu.WithItem("", "Popup",
 				menu.WithItem("test.popup.progress.spinner", "Progress Spinner"),
@@ -88,22 +94,34 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		switch msg.Id {
 		case "publickey.list":
 			return publickey.NewCrud(m.client, m.routerControll).OpenList()
+
 		case "account.list":
 			return account.NewCrud(m.client, m.routerControll).OpenList()
+
+		case "deploy.dirty":
+			return deploy.DeployDirty(context.Background(), m.client)
+
+		case "deploy.all":
+			return deploy.DeployAll(context.Background(), m.client)
+
+		case "deploy.verify":
+			return popupviews.OpenMessage(popupviews.MessageInfo, fmt.Sprintf("%q has not been implemented yet.", msg.Id), nil)
+
 		case "test.popup.progress.spinner":
 			return popupviews.OpenProgress(
 				popupviews.ProgressSpinner,
 				"Test Progress Spinner",
-				func(_ popupviews.ProgressChan) tea.Msg {
+				func(_ popupviews.ProgressChan) tea.Cmd {
 					time.Sleep(time.Second * 2)
 					return nil
 				},
 			)
+
 		case "test.popup.progress.bar":
 			return popupviews.OpenProgress(
 				popupviews.ProgressBar,
 				"Test Progress Bar",
-				func(pc popupviews.ProgressChan) tea.Msg {
+				func(pc popupviews.ProgressChan) tea.Cmd {
 					for i := range 100 {
 						pc <- popupviews.Progress{
 							Progress: float64(i+1) / 100,

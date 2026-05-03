@@ -50,9 +50,9 @@ type Progress struct {
 // This channel is for reporting progress to the Progress-Popup-Listener. Do not close the channel, as this will be done by the Progress Popup after returning!
 type ProgressChan = chan Progress
 
-func OpenProgress(mode progressMode, title string, fn func(ProgressChan) tea.Msg) tea.Cmd {
+func OpenProgress(mode progressMode, title string, fn func(ProgressChan) tea.Cmd) tea.Cmd {
 	id := progressId(progressIdCounter.Add(1))
-	progressChan := make(ProgressChan, 1)
+	progressChan := make(ProgressChan)
 	model := &ProgressModel{
 		id:           id,
 		title:        title,
@@ -69,10 +69,7 @@ func OpenProgress(mode progressMode, title string, fn func(ProgressChan) tea.Msg
 
 	return tea.Sequence(
 		popup.Open(util.ModelPointer(model)),
-		func() tea.Msg {
-			msg := fn(model.progressChan)
-			return progressDoneMsg{model.id, msg}
-		},
+		func() tea.Msg { return progressDoneMsg{model.id, fn(model.progressChan)} },
 	)
 }
 
@@ -117,9 +114,10 @@ func (m *ProgressModel) Update(msg tea.Msg) tea.Cmd {
 			return m.ListenProgressCmd
 
 		case progressDoneMsg:
+			close(m.progressChan)
 			return tea.Sequence(
 				popup.Close(),
-				func() tea.Msg { return msg.msg },
+				msg.cmd,
 			)
 		}
 	}

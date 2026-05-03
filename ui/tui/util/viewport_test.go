@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
-package util
+package util_test
 
 import (
 	"strings"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/bobg/go-generics/v4/slices"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
 // Helper to joinLines lines for cleaner test cases
@@ -25,23 +26,23 @@ var testRows = [][]string{
 }
 var testContent = joinLinesSlc(slices.Map(testRows, joinSlc))
 
-func testSubset(from, to Vec[int]) string {
+func testSubset(from, to util.Vec[int]) string {
 	strs := make([]string, 0, to.Y-from.Y+1)
 	for i := from.Y - 1; i <= to.Y-1; i++ {
 		strs = append(strs, joinSlc(testRows[i][from.X-1:to.X]))
 	}
 	return joinLinesSlc(strs)
 }
-func newSize(x, y int) Size    { return Size{x * 4, y} }
-func newPos(x, y int) Vec[int] { return Vec[int]{(x - 1) * 4, y - 1} }
+func newSize(x, y int) util.Size    { return util.Size{x * 4, y} }
+func newPos(x, y int) util.Vec[int] { return util.Vec[int]{(x - 1) * 4, y - 1} }
 
 func TestRenderContentInViewportAlignXY(t *testing.T) {
 	tests := []struct {
 		name  string
-		vSize Size
-		tPos  Vec[int]
-		tSize Size
-		align Vec[lipgloss.Position]
+		vSize util.Size
+		tPos  util.Vec[int]
+		tSize util.Size
+		align util.Vec[lipgloss.Position]
 		want  string
 	}{
 		{
@@ -49,8 +50,8 @@ func TestRenderContentInViewportAlignXY(t *testing.T) {
 			vSize: newSize(1, 1),
 			tPos:  newPos(2, 2),
 			tSize: newSize(1, 1),
-			align: Vec[lipgloss.Position]{lipgloss.Center, lipgloss.Center},
-			want:  testSubset(Vec[int]{2, 2}, Vec[int]{2, 2}),
+			align: util.Vec[lipgloss.Position]{lipgloss.Center, lipgloss.Center},
+			want:  testSubset(util.Vec[int]{2, 2}, util.Vec[int]{2, 2}),
 			// want:  testRows[1][1],
 		},
 		{
@@ -58,38 +59,38 @@ func TestRenderContentInViewportAlignXY(t *testing.T) {
 			vSize: newSize(3, 3),
 			tPos:  newPos(3, 3),
 			tSize: newSize(1, 1),
-			align: Vec[lipgloss.Position]{lipgloss.Top, lipgloss.Left},
-			want:  testSubset(Vec[int]{3, 3}, Vec[int]{5, 5}),
+			align: util.Vec[lipgloss.Position]{lipgloss.Top, lipgloss.Left},
+			want:  testSubset(util.Vec[int]{3, 3}, util.Vec[int]{5, 5}),
 		},
 		{
 			name:  "inner 3x3 Center Bottom",
 			vSize: newSize(3, 3),
 			tPos:  newPos(3, 3),
 			tSize: newSize(1, 1),
-			align: Vec[lipgloss.Position]{lipgloss.Center, lipgloss.Bottom},
-			want:  testSubset(Vec[int]{2, 1}, Vec[int]{4, 3}),
+			align: util.Vec[lipgloss.Position]{lipgloss.Center, lipgloss.Bottom},
+			want:  testSubset(util.Vec[int]{2, 1}, util.Vec[int]{4, 3}),
 		},
 		{
 			name:  "inner 3x3 Right Center",
 			vSize: newSize(3, 3),
 			tPos:  newPos(3, 3),
 			tSize: newSize(1, 1),
-			align: Vec[lipgloss.Position]{lipgloss.Right, lipgloss.Center},
-			want:  testSubset(Vec[int]{1, 2}, Vec[int]{3, 4}),
+			align: util.Vec[lipgloss.Position]{lipgloss.Right, lipgloss.Center},
+			want:  testSubset(util.Vec[int]{1, 2}, util.Vec[int]{3, 4}),
 		},
 		{
 			name:  "inner 3x3 Center Center",
 			vSize: newSize(3, 3),
 			tPos:  newPos(3, 3),
 			tSize: newSize(1, 1),
-			align: Vec[lipgloss.Position]{lipgloss.Center, lipgloss.Center},
-			want:  testSubset(Vec[int]{2, 2}, Vec[int]{4, 4}),
+			align: util.Vec[lipgloss.Position]{lipgloss.Center, lipgloss.Center},
+			want:  testSubset(util.Vec[int]{2, 2}, util.Vec[int]{4, 4}),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := RenderContentInViewportAlign(testContent, tt.vSize, tt.tPos, tt.tSize, tt.align)
+			got := util.RenderContentInViewportAlign(testContent, tt.vSize, tt.tPos, tt.tSize, tt.align)
 			if got != tt.want {
 				t.Errorf("got:\n%s\nwant:\n%s", got, tt.want)
 			}

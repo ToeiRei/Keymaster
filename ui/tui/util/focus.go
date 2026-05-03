@@ -18,7 +18,7 @@ type Focusable interface {
 	Blur()
 }
 
-func TryFocusTeaModel(m *tea.Model, parentKeyMap  help.KeyMap) (tea.Cmd, error) {
+func TryFocusTeaModel(m *tea.Model, parentKeyMap help.KeyMap) (tea.Cmd, error) {
 	_m := *m
 	if focusable, ok := _m.(Focusable); ok {
 		cmd := focusable.Focus(parentKeyMap)
@@ -44,9 +44,7 @@ type AnnounceKeyMapMsg struct {
 }
 
 func AnnounceKeyMapCmd(keyMaps ...help.KeyMap) tea.Cmd {
-	return func() tea.Msg {
-		return AnnounceKeyMapMsg{KeyMap: MergeKeyMaps(keyMaps...)}
-	}
+	return TeaMsgToCmd(AnnounceKeyMapMsg{KeyMap: MergeKeyMaps(keyMaps...)})
 }
 
 func MergeKeyMaps(keyMaps ...help.KeyMap) help.KeyMap {

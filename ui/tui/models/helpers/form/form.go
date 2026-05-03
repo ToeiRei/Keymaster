@@ -302,7 +302,7 @@ func (f *Form[T]) Reset(force bool) tea.Cmd {
 
 func (f *Form[T]) guardUnsavedChanges(action Action) tea.Cmd {
 	if data, _ := f.Get(); data != f.InitialData && f.DiscardGuard != nil {
-		return f.DiscardGuard(func() tea.Msg { return confirmDiscardMsg{action} })
+		return f.DiscardGuard(util.TeaMsgToCmd(confirmDiscardMsg{action}))
 	}
 	return nil
 }

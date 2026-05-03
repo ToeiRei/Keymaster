@@ -13,11 +13,11 @@ type Controll struct {
 }
 
 func (c *Controll) Push(model *util.Model) tea.Cmd {
-	return func() tea.Msg { return PushMsg{rid: c.rid, Model: model} }
+	return util.TeaMsgToCmd(PushMsg{rid: c.rid, Model: model})
 }
 func (c *Controll) Pop(count int) tea.Cmd {
-	return func() tea.Msg { return PopMsg{rid: c.rid, Count: count} }
+	return util.TeaMsgToCmd(PopMsg{rid: c.rid, Count: count})
 }
 func (c *Controll) Change(model *util.Model) tea.Cmd {
-	return func() tea.Msg { return ChangeMsg{rid: c.rid, Model: model} }
+	return util.TeaMsgToCmd(ChangeMsg{rid: c.rid, Model: model})
 }

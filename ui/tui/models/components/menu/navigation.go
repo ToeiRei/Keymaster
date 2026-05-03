@@ -3,7 +3,10 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package menu
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/ui/tui/util"
+)
 
 func (m *Model) up() {
 	// get pointer to current active stack index
@@ -39,7 +42,7 @@ func (m *Model) right() tea.Cmd {
 	} else if activeItem.Cmd != nil {
 		return activeItem.Cmd
 	} else {
-		return func() tea.Msg { return ItemSelected{Id: activeItem.Id} }
+		return util.TeaMsgToCmd(ItemSelected{Id: activeItem.Id})
 	}
 }
 

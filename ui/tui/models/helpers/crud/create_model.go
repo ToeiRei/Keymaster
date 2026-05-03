@@ -72,9 +72,9 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 			return popupviews.OpenProgress(
 				popupviews.ProgressSpinner,
 				"Creating "+m.crud.Texts.EntityNameSingular,
-				func(_ popupviews.ProgressChan) tea.Msg {
+				func(_ popupviews.ProgressChan) tea.Cmd {
 					record, err := m.crud.createRecord(result)
-					return createMsgCreateResult[TRecord]{record, err}
+					return util.TeaMsgToCmd(createMsgCreateResult[TRecord]{record, err})
 				},
 			), true
 		}),
@@ -112,7 +112,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 		if msg.err != nil {
 			return popupviews.OpenMessage(popupviews.MessageError, "Error creating "+m.crud.Texts.EntityNameSingular+":\n"+msg.err.Error(), nil)
 		}
-		return tea.Sequence(m.crud.routerControll.Pop(1), func() tea.Msg { return CreateMsgCreated[TRecord]{msg.record} })
+		return tea.Sequence(m.crud.routerControll.Pop(1), util.TeaMsgToCmd(CreateMsgCreated[TRecord]{msg.record}))
 	}
 
 	if !m.focussed {

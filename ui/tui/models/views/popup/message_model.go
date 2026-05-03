@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	MessageInfo MessageSeverity = iota
+	MessageSuccess MessageSeverity = iota
+	MessageInfo
 	MessageWarning
 	MessageError
 )
@@ -31,6 +32,8 @@ func newMessage(
 ) *FormModel[struct{}] {
 	var title string
 	switch severity {
+	case MessageSuccess:
+		title = "SUCCESS"
 	case MessageInfo:
 		title = "INFO"
 	case MessageWarning:

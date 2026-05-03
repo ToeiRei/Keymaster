@@ -69,9 +69,9 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 			return popupviews.OpenProgress(
 				popupviews.ProgressSpinner,
 				"Updating "+m.crud.Texts.EntityNameSingular,
-				func(_ popupviews.ProgressChan) tea.Msg {
+				func(_ popupviews.ProgressChan) tea.Cmd {
 					record, err := m.crud.updateRecord(m.crud.getRecordId(m.record), result)
-					return updateMsgUpdateResult[TRecord]{record, err}
+					return util.TeaMsgToCmd(updateMsgUpdateResult[TRecord]{record, err})
 				},
 			), true
 		}),
@@ -116,7 +116,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 			}
 			return nil
 		}
-		return tea.Sequence(m.crud.routerControll.Pop(1), func() tea.Msg { return UpdateMsgUpdated[TRecord]{msg.record} })
+		return tea.Sequence(m.crud.routerControll.Pop(1), util.TeaMsgToCmd(UpdateMsgUpdated[TRecord]{msg.record}))
 	}
 
 	if !m.focussed {

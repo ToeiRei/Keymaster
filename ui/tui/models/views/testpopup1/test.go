@@ -34,7 +34,7 @@ func New() *Model {
 			form.WithOnSubmit(func(result formData, err error) (tea.Cmd, bool) {
 				return tea.Sequence(
 					popup.Close(),
-					func() tea.Msg { return result },
+					util.TeaMsgToCmd(result),
 				), true
 			}),
 			form.WithOnCancel[formData](func() tea.Cmd {

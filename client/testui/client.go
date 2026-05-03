@@ -49,59 +49,6 @@ func (c *Client) accountDeployCache(account client.Account, deployCache string) 
 	return fmt.Sprintf("%s %s@%s:%d\n%s", account.DeployMethod, account.Username, account.Host, account.Port, deployCache)
 }
 
-func (c *Client) deployAccounts(ctx context.Context, accounts ...client.Account) (chan client.DeployProgress, error) {
-	deployDatas, err := slicest.MapX(accounts, func(a client.Account) (string, error) {
-		return c.accountDeployData(ctx, a)
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	deployProgressChan := make(chan client.DeployProgress)
-	deployProgress := client.DeployProgress{
-		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.DeployAccountProgress) {
-			return account.Id, &client.DeployAccountProgress{0, "not started", nil}
-		}),
-	}
-
-	go func() {
-		for i, account := range accounts {
-			deployProgress.Accounts[account.Id].Status = "deploying"
-			deployProgressChan <- deployProgress
-
-			// simulate deplay
-			for _i := range 5 {
-				time.Sleep(time.Millisecond * 100)
-				deployProgress.Accounts[account.Id].Progress = float64(_i+1) / 10
-				deployProgressChan <- deployProgress
-			}
-
-			_i, ok := slices.BinarySearchFunc(c.accounts, account.Id, func(a client.Account, id client.AccountId) int { return int(a.Id - id) })
-			if !ok {
-				deployProgress.Accounts[account.Id].Status = "error"
-				deployProgress.Accounts[account.Id].Progress = 1
-				deployProgress.Accounts[account.Id].Err = fmt.Errorf("account with id %v not found", account.Id)
-				deployProgressChan <- deployProgress
-				continue
-			}
-
-			// simulate deplay
-			for _i := range 5 {
-				time.Sleep(time.Millisecond * 100)
-				deployProgress.Accounts[account.Id].Progress = float64(_i+6) / 10
-				deployProgressChan <- deployProgress
-			}
-
-			c.accounts[_i].DeployCache = c.accountDeployCache(account, deployDatas[i])
-			deployProgress.Accounts[account.Id].Status = "finished"
-			deployProgress.Accounts[account.Id].Progress = 1
-			deployProgressChan <- deployProgress
-		}
-	}()
-
-	return deployProgressChan, nil
-}
-
 // --- Lifecycle & Initialization ---
 
 func NewClient() *Client {
@@ -237,9 +184,29 @@ func (c *Client) GetAccount(ctx context.Context, id client.AccountId) (client.Ac
 }
 
 func (c *Client) GetAccounts(ctx context.Context, ids ...client.AccountId) ([]client.Account, error) {
-	return slicest.Filter(c.accounts, func(account client.Account) bool {
+	accounts := slicest.Filter(c.accounts, func(account client.Account) bool {
 		return slices.Contains(ids, account.Id)
-	}), nil
+	})
+
+	if len(accounts) != len(ids) {
+		return nil, fmt.Errorf(
+			"accounts with the following ids could not be found: %s",
+			strings.Join(
+				slicest.Map(
+					slicest.Filter(ids, func(id client.AccountId) bool {
+						_, ok := slices.BinarySearchFunc(accounts, id, func(account client.Account, id client.AccountId) int {
+							return int(account.Id - id)
+						})
+						return !ok
+					}),
+					func(id client.AccountId) string { return fmt.Sprint(id) },
+				),
+				", ",
+			),
+		)
+	}
+
+	return accounts, nil
 }
 
 func (c *Client) ListAccounts(ctx context.Context) ([]client.Account, error) {
@@ -359,24 +326,81 @@ func (c *Client) DecommisionAccount(ctx context.Context, id client.AccountId) (c
 	return nil, errors.New("client.DecommisionAccount not implemented")
 }
 
-func (c *Client) DeployPublicKeys(ctx context.Context, publicKeyId ...client.PublicKeyId) (chan client.DeployProgress, error) {
-	return nil, errors.New("client.DeployPublicKeys not implemented")
+func (c *Client) DeployAccount(ctx context.Context, accountId client.AccountId) (chan client.DeployProgressAccount, error) {
+	dpc, err := c.DeployAccounts(ctx, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert channel to only report the single accounts progress
+	dbac := make(chan client.DeployProgressAccount)
+	go func() {
+		defer close(dbac)
+
+		for dp := range dpc {
+			dbac <- *dp.Accounts[accountId]
+		}
+	}()
+
+	return dbac, nil
 }
 
-func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.AccountId) (chan client.DeployProgress, error) {
+func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error) {
 	accounts, err := c.GetAccounts(ctx, accountIds...)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.deployAccounts(ctx, accounts...)
-}
-
-func (c *Client) DeployAll(ctx context.Context) (chan client.DeployProgress, error) {
-	accounts, err := c.ListAccounts(ctx)
+	deployDatas, err := slicest.MapX(accounts, func(a client.Account) (string, error) {
+		return c.accountDeployData(ctx, a)
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return c.deployAccounts(ctx, accounts...)
+	deployProgressChan := make(chan client.DeployProgressAccounts)
+	deployProgress := client.DeployProgressAccounts{
+		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.DeployProgressAccount) {
+			return account.Id, &client.DeployProgressAccount{0, "not started", nil}
+		}),
+	}
+
+	go func() {
+		defer close(deployProgressChan)
+
+		for i, account := range accounts {
+			deployProgress.Accounts[account.Id].Status = "deploying"
+			deployProgressChan <- deployProgress
+
+			// simulate deplay
+			for _i := range 5 {
+				time.Sleep(time.Millisecond * 100)
+				deployProgress.Accounts[account.Id].Progress = float64(_i+1) / 10
+				deployProgressChan <- deployProgress
+			}
+
+			_i, ok := slices.BinarySearchFunc(c.accounts, account.Id, func(a client.Account, id client.AccountId) int { return int(a.Id - id) })
+			if !ok {
+				deployProgress.Accounts[account.Id].Status = "error"
+				deployProgress.Accounts[account.Id].Progress = 1
+				deployProgress.Accounts[account.Id].Err = fmt.Errorf("account with id %v not found", account.Id)
+				deployProgressChan <- deployProgress
+				continue
+			}
+
+			// simulate deplay
+			for _i := range 5 {
+				time.Sleep(time.Millisecond * 100)
+				deployProgress.Accounts[account.Id].Progress = float64(_i+6) / 10
+				deployProgressChan <- deployProgress
+			}
+
+			c.accounts[_i].DeployCache = c.accountDeployCache(account, deployDatas[i])
+			deployProgress.Accounts[account.Id].Status = "finished"
+			deployProgress.Accounts[account.Id].Progress = 1
+			deployProgressChan <- deployProgress
+		}
+	}()
+
+	return deployProgressChan, nil
 }

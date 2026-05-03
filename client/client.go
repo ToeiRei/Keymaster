@@ -75,11 +75,9 @@ type Client interface {
 
 	DecommisionAccount(ctx context.Context, id AccountId) (chan DecommisionAccountProgress, error)
 
-	DeployPublicKeys(ctx context.Context, publicKeyId ...PublicKeyId) (chan DeployProgress, error)
+	DeployAccount(ctx context.Context, accountId AccountId) (chan DeployProgressAccount, error)
 
-	DeployAccounts(ctx context.Context, accountId ...AccountId) (chan DeployProgress, error)
-
-	DeployAll(ctx context.Context) (chan DeployProgress, error)
+	DeployAccounts(ctx context.Context, accountIds ...AccountId) (chan DeployProgressAccounts, error)
 }
 
 // id is a local identifier type used by the client API.
@@ -122,21 +120,20 @@ type Link struct {
 	// ...
 }
 
-type DeployAccountProgress struct {
+type DeployProgressAccount struct {
 	Progress float64
 	Status   string
 	Err      error
 }
 
-// DeployProgress reports incremental progress for a deployment operation.
-type DeployProgress struct {
-	Accounts map[AccountId]*DeployAccountProgress
+type DeployProgressAccounts struct {
+	Accounts map[AccountId]*DeployProgressAccount
 }
 
-func (dp DeployProgress) TotalProgress() float64 {
+func (dp DeployProgressAccounts) Progress() float64 {
 	return slicest.Reduce(
 		slicest.MapValues(dp.Accounts),
-		func(dap *DeployAccountProgress, total float64) float64 { return total + dap.Progress },
+		func(dap *DeployProgressAccount, total float64) float64 { return total + dap.Progress },
 	) / float64(len(dp.Accounts))
 }
 

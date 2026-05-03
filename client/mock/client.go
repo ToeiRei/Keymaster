@@ -55,9 +55,8 @@ type ClientOverwrites struct {
 	ListExistingTags   func(ctx context.Context) tags.Tags
 	OnboardHost        func(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error)
 	DecommisionAccount func(ctx context.Context, id client.AccountId) (chan client.DecommisionAccountProgress, error)
-	DeployPublicKeys   func(ctx context.Context, publicKeyId ...client.PublicKeyId) (chan client.DeployProgress, error)
-	DeployAccounts     func(ctx context.Context, accountId ...client.AccountId) (chan client.DeployProgress, error)
-	DeployAll          func(ctx context.Context) (chan client.DeployProgress, error)
+	DeployAccount      func(ctx context.Context, accountId client.AccountId) (chan client.DeployProgressAccount, error)
+	DeployAccounts     func(ctx context.Context, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error)
 }
 
 // *[Client] implements [client.Client]
@@ -452,38 +451,26 @@ func (m *Client) DecommisionAccount(ctx context.Context, id client.AccountId) (c
 	panic("Client.DecommisionAccount not implemented")
 }
 
-func (m *Client) DeployPublicKeys(ctx context.Context, publicKeyId ...client.PublicKeyId) (chan client.DeployProgress, error) {
+func (m *Client) DeployAccount(ctx context.Context, accountId client.AccountId) (chan client.DeployProgressAccount, error) {
 	if m.Pre != nil {
-		m.Pre("DeployPublicKeys", map[string]any{"ctx": ctx, "publicKeyId": publicKeyId})
+		m.Pre("DeployAccount", map[string]any{"ctx": ctx, "accountId": accountId})
 	}
-	if m.Overwrites.DeployPublicKeys != nil {
-		return m.Overwrites.DeployPublicKeys(ctx, publicKeyId...)
+	if m.Overwrites.DeployAccount != nil {
+		return m.Overwrites.DeployAccount(ctx, accountId)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.DeployPublicKeys(ctx, publicKeyId...)
+		return m.BaseClient.DeployAccount(ctx, accountId)
 	}
-	panic("Client.DeployPublicKeys not implemented")
+	panic("Client.DeployAccount not implemented")
 }
 
-func (m *Client) DeployAccounts(ctx context.Context, accountId ...client.AccountId) (chan client.DeployProgress, error) {
+func (m *Client) DeployAccounts(ctx context.Context, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error) {
 	if m.Pre != nil {
-		m.Pre("DeployAccounts", map[string]any{"ctx": ctx, "accountId": accountId})
+		m.Pre("DeployAccounts", map[string]any{"ctx": ctx, "accountIds": accountIds})
 	}
 	if m.Overwrites.DeployAccounts != nil {
-		return m.Overwrites.DeployAccounts(ctx, accountId...)
+		return m.Overwrites.DeployAccounts(ctx, accountIds...)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.DeployAccounts(ctx, accountId...)
+		return m.BaseClient.DeployAccounts(ctx, accountIds...)
 	}
 	panic("Client.DeployAccounts not implemented")
-}
-
-func (m *Client) DeployAll(ctx context.Context) (chan client.DeployProgress, error) {
-	if m.Pre != nil {
-		m.Pre("DeployAll", map[string]any{"ctx": ctx})
-	}
-	if m.Overwrites.DeployAll != nil {
-		return m.Overwrites.DeployAll(ctx)
-	} else if m.BaseClient != nil {
-		return m.BaseClient.DeployAll(ctx)
-	}
-	panic("Client.DeployAll not implemented")
 }

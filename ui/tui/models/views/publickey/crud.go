@@ -20,6 +20,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/table"
 	"github.com/toeirei/keymaster/ui/tui/models/views/linkpublickey"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
+	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
 	"github.com/toeirei/keymaster/util/slicest"
 )
@@ -206,7 +207,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 								}
 							}
 
-							return tea.Sequence(popup.Close(), func() tea.Msg { return importMsg{data, algorithm, comment} }), true
+							return tea.Sequence(popup.Close(), util.TeaMsgToCmd(importMsg{data, algorithm, comment})), true
 						}),
 					)), form.ActionNone
 				}))),
