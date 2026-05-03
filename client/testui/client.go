@@ -353,9 +353,14 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 
 	checkContextCanceled := func(accountId client.AccountId, deployProgress client.DeployProgressAccounts) bool {
 		if ctx.Err() != nil {
-			deployProgress.Accounts[accountId].Status = "error"
 			deployProgress.Accounts[accountId].Progress = 1
-			deployProgress.Accounts[accountId].Err = ctx.Err()
+			if errors.Is(ctx.Err(), context.Canceled) {
+				deployProgress.Accounts[accountId].Status = "canceled"
+				deployProgress.Accounts[accountId].Err = errors.New("canceled")
+			} else {
+				deployProgress.Accounts[accountId].Status = "error"
+				deployProgress.Accounts[accountId].Err = ctx.Err()
+			}
 			return true
 		}
 		return false
@@ -485,7 +490,8 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 			// simulate getting deployCache from remote
 			deployCache := c.accountDeployCache(account, deployDatas[i])
 
-			if c.accounts[_i].DeployCache != deployCache {
+			if c.accountDeployCache(account, deployDatas[i]) != deployCache {
+				c.accounts[_i].DeployCache = deployCache // update local DeployCache to reflect the remotes state
 				verifyProgress.Accounts[account.Id].Status = "error"
 				verifyProgress.Accounts[account.Id].Err = errors.New("account is out of sync")
 			} else {

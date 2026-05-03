@@ -79,7 +79,7 @@ func DeployMany(ctx context.Context, c client.Client, accounts ...client.Account
 				strings.Join(
 					slicest.Map(ids, func(id client.AccountId) string {
 						if dp.Accounts[id].Err != nil {
-							return fmt.Sprintf("%s %s", accountNameRenderer.Render(accountNamesMap[id]), dp.Accounts[id].Err.Error())
+							return fmt.Sprintf("%s Error: %s", accountNameRenderer.Render(accountNamesMap[id]), dp.Accounts[id].Err.Error())
 						}
 						return fmt.Sprintf("%s Success", accountNameRenderer.Render(accountNamesMap[id]))
 					}),
