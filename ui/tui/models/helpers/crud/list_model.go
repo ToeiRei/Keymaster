@@ -4,6 +4,8 @@
 package crud
 
 import (
+	"context"
+
 	"github.com/bobg/go-generics/v4/slices"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -153,11 +155,11 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 					{Name: "Delete", Cmd: popupviews.OpenProgress(
 						popupviews.ProgressSpinner,
 						"Deleting "+m.crud.Texts.EntityNameSingular,
-						func(_ popupviews.ProgressChan) tea.Cmd {
+						func(ctx context.Context, _ popupviews.ProgressChan) tea.Cmd {
 							return func() tea.Msg {
 								return listMsgDeleteResult[TRecord]{
 									record: *selectedRecord,
-									err:    m.crud.deleteRecord(m.crud.getRecordId(*selectedRecord)),
+									err:    m.crud.deleteRecord(ctx, m.crud.getRecordId(*selectedRecord)),
 								}
 							}
 						},
@@ -219,8 +221,8 @@ var _ util.Model = (*ListModel[any, any, any, any, any])(nil)
 func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) reload() tea.Cmd {
 	return popupviews.OpenProgress(
 		popupviews.ProgressSpinner,
-		"Loading "+m.crud.Texts.EntityNameMultiple, func(pc popupviews.ProgressChan) tea.Cmd {
-			records, err := m.crud.getRecords(util.NewZero[TFilter]())
+		"Loading "+m.crud.Texts.EntityNameMultiple, func(ctx context.Context, pc popupviews.ProgressChan) tea.Cmd {
+			records, err := m.crud.getRecords(ctx, util.NewZero[TFilter]())
 			return util.TeaMsgToCmd(listMsgReloaded[TRecord]{records, err})
 		},
 	)

@@ -53,7 +53,7 @@ func VerifyMany(ctx context.Context, c client.Client, accounts ...client.Account
 	return popupviews.OpenProgress(
 		popupviews.ProgressBar,
 		"Verifying Accounts",
-		func(pc popupviews.ProgressChan) tea.Cmd {
+		func(_ context.Context, pc popupviews.ProgressChan) tea.Cmd {
 			var dp client.VerifyProgressAccounts
 
 			// map [client.VerifyProgressAccounts] chan to [popupviews.Progress] chan

@@ -45,15 +45,15 @@ func DeployMany(ctx context.Context, c client.Client, accounts ...client.Account
 	accountNamesWidth := slicest.Reduce(slicest.MapValues(accountNamesMap), func(accountName string, width int) int { return max(width, len(accountName)) })
 	accountNameRenderer := lipgloss.NewStyle().Width(accountNamesWidth)
 
-	dpc, err := c.DeployAccounts(ctx, ids...)
-	if err != nil {
-		return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil)
-	}
-
 	return popupviews.OpenProgress(
 		popupviews.ProgressBar,
 		"Deploying Accounts",
-		func(pc popupviews.ProgressChan) tea.Cmd {
+		func(ctx context.Context, pc popupviews.ProgressChan) tea.Cmd {
+			dpc, err := c.DeployAccounts(ctx, ids...)
+			if err != nil {
+				return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil)
+			}
+
 			var dp client.DeployProgressAccounts
 
 			// map [client.DeployProgressAccounts] chan to [popupviews.Progress] chan
@@ -88,5 +88,7 @@ func DeployMany(ctx context.Context, c client.Client, accounts ...client.Account
 				nil,
 			)
 		},
+		popupviews.WithContext(ctx),
+		popupviews.WithCancel(),
 	)
 }

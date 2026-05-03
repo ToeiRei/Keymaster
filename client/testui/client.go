@@ -351,16 +351,34 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 		}),
 	}
 
+	checkContextCanceled := func(accountId client.AccountId, deployProgress client.DeployProgressAccounts) bool {
+		if ctx.Err() != nil {
+			deployProgress.Accounts[accountId].Status = "error"
+			deployProgress.Accounts[accountId].Progress = 1
+			deployProgress.Accounts[accountId].Err = ctx.Err()
+			return true
+		}
+		return false
+	}
+
 	go func() {
 		defer close(deployProgressChan)
 
+	AccountLoop:
 		for i, account := range accounts {
+			if checkContextCanceled(account.Id, deployProgress) {
+				continue AccountLoop
+			}
+
 			deployProgress.Accounts[account.Id].Status = "deploying"
 			deployProgressChan <- deployProgress
 
 			// simulate deplay
 			for _i := range 5 {
 				time.Sleep(time.Millisecond * 100)
+				if checkContextCanceled(account.Id, deployProgress) {
+					continue AccountLoop
+				}
 				deployProgress.Accounts[account.Id].Progress = float64(_i+1) / 10
 				deployProgressChan <- deployProgress
 			}
@@ -377,6 +395,9 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 			// simulate deplay
 			for _i := range 5 {
 				time.Sleep(time.Millisecond * 100)
+				if checkContextCanceled(account.Id, deployProgress) {
+					continue AccountLoop
+				}
 				deployProgress.Accounts[account.Id].Progress = float64(_i+6) / 10
 				deployProgressChan <- deployProgress
 			}
@@ -386,6 +407,7 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 			deployProgress.Accounts[account.Id].Progress = 1
 			deployProgressChan <- deployProgress
 		}
+		deployProgressChan <- deployProgress
 	}()
 
 	return deployProgressChan, nil

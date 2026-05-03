@@ -55,27 +55,27 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 		crud.Texts{"Link", "Links"},
 
 		func(record recordT) recordIdT { return record.link.Id },
-		func(filter filterT) ([]recordT, error) {
-			links, err := c.ListLinksForAccount(context.Background(), account.Id, true)
+		func(ctx context.Context, filter filterT) ([]recordT, error) {
+			links, err := c.ListLinksForAccount(ctx, account.Id, true)
 			if err != nil {
 				return nil, err
 			}
 
 			return slicest.MapX(links, func(link client.Link) (recordT, error) {
-				return linkToRecord(context.Background(), c, link)
+				return linkToRecord(ctx, c, link)
 			})
 		},
-		func(id recordIdT) (recordT, error) {
-			link, err := c.GetLink(context.Background(), id)
+		func(ctx context.Context, id recordIdT) (recordT, error) {
+			link, err := c.GetLink(ctx, id)
 			if err != nil {
 				return recordT{}, err
 			}
 
-			return linkToRecord(context.Background(), c, link)
+			return linkToRecord(ctx, c, link)
 		},
-		func(recordCreate recordCreateT) (recordT, error) {
+		func(ctx context.Context, recordCreate recordCreateT) (recordT, error) {
 			var record recordT
-			err := c.WithTransaction(context.Background(), func(c client.Client) error {
+			err := c.WithTransaction(ctx, func(c client.Client) error {
 				expr, err := tags.ParseMatcher(recordCreate.TagMatcher)
 				if err != nil {
 					return err
@@ -87,7 +87,7 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 				}
 
 				link, err := c.CreateLink(
-					context.Background(),
+					ctx,
 					account.Id,
 					expr.String(),
 					expiresAt,
@@ -96,14 +96,14 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 					return err
 				}
 
-				record, err = linkToRecord(context.Background(), c, link)
+				record, err = linkToRecord(ctx, c, link)
 				return err
 			})
 			return record, err
 		},
-		func(id recordIdT, recordUpdate recordUpdateT) (recordT, error) {
+		func(ctx context.Context, id recordIdT, recordUpdate recordUpdateT) (recordT, error) {
 			var record recordT
-			err := c.WithTransaction(context.Background(), func(c client.Client) error {
+			err := c.WithTransaction(ctx, func(c client.Client) error {
 				expr, err := tags.ParseMatcher(recordUpdate.TagMatcher)
 				if err != nil {
 					return err
@@ -115,7 +115,7 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 				}
 
 				if err := c.UpdateLink(
-					context.Background(),
+					ctx,
 					id,
 					account.Id,
 					expr.String(),
@@ -124,18 +124,18 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 					return err
 				}
 
-				link, err := c.GetLink(context.Background(), id)
+				link, err := c.GetLink(ctx, id)
 				if err != nil {
 					return err
 				}
 
-				record, err = linkToRecord(context.Background(), c, link)
+				record, err = linkToRecord(ctx, c, link)
 				return err
 			})
 			return record, err
 		},
-		func(id recordIdT) error {
-			return c.DeleteLinks(context.Background(), id)
+		func(ctx context.Context, id recordIdT) error {
+			return c.DeleteLinks(ctx, id)
 		},
 
 		table.NewBubblesTableRenderer(table.Columns[recordT]{

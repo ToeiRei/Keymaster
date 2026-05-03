@@ -4,16 +4,19 @@
 package popupviews
 
 import (
+	"context"
 	"sync/atomic"
-	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
+	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 type progressMode int
@@ -28,18 +31,20 @@ type progressId uint32
 var progressIdCounter atomic.Uint32
 
 type ProgressModel struct {
-	id     progressId
-	title  string
-	status string
+	id        progressId
+	title     string
+	status    string
+	mode      progressMode
+	ctx       context.Context
+	ctxCancel context.CancelFunc
 
-	mode         progressMode
-	show         bool
 	size         util.Size
 	progress     float64
 	progressChan ProgressChan
 
 	spinnerModel spinner.Model
 	barModel     progress.Model
+	formModel    *form.Form[struct{}]
 }
 
 type Progress struct {
@@ -50,13 +55,26 @@ type Progress struct {
 // This channel is for reporting progress to the Progress-Popup-Listener. Do not close the channel, as this will be done by the Progress Popup after returning!
 type ProgressChan = chan Progress
 
-func OpenProgress(mode progressMode, title string, fn func(ProgressChan) tea.Cmd) tea.Cmd {
+type ProgressOption func(m *ProgressModel)
+
+func WithCancel() ProgressOption {
+	return func(m *ProgressModel) { m.ctx, m.ctxCancel = context.WithCancel(m.ctx) }
+}
+
+// overrides default context and all previos cancel settings
+func WithContext(ctx context.Context) ProgressOption {
+	return func(m *ProgressModel) { m.ctx, m.ctxCancel = ctx, nil }
+}
+
+func OpenProgress(mode progressMode, title string, fn func(ctx context.Context, pc ProgressChan) tea.Cmd, opts ...ProgressOption) tea.Cmd {
 	id := progressId(progressIdCounter.Add(1))
 	progressChan := make(ProgressChan)
 	model := &ProgressModel{
 		id:           id,
 		title:        title,
 		mode:         mode,
+		ctx:          context.Background(),
+		ctxCancel:    nil,
 		progressChan: progressChan,
 	}
 
@@ -67,13 +85,17 @@ func OpenProgress(mode progressMode, title string, fn func(ProgressChan) tea.Cmd
 		model.barModel = progress.New(progress.WithoutPercentage())
 	}
 
+	for _, opt := range opts {
+		opt(model)
+	}
+
 	return tea.Sequence(
 		popup.Open(util.ModelPointer(model)),
-		func() tea.Msg { return progressDoneMsg{model.id, fn(model.progressChan)} },
+		func() tea.Msg { return progressDoneMsg{model.id, fn(model.ctx, model.progressChan)} },
 	)
 }
 
-func (m ProgressModel) Init() tea.Cmd {
+func (m *ProgressModel) Init() tea.Cmd {
 	var subModelCmd tea.Cmd
 	switch m.mode {
 	case ProgressSpinner:
@@ -82,32 +104,39 @@ func (m ProgressModel) Init() tea.Cmd {
 		subModelCmd = m.barModel.Init()
 	}
 
+	var formOpts []form.FormOpt[struct{}]
+	if m.ctxCancel != nil {
+		formOpts = append(formOpts, form.WithRowItem[struct{}]("_cancel", formelement.NewButton("Cancel",
+			formelement.WithButtonActionCancel(),
+			formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
+		)))
+	}
+
+	m.formModel = util.NewPointer(form.New(
+		append([]form.FormOpt[struct{}]{
+			form.WithDefaultRowAlign[struct{}](form.Center),
+			form.WithOnCancel[struct{}](func() tea.Cmd {
+				m.ctxCancel()
+				return nil
+			}),
+		}, formOpts...)...,
+	))
+
 	return tea.Sequence(
-		subModelCmd,
-		tea.Batch(
-			m.ListenProgressCmd,
-			func() tea.Msg {
-				// give a graceperiod until the progress popup fades in, or show on first [progressProgressMsg]
-				time.Sleep(time.Millisecond * 0) // TODO confirm thes is even wanted/needed
-				return progressFadeInMsg{m.id}
-			},
-		),
+		tea.Batch(subModelCmd, m.formModel.Init()),
+		m.ListenProgressCmd,
 	)
 }
 
 func (m *ProgressModel) Update(msg tea.Msg) tea.Cmd {
 	if m.size.UpdateFromMsg(msg) {
 		m.barModel.Width = util.Clamp(20, m.size.Width/2, m.size.Width)
-		return nil
+		return m.formModel.Update(util.Size{m.size.Width, 3}.ToMsg())
 	}
 
 	if msg, ok := msg.(progressMsg); ok && msg.id() == m.id {
 		switch msg := msg.(type) {
-		case progressFadeInMsg:
-			m.show = true
-
 		case progressProgressMsg:
-			m.show = true
 			m.progress = msg.progress
 			m.status = msg.status
 
@@ -122,11 +151,13 @@ func (m *ProgressModel) Update(msg tea.Msg) tea.Cmd {
 		}
 	}
 
+	cmd := m.formModel.Update(msg)
+
 	if m.mode == ProgressSpinner {
-		return util.UpdateTeaModelInplace(msg, &m.spinnerModel)
+		cmd = tea.Batch(cmd, util.UpdateTeaModelInplace(msg, &m.spinnerModel))
 	}
 
-	return nil
+	return cmd
 }
 
 func (m *ProgressModel) ListenProgressCmd() tea.Msg {
@@ -137,11 +168,7 @@ func (m *ProgressModel) ListenProgressCmd() tea.Msg {
 }
 
 func (m ProgressModel) View() string {
-	if !m.show {
-		return ""
-	}
-
-	blocks := make([]string, 0, 3)
+	blocks := make([]string, 0, 4)
 
 	switch m.mode {
 	case ProgressSpinner:
@@ -157,14 +184,19 @@ func (m ProgressModel) View() string {
 		blocks = append(blocks, lipgloss.NewStyle().Italic(true).Render(m.status))
 	}
 
+	formView := m.formModel.View()
+	if formView != "" {
+		blocks = append(blocks, formView)
+	}
+
 	return lipgloss.JoinVertical(lipgloss.Center, blocks...)
 }
 
 func (m *ProgressModel) Focus(parentKeyMap help.KeyMap) tea.Cmd {
-	return util.AnnounceKeyMapCmd(parentKeyMap)
+	return m.formModel.Focus(parentKeyMap)
 }
 
-func (m *ProgressModel) Blur() {}
+func (m *ProgressModel) Blur() { m.formModel.Blur() }
 
 // *[ProgressModel] implements [util.Model]
 var _ util.Model = (*ProgressModel)(nil)

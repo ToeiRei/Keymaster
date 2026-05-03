@@ -4,6 +4,8 @@
 package crud
 
 import (
+	"context"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -32,11 +34,11 @@ func New[
 	texts Texts,
 
 	getRecordId func(record TRecord) TRecordId,
-	getRecords func(filter TFilter) ([]TRecord, error),
-	getRecord func(id TRecordId) (TRecord, error),
-	createRecord func(recordCreate TRecordCreate) (TRecord, error),
-	updateRecord func(id TRecordId, recordUpdate TRecordUpdate) (TRecord, error),
-	deleteRecord func(id TRecordId) error,
+	getRecords func(ctx context.Context, filter TFilter) ([]TRecord, error),
+	getRecord func(ctx context.Context, id TRecordId) (TRecord, error),
+	createRecord func(ctx context.Context, recordCreate TRecordCreate) (TRecord, error),
+	updateRecord func(ctx context.Context, id TRecordId, recordUpdate TRecordUpdate) (TRecord, error),
+	deleteRecord func(ctx context.Context, id TRecordId) error,
 
 	buildListTable func(records []TRecord, width int) ([]table.Column, []table.Row),
 	recordToRecordUpdate func(record TRecord) TRecordUpdate,

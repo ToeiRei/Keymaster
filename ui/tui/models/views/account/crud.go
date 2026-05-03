@@ -95,34 +95,34 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		crud.Texts{"Account", "Accounts"},
 
 		func(record recordT) recordIdT { return record.account.Id },
-		func(filter filterT) ([]recordT, error) {
-			accounts, err := c.ListAccounts(context.Background())
+		func(ctx context.Context, filter filterT) ([]recordT, error) {
+			accounts, err := c.ListAccounts(ctx)
 			if err != nil {
 				return nil, err
 			}
 
 			return slicest.MapX(accounts, func(account client.Account) (recordT, error) {
-				return accountToRecord(context.Background(), c, account)
+				return accountToRecord(ctx, c, account)
 			})
 		},
-		func(id recordIdT) (recordT, error) {
-			account, err := c.GetAccount(context.Background(), id)
+		func(ctx context.Context, id recordIdT) (recordT, error) {
+			account, err := c.GetAccount(ctx, id)
 			if err != nil {
 				return recordT{}, err
 			}
 
-			return accountToRecord(context.Background(), c, account)
+			return accountToRecord(ctx, c, account)
 		},
-		func(recordCreate recordCreateT) (recordT, error) {
+		func(ctx context.Context, recordCreate recordCreateT) (recordT, error) {
 			var record recordT
-			err := c.WithTransaction(context.Background(), func(c client.Client) error {
+			err := c.WithTransaction(ctx, func(c client.Client) error {
 				port, err := strconv.Atoi(recordCreate.Port)
 				if err != nil {
 					return err
 				}
 
 				account, err := c.CreateAccount(
-					context.Background(),
+					ctx,
 					recordCreate.Username,
 					recordCreate.Host,
 					port,
@@ -133,21 +133,21 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 					return err
 				}
 
-				record, err = accountToRecord(context.Background(), c, account)
+				record, err = accountToRecord(ctx, c, account)
 				return err
 			})
 			return record, err
 		},
-		func(id recordIdT, recordUpdate recordUpdateT) (recordT, error) {
+		func(ctx context.Context, id recordIdT, recordUpdate recordUpdateT) (recordT, error) {
 			var record recordT
-			err := c.WithTransaction(context.Background(), func(c client.Client) error {
+			err := c.WithTransaction(ctx, func(c client.Client) error {
 				port, err := strconv.Atoi(recordUpdate.Port)
 				if err != nil {
 					return err
 				}
 
 				if err := c.UpdateAccount(
-					context.Background(),
+					ctx,
 					id,
 					recordUpdate.Username,
 					recordUpdate.Host,
@@ -158,18 +158,18 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 					return err
 				}
 
-				account, err := c.GetAccount(context.Background(), id)
+				account, err := c.GetAccount(ctx, id)
 				if err != nil {
 					return err
 				}
 
-				record, err = accountToRecord(context.Background(), c, account)
+				record, err = accountToRecord(ctx, c, account)
 				return err
 			})
 			return record, err
 		},
-		func(id recordIdT) error {
-			return c.DeleteAccounts(context.Background(), id)
+		func(ctx context.Context, id recordIdT) error {
+			return c.DeleteAccounts(ctx, id)
 		},
 
 		table.NewBubblesTableRenderer(table.Columns[recordT]{

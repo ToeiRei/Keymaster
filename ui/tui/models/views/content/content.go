@@ -63,8 +63,12 @@ func New() *Model {
 	_, _ = c.CreateLink(context.Background(), 5, "company:work", time.Now().Add(time.Hour))
 	_, _ = c.CreateLink(context.Background(), 5, "company:big_money", time.Now())
 
-	c = mock.NewClient(mock.WitchBaseClient(c), mock.WitchPre(func(method string, args map[string]any) {
+	c = mock.NewClient(mock.WitchBaseClient(c), mock.WitchPre(func(method string, args map[string]any) error {
 		time.Sleep(time.Millisecond * 200)
+		if ctx, ok := args["ctx"].(context.Context); ok {
+			return ctx.Err()
+		}
+		return nil
 	}))
 
 	menuPtr := util.ModelPointer(menu.New(
@@ -127,7 +131,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			return popupviews.OpenProgress(
 				popupviews.ProgressSpinner,
 				"Test Progress Spinner",
-				func(_ popupviews.ProgressChan) tea.Cmd {
+				func(_ context.Context, _ popupviews.ProgressChan) tea.Cmd {
 					time.Sleep(time.Second * 2)
 					return nil
 				},
@@ -137,7 +141,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			return popupviews.OpenProgress(
 				popupviews.ProgressBar,
 				"Test Progress Bar",
-				func(pc popupviews.ProgressChan) tea.Cmd {
+				func(_ context.Context, pc popupviews.ProgressChan) tea.Cmd {
 					for i := range 100 {
 						pc <- popupviews.Progress{
 							Progress: float64(i+1) / 100,

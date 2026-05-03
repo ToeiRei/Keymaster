@@ -94,29 +94,29 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		crud.Texts{"Public Key", "Public Keys"},
 
 		func(record recordT) recordIdT { return record.publicKey.Id },
-		func(filter filterT) ([]recordT, error) {
-			publicKeys, err := c.ListPublicKeys(context.Background(), "")
+		func(ctx context.Context, filter filterT) ([]recordT, error) {
+			publicKeys, err := c.ListPublicKeys(ctx, "")
 			if err != nil {
 				return nil, err
 			}
 
 			return slicest.MapX(publicKeys, func(publicKey client.PublicKey) (recordT, error) {
-				return publicKeyToRecord(context.Background(), c, publicKey)
+				return publicKeyToRecord(ctx, c, publicKey)
 			})
 		},
-		func(id recordIdT) (recordT, error) {
-			publicKey, err := c.GetPublicKey(context.Background(), id)
+		func(ctx context.Context, id recordIdT) (recordT, error) {
+			publicKey, err := c.GetPublicKey(ctx, id)
 			if err != nil {
 				return recordT{}, err
 			}
 
-			return publicKeyToRecord(context.Background(), c, publicKey)
+			return publicKeyToRecord(ctx, c, publicKey)
 		},
-		func(recordCreate recordCreateT) (recordT, error) {
+		func(ctx context.Context, recordCreate recordCreateT) (recordT, error) {
 			var record recordT
-			err := c.WithTransaction(context.Background(), func(c client.Client) error {
+			err := c.WithTransaction(ctx, func(c client.Client) error {
 				publicKey, err := c.CreatePublicKey(
-					context.Background(),
+					ctx,
 					recordCreate.Algorithm+" "+recordCreate.Data,
 					recordCreate.Comment,
 					tags.Parse(recordCreate.Tags),
@@ -125,16 +125,16 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 					return err
 				}
 
-				record, err = publicKeyToRecord(context.Background(), c, publicKey)
+				record, err = publicKeyToRecord(ctx, c, publicKey)
 				return err
 			})
 			return record, err
 		},
-		func(id recordIdT, recordCreate recordUpdateT) (recordT, error) {
+		func(ctx context.Context, id recordIdT, recordCreate recordUpdateT) (recordT, error) {
 			var record recordT
-			err := c.WithTransaction(context.Background(), func(c client.Client) error {
+			err := c.WithTransaction(ctx, func(c client.Client) error {
 				if err := c.UpdatePublicKey(
-					context.Background(),
+					ctx,
 					id,
 					recordCreate.Comment,
 					tags.Parse(recordCreate.Tags),
@@ -142,18 +142,18 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 					return err
 				}
 
-				publicKey, err := c.GetPublicKey(context.Background(), id)
+				publicKey, err := c.GetPublicKey(ctx, id)
 				if err != nil {
 					return err
 				}
 
-				record, err = publicKeyToRecord(context.Background(), c, publicKey)
+				record, err = publicKeyToRecord(ctx, c, publicKey)
 				return err
 			})
 			return record, err
 		},
-		func(id recordIdT) error {
-			return c.DeletePublicKeys(context.Background(), id)
+		func(ctx context.Context, id recordIdT) error {
+			return c.DeletePublicKeys(ctx, id)
 		},
 
 		table.NewBubblesTableRenderer(table.Columns[recordT]{

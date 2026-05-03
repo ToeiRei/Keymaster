@@ -4,6 +4,8 @@
 package crud
 
 import (
+	"context"
+
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
@@ -72,8 +74,8 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 			return popupviews.OpenProgress(
 				popupviews.ProgressSpinner,
 				"Creating "+m.crud.Texts.EntityNameSingular,
-				func(_ popupviews.ProgressChan) tea.Cmd {
-					record, err := m.crud.createRecord(result)
+				func(ctx context.Context, _ popupviews.ProgressChan) tea.Cmd {
+					record, err := m.crud.createRecord(ctx, result)
 					return util.TeaMsgToCmd(createMsgCreateResult[TRecord]{record, err})
 				},
 			), true

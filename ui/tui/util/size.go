@@ -17,7 +17,7 @@ func (s *Size) UpdateFromMsg(msg tea.Msg) bool {
 	return false
 }
 
-func (s *Size) ToMsg() tea.WindowSizeMsg {
+func (s Size) ToMsg() tea.WindowSizeMsg {
 	return tea.WindowSizeMsg{
 		Width:  s.Width,
 		Height: s.Height,

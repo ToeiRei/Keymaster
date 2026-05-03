@@ -212,16 +212,32 @@ var _ util.Model = (*Form[any])(nil)
 
 func (f *Form[T]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	f.focused, f.parentKeyMap = true, parentKeyMap
-	return f.items[f.activeIndex].Element.Focus(f.keymap())
+	return f.activeElementFocus(f.keymap())
 }
 
 func (f *Form[T]) Blur() {
 	f.focused, f.parentKeyMap = false, nil
-	f.items[f.activeIndex].Element.Blur()
+	f.activeElementBlur()
 }
 
 // *[Model] implements [util.Focusable]
 var _ util.Focusable = (*Form[any])(nil)
+
+func (f *Form[T]) hasActiveItem() bool { return f.activeIndex < len(f.items) }
+
+func (f *Form[T]) activeElementFocus(parentKeyMap help.KeyMap) tea.Cmd {
+	if !f.hasActiveItem() {
+		return util.AnnounceKeyMapCmd(parentKeyMap)
+	}
+	return f.items[f.activeIndex].Element.Focus(parentKeyMap)
+}
+
+func (f *Form[T]) activeElementBlur() {
+	if !f.hasActiveItem() {
+		return
+	}
+	f.items[f.activeIndex].Element.Blur()
+}
 
 func (f *Form[T]) viewRow(rowIndex int, availableWidth int, eager bool) []string {
 	return slicest.MapI(f.rows[rowIndex].items, func(i int, itemIndex int) string {
@@ -310,6 +326,10 @@ func (f *Form[T]) guardUnsavedChanges(action Action) tea.Cmd {
 func (f *Form[T]) updateElement(index int, msg tea.Msg) tea.Cmd {
 	var actionCmd tea.Cmd
 
+	if index >= len(f.items) {
+		return nil
+	}
+
 	updateCmd, action := f.items[index].Element.Update(msg)
 
 	switch action {
@@ -354,10 +374,10 @@ func (f *Form[T]) changeActiveIndex(index_delta int) tea.Cmd {
 		return nil
 	}
 
-	f.items[f.activeIndex].Element.Blur()
+	f.activeElementBlur()
 	f.activeIndex = newActiveIndex
 
-	return f.items[f.activeIndex].Element.Focus(f.keymap())
+	return f.activeElementFocus(f.keymap())
 }
 
 func (f *Form[T]) Get() (T, error) {
