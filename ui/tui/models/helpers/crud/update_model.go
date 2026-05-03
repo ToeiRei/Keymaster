@@ -75,6 +75,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 					record, err := m.crud.updateRecord(ctx, m.crud.getRecordId(m.record), result)
 					return util.TeaMsgToCmd(updateMsgUpdateResult[TRecord]{record, err})
 				},
+				popupviews.WithCancel(),
 			), true
 		}),
 		form.WithOnCancel[TRecordUpdate](func() tea.Cmd {

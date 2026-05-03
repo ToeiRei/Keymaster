@@ -156,13 +156,12 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 						popupviews.ProgressSpinner,
 						"Deleting "+m.crud.Texts.EntityNameSingular,
 						func(ctx context.Context, _ popupviews.ProgressChan) tea.Cmd {
+							err := m.crud.deleteRecord(ctx, m.crud.getRecordId(*selectedRecord))
 							return func() tea.Msg {
-								return listMsgDeleteResult[TRecord]{
-									record: *selectedRecord,
-									err:    m.crud.deleteRecord(ctx, m.crud.getRecordId(*selectedRecord)),
-								}
+								return listMsgDeleteResult[TRecord]{*selectedRecord, err}
 							}
 						},
+						popupviews.WithCancel(),
 					)},
 				},
 			)
@@ -225,6 +224,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) r
 			records, err := m.crud.getRecords(ctx, util.NewZero[TFilter]())
 			return util.TeaMsgToCmd(listMsgReloaded[TRecord]{records, err})
 		},
+		popupviews.WithCancel(),
 	)
 }
 
