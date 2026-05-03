@@ -97,65 +97,75 @@ func NewCrud(c client.Client, rc router.Controll, publicKey client.PublicKey) *c
 			return linkToRecord(context.Background(), c, link)
 		},
 		func(recordCreate recordCreateT) (recordT, error) {
-			expr, err := tags.ParseMatcher(recordCreate.TagMatcher)
-			if err != nil {
-				return recordT{}, err
-			}
+			var record recordT
+			err := c.WithTransaction(context.Background(), func(c client.Client) error {
+				expr, err := tags.ParseMatcher(recordCreate.TagMatcher)
+				if err != nil {
+					return err
+				}
 
-			expiresAt, err := util.ParseTime(recordCreate.ExpiresAt)
-			if err != nil {
-				return recordT{}, err
-			}
+				expiresAt, err := util.ParseTime(recordCreate.ExpiresAt)
+				if err != nil {
+					return err
+				}
 
-			account, err := resolveAccountByName(context.Background(), c, recordCreate.Account)
-			if err != nil {
-				return recordT{}, err
-			}
+				account, err := resolveAccountByName(context.Background(), c, recordCreate.Account)
+				if err != nil {
+					return err
+				}
 
-			link, err := c.CreateLink(
-				context.Background(),
-				account.Id,
-				expr.String(),
-				expiresAt,
-			)
-			if err != nil {
-				return recordT{}, err
-			}
+				link, err := c.CreateLink(
+					context.Background(),
+					account.Id,
+					expr.String(),
+					expiresAt,
+				)
+				if err != nil {
+					return err
+				}
 
-			return linkToRecord(context.Background(), c, link)
+				record, err = linkToRecord(context.Background(), c, link)
+				return err
+			})
+			return record, err
 		},
 		func(id recordIdT, recordUpdate recordUpdateT) (recordT, error) {
-			expr, err := tags.ParseMatcher(recordUpdate.TagMatcher)
-			if err != nil {
-				return recordT{}, err
-			}
+			var record recordT
+			err := c.WithTransaction(context.Background(), func(c client.Client) error {
+				expr, err := tags.ParseMatcher(recordUpdate.TagMatcher)
+				if err != nil {
+					return err
+				}
 
-			expiresAt, err := util.ParseTime(recordUpdate.ExpiresAt)
-			if err != nil {
-				return recordT{}, err
-			}
+				expiresAt, err := util.ParseTime(recordUpdate.ExpiresAt)
+				if err != nil {
+					return err
+				}
 
-			account, err := resolveAccountByName(context.Background(), c, recordUpdate.Account)
-			if err != nil {
-				return recordT{}, err
-			}
+				account, err := resolveAccountByName(context.Background(), c, recordUpdate.Account)
+				if err != nil {
+					return err
+				}
 
-			if err := c.UpdateLink(
-				context.Background(),
-				id,
-				account.Id,
-				expr.String(),
-				expiresAt,
-			); err != nil {
-				return recordT{}, err
-			}
+				if err := c.UpdateLink(
+					context.Background(),
+					id,
+					account.Id,
+					expr.String(),
+					expiresAt,
+				); err != nil {
+					return err
+				}
 
-			link, err := c.GetLink(context.Background(), id)
-			if err != nil {
-				return recordT{}, err
-			}
+				link, err := c.GetLink(context.Background(), id)
+				if err != nil {
+					return err
+				}
 
-			return linkToRecord(context.Background(), c, link)
+				record, err = linkToRecord(context.Background(), c, link)
+				return err
+			})
+			return record, err
 		},
 		func(id recordIdT) error {
 			return c.DeleteLinks(context.Background(), id)

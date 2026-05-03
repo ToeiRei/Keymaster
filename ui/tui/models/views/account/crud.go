@@ -114,49 +114,59 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			return accountToRecord(context.Background(), c, account)
 		},
 		func(recordCreate recordCreateT) (recordT, error) {
-			port, err := strconv.Atoi(recordCreate.Port)
-			if err != nil {
-				return recordT{}, err
-			}
+			var record recordT
+			err := c.WithTransaction(context.Background(), func(c client.Client) error {
+				port, err := strconv.Atoi(recordCreate.Port)
+				if err != nil {
+					return err
+				}
 
-			account, err := c.CreateAccount(
-				context.Background(),
-				recordCreate.Username,
-				recordCreate.Host,
-				port,
-				recordCreate.DeployMethod,
-				recordCreate.DeploySecret,
-			)
-			if err != nil {
-				return recordT{}, err
-			}
+				account, err := c.CreateAccount(
+					context.Background(),
+					recordCreate.Username,
+					recordCreate.Host,
+					port,
+					recordCreate.DeployMethod,
+					recordCreate.DeploySecret,
+				)
+				if err != nil {
+					return err
+				}
 
-			return accountToRecord(context.Background(), c, account)
+				record, err = accountToRecord(context.Background(), c, account)
+				return err
+			})
+			return record, err
 		},
 		func(id recordIdT, recordUpdate recordUpdateT) (recordT, error) {
-			port, err := strconv.Atoi(recordUpdate.Port)
-			if err != nil {
-				return recordT{}, err
-			}
+			var record recordT
+			err := c.WithTransaction(context.Background(), func(c client.Client) error {
+				port, err := strconv.Atoi(recordUpdate.Port)
+				if err != nil {
+					return err
+				}
 
-			if err := c.UpdateAccount(
-				context.Background(),
-				id,
-				recordUpdate.Username,
-				recordUpdate.Host,
-				port,
-				recordUpdate.DeployMethod,
-				recordUpdate.DeploySecret,
-			); err != nil {
-				return recordT{}, err
-			}
+				if err := c.UpdateAccount(
+					context.Background(),
+					id,
+					recordUpdate.Username,
+					recordUpdate.Host,
+					port,
+					recordUpdate.DeployMethod,
+					recordUpdate.DeploySecret,
+				); err != nil {
+					return err
+				}
 
-			account, err := c.GetAccount(context.Background(), id)
-			if err != nil {
-				return recordT{}, err
-			}
+				account, err := c.GetAccount(context.Background(), id)
+				if err != nil {
+					return err
+				}
 
-			return accountToRecord(context.Background(), c, account)
+				record, err = accountToRecord(context.Background(), c, account)
+				return err
+			})
+			return record, err
 		},
 		func(id recordIdT) error {
 			return c.DeleteAccounts(context.Background(), id)

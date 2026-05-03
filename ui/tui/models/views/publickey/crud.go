@@ -112,34 +112,44 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			return publicKeyToRecord(context.Background(), c, publicKey)
 		},
 		func(recordCreate recordCreateT) (recordT, error) {
-			publicKey, err := c.CreatePublicKey(
-				context.Background(),
-				recordCreate.Algorithm+" "+recordCreate.Data,
-				recordCreate.Comment,
-				tags.Parse(recordCreate.Tags),
-			)
-			if err != nil {
-				return recordT{}, err
-			}
+			var record recordT
+			err := c.WithTransaction(context.Background(), func(c client.Client) error {
+				publicKey, err := c.CreatePublicKey(
+					context.Background(),
+					recordCreate.Algorithm+" "+recordCreate.Data,
+					recordCreate.Comment,
+					tags.Parse(recordCreate.Tags),
+				)
+				if err != nil {
+					return err
+				}
 
-			return publicKeyToRecord(context.Background(), c, publicKey)
+				record, err = publicKeyToRecord(context.Background(), c, publicKey)
+				return err
+			})
+			return record, err
 		},
 		func(id recordIdT, recordCreate recordUpdateT) (recordT, error) {
-			if err := c.UpdatePublicKey(
-				context.Background(),
-				id,
-				recordCreate.Comment,
-				tags.Parse(recordCreate.Tags),
-			); err != nil {
-				return recordT{}, err
-			}
+			var record recordT
+			err := c.WithTransaction(context.Background(), func(c client.Client) error {
+				if err := c.UpdatePublicKey(
+					context.Background(),
+					id,
+					recordCreate.Comment,
+					tags.Parse(recordCreate.Tags),
+				); err != nil {
+					return err
+				}
 
-			publicKey, err := c.GetPublicKey(context.Background(), id)
-			if err != nil {
-				return recordT{}, err
-			}
+				publicKey, err := c.GetPublicKey(context.Background(), id)
+				if err != nil {
+					return err
+				}
 
-			return publicKeyToRecord(context.Background(), c, publicKey)
+				record, err = publicKeyToRecord(context.Background(), c, publicKey)
+				return err
+			})
+			return record, err
 		},
 		func(id recordIdT) error {
 			return c.DeletePublicKeys(context.Background(), id)
