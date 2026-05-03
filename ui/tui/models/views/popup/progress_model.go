@@ -184,7 +184,7 @@ func (m ProgressModel) View() string {
 		blocks = append(blocks, lipgloss.NewStyle().Italic(true).Render(m.status))
 	}
 
-	formView := m.formModel.View()
+	formView := m.formModel.ViewLazy()
 	if formView != "" {
 		blocks = append(blocks, formView)
 	}
