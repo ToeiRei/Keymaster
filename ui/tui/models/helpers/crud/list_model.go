@@ -129,7 +129,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 		}
 		switch {
 		case key.Matches(msg, ListBaseKeyMap.Create):
-			return m.crud.routerControll.Push(util.ModelPointer(NewCreate(m.crud, nil)))
+			return m.crud.routerControll.Push(util.ModelPointer(NewCreate(m.crud, m.crud.createRecordPreset())))
 
 		case key.Matches(msg, ListBaseKeyMap.Edit):
 			selectedRecord := m.selectedRecord()
@@ -192,6 +192,11 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) V
 
 // Focus implements util.Model.
 func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+	if m.crud.ReloadOnNextFocus {
+		m.crud.ReloadOnNextFocus = false
+		return m.reload()
+		// no need to focus or announce anything, as the popup interceptor will take it away again.
+	}
 	m.focussed = true
 	m.table.Focus()
 	return tea.Batch(

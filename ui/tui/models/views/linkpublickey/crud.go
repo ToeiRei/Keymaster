@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
-package linkaccount
+package linkpublickey
 
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/tags"
@@ -20,10 +21,12 @@ import (
 
 type recordT = struct {
 	link                 client.Link
+	account              client.Account
 	linkedPublicKeyCount int
 }
 
 type recordCreateT = struct {
+	Account    string `form:"account"`
 	TagMatcher string `form:"tag_matcher"`
 	ExpiresAt  string `form:"expires_at"`
 }
@@ -35,28 +38,48 @@ type recordIdT = client.LinkId
 type filterT = struct{}
 
 func linkToRecord(ctx context.Context, c client.Client, link client.Link) (recordT, error) {
+	account, err := c.GetAccount(ctx, link.AccountId)
+	if err != nil {
+		return recordT{}, err
+	}
+
 	publicKeys, err := c.ListPublicKeys(ctx, link.TagMatcher)
 	if err != nil {
 		return recordT{}, err
 	}
 
-	return recordT{link, len(publicKeys)}, nil
+	return recordT{link, account, len(publicKeys)}, nil
+}
+
+func resolveAccountByName(ctx context.Context, c client.Client, accountName string) (client.Account, error) {
+	accounts, err := c.ListAccounts(ctx)
+	if err != nil {
+		return client.Account{}, err
+	}
+
+	account := slicest.Find(accounts, func(account client.Account) bool { return account.String() == accountName })
+	if account == nil {
+		return client.Account{}, fmt.Errorf(`Account with "protocol user@host:port" = %q does not exist`, accountName)
+	}
+
+	return *account, nil
 }
 
 func formRows[T comparable]() []form.FormOpt[T] {
 	return []form.FormOpt[T]{
+		form.WithRowItem[T]("account", formelement.NewText("Account", "fully qualified name of account (proto user@host:port)")),
 		form.WithRowItem[T]("tag_matcher", formelement.NewText("Tag Matcher", "text to match tags of public keys")),
 		form.WithRowItem[T]("expires_at", formelement.NewText("Expires At", "date on witch this link will expire and its public keys will loose access")),
 	}
 }
 
-func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
+func NewCrud(c client.Client, rc router.Controll, publicKey client.PublicKey) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
 		crud.Texts{"Link", "Links"},
 
 		func(record recordT) recordIdT { return record.link.Id },
 		func(filter filterT) ([]recordT, error) {
-			links, err := c.ListLinksForAccount(context.Background(), account.Id, true)
+			links, err := c.ListLinksForPublicKey(context.Background(), publicKey.Id, true)
 			if err != nil {
 				return nil, err
 			}
@@ -84,6 +107,11 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 				return recordT{}, err
 			}
 
+			account, err := resolveAccountByName(context.Background(), c, recordCreate.Account)
+			if err != nil {
+				return recordT{}, err
+			}
+
 			link, err := c.CreateLink(
 				context.Background(),
 				account.Id,
@@ -103,6 +131,11 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 			}
 
 			expiresAt, err := util.ParseTime(recordUpdate.ExpiresAt)
+			if err != nil {
+				return recordT{}, err
+			}
+
+			account, err := resolveAccountByName(context.Background(), c, recordUpdate.Account)
 			if err != nil {
 				return recordT{}, err
 			}
@@ -131,11 +164,12 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 		table.NewBubblesTableRenderer(table.Columns[recordT]{
 			{Title: "Tag Matcher", View: func(r recordT) string { return r.link.TagMatcher }},
 			{Title: "Expires At", View: func(r recordT) string { return fmt.Sprint(r.link.ExpiresAt) }},
-			{Title: "Account", View: func(r recordT) string { return account.String() }},
+			{Title: "Account", View: func(r recordT) string { return r.account.String() }},
 			{Title: "Public Keys", View: func(r recordT) string { return fmt.Sprint(r.linkedPublicKeyCount) }},
 		}),
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{
+				record.account.String(),
 				record.link.TagMatcher,
 				util.StringifyTime(record.link.ExpiresAt),
 			}
@@ -148,10 +182,16 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 
 		crud.WithListDuplicateAction[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](func(record recordT) recordCreateT {
 			return recordCreateT{
+				record.account.String(),
 				record.link.TagMatcher,
 				util.StringifyTime(record.link.ExpiresAt),
 			}
 		}),
 		crud.WithListReloadAfterChange[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](true),
+		crud.WithCreateRecordPreset[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](func() recordCreateT {
+			return recordCreateT{
+				TagMatcher: strings.Join(publicKey.Tags.Slice(), " & "),
+			}
+		}),
 	)
 }

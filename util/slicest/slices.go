@@ -119,6 +119,38 @@ func Flatten2[T any, S ~[][]T](ss S) []T {
 	return result
 }
 
+// Find
+
+func Find[T any, S ~[]T](s S, fn func(T) bool) *T {
+	return FindI(s, func(_ int, t T) bool {
+		return fn(t)
+	})
+}
+
+func FindI[T any, S ~[]T](s S, fn func(int, T) bool) *T {
+	result, _ := FindXI(s, func(i int, t T) (bool, error) {
+		return fn(i, t), nil
+	})
+	return result
+}
+
+func FindX[T any, S ~[]T](s S, fn func(T) (bool, error)) (*T, error) {
+	return FindXI(s, func(_ int, t T) (bool, error) {
+		return fn(t)
+	})
+}
+
+func FindXI[T any, S ~[]T](s S, fn func(int, T) (bool, error)) (*T, error) {
+	for i, t := range s {
+		if ok, err := fn(i, t); err != nil {
+			return nil, err
+		} else if ok {
+			return &t, nil
+		}
+	}
+	return nil, nil
+}
+
 // Reduce
 
 // Reduce reduces slice S to type U.
@@ -129,7 +161,7 @@ func Reduce[T any, S ~[]T, U any](s S, fn func(T, U) U) U {
 }
 
 // ReduceI reduces slice S to type U.
-// - I: Provides index to callback.
+// I: Provides index to callback.
 func ReduceI[T any, S ~[]T, U any](s S, fn func(int, T, U) U) U {
 	result, _ := ReduceXI(s, func(i int, t T, u U) (U, error) {
 		return fn(i, t, u), nil
@@ -138,16 +170,16 @@ func ReduceI[T any, S ~[]T, U any](s S, fn func(int, T, U) U) U {
 }
 
 // ReduceXI reduces slice S to type U with error propagation.
-// - X: Stops on failure and returns error.
-// - I: Provides index to callback.
+// X: Stops on failure and returns error.
+// I: Provides index to callback.
 func ReduceXI[T any, S ~[]T, U any](s S, fn func(int, T, U) (U, error)) (U, error) {
 	var zero U
 	return ReduceXDI(s, zero, fn)
 }
 
 // ReduceDI reduces slice S to type U using explicit initial value.
-// - D: Uses init parameter as starting accumulator.
-// - I: Provides index to callback.
+// D: Uses init parameter as starting accumulator.
+// I: Provides index to callback.
 func ReduceDI[T any, S ~[]T, U any](s S, init U, fn func(int, T, U) U) U {
 	result, _ := ReduceXDI(s, init, func(i int, t T, u U) (U, error) {
 		return fn(i, t, u), nil
@@ -156,9 +188,9 @@ func ReduceDI[T any, S ~[]T, U any](s S, init U, fn func(int, T, U) U) U {
 }
 
 // ReduceXDI reduces slice S to type U with initial value and error propagation.
-// - X: Stops on failure and returns error.
-// - D: Uses init parameter as starting accumulator.
-// - I: Provides index to callback.
+// X: Stops on failure and returns error.
+// D: Uses init parameter as starting accumulator.
+// I: Provides index to callback.
 func ReduceXDI[T any, S ~[]T, U any](s S, init U, fn func(int, T, U) (U, error)) (U, error) {
 	var zero U
 	for i, t := range s {
@@ -172,7 +204,7 @@ func ReduceXDI[T any, S ~[]T, U any](s S, init U, fn func(int, T, U) (U, error))
 }
 
 // ReduceX reduces slice S to type U with error propagation.
-// - X: Stops on failure and returns error.
+// X: Stops on failure and returns error.
 func ReduceX[T any, S ~[]T, U any](s S, fn func(T, U) (U, error)) (U, error) {
 	return ReduceXI(s, func(_ int, t T, u U) (U, error) {
 		return fn(t, u)
@@ -180,8 +212,8 @@ func ReduceX[T any, S ~[]T, U any](s S, fn func(T, U) (U, error)) (U, error) {
 }
 
 // ReduceXD reduces slice S to type U with initial value and error propagation.
-// - X: Stops on failure and returns error.
-// - D: Uses init parameter as starting accumulator.
+// X: Stops on failure and returns error.
+// D: Uses init parameter as starting accumulator.
 func ReduceXD[T any, S ~[]T, U any](s S, init U, fn func(T, U) (U, error)) (U, error) {
 	return ReduceXDI(s, init, func(_ int, t T, u U) (U, error) {
 		return fn(t, u)
@@ -189,7 +221,7 @@ func ReduceXD[T any, S ~[]T, U any](s S, init U, fn func(T, U) (U, error)) (U, e
 }
 
 // ReduceD reduces slice S to type U using explicit initial value.
-// - D: Uses init parameter as starting accumulator.
+// D: Uses init parameter as starting accumulator.
 func ReduceD[T any, S ~[]T, U any](s S, init U, fn func(T, U) U) U {
 	result, _ := ReduceXD(s, init, func(t T, u U) (U, error) {
 		return fn(t, u), nil

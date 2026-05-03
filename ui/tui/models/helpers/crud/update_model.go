@@ -132,6 +132,11 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 }
 
 func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+	if m.crud.ReloadOnNextFocus {
+		m.crud.ReloadOnNextFocus = false
+		return m.Init()
+		// no need to focus or announce anything, as the popup interceptor will take it away again.
+	}
 	m.focussed = true
 	return tea.Batch(
 		windowtitle.Announce(m.crud.Texts.EntityNameMultiple),

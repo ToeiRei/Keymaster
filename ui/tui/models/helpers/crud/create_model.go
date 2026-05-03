@@ -28,7 +28,7 @@ type CreateModel[
 	// state
 	publicKey client.PublicKey
 	focussed  bool
-	preset    *TRecordCreate
+	preset    TRecordCreate
 
 	// util
 	size util.Size
@@ -43,7 +43,7 @@ func NewCreate[
 	TRecordUpdate comparable,
 	TRecordId comparable,
 	TFilter comparable,
-](crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter], preset *TRecordCreate) *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
+](crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter], preset TRecordCreate) *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return &CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]{
 		crud:   crud,
 		preset: preset,
@@ -83,7 +83,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 		}),
 		form.WithOnDiscardGuard[TRecordCreate](discardGuard),
 		// data
-		form.WithInitialData(util.DerefOrZeroValue(m.preset)),
+		form.WithInitialData(m.preset),
 	)
 
 	m.form = util.NewPointer(form.New(formOpts...))
@@ -128,6 +128,11 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 }
 
 func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+	if m.crud.ReloadOnNextFocus {
+		m.crud.ReloadOnNextFocus = false
+		return m.Init()
+		// no need to focus or announce anything, as the popup interceptor will take it away again.
+	}
 	m.focussed = true
 	return tea.Batch(
 		windowtitle.Announce(m.crud.Texts.EntityNameMultiple),

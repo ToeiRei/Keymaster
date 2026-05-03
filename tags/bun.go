@@ -25,8 +25,7 @@ const (
 type bunMode bool
 
 func ToBunString(tags Tags) string {
-	strs := slicest.Map(tags, func(tag Tag) string { return string(tag) })
-	return bunTagDelimiter + strings.Join(strs, bunTagDelimiter) + bunTagDelimiter
+	return bunTagDelimiter + strings.Join(tags.Slice(), bunTagDelimiter) + bunTagDelimiter
 }
 
 func FromBunString(str string) Tags {

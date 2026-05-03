@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/tags"
@@ -17,17 +18,18 @@ import (
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/table"
+	"github.com/toeirei/keymaster/ui/tui/models/views/linkpublickey"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
 type recordT = struct {
-	publicKey                 client.PublicKey
-	linkCount                 int
-	linkedAccountCount        int
-	expiredLinkCount          int
-	expiredLinkedAccountCount int
+	publicKey                client.PublicKey
+	activeLinkCount          int
+	activeLinkedAccountCount int
+	totalLinkCount           int
+	totalLinkedAccountCount  int
 }
 
 type recordCreateT = struct {
@@ -57,32 +59,32 @@ type importMsg struct {
 }
 
 func publicKeyToRecord(ctx context.Context, c client.Client, publicKey client.PublicKey) (recordT, error) {
-	links, err := c.ListLinksForPublicKey(ctx, publicKey.Id, false)
+	activeLinks, err := c.ListLinksForPublicKey(ctx, publicKey.Id, false)
 	if err != nil {
 		return recordT{}, err
 	}
 
-	accounts, err := c.ListAccountsLinkedToPublicKey(ctx, publicKey.Id, false)
+	activeAccounts, err := c.ListAccountsLinkedToPublicKey(ctx, publicKey.Id, false)
 	if err != nil {
 		return recordT{}, err
 	}
 
-	expiredLinks, err := c.ListLinksForPublicKey(ctx, publicKey.Id, true)
+	allLinks, err := c.ListLinksForPublicKey(ctx, publicKey.Id, true)
 	if err != nil {
 		return recordT{}, err
 	}
 
-	expiredaccounts, err := c.ListAccountsLinkedToPublicKey(ctx, publicKey.Id, true)
+	allAccounts, err := c.ListAccountsLinkedToPublicKey(ctx, publicKey.Id, true)
 	if err != nil {
 		return recordT{}, err
 	}
 
 	return recordT{
 		publicKey,
-		len(links),
-		len(accounts),
-		len(expiredLinks),
-		len(expiredaccounts),
+		len(activeLinks),
+		len(activeAccounts),
+		len(allLinks),
+		len(allAccounts),
 	}, nil
 }
 
@@ -148,10 +150,10 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			{Title: "Tags", View: func(r recordT) string { return r.publicKey.Tags.String() }, MaxWidth: 0.5},
 			{Title: "Algorithm", View: func(r recordT) string { return r.publicKey.Algorithm }},
 			{Title: "Links (active/total)", View: func(r recordT) string {
-				return fmt.Sprintf("%d/%d", r.linkCount-r.expiredLinkCount, r.linkCount)
+				return fmt.Sprintf("%d/%d", r.activeLinkCount, r.totalLinkCount)
 			}},
 			{Title: "Accounts (active/total)", View: func(r recordT) string {
-				return fmt.Sprintf("%d/%d", r.linkedAccountCount-r.expiredLinkedAccountCount, r.linkedAccountCount)
+				return fmt.Sprintf("%d/%d", r.activeLinkedAccountCount, r.totalLinkedAccountCount)
 			}},
 		}),
 		func(record recordT) recordUpdateT {
@@ -221,6 +223,20 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 				record.publicKey.Tags.String(),
 			}
 		}),
+		crud.WithListAction(
+			func(ctx crud.ListMsgInterceptorCtx[recordT, recordCreateT, recordUpdateT, recordIdT, filterT]) tea.Cmd {
+				if ctx.SelectedRecord == nil {
+					return popupviews.OpenMessage(popupviews.MessageError, "Please select a "+ctx.Crud.Texts.EntityNameSingular+".", nil)
+				}
+
+				ctx.Crud.ReloadOnNextFocus = true
+				return linkpublickey.NewCrud(c, rc, ctx.SelectedRecord.publicKey).OpenList()
+			},
+			key.NewBinding(
+				key.WithKeys("l"),
+				key.WithHelp("l", "links"),
+			),
+		),
 		crud.WithCreateMsgInterceptor(func(msg tea.Msg, ctx crud.CreateMsgInterceptorCtx[recordT, recordCreateT, recordUpdateT, recordIdT, filterT]) (tea.Cmd, bool) {
 			if msg, ok := msg.(importMsg); ok {
 				// apply import popup result to form

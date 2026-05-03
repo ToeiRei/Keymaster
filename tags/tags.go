@@ -22,6 +22,10 @@ func (t Tags) String() string {
 	return Stringify(t)
 }
 
+func (t Tags) Slice() []string {
+	return slicest.Map(t, func(tag Tag) string { return string(tag) })
+}
+
 func Parse(str string) Tags {
 	strs := strings.Split(str, SEPERATOR)
 	// remove whitespace
@@ -31,6 +35,5 @@ func Parse(str string) Tags {
 }
 
 func Stringify(tags Tags) string {
-	strs := slicest.Map(tags, func(tag Tag) string { return string(tag) })
-	return strings.Join(strs, SEPERATOR+" ")
+	return strings.Join(tags.Slice(), SEPERATOR+" ")
 }

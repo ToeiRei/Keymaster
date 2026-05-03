@@ -60,6 +60,7 @@ func New[
 
 		buildListTable:       buildListTable,
 		recordToRecordUpdate: recordToRecordUpdate,
+		createRecordPreset:   func() TRecordCreate { return util.NewZero[TRecordCreate]() },
 
 		createFormRows: createFormRows,
 		updateFormRows: updateFormRows,
@@ -134,30 +135,6 @@ func WithListReloadAfterChange[
 	}
 }
 
-func WithListDuplicateActionOld[
-	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
-	TRecordId comparable,
-	TFilter comparable,
-](recordToRecordCreate func(record TRecord) TRecordCreate) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
-	return func(c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) {
-		// add list key binding
-		WithListKeyBindings[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter](keys.Duplicate())(c)
-
-		// add list msg interceptor
-		WithListMsgInterceptor(func(msg tea.Msg, ctx ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) (tea.Cmd, bool) {
-			if msg, ok := msg.(tea.KeyMsg); ok && key.Matches(msg, keys.Duplicate()) {
-				if ctx.SelectedRecord == nil {
-					return popupviews.OpenMessage(popupviews.MessageError, "Please select a "+ctx.Crud.Texts.EntityNameSingular+" to duplicate.", nil), true
-				}
-				return ctx.Crud.OpenCreate(util.NewPointer(recordToRecordCreate(*ctx.SelectedRecord))), true
-			}
-			return nil, false
-		})(c)
-	}
-}
-
 func WithListAction[
 	TRecord any,
 	TRecordCreate comparable,
@@ -191,6 +168,18 @@ func WithListDuplicateAction[
 			return popupviews.OpenMessage(popupviews.MessageError, "Please select a "+ctx.Crud.Texts.EntityNameSingular+" to duplicate.", nil)
 		}
 
-		return ctx.Crud.OpenCreate(util.NewPointer(recordToRecordCreate(*ctx.SelectedRecord)))
+		return ctx.Crud.OpenCreate(recordToRecordCreate(*ctx.SelectedRecord))
 	}, keys.Duplicate())
+}
+
+func WithCreateRecordPreset[
+	TRecord any,
+	TRecordCreate comparable,
+	TRecordUpdate comparable,
+	TRecordId comparable,
+	TFilter comparable,
+](createRecordPreset func() TRecordCreate) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
+	return func(c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) {
+		c.createRecordPreset = createRecordPreset
+	}
 }

@@ -22,12 +22,12 @@ import (
 )
 
 type recordT = struct {
-	account                     client.Account
-	isDirty                     bool
-	linkCount                   int
-	linkedPublicKeyCount        int
-	expiredLinkCount            int
-	expiredLinkedPublicKeyCount int
+	account                    client.Account
+	isDirty                    bool
+	activeLinkCount            int
+	activeLinkedPublicKeyCount int
+	totalLinkCount             int
+	totalLinkedPublicKeyCount  int
 }
 
 type recordCreateT = struct {
@@ -45,22 +45,22 @@ type recordIdT = client.AccountId
 type filterT = struct{}
 
 func accountToRecord(ctx context.Context, c client.Client, account client.Account) (recordT, error) {
-	links, err := c.ListLinksForAccount(ctx, account.Id, false)
+	activeLinks, err := c.ListLinksForAccount(ctx, account.Id, false)
 	if err != nil {
 		return recordT{}, err
 	}
 
-	publicKeys, err := c.ListPublicKeysLinkedToAccount(ctx, account.Id, false)
+	activePublicKeys, err := c.ListPublicKeysLinkedToAccount(ctx, account.Id, false)
 	if err != nil {
 		return recordT{}, err
 	}
 
-	expiredLinks, err := c.ListLinksForAccount(ctx, account.Id, true)
+	allLinks, err := c.ListLinksForAccount(ctx, account.Id, true)
 	if err != nil {
 		return recordT{}, err
 	}
 
-	expiredPublicKeys, err := c.ListPublicKeysLinkedToAccount(ctx, account.Id, true)
+	allPublicKeys, err := c.ListPublicKeysLinkedToAccount(ctx, account.Id, true)
 	if err != nil {
 		return recordT{}, err
 	}
@@ -73,10 +73,10 @@ func accountToRecord(ctx context.Context, c client.Client, account client.Accoun
 	return recordT{
 		account,
 		isDirty,
-		len(links),
-		len(publicKeys),
-		len(expiredLinks),
-		len(expiredPublicKeys),
+		len(activeLinks),
+		len(activePublicKeys),
+		len(allLinks),
+		len(allPublicKeys),
 	}, nil
 }
 
@@ -169,10 +169,10 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			{Title: "Deploy Method", View: func(r recordT) string { return r.account.DeployMethod }},
 			{Title: "Dirty", View: func(r recordT) string { return fmt.Sprint(r.isDirty) }},
 			{Title: "Links (active/total)", View: func(r recordT) string {
-				return fmt.Sprintf("%d/%d", r.linkCount-r.expiredLinkCount, r.linkCount)
+				return fmt.Sprintf("%d/%d", r.activeLinkCount, r.totalLinkedPublicKeyCount)
 			}},
 			{Title: "Public Keys (active/total)", View: func(r recordT) string {
-				return fmt.Sprintf("%d/%d", r.linkedPublicKeyCount-r.expiredLinkedPublicKeyCount, r.linkedPublicKeyCount)
+				return fmt.Sprintf("%d/%d", r.activeLinkedPublicKeyCount, r.totalLinkedPublicKeyCount)
 			}},
 		}),
 		func(record recordT) recordUpdateT {
@@ -205,6 +205,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 					return popupviews.OpenMessage(popupviews.MessageError, "Please select a "+ctx.Crud.Texts.EntityNameSingular+".", nil)
 				}
 
+				ctx.Crud.ReloadOnNextFocus = true
 				return linkaccount.NewCrud(c, rc, ctx.SelectedRecord.account).OpenList()
 			},
 			key.NewBinding(

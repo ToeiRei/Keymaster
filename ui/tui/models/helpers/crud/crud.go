@@ -35,8 +35,9 @@ type Crud[
 	buildListTable       func(records []TRecord, width int) ([]table.Column, []table.Row)
 	recordToRecordUpdate func(record TRecord) TRecordUpdate
 
-	createFormRows func() []form.FormOpt[TRecordCreate]
-	updateFormRows func() []form.FormOpt[TRecordUpdate]
+	createFormRows     func() []form.FormOpt[TRecordCreate]
+	updateFormRows     func() []form.FormOpt[TRecordUpdate]
+	createRecordPreset func() TRecordCreate
 
 	listGlobalKeyMap form.GlobalKeyMap
 
@@ -49,12 +50,14 @@ type Crud[
 	updateMsgInterceptors []UpdateMsgInterceptor[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 
 	listReloadAfterChange bool
+
+	ReloadOnNextFocus bool
 }
 
 func (c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) OpenList() tea.Cmd {
 	return c.routerControll.Push(util.ModelPointer(NewList(c)))
 }
-func (c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) OpenCreate(preset *TRecordCreate) tea.Cmd {
+func (c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) OpenCreate(preset TRecordCreate) tea.Cmd {
 	return c.routerControll.Push(util.ModelPointer(NewCreate(c, preset)))
 }
 func (c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) OpenEdit(record TRecord) tea.Cmd {
