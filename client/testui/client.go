@@ -19,9 +19,10 @@ import (
 
 type Client struct {
 	// local temporary repository for testing ui features
-	publicKeys []client.PublicKey
-	accounts   []client.Account
-	links      []client.Link
+	publicKeys   []client.PublicKey
+	accounts     []client.Account
+	links        []client.Link
+	remoteStates map[client.AccountId]string
 
 	// id counter to simulate serial
 	publicKeyIdCounter client.PublicKeyId
@@ -52,7 +53,7 @@ func (c *Client) accountDeployCache(account client.Account, deployCache string) 
 // --- Lifecycle & Initialization ---
 
 func NewClient() *Client {
-	return &Client{}
+	return &Client{remoteStates: make(map[client.AccountId]string)}
 }
 
 func (c *Client) Close(ctx context.Context) error {
@@ -369,10 +370,10 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 	go func() {
 		defer close(deployProgressChan)
 
-	AccountLoop:
+	accountLoop:
 		for i, account := range accounts {
 			if checkContextCanceled(account.Id, deployProgress) {
-				continue AccountLoop
+				continue accountLoop
 			}
 
 			deployProgress.Accounts[account.Id].Status = "deploying"
@@ -382,7 +383,7 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 			for _i := range 5 {
 				time.Sleep(time.Millisecond * 100)
 				if checkContextCanceled(account.Id, deployProgress) {
-					continue AccountLoop
+					continue accountLoop
 				}
 				deployProgress.Accounts[account.Id].Progress = float64(_i+1) / 10
 				deployProgressChan <- deployProgress
@@ -401,13 +402,16 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 			for _i := range 5 {
 				time.Sleep(time.Millisecond * 100)
 				if checkContextCanceled(account.Id, deployProgress) {
-					continue AccountLoop
+					continue accountLoop
 				}
 				deployProgress.Accounts[account.Id].Progress = float64(_i+6) / 10
 				deployProgressChan <- deployProgress
 			}
 
-			c.accounts[_i].DeployCache = c.accountDeployCache(account, deployDatas[i])
+			// simulate deploying data to remote
+			c.remoteStates[account.Id] = c.accountDeployCache(account, deployDatas[i])
+
+			c.accounts[_i].DeployCache = c.remoteStates[account.Id]
 			deployProgress.Accounts[account.Id].Status = "finished"
 			deployProgress.Accounts[account.Id].Progress = 1
 			deployProgressChan <- deployProgress
@@ -457,16 +461,39 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 		}),
 	}
 
+	checkContextCanceled := func(accountId client.AccountId, deployProgress client.DeployProgressAccounts) bool {
+		if ctx.Err() != nil {
+			deployProgress.Accounts[accountId].Progress = 1
+			if errors.Is(ctx.Err(), context.Canceled) {
+				deployProgress.Accounts[accountId].Status = "canceled"
+				deployProgress.Accounts[accountId].Err = errors.New("canceled")
+			} else {
+				deployProgress.Accounts[accountId].Status = "error"
+				deployProgress.Accounts[accountId].Err = ctx.Err()
+			}
+			return true
+		}
+		return false
+	}
+
 	go func() {
 		defer close(verifyProgressChan)
 
+	accountLoop:
 		for i, account := range accounts {
+			if checkContextCanceled(account.Id, verifyProgress) {
+				continue accountLoop
+			}
+
 			verifyProgress.Accounts[account.Id].Status = "verifing"
 			verifyProgressChan <- verifyProgress
 
 			// simulate deplay
 			for _i := range 5 {
 				time.Sleep(time.Millisecond * 100)
+				if checkContextCanceled(account.Id, verifyProgress) {
+					continue accountLoop
+				}
 				verifyProgress.Accounts[account.Id].Progress = float64(_i+1) / 10
 				verifyProgressChan <- verifyProgress
 			}
@@ -483,15 +510,18 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 			// simulate deplay
 			for _i := range 5 {
 				time.Sleep(time.Millisecond * 100)
+				if checkContextCanceled(account.Id, verifyProgress) {
+					continue accountLoop
+				}
 				verifyProgress.Accounts[account.Id].Progress = float64(_i+6) / 10
 				verifyProgressChan <- verifyProgress
 			}
 
-			// simulate getting deployCache from remote
-			deployCache := c.accountDeployCache(account, deployDatas[i])
+			// simulate getting remoteState from remote
+			remoteState, hasState := c.remoteStates[account.Id]
 
-			if c.accountDeployCache(account, deployDatas[i]) != deployCache {
-				c.accounts[_i].DeployCache = deployCache // update local DeployCache to reflect the remotes state
+			if !hasState || c.accountDeployCache(account, deployDatas[i]) != remoteState {
+				c.accounts[_i].DeployCache = remoteState // update local DeployCache to reflect the remotes state
 				verifyProgress.Accounts[account.Id].Status = "error"
 				verifyProgress.Accounts[account.Id].Err = errors.New("account is out of sync")
 			} else {
@@ -501,6 +531,7 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 			verifyProgress.Accounts[account.Id].Progress = 1
 			verifyProgressChan <- verifyProgress
 		}
+		verifyProgressChan <- verifyProgress
 	}()
 
 	return verifyProgressChan, nil

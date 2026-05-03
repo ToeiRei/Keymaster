@@ -21,7 +21,7 @@ func VerifyAll(ctx context.Context, c client.Client) tea.Cmd {
 		return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil)
 	}
 
-	return VerifyMany(ctx, c, accounts...)
+	return Verify(ctx, c, accounts...)
 }
 
 func VerifyDirty(ctx context.Context, c client.Client) tea.Cmd {
@@ -30,14 +30,12 @@ func VerifyDirty(ctx context.Context, c client.Client) tea.Cmd {
 		return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil)
 	}
 
-	return VerifyMany(ctx, c, accounts...)
+	return Verify(ctx, c, accounts...)
 }
 
-// func VerifyOne(ctx context.Context, c client.Client, ids ...client.AccountId) tea.Cmd
-
-func VerifyMany(ctx context.Context, c client.Client, accounts ...client.Account) tea.Cmd {
+func Verify(ctx context.Context, c client.Client, accounts ...client.Account) tea.Cmd {
 	if len(accounts) == 0 {
-		return popupviews.OpenMessage(popupviews.MessageInfo, "No Accounts found for verifyment.", nil)
+		return popupviews.OpenMessage(popupviews.MessageInfo, "No Accounts found for verify.", nil)
 	}
 
 	ids := slicest.Map(accounts, func(account client.Account) client.AccountId { return account.Id })
@@ -45,15 +43,15 @@ func VerifyMany(ctx context.Context, c client.Client, accounts ...client.Account
 	accountNamesWidth := slicest.Reduce(slicest.MapValues(accountNamesMap), func(accountName string, width int) int { return max(width, len(accountName)) })
 	accountNameRenderer := lipgloss.NewStyle().Width(accountNamesWidth)
 
-	dpc, err := c.VerifyAccounts(ctx, ids...)
-	if err != nil {
-		return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil)
-	}
-
 	return popupviews.OpenProgress(
 		popupviews.ProgressBar,
 		"Verifying Accounts",
-		func(_ context.Context, pc popupviews.ProgressChan) tea.Cmd {
+		func(ctx context.Context, pc popupviews.ProgressChan) tea.Cmd {
+			dpc, err := c.VerifyAccounts(ctx, ids...)
+			if err != nil {
+				return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil)
+			}
+
 			var dp client.VerifyProgressAccounts
 
 			// map [client.VerifyProgressAccounts] chan to [popupviews.Progress] chan
@@ -79,7 +77,7 @@ func VerifyMany(ctx context.Context, c client.Client, accounts ...client.Account
 				strings.Join(
 					slicest.Map(ids, func(id client.AccountId) string {
 						if dp.Accounts[id].Err != nil {
-							return fmt.Sprintf("%s %s", accountNameRenderer.Render(accountNamesMap[id]), dp.Accounts[id].Err.Error())
+							return fmt.Sprintf("%s Error: %s", accountNameRenderer.Render(accountNamesMap[id]), dp.Accounts[id].Err.Error())
 						}
 						return fmt.Sprintf("%s Success", accountNameRenderer.Render(accountNamesMap[id]))
 					}),
@@ -88,5 +86,7 @@ func VerifyMany(ctx context.Context, c client.Client, accounts ...client.Account
 				nil,
 			)
 		},
+		popupviews.WithContext(ctx),
+		popupviews.WithCancel(),
 	)
 }

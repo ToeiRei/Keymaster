@@ -21,7 +21,7 @@ func DeployAll(ctx context.Context, c client.Client) tea.Cmd {
 		return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil)
 	}
 
-	return DeployMany(ctx, c, accounts...)
+	return Deploy(ctx, c, accounts...)
 }
 
 func DeployDirty(ctx context.Context, c client.Client) tea.Cmd {
@@ -30,12 +30,10 @@ func DeployDirty(ctx context.Context, c client.Client) tea.Cmd {
 		return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil)
 	}
 
-	return DeployMany(ctx, c, accounts...)
+	return Deploy(ctx, c, accounts...)
 }
 
-// func DeployOne(ctx context.Context, c client.Client, ids ...client.AccountId) tea.Cmd
-
-func DeployMany(ctx context.Context, c client.Client, accounts ...client.Account) tea.Cmd {
+func Deploy(ctx context.Context, c client.Client, accounts ...client.Account) tea.Cmd {
 	if len(accounts) == 0 {
 		return popupviews.OpenMessage(popupviews.MessageInfo, "No Accounts found for deployment.", nil)
 	}
