@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/toeirei/keymaster/core/tags"
+	"github.com/toeirei/keymaster/tags"
 )
 
 type exprTest struct {

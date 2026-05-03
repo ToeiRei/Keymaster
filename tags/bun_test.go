@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/toeirei/keymaster/core/tags"
+	"github.com/toeirei/keymaster/tags"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 	"github.com/uptrace/bun/schema"
