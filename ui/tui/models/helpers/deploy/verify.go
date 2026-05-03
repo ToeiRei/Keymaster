@@ -15,29 +15,29 @@ import (
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
-func DeployAll(ctx context.Context, c client.Client) tea.Cmd {
+func VerifyAll(ctx context.Context, c client.Client) tea.Cmd {
 	accounts, err := c.ListAccounts(ctx)
 	if err != nil {
 		return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil)
 	}
 
-	return DeployMany(ctx, c, accounts...)
+	return VerifyMany(ctx, c, accounts...)
 }
 
-func DeployDirty(ctx context.Context, c client.Client) tea.Cmd {
+func VerifyDirty(ctx context.Context, c client.Client) tea.Cmd {
 	accounts, err := c.ListAccountsDirty(ctx)
 	if err != nil {
 		return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil)
 	}
 
-	return DeployMany(ctx, c, accounts...)
+	return VerifyMany(ctx, c, accounts...)
 }
 
-// func DeployOne(ctx context.Context, c client.Client, ids ...client.AccountId) tea.Cmd
+// func VerifyOne(ctx context.Context, c client.Client, ids ...client.AccountId) tea.Cmd
 
-func DeployMany(ctx context.Context, c client.Client, accounts ...client.Account) tea.Cmd {
+func VerifyMany(ctx context.Context, c client.Client, accounts ...client.Account) tea.Cmd {
 	if len(accounts) == 0 {
-		return popupviews.OpenMessage(popupviews.MessageInfo, "No Accounts found for deployment.", nil)
+		return popupviews.OpenMessage(popupviews.MessageInfo, "No Accounts found for verifyment.", nil)
 	}
 
 	ids := slicest.Map(accounts, func(account client.Account) client.AccountId { return account.Id })
@@ -45,18 +45,18 @@ func DeployMany(ctx context.Context, c client.Client, accounts ...client.Account
 	accountNamesWidth := slicest.Reduce(slicest.MapValues(accountNamesMap), func(accountName string, width int) int { return max(width, len(accountName)) })
 	accountNameRenderer := lipgloss.NewStyle().Width(accountNamesWidth)
 
-	dpc, err := c.DeployAccounts(ctx, ids...)
+	dpc, err := c.VerifyAccounts(ctx, ids...)
 	if err != nil {
 		return popupviews.OpenMessage(popupviews.MessageError, err.Error(), nil)
 	}
 
 	return popupviews.OpenProgress(
 		popupviews.ProgressBar,
-		"Deploying Accounts",
+		"Verifying Accounts",
 		func(pc popupviews.ProgressChan) tea.Cmd {
-			var dp client.DeployProgressAccounts
+			var dp client.VerifyProgressAccounts
 
-			// map [client.DeployProgressAccounts] chan to [popupviews.Progress] chan
+			// map [client.VerifyProgressAccounts] chan to [popupviews.Progress] chan
 			for dp = range dpc {
 				pc <- popupviews.Progress{
 					dp.Progress(),
@@ -70,7 +70,7 @@ func DeployMany(ctx context.Context, c client.Client, accounts ...client.Account
 			}
 
 			severity := popupviews.MessageSuccess
-			if slicest.Contains(slicest.MapValues(dp.Accounts), func(dpa *client.DeployProgressAccount) bool { return dpa.Err != nil }) {
+			if slicest.Contains(slicest.MapValues(dp.Accounts), func(dpa *client.VerifyProgressAccount) bool { return dpa.Err != nil }) {
 				severity = popupviews.MessageError
 			}
 

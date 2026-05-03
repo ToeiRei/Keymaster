@@ -310,21 +310,7 @@ func (c *Client) DeleteLinks(ctx context.Context, ids ...client.LinkId) error {
 	return nil
 }
 
-// --- Other ---
-
-func (c *Client) ListExistingTags(ctx context.Context) tags.Tags {
-	return slicest.Reduce(c.publicKeys, func(publicKey client.PublicKey, tags tags.Tags) tags.Tags {
-		return append(tags, publicKey.Tags...)
-	})
-}
-
-func (c *Client) OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {
-	return nil, errors.New("client.OnboardHost not implemented")
-}
-
-func (c *Client) DecommisionAccount(ctx context.Context, id client.AccountId) (chan client.DecommisionAccountProgress, error) {
-	return nil, errors.New("client.DecommisionAccount not implemented")
-}
+// --- Deploy & Verify ---
 
 func (c *Client) DeployAccount(ctx context.Context, accountId client.AccountId) (chan client.DeployProgressAccount, error) {
 	dpc, err := c.DeployAccounts(ctx, accountId)
@@ -403,4 +389,107 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 	}()
 
 	return deployProgressChan, nil
+}
+
+func (c *Client) VerifyAccount(ctx context.Context, accountId client.AccountId) (chan client.VerifyProgressAccount, error) {
+	dpc, err := c.VerifyAccounts(ctx, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert channel to only report the single accounts progress
+	dbac := make(chan client.VerifyProgressAccount)
+	go func() {
+		defer close(dbac)
+
+		for dp := range dpc {
+			dbac <- *dp.Accounts[accountId]
+		}
+	}()
+
+	return dbac, nil
+}
+
+func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.AccountId) (chan client.VerifyProgressAccounts, error) {
+	accounts, err := c.GetAccounts(ctx, accountIds...)
+	if err != nil {
+		return nil, err
+	}
+
+	deployDatas, err := slicest.MapX(accounts, func(a client.Account) (string, error) {
+		return c.accountDeployData(ctx, a)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	verifyProgressChan := make(chan client.VerifyProgressAccounts)
+	verifyProgress := client.VerifyProgressAccounts{
+		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.VerifyProgressAccount) {
+			return account.Id, &client.VerifyProgressAccount{0, "not started", nil}
+		}),
+	}
+
+	go func() {
+		defer close(verifyProgressChan)
+
+		for i, account := range accounts {
+			verifyProgress.Accounts[account.Id].Status = "verifing"
+			verifyProgressChan <- verifyProgress
+
+			// simulate deplay
+			for _i := range 5 {
+				time.Sleep(time.Millisecond * 100)
+				verifyProgress.Accounts[account.Id].Progress = float64(_i+1) / 10
+				verifyProgressChan <- verifyProgress
+			}
+
+			_i, ok := slices.BinarySearchFunc(c.accounts, account.Id, func(a client.Account, id client.AccountId) int { return int(a.Id - id) })
+			if !ok {
+				verifyProgress.Accounts[account.Id].Status = "error"
+				verifyProgress.Accounts[account.Id].Progress = 1
+				verifyProgress.Accounts[account.Id].Err = fmt.Errorf("account with id %v not found", account.Id)
+				verifyProgressChan <- verifyProgress
+				continue
+			}
+
+			// simulate deplay
+			for _i := range 5 {
+				time.Sleep(time.Millisecond * 100)
+				verifyProgress.Accounts[account.Id].Progress = float64(_i+6) / 10
+				verifyProgressChan <- verifyProgress
+			}
+
+			// simulate getting deployCache from remote
+			deployCache := c.accountDeployCache(account, deployDatas[i])
+
+			if c.accounts[_i].DeployCache != deployCache {
+				verifyProgress.Accounts[account.Id].Status = "error"
+				verifyProgress.Accounts[account.Id].Err = errors.New("account is out of sync")
+			} else {
+				verifyProgress.Accounts[account.Id].Status = "finished"
+			}
+
+			verifyProgress.Accounts[account.Id].Progress = 1
+			verifyProgressChan <- verifyProgress
+		}
+	}()
+
+	return verifyProgressChan, nil
+}
+
+// --- Other ---
+
+func (c *Client) ListExistingTags(ctx context.Context) tags.Tags {
+	return slicest.Reduce(c.publicKeys, func(publicKey client.PublicKey, tags tags.Tags) tags.Tags {
+		return append(tags, publicKey.Tags...)
+	})
+}
+
+func (c *Client) OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {
+	return nil, errors.New("client.OnboardHost not implemented")
+}
+
+func (c *Client) DecommisionAccount(ctx context.Context, id client.AccountId) (chan client.DecommisionAccountProgress, error) {
+	return nil, errors.New("client.DecommisionAccount not implemented")
 }

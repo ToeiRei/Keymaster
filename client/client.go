@@ -67,6 +67,16 @@ type Client interface {
 
 	DeleteLinks(ctx context.Context, ids ...LinkId) error
 
+	// --- Deploy & Verify ---
+
+	DeployAccount(ctx context.Context, accountId AccountId) (chan DeployProgressAccount, error)
+
+	DeployAccounts(ctx context.Context, accountIds ...AccountId) (chan DeployProgressAccounts, error)
+
+	VerifyAccount(ctx context.Context, accountId AccountId) (chan VerifyProgressAccount, error)
+
+	VerifyAccounts(ctx context.Context, accountIds ...AccountId) (chan VerifyProgressAccounts, error)
+
 	// --- Other ---
 
 	ListExistingTags(ctx context.Context) tags.Tags
@@ -74,10 +84,6 @@ type Client interface {
 	OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan OnboardHostProgress, error)
 
 	DecommisionAccount(ctx context.Context, id AccountId) (chan DecommisionAccountProgress, error)
-
-	DeployAccount(ctx context.Context, accountId AccountId) (chan DeployProgressAccount, error)
-
-	DeployAccounts(ctx context.Context, accountIds ...AccountId) (chan DeployProgressAccounts, error)
 }
 
 // id is a local identifier type used by the client API.
@@ -136,6 +142,9 @@ func (dp DeployProgressAccounts) Progress() float64 {
 		func(dap *DeployProgressAccount, total float64) float64 { return total + dap.Progress },
 	) / float64(len(dp.Accounts))
 }
+
+type VerifyProgressAccount = DeployProgressAccount
+type VerifyProgressAccounts = DeployProgressAccounts
 
 // OnboardHostProgress reports progress during host onboarding.
 type OnboardHostProgress struct {

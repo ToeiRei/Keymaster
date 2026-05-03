@@ -41,11 +41,27 @@ func New() *Model {
 	// }
 
 	c := client.Client(testui.NewClient())
-	// create development test data
-	_, _ = c.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-ödtjfb", "my-key", tags.Tags{"user:jannes", "company:none"})
-	_, _ = c.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjdfhal_sdvkhathrösdljhask-ödjfb", "420", tags.Tags{"user:toeirei", "company:another"})
-	_, _ = c.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbaskjdftrhhal_sdvkhaösdljhask-ödjhtfb", "69", tags.Tags{"user:somebodyelse", "company:evilgoogle"})
-	_, _ = c.CreateAccount(context.Background(), "sdvkhaösdljhask-ödjhtfb", "1.2.3.4", 22, "ssh", "password")
+
+	// test accounts
+	_, _ = c.CreateAccount(context.Background(), "root", "1.2.3.4", 22, "ssh", "password123")
+	_, _ = c.CreateAccount(context.Background(), "user", "1.2.3.4", 22, "ssh", "password123")
+	_, _ = c.CreateAccount(context.Background(), "srv", "10.0.0.1", 22, "ssh", "password123")
+	_, _ = c.CreateAccount(context.Background(), "mark", "1.2.3.4", 22, "ssh", "password123")
+	_, _ = c.CreateAccount(context.Background(), "admin", "10.20.0.1", 222, "cisco", "password123")
+	// test publicKeys
+	_, _ = c.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-zdpjwb", "my-key", tags.Tags{"user:jannes", "company:work", "server-ci"})
+	_, _ = c.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-öutyfb", "my-key", tags.Tags{"user:jannes", "company:none"})
+	_, _ = c.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskdasral_jklkhathrösdljhask-fdjfb", "419", tags.Tags{"user:toeirei", "company:big_money"})
+	_, _ = c.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjdfhal_sdvtzuthrösdljhaha-ögjfb", "420", tags.Tags{"user:toeirei", "company:work", "server-ci"})
+	_, _ = c.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjterhl_sdvkhaghdjfdljhask-ödhfb", "421", tags.Tags{"user:toeirei", "company:none"})
+	_, _ = c.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbdfhtdftrhhal_sdvkhaösu656zsk-ödjhtfb", "69", tags.Tags{"user:somebodyelse", "company:evilgoogle", "server-ci"})
+	// test links
+	_, _ = c.CreateLink(context.Background(), 1, "(user:jannes | user:toeirei) & !company:work", time.Now().Add(time.Hour))
+	_, _ = c.CreateLink(context.Background(), 2, "!user:somebodyelse", time.Now().Add(time.Hour))
+	_, _ = c.CreateLink(context.Background(), 3, "server-ci", time.Now().Add(time.Hour))
+	_, _ = c.CreateLink(context.Background(), 4, "company:evilgoogle", time.Now().Add(time.Hour))
+	_, _ = c.CreateLink(context.Background(), 5, "company:work", time.Now().Add(time.Hour))
+	_, _ = c.CreateLink(context.Background(), 5, "company:big_money", time.Now())
 
 	c = mock.NewClient(mock.WitchBaseClient(c), mock.WitchPre(func(method string, args map[string]any) {
 		time.Sleep(time.Millisecond * 200)
@@ -105,7 +121,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			return deploy.DeployAll(context.Background(), m.client)
 
 		case "deploy.verify":
-			return popupviews.OpenMessage(popupviews.MessageInfo, fmt.Sprintf("%q has not been implemented yet.", msg.Id), nil)
+			return deploy.VerifyAll(context.Background(), m.client)
 
 		case "test.popup.progress.spinner":
 			return popupviews.OpenProgress(
