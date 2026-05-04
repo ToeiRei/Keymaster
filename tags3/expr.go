@@ -6,6 +6,7 @@ package tags3
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/toeirei/keymaster/util/slicest"
@@ -25,6 +26,7 @@ const (
 type Expr interface {
 	fmt.Stringer
 	Eval(tags Tags) bool
+	hash() string
 	Optimize() Expr
 	applyToBunQuery(qb bun.QueryBuilder, column string, mode bunMode) bun.QueryBuilder
 }
@@ -44,8 +46,6 @@ var _ Expr = AndExpr{}
 var _ Expr = OrExpr{}
 var _ Expr = NotExpr{}
 
-// var _ Expr = BracesExpr{}
-
 // --- [fmt.Stringer] implementations ---
 
 func (e ValueExpr) String() string {
@@ -54,7 +54,7 @@ func (e ValueExpr) String() string {
 func (e AndExpr) String() string {
 	return strings.Join(slicest.Map(e.Exprs, func(e Expr) string {
 		switch e.(type) {
-		case OrExpr:
+		case AndExpr, OrExpr:
 			return string(exprBracesOpen) + e.String() + string(exprBracesClose)
 		default:
 			return e.String()
@@ -101,6 +101,44 @@ func (e NotExpr) Eval(tags Tags) bool {
 	return !e.Expr.Eval(tags)
 }
 
+// --- [Expr.hash] implementations ---
+
+func (e ValueExpr) hash() string {
+	return e.Value
+}
+func (e AndExpr) hash() string {
+	strs := slicest.Map(e.Exprs, func(e Expr) string {
+		switch e.(type) {
+		case AndExpr, OrExpr:
+			return string(exprBracesOpen) + e.hash() + string(exprBracesClose)
+		default:
+			return e.hash()
+		}
+	})
+	slices.Sort(strs)
+	return strings.Join(strs, string(exprAnd))
+}
+func (e OrExpr) hash() string {
+	strs := slicest.Map(e.Exprs, func(e Expr) string {
+		switch e.(type) {
+		case AndExpr, OrExpr:
+			return string(exprBracesOpen) + e.String() + string(exprBracesClose)
+		default:
+			return e.String()
+		}
+	})
+	slices.Sort(strs)
+	return strings.Join(strs, string(exprOr))
+}
+func (e NotExpr) hash() string {
+	switch e.Expr.(type) {
+	case AndExpr, OrExpr:
+		return exprNot + string(exprBracesOpen) + e.Expr.String() + string(exprBracesClose)
+	default:
+		return exprNot + e.Expr.String()
+	}
+}
+
 // --- [Expr.Optimize] implementations ---
 
 func (e ValueExpr) Optimize() Expr { return e }
@@ -115,6 +153,28 @@ func (e AndExpr) Optimize() Expr {
 		return []Expr{expr}
 	}))
 
+	// deduplicate nested expressions
+	e.Exprs = sliceDeduplicateFunc(e.Exprs, func(expr Expr) string { return expr.hash() })
+
+	// remove redundant nested or expressions
+	e.Exprs = slicest.Filter(e.Exprs, func(expr Expr) bool {
+		if orExpr, ok := expr.(OrExpr); ok {
+			// does or expression not contain any expression...
+			return !slices.ContainsFunc(orExpr.Exprs, func(orSubExpr Expr) bool {
+				// ... wich is contained in the and expression
+				return slices.ContainsFunc(e.Exprs, func(andSubExpr Expr) bool {
+					return orSubExpr.hash() == andSubExpr.hash()
+				})
+			})
+		}
+		return true
+	})
+
+	// return remaining expression when its the only one
+	if len(e.Exprs) == 1 {
+		return e.Exprs[0]
+	}
+
 	return e
 }
 func (e OrExpr) Optimize() Expr {
@@ -127,6 +187,28 @@ func (e OrExpr) Optimize() Expr {
 		}
 		return []Expr{expr}
 	}))
+
+	// deduplicate nested expressions
+	e.Exprs = sliceDeduplicateFunc(e.Exprs, func(expr Expr) string { return expr.hash() })
+
+	// remove redundant nested and expressions
+	e.Exprs = slicest.Filter(e.Exprs, func(expr Expr) bool {
+		if andExpr, ok := expr.(AndExpr); ok {
+			// does and expression contain any expression...
+			return !slices.ContainsFunc(andExpr.Exprs, func(andSubExpr Expr) bool {
+				// ... wich is contained in the or expression
+				return slices.ContainsFunc(e.Exprs, func(orSubExpr Expr) bool {
+					return andSubExpr.hash() == orSubExpr.hash()
+				})
+			})
+		}
+		return true
+	})
+
+	// return remaining expression when its the only one
+	if len(e.Exprs) == 1 {
+		return e.Exprs[0]
+	}
 
 	return e
 }
