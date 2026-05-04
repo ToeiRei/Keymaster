@@ -48,12 +48,12 @@ func parseMatcher(matcher string, originalMatcher string, pos int) (Expr, error)
 
 	// negation
 	if matcher, negated := strings.CutPrefix(matcher, exprNot); negated {
-		expr, err := parseMatcher(matcher, originalMatcher, pos+1)
+		expr, err := parseMatcher(matcher, originalMatcher, pos+len(exprNot))
 		return NotExpr{expr}, err
 	}
 
 	// braces
-	if strings.HasPrefix(matcher, exprBracesOpen) && strings.HasSuffix(matcher, exprBracesClose) {
+	if strings.HasPrefix(matcher, string(exprBracesOpen)) && strings.HasSuffix(matcher, string(exprBracesClose)) {
 		matcher = matcher[1 : len(matcher)-1]
 		return parseMatcher(matcher, originalMatcher, pos+1)
 		// return BracesExpr{expr}, err
@@ -79,9 +79,9 @@ func splitOnTopLevelChar(expr string, char rune) []string {
 
 	for i, ch := range expr {
 		switch ch {
-		case rune(exprBracesOpen[0]):
+		case exprBracesOpen:
 			depth++
-		case rune(exprBracesClose[0]):
+		case exprBracesClose:
 			depth--
 		case char:
 			if depth <= 0 {

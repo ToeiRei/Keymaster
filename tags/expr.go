@@ -16,8 +16,8 @@ const (
 	exprAnd         rune   = '&'
 	exprOr          rune   = '|'
 	exprNot         string = "!"
-	exprBracesOpen  string = "("
-	exprBracesClose string = ")"
+	exprBracesOpen  rune   = '('
+	exprBracesClose rune   = ')'
 	exprWildcard    string = "*"
 	exprWildcards   string = "**"
 )
@@ -61,7 +61,7 @@ func (e NotExpr) String() string {
 	return exprNot + e.Expr.String()
 }
 func (e BracesExpr) String() string {
-	return exprBracesOpen + e.Expr.String() + exprBracesClose
+	return string(exprBracesOpen) + e.Expr.String() + string(exprBracesClose)
 }
 
 // --- [Expr.Eval] implementations ---

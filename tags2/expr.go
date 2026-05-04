@@ -16,8 +16,8 @@ const (
 	exprAnd         rune   = '&'
 	exprOr          rune   = '|'
 	exprNot         string = "!"
-	exprBracesOpen  string = "("
-	exprBracesClose string = ")"
+	exprBracesOpen  rune   = '('
+	exprBracesClose rune   = ')'
 	exprWildcard    string = "*"
 	exprWildcards   string = "**"
 )
@@ -33,13 +33,10 @@ type AndExpr struct{ Exprs []Expr }
 type OrExpr struct{ Exprs []Expr }
 type NotExpr struct{ Expr Expr }
 
-// type BracesExpr struct{ Expr Expr }
-
 // [ValueExpr] implements [Expr]
 // [AndExpr] implements [Expr]
 // [OrExpr] implements [Expr]
 // [NotExpr] implements [Expr]
-// // [BracesExpr] implements [Expr]
 
 var _ Expr = ValueExpr{}
 var _ Expr = AndExpr{}
@@ -57,7 +54,7 @@ func (e AndExpr) String() string {
 	return strings.Join(slicest.Map(e.Exprs, func(e Expr) string {
 		switch e.(type) {
 		case OrExpr:
-			return exprBracesOpen + e.String() + exprBracesClose
+			return string(exprBracesOpen) + e.String() + string(exprBracesClose)
 		default:
 			return e.String()
 		}
@@ -67,7 +64,7 @@ func (e OrExpr) String() string {
 	return strings.Join(slicest.Map(e.Exprs, func(e Expr) string {
 		switch e.(type) {
 		case AndExpr, OrExpr:
-			return exprBracesOpen + e.String() + exprBracesClose
+			return string(exprBracesOpen) + e.String() + string(exprBracesClose)
 		default:
 			return e.String()
 		}
@@ -76,15 +73,11 @@ func (e OrExpr) String() string {
 func (e NotExpr) String() string {
 	switch e.Expr.(type) {
 	case AndExpr, OrExpr:
-		return exprNot + exprBracesOpen + e.Expr.String() + exprBracesClose
+		return exprNot + string(exprBracesOpen) + e.Expr.String() + string(exprBracesClose)
 	default:
 		return exprNot + e.Expr.String()
 	}
 }
-
-// func (e BracesExpr) String() string {
-// 	return exprBracesOpen + e.Expr.String() + exprBracesClose
-// }
 
 // --- [Expr.Eval] implementations ---
 
