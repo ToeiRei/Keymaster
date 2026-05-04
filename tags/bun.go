@@ -43,7 +43,7 @@ func ApplyToBunQuery(expr Expr, qb bun.QueryBuilder, column string) bun.QueryBui
 }
 
 func (e ValueExpr) applyToBunQuery(qb bun.QueryBuilder, column string, mode bunMode, negate bool) bun.QueryBuilder {
-	sqlExpr := e.value
+	sqlExpr := e.Value
 
 	// escape special chars
 	sqlExpr = slicest.ReduceD([]rune(bunEscapedChars), sqlExpr, func(char rune, sqlexpr string) string {
@@ -76,7 +76,7 @@ func (e ValueExpr) applyToBunQuery(qb bun.QueryBuilder, column string, mode bunM
 
 func (e AndExpr) applyToBunQuery(qb bun.QueryBuilder, column string, _ bunMode, negate bool) bun.QueryBuilder {
 	// applys all sub expressions
-	return slicest.ReduceD(e.exprs, qb, func(expr Expr, qb bun.QueryBuilder) bun.QueryBuilder {
+	return slicest.ReduceD(e.Exprs, qb, func(expr Expr, qb bun.QueryBuilder) bun.QueryBuilder {
 		// flips mode AND to OR, if negated
 		return expr.applyToBunQuery(qb, column, bunMode(!negate), negate)
 	})
@@ -84,7 +84,7 @@ func (e AndExpr) applyToBunQuery(qb bun.QueryBuilder, column string, _ bunMode, 
 
 func (e OrExpr) applyToBunQuery(qb bun.QueryBuilder, column string, _ bunMode, negate bool) bun.QueryBuilder {
 	// applys all sub expressions
-	return slicest.ReduceD(e.exprs, qb, func(expr Expr, qb bun.QueryBuilder) bun.QueryBuilder {
+	return slicest.ReduceD(e.Exprs, qb, func(expr Expr, qb bun.QueryBuilder) bun.QueryBuilder {
 		// flips mode OR to AND, if negated
 		return expr.applyToBunQuery(qb, column, bunMode(negate), negate)
 	})
@@ -92,7 +92,7 @@ func (e OrExpr) applyToBunQuery(qb bun.QueryBuilder, column string, _ bunMode, n
 
 func (e NotExpr) applyToBunQuery(qb bun.QueryBuilder, column string, mode bunMode, negate bool) bun.QueryBuilder {
 	// flips negate for subexpression
-	return e.expr.applyToBunQuery(qb, column, mode, !negate)
+	return e.Expr.applyToBunQuery(qb, column, mode, !negate)
 }
 
 func (e BracesExpr) applyToBunQuery(qb bun.QueryBuilder, column string, mode bunMode, negate bool) bun.QueryBuilder {
@@ -107,6 +107,6 @@ func (e BracesExpr) applyToBunQuery(qb bun.QueryBuilder, column string, mode bun
 	return qb.WhereGroup(seperator, func(qb bun.QueryBuilder) bun.QueryBuilder {
 		// braces them self can't be negated.
 		// flipping mode and passing negated flag, has the effect of negating the whole braces content.
-		return e.expr.applyToBunQuery(qb, column, !bunMode(negate), negate)
+		return e.Expr.applyToBunQuery(qb, column, !bunMode(negate), negate)
 	})
 }
