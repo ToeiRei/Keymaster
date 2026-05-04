@@ -90,9 +90,58 @@ var exprTests = []exprTest{
 		{tags.Tags{"a"}, true},
 		{tags.Tags{""}, false},
 	}},
+
+	// --- Optimizeable ---
+	{"(aws|gcp)|legacy", "(aws | gcp) | legacy", []exprTestCase{
+		{tags.Tags{"aws", "cloud"}, true},
+		{tags.Tags{"gcp"}, true},
+		{tags.Tags{"legacy"}, true},
+		{tags.Tags{"azure"}, false},
+	}},
+	{"(aws&gcp)&legacy", "(aws & gcp) & legacy", []exprTestCase{
+		{tags.Tags{"aws", "cloud"}, false},
+		{tags.Tags{"gcp"}, false},
+		{tags.Tags{"aws", "gcp", "legacy"}, true},
+	}},
+	{"auth&!(admin|super)", "auth & !(admin | super)", []exprTestCase{
+		{tags.Tags{"auth", "sys-admin"}, true},
+		{tags.Tags{"auth", "super-user"}, true},
+		{tags.Tags{"auth", "user"}, true},
+		{tags.Tags{"sys-admin"}, false},
+	}},
+	{"!(test&stage)&prod", "!(test & stage) & prod", []exprTestCase{
+		{tags.Tags{"prod"}, true},
+		{tags.Tags{"test", "prod"}, true},
+		{tags.Tags{"stage", "test", "prod"}, false},
+		{tags.Tags{"stage"}, false},
+	}},
+	{"!!prod", "!!prod", []exprTestCase{
+		{tags.Tags{"prod"}, true},
+		{tags.Tags{"test"}, false},
+	}},
 }
 
-func TestExpr(t *testing.T) {
+func TestExprString(t *testing.T) {
+	for _, et := range exprTests {
+		t.Run(fmt.Sprintf("Matcher(%q).String()", et.matcher), func(t *testing.T) {
+			expr, err := tags.ParseMatcher(et.matcher)
+			if err != nil {
+				t.Fatalf("failed to parse matcher %q: %v", et.matcher, err)
+			}
+
+			expr = expr.Optimize()
+
+			got := expr.String()
+			if got != et.rendered {
+				t.Errorf("got = %q; expected = %q", got, et.rendered)
+			}
+
+			t.Log(got)
+		})
+	}
+}
+
+func TestExprEval(t *testing.T) {
 	for _, et := range exprTests {
 		t.Run(fmt.Sprintf("Matcher(%q)", et.matcher), func(t *testing.T) {
 			expr, err := tags.ParseMatcher(et.matcher)
@@ -100,14 +149,7 @@ func TestExpr(t *testing.T) {
 				t.Fatalf("failed to parse matcher %q: %v", et.matcher, err)
 			}
 
-			t.Run("String()", func(t *testing.T) {
-				got := expr.String()
-				if got != et.rendered {
-					t.Errorf("got = %q; expected = %q", got, et.rendered)
-				}
-
-				t.Log(got)
-			})
+			expr = expr.Optimize()
 
 			for _, tc := range et.cases {
 				t.Run(fmt.Sprintf("Eval(%v)", tc.tags), func(t *testing.T) {

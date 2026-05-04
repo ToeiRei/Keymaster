@@ -25,6 +25,7 @@ const (
 type Expr interface {
 	fmt.Stringer
 	Eval(tags Tags) bool
+	Optimize() Expr
 	applyToBunQuery(qb bun.QueryBuilder, column string, mode bunMode, negate bool) bun.QueryBuilder
 }
 
@@ -100,6 +101,53 @@ func (e NotExpr) Eval(tags Tags) bool {
 	return !e.Expr.Eval(tags)
 }
 
-// func (e BracesExpr) Eval(tags Tags) bool {
-// 	return e.Expr.Eval(tags)
-// }
+// --- [Expr.Optimize] implementations ---
+
+func (e ValueExpr) Optimize() Expr { return e }
+func (e AndExpr) Optimize() Expr {
+	e.Exprs = slicest.Map(e.Exprs, func(expr Expr) Expr { return expr.Optimize() })
+
+	// flatten nested and expressions
+	e.Exprs = slicest.Flatten(slicest.Map(e.Exprs, func(expr Expr) []Expr {
+		if expr, ok := expr.(AndExpr); ok {
+			return expr.Exprs
+		}
+		return []Expr{expr}
+	}))
+
+	return e
+}
+func (e OrExpr) Optimize() Expr {
+	e.Exprs = slicest.Map(e.Exprs, func(expr Expr) Expr { return expr.Optimize() })
+
+	// flatten nested or expressions
+	e.Exprs = slicest.Flatten(slicest.Map(e.Exprs, func(expr Expr) []Expr {
+		if expr, ok := expr.(OrExpr); ok {
+			return expr.Exprs
+		}
+		return []Expr{expr}
+	}))
+
+	return e
+}
+func (e NotExpr) Optimize() Expr {
+	// e.Expr = e.Expr.Optimize()
+
+	switch expr := e.Expr.(type) {
+	case AndExpr:
+		// flip negated and expressions and reoptimize them
+		return OrExpr{slicest.Map(expr.Exprs, func(expr Expr) Expr {
+			return NotExpr{expr}.Optimize()
+		})}.Optimize()
+	case OrExpr:
+		// flip negated or expressions and reoptimize them
+		return AndExpr{slicest.Map(expr.Exprs, func(expr Expr) Expr {
+			return NotExpr{expr}.Optimize()
+		})}.Optimize()
+	case NotExpr:
+		// Remove double negation
+		return expr.Expr
+	default:
+		return e
+	}
+}

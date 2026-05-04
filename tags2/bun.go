@@ -125,3 +125,27 @@ func applyBracesToBunQuery(e Expr, qb bun.QueryBuilder, column string, mode bunM
 		return e.applyToBunQuery(qb, column, !bunMode(negate), negate)
 	})
 }
+
+func pushNegatesToValues(expr Expr) Expr {
+	switch expr := expr.(type) {
+	case NotExpr:
+		switch subExpr := expr.Expr.(type) {
+		case AndExpr:
+			// flip negated and expressions
+			return pushNegatesToValues(OrExpr{slicest.Map(subExpr.Exprs, func(expr Expr) Expr { return NotExpr{expr} })})
+		case OrExpr:
+			// flip negated or expressions
+			return pushNegatesToValues(AndExpr{slicest.Map(subExpr.Exprs, func(expr Expr) Expr { return NotExpr{expr} })})
+		default:
+			return expr
+		}
+	case AndExpr:
+		expr.Exprs = slicest.Map(expr.Exprs, func(expr Expr) Expr { return pushNegatesToValues(expr) })
+		return expr
+	case OrExpr:
+		expr.Exprs = slicest.Map(expr.Exprs, func(expr Expr) Expr { return pushNegatesToValues(expr) })
+		return expr
+	default:
+		return expr
+	}
+}
