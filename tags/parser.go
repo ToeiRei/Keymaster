@@ -75,21 +75,21 @@ func parseMatcher(matcher string, originalMatcher string, pos int) (Expr, error)
 func splitOnTopLevelChar(expr string, char rune) []string {
 	var result []string
 	var depth int
-	var start int
+	var cursor int
 
 	for i, ch := range expr {
 		switch ch {
-		case '(':
+		case rune(exprBracesOpen[0]):
 			depth++
-		case ')':
+		case rune(exprBracesClose[0]):
 			depth--
 		case char:
 			if depth <= 0 {
-				result = append(result, expr[start:i])
-				start = i + 1
+				result = append(result, expr[cursor:i])
+				cursor = i + 1
 			}
 		}
 	}
 
-	return append(result, expr[start:])
+	return append(result, expr[cursor:])
 }
