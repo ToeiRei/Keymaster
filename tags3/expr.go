@@ -14,13 +14,14 @@ import (
 )
 
 const (
-	exprAnd         rune   = '&'
-	exprOr          rune   = '|'
-	exprNot         string = "!"
-	exprBracesOpen  rune   = '('
-	exprBracesClose rune   = ')'
-	exprWildcard    string = "*"
-	exprWildcards   string = "**"
+	exprAnd           rune   = '&'
+	exprOr            rune   = '|'
+	exprNot           string = "!"
+	exprBracesOpen    rune   = '('
+	exprBracesClose   rune   = ')'
+	exprWildcard      string = "*"
+	exprWildcards     string = "**"
+	exprHashDelimiter rune   = ';'
 )
 
 type Expr interface {
@@ -124,12 +125,12 @@ func (e ValueExpr) hash() string {
 func (e AndExpr) hash() string {
 	hashes := slicest.Map(e.Exprs, func(e Expr) string { return e.hash() })
 	slices.Sort(hashes)
-	return string(exprAnd) + strings.Join(hashes, ";")
+	return string(exprAnd) + strings.Join(hashes, string(exprHashDelimiter))
 }
 func (e OrExpr) hash() string {
 	hashes := slicest.Map(e.Exprs, func(e Expr) string { return e.hash() })
 	slices.Sort(hashes)
-	return string(exprOr) + strings.Join(hashes, ";")
+	return string(exprOr) + strings.Join(hashes, string(exprHashDelimiter))
 }
 func (e NotExpr) hash() string {
 	return exprNot + string(exprBracesOpen) + e.Expr.hash() + string(exprBracesClose)
