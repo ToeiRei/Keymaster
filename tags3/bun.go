@@ -129,13 +129,9 @@ func applyValueToBunQuery(value string, negated bool, qb bun.QueryBuilder, colum
 func pushNegatesToValues(expr Expr) Expr {
 	switch expr := expr.(type) {
 	case NotExpr:
-		switch subExpr := expr.Expr.(type) {
-		case AndExpr:
-			// flip by switching to OrExpr and negating its content
-			return pushNegatesToValues(OrExpr{slicest.Map(subExpr.Exprs, func(expr Expr) Expr { return NotExpr{expr} })})
-		case OrExpr:
-			// flip by switching to AndExpr and negating its content
-			return pushNegatesToValues(AndExpr{slicest.Map(subExpr.Exprs, func(expr Expr) Expr { return NotExpr{expr} })})
+		switch expr.Expr.(type) {
+		case AndExpr, OrExpr:
+			return pushNegatesToValues(expr.tryResolve())
 		default:
 			return expr
 		}

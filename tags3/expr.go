@@ -26,6 +26,10 @@ const (
 type Expr interface {
 	fmt.Stringer
 	Eval(tags Tags) bool
+	// Modifier at the beginning.
+	// Always use braces for sub expressions.
+	// Always sort sub expressions.
+	// Use semicolon as delimiter for sub expressions.
 	hash() string
 	Optimize() Expr
 	applyToBunQuery(qb bun.QueryBuilder, column string, mode bunMode) bun.QueryBuilder
@@ -45,6 +49,17 @@ var _ Expr = ValueExpr{}
 var _ Expr = AndExpr{}
 var _ Expr = OrExpr{}
 var _ Expr = NotExpr{}
+
+func (e NotExpr) tryResolve() Expr {
+	switch expr := e.Expr.(type) {
+	case AndExpr:
+		return OrExpr{slicest.Map(expr.Exprs, func(expr Expr) Expr { return NotExpr{expr} })}
+	case OrExpr:
+		return AndExpr{slicest.Map(expr.Exprs, func(expr Expr) Expr { return NotExpr{expr} })}
+	default:
+		return e
+	}
+}
 
 // --- [fmt.Stringer] implementations ---
 
@@ -107,36 +122,17 @@ func (e ValueExpr) hash() string {
 	return e.Value
 }
 func (e AndExpr) hash() string {
-	strs := slicest.Map(e.Exprs, func(e Expr) string {
-		switch e.(type) {
-		case AndExpr, OrExpr:
-			return string(exprBracesOpen) + e.hash() + string(exprBracesClose)
-		default:
-			return e.hash()
-		}
-	})
-	slices.Sort(strs)
-	return strings.Join(strs, string(exprAnd))
+	hashes := slicest.Map(e.Exprs, func(e Expr) string { return e.hash() })
+	slices.Sort(hashes)
+	return string(exprAnd) + strings.Join(hashes, ";")
 }
 func (e OrExpr) hash() string {
-	strs := slicest.Map(e.Exprs, func(e Expr) string {
-		switch e.(type) {
-		case AndExpr, OrExpr:
-			return string(exprBracesOpen) + e.String() + string(exprBracesClose)
-		default:
-			return e.String()
-		}
-	})
-	slices.Sort(strs)
-	return strings.Join(strs, string(exprOr))
+	hashes := slicest.Map(e.Exprs, func(e Expr) string { return e.hash() })
+	slices.Sort(hashes)
+	return string(exprOr) + strings.Join(hashes, ";")
 }
 func (e NotExpr) hash() string {
-	switch e.Expr.(type) {
-	case AndExpr, OrExpr:
-		return exprNot + string(exprBracesOpen) + e.Expr.String() + string(exprBracesClose)
-	default:
-		return exprNot + e.Expr.String()
-	}
+	return exprNot + string(exprBracesOpen) + e.Expr.hash() + string(exprBracesClose)
 }
 
 // --- [Expr.Optimize] implementations ---
@@ -145,8 +141,13 @@ func (e ValueExpr) Optimize() Expr { return e }
 func (e AndExpr) Optimize() Expr {
 	e.Exprs = slicest.Map(e.Exprs, func(expr Expr) Expr { return expr.Optimize() })
 
-	// flatten nested and expressions
+	// flatten nested and expressions // & negated or expressions
 	e.Exprs = slicest.Flatten(slicest.Map(e.Exprs, func(expr Expr) []Expr {
+		// if notExpr, ok := expr.(NotExpr); ok {
+		// 	if _, ok := notExpr.Expr.(OrExpr); ok {
+		// 		expr = notExpr.Flip()
+		// 	}
+		// }
 		if expr, ok := expr.(AndExpr); ok {
 			return expr.Exprs
 		}
@@ -180,8 +181,13 @@ func (e AndExpr) Optimize() Expr {
 func (e OrExpr) Optimize() Expr {
 	e.Exprs = slicest.Map(e.Exprs, func(expr Expr) Expr { return expr.Optimize() })
 
-	// flatten nested or expressions
+	// flatten nested or expressions // & negated and expressions
 	e.Exprs = slicest.Flatten(slicest.Map(e.Exprs, func(expr Expr) []Expr {
+		// if notExpr, ok := expr.(NotExpr); ok {
+		// 	if _, ok := notExpr.Expr.(AndExpr); ok {
+		// 		expr = notExpr.Flip()
+		// 	}
+		// }
 		if expr, ok := expr.(OrExpr); ok {
 			return expr.Exprs
 		}
