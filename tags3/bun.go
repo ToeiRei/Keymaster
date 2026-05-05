@@ -38,6 +38,9 @@ func FromBunString(str string) Tags {
 	return slicest.Map(strs, func(str string) Tag { return Tag(str) })
 }
 
+// Only works as a db pre filter to reduce the number of results.
+// Due to wildcards matching over [bunTagDelimiter] it does not produce 100% acurate results.
+// Use [Expr.Eval] to ensure correct results.
 func ApplyToBunQuery(expr Expr, qb bun.QueryBuilder, column string) bun.QueryBuilder {
 	return pushNegatesToValues(expr).applyToBunQuery(qb, column, bunAnd)
 }
