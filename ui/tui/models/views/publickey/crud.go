@@ -17,7 +17,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
-	"github.com/toeirei/keymaster/ui/tui/models/helpers/table"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/tablecontroll"
 	"github.com/toeirei/keymaster/ui/tui/models/views/linkpublickey"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
@@ -152,7 +152,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			return c.DeletePublicKeys(ctx, id)
 		},
 
-		table.NewBubblesTableRenderer(table.Columns[recordT]{
+		tablecontroll.New(tablecontroll.Columns[recordT]{
 			{Title: "Comment", View: func(r recordT) string { return r.publicKey.Comment }},
 			{Title: "Tags", View: func(r recordT) string { return r.publicKey.Tags.String() }, MaxWidth: 0.5},
 			{Title: "Algorithm", View: func(r recordT) string { return r.publicKey.Algorithm }},
@@ -162,7 +162,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			{Title: "Accounts (active/total)", View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkedAccountCount, r.totalLinkedAccountCount)
 			}},
-		}),
+		}).RenderBubblesTable,
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{
 				record.publicKey.Comment,

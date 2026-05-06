@@ -86,7 +86,7 @@ func Verify(ctx context.Context, c client.Client, accounts ...client.Account) te
 				nil,
 			)
 		},
-		popupviews.WithContext(ctx),
-		popupviews.WithCancel(),
+		popupviews.WithProgressContext(ctx),
+		popupviews.WithProgressCancel(),
 	)
 }

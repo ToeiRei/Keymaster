@@ -57,12 +57,12 @@ type ProgressChan = chan Progress
 
 type ProgressOption func(m *ProgressModel)
 
-func WithCancel() ProgressOption {
+func WithProgressCancel() ProgressOption {
 	return func(m *ProgressModel) { m.ctx, m.ctxCancel = context.WithCancel(m.ctx) }
 }
 
 // overrides default context and all previos cancel settings
-func WithContext(ctx context.Context) ProgressOption {
+func WithProgressContext(ctx context.Context) ProgressOption {
 	return func(m *ProgressModel) { m.ctx, m.ctxCancel = ctx, nil }
 }
 

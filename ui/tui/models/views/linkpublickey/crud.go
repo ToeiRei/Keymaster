@@ -14,7 +14,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/crud"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
-	"github.com/toeirei/keymaster/ui/tui/models/helpers/table"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/tablecontroll"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/util/slicest"
 )
@@ -114,12 +114,7 @@ func NewCrud(c client.Client, rc router.Controll, publicKey client.PublicKey) *c
 					return err
 				}
 
-				link, err := c.CreateLink(
-					ctx,
-					account.Id,
-					expr.String(),
-					expiresAt,
-				)
+				link, err := c.CreateLink(ctx, account.Id, expr.String(), expiresAt)
 				if err != nil {
 					return err
 				}
@@ -167,12 +162,12 @@ func NewCrud(c client.Client, rc router.Controll, publicKey client.PublicKey) *c
 			return c.DeleteLinks(ctx, id)
 		},
 
-		table.NewBubblesTableRenderer(table.Columns[recordT]{
+		tablecontroll.New(tablecontroll.Columns[recordT]{
 			{Title: "Tag Matcher", View: func(r recordT) string { return r.link.TagMatcher }},
 			{Title: "Expires At", View: func(r recordT) string { return util.StringifyTime(r.link.ExpiresAt) }},
 			{Title: "Account", View: func(r recordT) string { return r.account.String() }},
 			{Title: "Public Keys", View: func(r recordT) string { return fmt.Sprint(r.linkedPublicKeyCount) }},
-		}),
+		}).RenderBubblesTable,
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{
 				record.account.String(),

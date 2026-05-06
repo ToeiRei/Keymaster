@@ -161,7 +161,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 								return listMsgDeleteResult[TRecord]{*selectedRecord, err}
 							}
 						},
-						popupviews.WithCancel(),
+						popupviews.WithProgressCancel(),
 					)},
 				},
 			)
@@ -224,7 +224,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) r
 			records, err := m.crud.getRecords(ctx, util.NewZero[TFilter]())
 			return util.TeaMsgToCmd(listMsgReloaded[TRecord]{records, err})
 		},
-		popupviews.WithCancel(),
+		popupviews.WithProgressCancel(),
 	)
 }
 

@@ -78,7 +78,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 					record, err := m.crud.createRecord(ctx, result)
 					return util.TeaMsgToCmd(createMsgCreateResult[TRecord]{record, err})
 				},
-				popupviews.WithCancel(),
+				popupviews.WithProgressCancel(),
 			), true
 		}),
 		form.WithOnCancel[TRecordCreate](func() tea.Cmd {
