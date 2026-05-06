@@ -24,6 +24,8 @@ const (
 	exprHashDelimiter rune   = ';'
 )
 
+// var hashWildcardCharSet string = "[^" + regexp.QuoteMeta(string(exprAnd)+string(exprOr)+string(exprNot)+string(exprBracesOpen)+string(exprBracesClose)+string(exprHashDelimiter)) + "]"
+
 type Expr interface {
 	fmt.Stringer
 	Eval(tags Tags) bool
@@ -50,6 +52,17 @@ var _ Expr = ValueExpr{}
 var _ Expr = AndExpr{}
 var _ Expr = OrExpr{}
 var _ Expr = NotExpr{}
+
+// func ExprSubsumes(expr1, expr2 Expr) bool {
+// 	hash1, hash2 := expr1.hash(), expr2.hash()
+
+// 	hash1 = regexp.QuoteMeta(hash1)
+// 	hash1 = strings.ReplaceAll(hash1, regexp.QuoteMeta(exprWildcards), hashWildcardCharSet+"*")
+// 	hash1 = strings.ReplaceAll(hash1, regexp.QuoteMeta(exprWildcard), hashWildcardCharSet)
+
+// 	regexpr := regexp.MustCompile("^" + hash1 + "$")
+// 	return regexpr.MatchString(hash2)
+// }
 
 func (e NotExpr) tryResolve() Expr {
 	switch expr := e.Expr.(type) {
@@ -157,6 +170,18 @@ func (e AndExpr) Optimize() Expr {
 
 	// deduplicate nested expressions
 	e.Exprs = sliceDeduplicateFunc(e.Exprs, func(expr Expr) string { return expr.hash() })
+	// e.Exprs = slicest.FilterI(e.Exprs, func(i1 int, expr Expr) bool {
+	// 	// is expression not contained by any other expression in its parent expression
+	// 	// return !slicest.ContainsI(e.Exprs, func(i2 int, otherExpr Expr) bool { return i1 != i2 && ExprSubsumes(otherExpr, expr) })
+	// 	return !slicest.ContainsI(e.Exprs, func(i2 int, otherExpr Expr) bool {
+	// 		differentIndex := i1 != i2
+	// 		subsumes := ExprSubsumes(otherExpr, expr)
+	// 		if i1 > i2 {
+	// 			return differentIndex && subsumes && !ExprSubsumes(expr, otherExpr)
+	// 		}
+	// 		return differentIndex && subsumes
+	// 	})
+	// })
 
 	// remove redundant nested or expressions
 	e.Exprs = slicest.Filter(e.Exprs, func(expr Expr) bool {
@@ -165,6 +190,7 @@ func (e AndExpr) Optimize() Expr {
 			return !slices.ContainsFunc(orExpr.Exprs, func(orSubExpr Expr) bool {
 				// ... wich is contained in the and expression
 				return slices.ContainsFunc(e.Exprs, func(andSubExpr Expr) bool {
+					// return ExprSubsumes(andSubExpr, orSubExpr)
 					return orSubExpr.hash() == andSubExpr.hash()
 				})
 			})
@@ -197,6 +223,18 @@ func (e OrExpr) Optimize() Expr {
 
 	// deduplicate nested expressions
 	e.Exprs = sliceDeduplicateFunc(e.Exprs, func(expr Expr) string { return expr.hash() })
+	// e.Exprs = slicest.FilterI(e.Exprs, func(i1 int, expr Expr) bool {
+	// 	// is expression not contained by any other expression in its parent expression
+	// 	// return !slicest.ContainsI(e.Exprs, func(i2 int, otherExpr Expr) bool { return i1 != i2 && ExprSubsumes(otherExpr, expr) })
+	// 	return !slicest.ContainsI(e.Exprs, func(i2 int, otherExpr Expr) bool {
+	// 		differentIndex := i1 != i2
+	// 		subsumes := ExprSubsumes(otherExpr, expr)
+	// 		if i1 > i2 {
+	// 			return differentIndex && subsumes && !ExprSubsumes(expr, otherExpr)
+	// 		}
+	// 		return differentIndex && subsumes
+	// 	})
+	// })
 
 	// remove redundant nested and expressions
 	e.Exprs = slicest.Filter(e.Exprs, func(expr Expr) bool {
@@ -205,6 +243,7 @@ func (e OrExpr) Optimize() Expr {
 			return !slices.ContainsFunc(andExpr.Exprs, func(andSubExpr Expr) bool {
 				// ... wich is contained in the or expression
 				return slices.ContainsFunc(e.Exprs, func(orSubExpr Expr) bool {
+					// return ExprSubsumes(orSubExpr, andSubExpr)
 					return andSubExpr.hash() == orSubExpr.hash()
 				})
 			})
