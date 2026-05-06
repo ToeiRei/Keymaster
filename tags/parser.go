@@ -55,8 +55,7 @@ func parseMatcher(matcher string, originalMatcher string, pos int) (Expr, error)
 	// braces
 	if strings.HasPrefix(matcher, string(exprBracesOpen)) && strings.HasSuffix(matcher, string(exprBracesClose)) {
 		matcher = matcher[1 : len(matcher)-1]
-		expr, err := parseMatcher(matcher, originalMatcher, pos+1)
-		return BracesExpr{expr}, err
+		return parseMatcher(matcher, originalMatcher, pos+1)
 	}
 
 	// raw value

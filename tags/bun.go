@@ -38,12 +38,67 @@ func FromBunString(str string) Tags {
 	return slicest.Map(strs, func(str string) Tag { return Tag(str) })
 }
 
+// Only works as a db pre filter to reduce the number of results.
+// Due to wildcards matching over [bunTagDelimiter] it does not produce 100% acurate results.
+// Use [Expr.Eval] to ensure correct results.
 func ApplyToBunQuery(expr Expr, qb bun.QueryBuilder, column string) bun.QueryBuilder {
-	return expr.applyToBunQuery(qb, column, bunAnd, false)
+	return pushNegatesToValues(expr).applyToBunQuery(qb, column, bunAnd)
 }
 
-func (e ValueExpr) applyToBunQuery(qb bun.QueryBuilder, column string, mode bunMode, negate bool) bun.QueryBuilder {
-	sqlExpr := e.Value
+func (e ValueExpr) applyToBunQuery(qb bun.QueryBuilder, column string, mode bunMode) bun.QueryBuilder {
+	return applyValueToBunQuery(e.Value, false, qb, column, mode)
+}
+
+func (e AndExpr) applyToBunQuery(qb bun.QueryBuilder, column string, _ bunMode) bun.QueryBuilder {
+	// applys all sub expressions
+	return slicest.ReduceD(e.Exprs, qb, func(expr Expr, qb bun.QueryBuilder) bun.QueryBuilder {
+		//
+		switch expr.(type) {
+		case OrExpr:
+			return applyBracesToBunQuery(expr, qb, column, bunAnd)
+		default:
+			return expr.applyToBunQuery(qb, column, bunAnd)
+		}
+	})
+}
+
+func (e OrExpr) applyToBunQuery(qb bun.QueryBuilder, column string, _ bunMode) bun.QueryBuilder {
+	// applys all sub expressions
+	return slicest.ReduceD(e.Exprs, qb, func(expr Expr, qb bun.QueryBuilder) bun.QueryBuilder {
+		switch expr.(type) {
+		case AndExpr, OrExpr:
+			return applyBracesToBunQuery(expr, qb, column, bunOr)
+		default:
+			return expr.applyToBunQuery(qb, column, bunOr)
+		}
+	})
+}
+
+func (e NotExpr) applyToBunQuery(qb bun.QueryBuilder, column string, mode bunMode) bun.QueryBuilder {
+	// make sure, NotExpr contains only a ValueExpr
+	expr, ok := e.Expr.(ValueExpr)
+	if !ok {
+		panic("NotExpr contained non ValueExpr. This behavior is not compatible with bun.QueryBuilder and should have been avoided by pushNegatesToValues().")
+	}
+
+	return applyValueToBunQuery(expr.Value, true, qb, column, mode)
+}
+
+func applyBracesToBunQuery(e Expr, qb bun.QueryBuilder, column string, mode bunMode) bun.QueryBuilder {
+	var seperator string
+	switch mode {
+	case bunAnd:
+		seperator = " AND "
+	case bunOr:
+		seperator = " OR "
+	}
+
+	return qb.WhereGroup(seperator, func(qb bun.QueryBuilder) bun.QueryBuilder {
+		return e.applyToBunQuery(qb, column, mode)
+	})
+}
+func applyValueToBunQuery(value string, negated bool, qb bun.QueryBuilder, column string, mode bunMode) bun.QueryBuilder {
+	sqlExpr := value
 
 	// escape special chars
 	sqlExpr = slicest.ReduceD([]rune(bunEscapedChars), sqlExpr, func(char rune, sqlexpr string) string {
@@ -59,7 +114,7 @@ func (e ValueExpr) applyToBunQuery(qb bun.QueryBuilder, column string, mode bunM
 
 	// setup negation string
 	var queryNot string
-	if negate {
+	if negated {
 		queryNot = " NOT"
 	}
 
@@ -74,39 +129,20 @@ func (e ValueExpr) applyToBunQuery(qb bun.QueryBuilder, column string, mode bunM
 	}
 }
 
-func (e AndExpr) applyToBunQuery(qb bun.QueryBuilder, column string, _ bunMode, negate bool) bun.QueryBuilder {
-	// applys all sub expressions
-	return slicest.ReduceD(e.Exprs, qb, func(expr Expr, qb bun.QueryBuilder) bun.QueryBuilder {
-		// flips mode AND to OR, if negated
-		return expr.applyToBunQuery(qb, column, bunMode(!negate), negate)
-	})
-}
-
-func (e OrExpr) applyToBunQuery(qb bun.QueryBuilder, column string, _ bunMode, negate bool) bun.QueryBuilder {
-	// applys all sub expressions
-	return slicest.ReduceD(e.Exprs, qb, func(expr Expr, qb bun.QueryBuilder) bun.QueryBuilder {
-		// flips mode OR to AND, if negated
-		return expr.applyToBunQuery(qb, column, bunMode(negate), negate)
-	})
-}
-
-func (e NotExpr) applyToBunQuery(qb bun.QueryBuilder, column string, mode bunMode, negate bool) bun.QueryBuilder {
-	// flips negate for subexpression
-	return e.Expr.applyToBunQuery(qb, column, mode, !negate)
-}
-
-func (e BracesExpr) applyToBunQuery(qb bun.QueryBuilder, column string, mode bunMode, negate bool) bun.QueryBuilder {
-	var seperator string
-	switch mode {
-	case bunAnd:
-		seperator = " AND "
-	case bunOr:
-		seperator = " OR "
+func pushNegatesToValues(expr Expr) Expr {
+	switch expr := expr.(type) {
+	case NotExpr:
+		switch expr.Expr.(type) {
+		case AndExpr, OrExpr:
+			return pushNegatesToValues(expr.tryResolve())
+		default:
+			return expr
+		}
+	case AndExpr:
+		return AndExpr{slicest.Map(expr.Exprs, func(expr Expr) Expr { return pushNegatesToValues(expr) })}
+	case OrExpr:
+		return OrExpr{slicest.Map(expr.Exprs, func(expr Expr) Expr { return pushNegatesToValues(expr) })}
+	default:
+		return expr
 	}
-
-	return qb.WhereGroup(seperator, func(qb bun.QueryBuilder) bun.QueryBuilder {
-		// braces them self can't be negated.
-		// flipping mode and passing negated flag, has the effect of negating the whole braces content.
-		return e.Expr.applyToBunQuery(qb, column, !bunMode(negate), negate)
-	})
 }

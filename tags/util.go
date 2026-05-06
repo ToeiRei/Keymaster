@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
-package tags3
+package tags
 
 func sliceOverlapping[T comparable, S ~[]T](s1, s2 S) []T {
 	m2 := make(map[T]struct{}, len(s2))

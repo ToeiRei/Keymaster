@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/toeirei/keymaster/tags"
+	tags "github.com/toeirei/keymaster/tags"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 	"github.com/uptrace/bun/schema"
@@ -38,7 +38,7 @@ var bunTests = []bunTest{
 	// --- Complex Nesting ---
 	{"(aws|gcp)&!legacy", "SELECT * WHERE ((tags LIKE '%|aws|%' ESCAPE '!') OR (tags LIKE '%|gcp|%' ESCAPE '!')) AND (tags NOT LIKE '%|legacy|%' ESCAPE '!')"},
 	{"auth&(**-admin|super-**)", "SELECT * WHERE (tags LIKE '%|auth|%' ESCAPE '!') AND ((tags LIKE '%|%!-admin|%' ESCAPE '!') OR (tags LIKE '%|super!-%|%' ESCAPE '!'))"},
-	{"!(test|stage)&prod", "SELECT * WHERE ((tags NOT LIKE '%|test|%' ESCAPE '!') AND (tags NOT LIKE '%|stage|%' ESCAPE '!')) AND (tags LIKE '%|prod|%' ESCAPE '!')"},
+	{"!(test|stage)&prod", "SELECT * WHERE (tags NOT LIKE '%|test|%' ESCAPE '!') AND (tags NOT LIKE '%|stage|%' ESCAPE '!') AND (tags LIKE '%|prod|%' ESCAPE '!')"},
 
 	// --- Edge Cases ---
 	{"**", "SELECT * WHERE (tags LIKE '%|%|%' ESCAPE '!')"},
