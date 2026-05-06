@@ -133,16 +133,12 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		func(ctx context.Context, id recordIdT, recordCreate recordUpdateT) (recordT, error) {
 			var record recordT
 			err := c.WithTransaction(ctx, func(c client.Client) error {
-				if err := c.UpdatePublicKey(
+				publicKey, err := c.UpdatePublicKey(
 					ctx,
 					id,
 					recordCreate.Comment,
 					tags.Parse(recordCreate.Tags),
-				); err != nil {
-					return err
-				}
-
-				publicKey, err := c.GetPublicKey(ctx, id)
+				)
 				if err != nil {
 					return err
 				}

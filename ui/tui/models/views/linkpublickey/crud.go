@@ -147,17 +147,13 @@ func NewCrud(c client.Client, rc router.Controll, publicKey client.PublicKey) *c
 					return err
 				}
 
-				if err := c.UpdateLink(
+				link, err := c.UpdateLink(
 					ctx,
 					id,
 					account.Id,
 					expr.String(),
 					expiresAt,
-				); err != nil {
-					return err
-				}
-
-				link, err := c.GetLink(ctx, id)
+				)
 				if err != nil {
 					return err
 				}

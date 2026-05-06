@@ -138,27 +138,27 @@ func (c *Client) ListPublicKeysLinkedToAccount(ctx context.Context, accountId cl
 	return slicest.Flatten(publicKeyss), nil
 }
 
-func (c *Client) UpdateLink(ctx context.Context, id client.LinkId, accountId client.AccountId, tagMatcher string, expiresAt time.Time) error {
+func (c *Client) UpdateLink(ctx context.Context, id client.LinkId, accountId client.AccountId, tagMatcher string, expiresAt time.Time) (client.Link, error) {
 	if i, ok := slices.BinarySearchFunc(c.links, id, func(link client.Link, id client.LinkId) int {
 		return int(link.Id - id)
 	}); ok {
 		c.links[i].AccountId = accountId
 		c.links[i].TagMatcher = tagMatcher
 		c.links[i].ExpiresAt = expiresAt
-		return nil
+		return c.links[i], nil
 	}
-	return fmt.Errorf("account with id %v not found", id)
+	return client.Link{}, fmt.Errorf("account with id %v not found", id)
 }
 
-func (c *Client) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, comment string, tags tags.Tags) error {
+func (c *Client) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, comment string, tags tags.Tags) (client.PublicKey, error) {
 	if i, ok := slices.BinarySearchFunc(c.publicKeys, id, func(publicKey client.PublicKey, id client.PublicKeyId) int {
 		return int(publicKey.Id - id)
 	}); ok {
 		c.publicKeys[i].Comment = comment
 		c.publicKeys[i].Tags = tags
-		return nil
+		return c.publicKeys[i], nil
 	}
-	return fmt.Errorf("public key with id %v not found", id)
+	return client.PublicKey{}, fmt.Errorf("public key with id %v not found", id)
 }
 
 func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId) error {
@@ -231,7 +231,7 @@ func (c *Client) ListAccountsDirty(ctx context.Context) ([]client.Account, error
 	})
 }
 
-func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) error {
+func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
 	if i, ok := slices.BinarySearchFunc(c.accounts, id, func(account client.Account, id client.AccountId) int {
 		return int(account.Id - id)
 	}); ok {
@@ -241,9 +241,9 @@ func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, usernam
 		c.accounts[i].Port = port
 		c.accounts[i].DeployMethod = deploymentMethod
 		c.accounts[i].DeploySecret = deploymentSecret
-		return nil
+		return c.accounts[i], nil
 	}
-	return fmt.Errorf("account with id %v not found", id)
+	return client.Account{}, fmt.Errorf("account with id %v not found", id)
 }
 
 func (c *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) error {

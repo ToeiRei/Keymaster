@@ -146,7 +146,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 					return err
 				}
 
-				if err := c.UpdateAccount(
+				account, err := c.UpdateAccount(
 					ctx,
 					id,
 					recordUpdate.Username,
@@ -154,11 +154,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 					port,
 					recordUpdate.DeployMethod,
 					recordUpdate.DeploySecret,
-				); err != nil {
-					return err
-				}
-
-				account, err := c.GetAccount(ctx, id)
+				)
 				if err != nil {
 					return err
 				}

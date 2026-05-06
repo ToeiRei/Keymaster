@@ -30,7 +30,7 @@ type Client interface {
 	ListPublicKeys(ctx context.Context, tagMatcher string) ([]PublicKey, error)
 	ListPublicKeysLinkedToAccount(ctx context.Context, accountId AccountId, expired bool) ([]PublicKey, error)
 
-	UpdatePublicKey(ctx context.Context, id PublicKeyId, comment string, tags tags.Tags) error
+	UpdatePublicKey(ctx context.Context, id PublicKeyId, comment string, tags tags.Tags) (PublicKey, error)
 
 	DeletePublicKeys(ctx context.Context, ids ...PublicKeyId) error
 
@@ -46,7 +46,7 @@ type Client interface {
 	ListAccountsDirty(ctx context.Context) ([]Account, error)
 	ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId PublicKeyId, expired bool) ([]Account, error)
 
-	UpdateAccount(ctx context.Context, id AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) error
+	UpdateAccount(ctx context.Context, id AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) (Account, error)
 
 	DeleteAccounts(ctx context.Context, ids ...AccountId) error
 
@@ -63,7 +63,7 @@ type Client interface {
 	ListLinksForAccount(ctx context.Context, accountId AccountId, expired bool) ([]Link, error)
 	ListLinksForPublicKey(ctx context.Context, publicKeyId PublicKeyId, expired bool) ([]Link, error)
 
-	UpdateLink(ctx context.Context, id LinkId, accountId AccountId, tagMatcher string, expiresAt time.Time) error
+	UpdateLink(ctx context.Context, id LinkId, accountId AccountId, tagMatcher string, expiresAt time.Time) (Link, error)
 
 	DeleteLinks(ctx context.Context, ids ...LinkId) error
 
