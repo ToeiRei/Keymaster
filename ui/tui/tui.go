@@ -5,7 +5,7 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/toeirei/keymaster/ui/tui/models/views/root"
+	"github.com/toeirei/keymaster/ui/tui/views/root"
 )
 
 func Run() error {

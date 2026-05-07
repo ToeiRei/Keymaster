@@ -1,0 +1,45 @@
+// Copyright (c) 2026 Keymaster Team
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+package menu
+
+import (
+	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/tui/components/stack"
+	"github.com/toeirei/keymaster/ui/tui/util"
+)
+
+const (
+	min_size      int = 20
+	max_size      int = 40
+	collapse_size int = 50
+)
+
+var SizeConfig = &sizeConfig{}
+
+type sizeConfig struct{}
+
+var _ stack.SizeConfig = (*sizeConfig)(nil)
+
+func (s *sizeConfig) Priority() int { return 20 }
+
+func (s *sizeConfig) Caltulate(model util.Model, remaining_size int, _ int) int {
+	if menu, ok := model.(*Model); ok {
+		if !menu.focused {
+			if remaining_size <= collapse_size {
+				return 0
+			}
+			return min_size
+		}
+		// clamp needed size
+		return util.Clamp(
+			// min
+			min_size,
+			// wanted
+			lipgloss.Width(menu.view())+2,
+			// max
+			min(max_size, remaining_size),
+		)
+	}
+	return min_size
+}
