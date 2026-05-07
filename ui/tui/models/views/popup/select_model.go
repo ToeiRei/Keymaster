@@ -12,7 +12,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/tablecontroll"
 	"github.com/toeirei/keymaster/ui/tui/util"
@@ -34,9 +33,12 @@ type SelectModel[T any] struct {
 	tableControll    tablecontroll.Controll[T]
 	fnFilterRecords  SelectFnFilterRecords[T] // optional
 
-	records  []T
-	focussed bool
-	size     util.Size
+	records         []T
+	filteredRecords []T
+	focussed        bool
+	size            util.Size
+	titleWidth      int
+	prevFilterValue string
 
 	textModel  *textinput.Model
 	tableModel *table.Model
@@ -100,10 +102,11 @@ func (m *SelectModel[T]) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case selectMsgReloaded[T]:
 		m.records = msg.records
+		m.filterRecords()
 		m.refreshTable()
 		if msg.err != nil {
 			return OpenChoice("Error loading records:\n"+msg.err.Error(), Choices{
-				Choice{"Close", popup.Close(), form.GlobalKeyMap{keys.Close()}},
+				Choice{"Close", popup.Close(), keys.KeyBindingList{keys.Close()}},
 				Choice{"Reload", m.reload(), nil},
 			})
 		}
@@ -135,25 +138,28 @@ func (m *SelectModel[T]) Update(msg tea.Msg) tea.Cmd {
 			SelectBaseKeyMap.GotoBottom,
 		):
 			return util.UpdateTeaModelInplace(msg, m.tableModel)
-		default:
-			if m.fnFilterRecords != nil {
-				return util.UpdateTeaModelInplace(msg, m.textModel)
-			}
-			return nil
 		}
-	default:
-		if m.fnFilterRecords != nil {
-			return util.UpdateTeaModelInplace(msg, m.textModel)
-		}
-		return nil
 	}
+
+	if m.fnFilterRecords != nil {
+		cmd := util.UpdateTeaModelInplace(msg, m.textModel)
+		currFilterValue := m.textModel.Value()
+		if currFilterValue != m.prevFilterValue {
+			m.prevFilterValue = currFilterValue
+			m.filterRecords()
+			m.refreshTable()
+		}
+		return cmd
+	}
+
+	return nil
 }
 
 func (m SelectModel[T]) View() string {
 	blocks := make([]string, 0, 3)
 
 	if m.title != "" {
-		blocks = append(blocks, m.title)
+		blocks = append(blocks, lipgloss.PlaceHorizontal(m.titleWidth, lipgloss.Center, m.title))
 	}
 
 	if m.fnFilterRecords != nil {
@@ -190,6 +196,14 @@ func (m *SelectModel[T]) reload() tea.Cmd {
 	}, WithProgressCancel())
 }
 
+func (m *SelectModel[T]) filterRecords() {
+	if m.prevFilterValue == "" {
+		m.filteredRecords = m.records
+	} else {
+		m.filteredRecords = m.fnFilterRecords(m.prevFilterValue, m.records)
+	}
+}
+
 func (m *SelectModel[T]) refreshTable() {
 	// height
 	availableHeight := m.size.Height
@@ -199,24 +213,22 @@ func (m *SelectModel[T]) refreshTable() {
 	if m.fnFilterRecords != nil {
 		availableHeight--
 	}
-	if availableHeight <= len(m.records)+1 {
-		m.tableModel.SetHeight(availableHeight)
-	} else {
-		m.tableModel.SetHeight(len(m.records) + 1)
-	}
+	tableHeight := len(m.filteredRecords) + 1
+	m.tableModel.SetHeight(min(availableHeight, tableHeight))
 
 	// width
-	tableWidth := m.tableControll.PreferredWidth(m.records, m.size.Width)
+	tableWidth := m.tableControll.PreferredWidth(m.filteredRecords, m.size.Width)
 	m.tableModel.SetWidth(tableWidth)
-	m.textModel.Width = m.size.Width - 1
+	m.textModel.Width = tableWidth - 1
+	m.titleWidth = tableWidth
 
 	// render and apply columns and rows
-	columns, rows := m.tableControll.RenderBubblesTable(m.records, tableWidth)
+	columns, rows := m.tableControll.RenderBubblesTable(m.filteredRecords, tableWidth)
 	m.tableModel.SetColumns(columns)
 	m.tableModel.SetRows(rows)
 
 	// reposition cursor
-	if m.tableModel.Cursor() <= 0 && len(m.records) > 0 {
+	if m.tableModel.Cursor() <= 0 && len(m.filteredRecords) > 0 {
 		m.tableModel.MoveUp(1)
 	}
 }

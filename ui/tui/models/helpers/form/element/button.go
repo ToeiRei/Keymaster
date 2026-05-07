@@ -28,7 +28,7 @@ type Button struct {
 	BlurredStyle  lipgloss.Style
 	FocusedStyle  lipgloss.Style
 
-	globalKeyBindings form.GlobalKeyMap
+	globalKeyBindings keys.KeyBindingList
 	focused           bool
 }
 
@@ -149,7 +149,7 @@ func (b *Button) Focusable() bool {
 	return !b.Disabled
 }
 
-func (b *Button) Init() (tea.Cmd, form.GlobalKeyMap) {
+func (b *Button) Init() (tea.Cmd, keys.KeyBindingList) {
 	return nil, b.globalKeyBindings
 }
 

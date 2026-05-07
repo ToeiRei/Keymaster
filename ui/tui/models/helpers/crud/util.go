@@ -5,7 +5,6 @@ package crud
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
@@ -14,7 +13,7 @@ func discardGuard(confirmCmd tea.Cmd) tea.Cmd {
 	return popupviews.OpenChoice(
 		"You have unsaved changes. Do you want to discard them?",
 		popupviews.Choices{
-			{Name: "Cancel", Cmd: nil, KeyBindings: form.GlobalKeyMap{keys.Cancel()}},
+			{Name: "Cancel", Cmd: nil, KeyBindings: keys.KeyBindingList{keys.Cancel()}},
 			{Name: "Discard", Cmd: confirmCmd},
 		},
 	)

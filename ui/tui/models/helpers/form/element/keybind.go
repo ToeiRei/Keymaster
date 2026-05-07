@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 // *[Keybind] implements [form.FormElement]
@@ -15,7 +16,7 @@ var _ form.FormElement = (*Keybind)(nil)
 
 type Keybind struct {
 	Action            func() (tea.Cmd, form.Action)
-	GlobalKeyBindings form.GlobalKeyMap
+	GlobalKeyBindings keys.KeyBindingList
 }
 
 func NewKeybind(action func() (tea.Cmd, form.Action), globalKeyBindings ...key.Binding) form.FormElement {
@@ -35,7 +36,7 @@ func (k *Keybind) Update(msg tea.Msg) (tea.Cmd, form.Action) {
 	return nil, form.ActionNone
 }
 
-func (k *Keybind) Init() (tea.Cmd, form.GlobalKeyMap) {
+func (k *Keybind) Init() (tea.Cmd, keys.KeyBindingList) {
 	return nil, k.GlobalKeyBindings
 }
 

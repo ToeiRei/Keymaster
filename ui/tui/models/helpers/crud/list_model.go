@@ -11,7 +11,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	windowtitle "github.com/toeirei/keymaster/ui/tui/models/helpers/title"
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
@@ -85,7 +84,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 		m.refreshTable()
 		if msg.err != nil {
 			return popupviews.OpenChoice("Error loading "+m.crud.Texts.EntityNameMultiple+":\n"+msg.err.Error(), popupviews.Choices{
-				popupviews.Choice{"Close", m.crud.routerControll.Pop(1), form.GlobalKeyMap{keys.Close()}},
+				popupviews.Choice{"Close", m.crud.routerControll.Pop(1), keys.KeyBindingList{keys.Close()}},
 				popupviews.Choice{"Reload", m.reload(), nil},
 			})
 		}
@@ -151,7 +150,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 			return popupviews.OpenChoice(
 				"Do you realy want to delete this "+m.crud.Texts.EntityNameSingular+"?",
 				popupviews.Choices{
-					{Name: "Cancel", Cmd: nil, KeyBindings: form.GlobalKeyMap{keys.Cancel()}},
+					{Name: "Cancel", Cmd: nil, KeyBindings: keys.KeyBindingList{keys.Cancel()}},
 					{Name: "Delete", Cmd: popupviews.OpenProgress(
 						popupviews.ProgressSpinner,
 						"Deleting "+m.crud.Texts.EntityNameSingular,

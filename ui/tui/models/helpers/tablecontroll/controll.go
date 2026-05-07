@@ -49,8 +49,9 @@ func (c Controll[T]) RenderRows(records []T) [][]string {
 
 func (c Controll[T]) PreferredWidth(records []T, availableWidth int) int {
 	rows := c.RenderRows(records)
-	_, totalWidth := c.ColumnDimensions(rows, availableWidth-c.spacingWidth())
-	return min(availableWidth, totalWidth)
+	spacingWidth := c.spacingWidth()
+	_, totalWidth := c.ColumnDimensions(rows, availableWidth-spacingWidth)
+	return min(availableWidth, totalWidth+spacingWidth)
 }
 
 func (c Controll[T]) ColumnDimensions(rows [][]string, availableWidth int) ([]int, int) {

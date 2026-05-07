@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 // *[TextArea] implements [form.FormElement]
@@ -59,7 +60,7 @@ func (t *TextArea) Get() any {
 	return t.textarea.Value()
 }
 
-func (t *TextArea) Init() (tea.Cmd, form.GlobalKeyMap) {
+func (t *TextArea) Init() (tea.Cmd, keys.KeyBindingList) {
 	return nil, nil
 }
 

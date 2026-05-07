@@ -11,6 +11,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/models/components/router"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 type Texts struct {
@@ -41,7 +42,7 @@ type Crud[
 	updateFormRows     func() []form.FormOpt[TRecordUpdate]
 	createRecordPreset func() TRecordCreate
 
-	listGlobalKeyMap form.GlobalKeyMap
+	listGlobalKeyMap keys.KeyBindingList
 
 	routerControll router.Controll
 

@@ -6,6 +6,7 @@ package content
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -24,6 +25,7 @@ import (
 	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/models/views/publickey"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/util/slicest"
 )
 
 type Model struct {
@@ -83,6 +85,7 @@ func New() *Model {
 		menu.WithItem("", "Test",
 			menu.WithItem("", "Popup",
 				menu.WithItem("test.popup.select", "Select"),
+				menu.WithItem("test.popup.select_with_filter", "Select with Filter"),
 				menu.WithItem("test.popup.progress.spinner", "Progress Spinner"),
 				menu.WithItem("test.popup.progress.bar", "Progress Bar"),
 			),
@@ -144,7 +147,31 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 					{Title: "Port", View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
 					{Title: "Deploy Method", View: func(r client.Account) string { return r.DeployMethod }},
 				}),
-				// popupviews.WithSelectFilter(),
+			)
+
+		case "test.popup.select_with_filter":
+			return popupviews.OpenSelect(
+				"Choose Account",
+				func(ctx context.Context) ([]client.Account, error) {
+					return m.client.ListAccounts(ctx)
+				},
+				func(r client.Account) tea.Cmd {
+					return popupviews.OpenMessage(popupviews.MessageInfo, "You selected: "+r.String(), nil)
+				},
+				tablecontroll.New(tablecontroll.Columns[client.Account]{
+					{Title: "Username", View: func(r client.Account) string { return r.Username }},
+					{Title: "Host", View: func(r client.Account) string { return r.Host }},
+					{Title: "Port", View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
+					{Title: "Deploy Method", View: func(r client.Account) string { return r.DeployMethod }},
+				}),
+				popupviews.WithSelectFilter(func(filter string, records []client.Account) []client.Account {
+					return slicest.Filter(records, func(record client.Account) bool {
+						return strings.Contains(record.Username, filter) ||
+							strings.Contains(record.Host, filter) ||
+							strings.Contains(fmt.Sprint(record.Port), filter) ||
+							strings.Contains(record.DeployMethod, filter)
+					})
+				}),
 			)
 
 		case "test.popup.progress.spinner":

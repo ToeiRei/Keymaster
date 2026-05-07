@@ -36,6 +36,12 @@ func Next() key.Binding {
 		key.WithHelp("tab", "next"),
 	)
 }
+func NextEnter() key.Binding {
+	return key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "next"),
+	)
+}
 func Prev() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("shift+tab"),

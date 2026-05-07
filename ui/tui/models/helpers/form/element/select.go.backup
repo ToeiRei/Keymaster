@@ -6,93 +6,87 @@ package formelement
 import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
+	"github.com/toeirei/keymaster/ui/tui/models/helpers/tablecontroll"
+	popupviews "github.com/toeirei/keymaster/ui/tui/models/views/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
-// *[Text] implements [form.FormElement]
-var _ form.FormElement = (*Text)(nil)
+// *[Select] implements [form.FormElement]
+var _ form.FormElement = (*Select[any])(nil)
 
-type Text struct {
-	Label       string
-	Placeholder string
-	Disabled    bool
+type Select[T any] struct {
+	Label            string
+	fnLoadRecords    popupviews.SelectFnLoadRecords[T]
+	fnOnRecordSelect popupviews.SelectFnOnRecordSelect[T]
+	tableControll    tablecontroll.Controll[T]
+	selectOpts       []popupviews.SelectOption[T]
+	// Disabled    bool
 
-	input   textinput.Model
 	focused bool
 }
 
-type TextOption func(*Text)
-
-func WithTextDisable() TextOption {
-	return func(t *Text) { t.Disabled = true }
+func NewSelect[T any](
+	label string,
+	fnLoadRecords popupviews.SelectFnLoadRecords[T],
+	fnOnRecordSelect popupviews.SelectFnOnRecordSelect[T],
+	tableControll tablecontroll.Controll[T],
+	selectOpts ...popupviews.SelectOption[T],
+) form.FormElement {
+	selectElement := &Select[T]{
+		Label:            label,
+		fnLoadRecords:    fnLoadRecords,
+		fnOnRecordSelect: fnOnRecordSelect,
+		tableControll:    tableControll,
+		selectOpts:       selectOpts,
+	}
+	return selectElement
 }
 
-func NewText(label, placeholder string, opts ...TextOption) form.FormElement {
-	text := &Text{
-		Label:       label,
-		Placeholder: placeholder,
-		input:       textinput.New(),
-	}
-	for _, opt := range opts {
-		opt(text)
-	}
-	return text
-}
-
-func (t *Text) Focus(parentKeyMap help.KeyMap) tea.Cmd {
+func (t *Select[any]) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	t.focused = true
-	return tea.Batch(
-		t.input.Focus(),
-		util.AnnounceKeyMapCmd(parentKeyMap),
-	)
+	return util.AnnounceKeyMapCmd(parentKeyMap, keys.KeyBindingList{keys.Select()})
 }
 
-func (t *Text) Blur() {
+func (t *Select[any]) Blur() {
 	t.focused = false
-	t.input.Blur()
 }
 
-func (t *Text) Get() any {
+func (t *Select[any]) Get() any {
 	return t.input.Value()
 }
 
-func (t *Text) Init() (tea.Cmd, keys.KeyBindingList) {
+func (t *Select[any]) Init() (tea.Cmd, keys.KeyBindingList) {
 	return nil, nil
 }
 
-func (t *Text) Reset() {
+func (t *Select[any]) Reset() {
 	t.input.SetValue("")
 }
 
-func (t *Text) Set(value any) {
+func (t *Select[any]) Set(value any) {
 	if value, ok := value.(string); ok {
 		t.input.SetValue(value)
 	}
 }
 
-func (t *Text) Update(msg tea.Msg) (tea.Cmd, form.Action) {
+func (t *Select[any]) Update(msg tea.Msg) (tea.Cmd, form.Action) {
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch {
-		case key.Matches(msg, keys.NextEnter()), key.Matches(msg, keys.DownArrow()):
+		case key.Matches(msg, t.KeyMap.Next), key.Matches(msg, keys.DownArrow()):
 			return nil, form.ActionNext
 		case key.Matches(msg, keys.UpArrow()):
 			return nil, form.ActionPrev
 		}
 	}
 
-	if t.Disabled {
-		return nil, form.ActionNone
-	}
-
 	return util.UpdateTeaModelInplace(msg, &t.input), form.ActionNone
 }
 
-func (t *Text) View(width int, eager bool) string {
+func (t *Select[any]) View(width int, eager bool) string {
 	views := make([]string, 0, 2)
 
 	// render label
@@ -122,8 +116,8 @@ func (t *Text) View(width int, eager bool) string {
 	return lipgloss.JoinVertical(lipgloss.Left, views...)
 }
 
-func (t *Text) Focusable() bool {
+func (t *Select[any]) Focusable() bool {
 	return !t.Disabled
 }
 
-var _ form.FormElement = (*Text)(nil)
+var _ form.FormElement = (*Select)(nil)

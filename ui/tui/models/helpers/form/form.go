@@ -4,6 +4,7 @@
 package form
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/bobg/go-generics/v4/slices"
@@ -13,6 +14,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
@@ -36,7 +38,7 @@ var rowAlignments = map[RowAlign]lipgloss.Position{
 type FormElement interface {
 	util.Focusable
 	Reset()
-	Init() (tea.Cmd, GlobalKeyMap)
+	Init() (tea.Cmd, keys.KeyBindingList)
 	Update(msg tea.Msg) (tea.Cmd, Action)
 	Set(any)
 	Get() any
@@ -47,7 +49,7 @@ type FormElement interface {
 type Item struct {
 	Id           string
 	Element      FormElement
-	globalKeyMap GlobalKeyMap
+	globalKeyMap keys.KeyBindingList
 }
 
 type row struct {
@@ -251,7 +253,7 @@ func (f *Form[T]) keymap() help.KeyMap {
 	return util.MergeKeyMaps(
 		f.parentKeyMap,
 		DefaultKeyMap,
-		slicest.Reduce(f.items, func(item Item, km GlobalKeyMap) GlobalKeyMap {
+		slicest.Reduce(f.items, func(item Item, km keys.KeyBindingList) keys.KeyBindingList {
 			return append(km, item.globalKeyMap...)
 		}),
 	)
@@ -404,6 +406,16 @@ func (f *Form[T]) Set(data T) error {
 		}
 	}
 
+	return nil
+}
+
+func (f *Form[T]) SetItem(id string, value any) error {
+	item := slicest.Find(f.items, func(item Item) bool { return item.Id == id })
+	if item == nil {
+		return fmt.Errorf("Form item with id %q not found", id)
+	}
+
+	item.Element.Set(value)
 	return nil
 }
 

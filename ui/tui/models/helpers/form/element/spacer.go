@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 // *[Spacer] implements [form.FormElement]
@@ -36,7 +37,7 @@ func (s *Spacer) Focusable() bool { return false }
 
 // not needed
 func (s *Spacer) Get() any                                  { return nil }
-func (s *Spacer) Init() (tea.Cmd, form.GlobalKeyMap)        { return nil, nil }
+func (s *Spacer) Init() (tea.Cmd, keys.KeyBindingList)        { return nil, nil }
 func (s *Spacer) Update(msg tea.Msg) (tea.Cmd, form.Action) { return nil, form.ActionNone }
 func (s *Spacer) Reset()                                    {}
 func (s *Spacer) Set(any)                                   {}

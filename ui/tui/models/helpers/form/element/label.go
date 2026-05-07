@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/form"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 // *[Label] implements [form.FormElement]
@@ -35,7 +36,7 @@ func (l *Label) Focusable() bool {
 
 // not needed
 func (l *Label) Get() any                                  { return nil }
-func (l *Label) Init() (tea.Cmd, form.GlobalKeyMap)        { return nil, nil }
+func (l *Label) Init() (tea.Cmd, keys.KeyBindingList)        { return nil, nil }
 func (l *Label) Update(msg tea.Msg) (tea.Cmd, form.Action) { return nil, form.ActionNone }
 func (l *Label) Reset()                                    {}
 func (l *Label) Set(any)                                   {}

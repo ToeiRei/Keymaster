@@ -11,13 +11,14 @@ import (
 	formelement "github.com/toeirei/keymaster/ui/tui/models/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/models/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/ui/tui/util/keys"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
 type Choice struct {
 	Name        string
 	Cmd         tea.Cmd
-	KeyBindings form.GlobalKeyMap
+	KeyBindings keys.KeyBindingList
 }
 type Choices []Choice
 
