@@ -112,6 +112,13 @@ func RightOpen() key.Binding {
 	)
 }
 
+func Open() key.Binding {
+	return key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "open"),
+	)
+}
+
 func LineUp() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("up", "k"),

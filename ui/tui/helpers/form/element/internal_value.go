@@ -37,5 +37,3 @@ func (t *InternalValue) Update(msg tea.Msg) (tea.Cmd, form.Action) { return nil,
 func (t *InternalValue) View(width int, eager bool) string { return "" }
 
 func (t *InternalValue) Focusable() bool { return false }
-
-var _ form.FormElement = (*InternalValue)(nil)

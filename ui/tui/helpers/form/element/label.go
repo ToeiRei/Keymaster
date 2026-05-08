@@ -36,11 +36,9 @@ func (l *Label) Focusable() bool {
 
 // not needed
 func (l *Label) Get() any                                  { return nil }
-func (l *Label) Init() (tea.Cmd, keys.KeyBindingList)        { return nil, nil }
+func (l *Label) Init() (tea.Cmd, keys.KeyBindingList)      { return nil, nil }
 func (l *Label) Update(msg tea.Msg) (tea.Cmd, form.Action) { return nil, form.ActionNone }
 func (l *Label) Reset()                                    {}
 func (l *Label) Set(any)                                   {}
 func (l *Label) Focus(parentKeyMap help.KeyMap) tea.Cmd    { return nil }
 func (l *Label) Blur()                                     {}
-
-var _ form.FormElement = (*Label)(nil)

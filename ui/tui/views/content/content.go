@@ -69,7 +69,7 @@ func New() *Model {
 	_, _ = c.CreateLink(context.Background(), 5, "company:big_money", time.Now())
 
 	c = mock.NewClient(mock.WitchBaseClient(c), mock.WitchPre(func(method string, args map[string]any) error {
-		time.Sleep(time.Millisecond * 200)
+		time.Sleep(time.Millisecond * 100)
 		if ctx, ok := args["ctx"].(context.Context); ok {
 			return ctx.Err()
 		}

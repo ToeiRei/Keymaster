@@ -12,7 +12,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/go-viper/mapstructure/v2"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
 	"github.com/toeirei/keymaster/util/slicest"
@@ -383,20 +382,20 @@ func (f *Form[T]) changeActiveIndex(index_delta int) tea.Cmd {
 }
 
 func (f *Form[T]) Get() (T, error) {
-	var data T
 	values := make(map[string]any, len(f.items))
 
 	for _, item := range f.items {
 		values[item.Id] = item.Element.Get()
 	}
 
-	err := decode(values, &data)
+	var data T
+	err := mapToStruct(values, &data)
 	return data, err
 }
 
 func (f *Form[T]) Set(data T) error {
-	values := make(map[string]any, len(f.items))
-	if err := decode(data, &values); err != nil {
+	values, err := mapFromStruct(data)
+	if err != nil {
 		return err
 	}
 
@@ -421,17 +420,19 @@ func (f *Form[T]) SetItem(id string, value any) error {
 
 func (f *Form[T]) SetInitialData(data T) { f.InitialData = data }
 
-func decode(input any, output any) error {
-	config := &mapstructure.DecoderConfig{
-		Metadata: nil,
-		Result:   output,
-		TagName:  "mapstructure,form", // TODO deprecate "mapstructure"
-	}
+// func decode(input any, output any) error {
+// 	config := &mapstructure.DecoderConfig{
+// 		Metadata: nil,
+// 		Result:   output,
+// 		Deep:     false,
+// 		Squash: ,
+// 		TagName:  "mapstructure,form", // TODO deprecate "mapstructure"
+// 	}
 
-	decoder, err := mapstructure.NewDecoder(config)
-	if err != nil {
-		return err
-	}
+// 	decoder, err := mapstructure.NewDecoder(config)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	return decoder.Decode(input)
-}
+// 	return decoder.Decode(input)
+// }

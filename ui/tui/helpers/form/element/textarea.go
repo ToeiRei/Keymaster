@@ -116,5 +116,3 @@ func (t *TextArea) View(width int, eager bool) string {
 func (t *TextArea) Focusable() bool {
 	return !t.Disabled
 }
-
-var _ form.FormElement = (*TextArea)(nil)
