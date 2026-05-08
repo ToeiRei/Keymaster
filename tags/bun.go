@@ -106,8 +106,8 @@ func applyValueToBunQuery(value string, negated bool, qb bun.QueryBuilder, colum
 	})
 
 	// enable wildcards
-	sqlExpr = strings.ReplaceAll(sqlExpr, exprWildcards, bunWildcards)
-	sqlExpr = strings.ReplaceAll(sqlExpr, exprWildcard, bunWildcard)
+	sqlExpr = strings.ReplaceAll(sqlExpr, ExprWildcards, bunWildcards)
+	sqlExpr = strings.ReplaceAll(sqlExpr, ExprWildcard, bunWildcard)
 
 	// add delimiters and wildcards to not match across multiple tags
 	sqlExpr = bunWildcards + bunTagDelimiter + sqlExpr + bunTagDelimiter + bunWildcards

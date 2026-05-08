@@ -14,14 +14,14 @@ import (
 )
 
 const (
-	exprAnd           rune   = '&'
-	exprOr            rune   = '|'
-	exprNot           string = "!"
-	exprBracesOpen    rune   = '('
-	exprBracesClose   rune   = ')'
-	exprWildcard      string = "*"
-	exprWildcards     string = "**"
-	exprHashDelimiter rune   = ';'
+	ExprAnd           rune   = '&'
+	ExprOr            rune   = '|'
+	ExprNot           string = "!"
+	ExprBracesOpen    rune   = '('
+	ExprBracesClose   rune   = ')'
+	ExprWildcard      string = "*"
+	ExprWildcards     string = "**"
+	ExprHashDelimiter rune   = ';'
 )
 
 // var hashWildcardCharSet string = "[^" + regexp.QuoteMeta(string(exprAnd)+string(exprOr)+string(exprNot)+string(exprBracesOpen)+string(exprBracesClose)+string(exprHashDelimiter)) + "]"
@@ -84,28 +84,28 @@ func (e AndExpr) String() string {
 	return strings.Join(slicest.Map(e.Exprs, func(e Expr) string {
 		switch e.(type) {
 		case AndExpr, OrExpr:
-			return string(exprBracesOpen) + e.String() + string(exprBracesClose)
+			return string(ExprBracesOpen) + e.String() + string(ExprBracesClose)
 		default:
 			return e.String()
 		}
-	}), " "+string(exprAnd)+" ")
+	}), " "+string(ExprAnd)+" ")
 }
 func (e OrExpr) String() string {
 	return strings.Join(slicest.Map(e.Exprs, func(e Expr) string {
 		switch e.(type) {
 		case AndExpr, OrExpr:
-			return string(exprBracesOpen) + e.String() + string(exprBracesClose)
+			return string(ExprBracesOpen) + e.String() + string(ExprBracesClose)
 		default:
 			return e.String()
 		}
-	}), " "+string(exprOr)+" ")
+	}), " "+string(ExprOr)+" ")
 }
 func (e NotExpr) String() string {
 	switch e.Expr.(type) {
 	case AndExpr, OrExpr:
-		return exprNot + string(exprBracesOpen) + e.Expr.String() + string(exprBracesClose)
+		return ExprNot + string(ExprBracesOpen) + e.Expr.String() + string(ExprBracesClose)
 	default:
-		return exprNot + e.Expr.String()
+		return ExprNot + e.Expr.String()
 	}
 }
 
@@ -113,8 +113,8 @@ func (e NotExpr) String() string {
 
 func (e ValueExpr) Eval(tags Tags) bool {
 	expr := regexp.QuoteMeta(e.Value)
-	expr = strings.ReplaceAll(expr, regexp.QuoteMeta(exprWildcards), ".*")
-	expr = strings.ReplaceAll(expr, regexp.QuoteMeta(exprWildcard), ".")
+	expr = strings.ReplaceAll(expr, regexp.QuoteMeta(ExprWildcards), ".*")
+	expr = strings.ReplaceAll(expr, regexp.QuoteMeta(ExprWildcard), ".")
 	regexpr := regexp.MustCompile("^" + expr + "$")
 	return slicest.Contains(tags, func(tag Tag) bool {
 		return regexpr.MatchString(string(tag))
@@ -138,15 +138,15 @@ func (e ValueExpr) hash() string {
 func (e AndExpr) hash() string {
 	hashes := slicest.Map(e.Exprs, func(e Expr) string { return e.hash() })
 	slices.Sort(hashes)
-	return string(exprAnd) + string(exprBracesOpen) + strings.Join(hashes, string(exprHashDelimiter)) + string(exprBracesClose)
+	return string(ExprAnd) + string(ExprBracesOpen) + strings.Join(hashes, string(ExprHashDelimiter)) + string(ExprBracesClose)
 }
 func (e OrExpr) hash() string {
 	hashes := slicest.Map(e.Exprs, func(e Expr) string { return e.hash() })
 	slices.Sort(hashes)
-	return string(exprOr) + string(exprBracesOpen) + strings.Join(hashes, string(exprHashDelimiter)) + string(exprBracesClose)
+	return string(ExprOr) + string(ExprBracesOpen) + strings.Join(hashes, string(ExprHashDelimiter)) + string(ExprBracesClose)
 }
 func (e NotExpr) hash() string {
-	return exprNot + string(exprBracesOpen) + e.Expr.hash() + string(exprBracesClose)
+	return ExprNot + string(ExprBracesOpen) + e.Expr.hash() + string(ExprBracesClose)
 }
 
 // --- [Expr.Optimize] implementations ---

@@ -27,7 +27,7 @@ func parseMatcher(matcher string, originalMatcher string, pos int) (Expr, error)
 	}
 
 	// and
-	if parts := splitOnTopLevelChar(matcher, exprAnd); len(parts) > 1 {
+	if parts := splitOnTopLevelChar(matcher, ExprAnd); len(parts) > 1 {
 		exprs, err := slicest.MapX(parts, func(part string) (Expr, error) {
 			expr, err := parseMatcher(part, originalMatcher, pos)
 			pos += len(part) + 1
@@ -37,7 +37,7 @@ func parseMatcher(matcher string, originalMatcher string, pos int) (Expr, error)
 	}
 
 	// or
-	if parts := splitOnTopLevelChar(matcher, exprOr); len(parts) > 1 {
+	if parts := splitOnTopLevelChar(matcher, ExprOr); len(parts) > 1 {
 		exprs, err := slicest.MapX(parts, func(part string) (Expr, error) {
 			expr, err := parseMatcher(part, originalMatcher, pos)
 			pos += len(part) + 1
@@ -47,13 +47,13 @@ func parseMatcher(matcher string, originalMatcher string, pos int) (Expr, error)
 	}
 
 	// negation
-	if matcher, negated := strings.CutPrefix(matcher, exprNot); negated {
-		expr, err := parseMatcher(matcher, originalMatcher, pos+len(exprNot))
+	if matcher, negated := strings.CutPrefix(matcher, ExprNot); negated {
+		expr, err := parseMatcher(matcher, originalMatcher, pos+len(ExprNot))
 		return NotExpr{expr}, err
 	}
 
 	// braces
-	if strings.HasPrefix(matcher, string(exprBracesOpen)) && strings.HasSuffix(matcher, string(exprBracesClose)) {
+	if strings.HasPrefix(matcher, string(ExprBracesOpen)) && strings.HasSuffix(matcher, string(ExprBracesClose)) {
 		matcher = matcher[1 : len(matcher)-1]
 		return parseMatcher(matcher, originalMatcher, pos+1)
 	}
@@ -78,9 +78,9 @@ func splitOnTopLevelChar(expr string, char rune) []string {
 
 	for i, ch := range expr {
 		switch ch {
-		case exprBracesOpen:
+		case ExprBracesOpen:
 			depth++
-		case exprBracesClose:
+		case ExprBracesClose:
 			depth--
 		case char:
 			if depth <= 0 {
