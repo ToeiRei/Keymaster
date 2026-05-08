@@ -16,7 +16,7 @@ const (
 
 	// tuned for postgres
 	bunEscape       string = "!"
-	bunEscapedChars string = `%_[]^-{}`
+	bunEscapedChars string = bunEscape + "%_[]^-{}"
 	bunWildcard     string = "_"
 	bunWildcards    string = "%"
 	bunTagDelimiter string = "|"
