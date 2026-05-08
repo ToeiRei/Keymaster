@@ -90,20 +90,20 @@ func WitchPre(fn func(method string, args map[string]any) error) MockOption {
 
 // --- Client implementation template ---
 
-// func (m *Client) <MethodUsername>(ctx context.Context, <Args>) <ReturnValues> {
+// func (m *Client) <MethodName>(ctx context.Context, <Args>) <ReturnValues> {
 //     if m.Pre != nil {
-//         err := m.Pre("<MethodUsername>", map[string]any{"<ArgUsername>": <ArgValue>, ...})
+//         err := m.Pre("<MethodName>", map[string]any{"<ArgUsername>": <ArgValue>, ...})
 //         if err != nil {
 //             return <ReturnValue?>, err
 //         }
 //     }
-//     if m.Overwrites.<MethodUsername> != nil {
-//         return m.Overwrites.<MethodUsername>(ctx, <Args>)
+//     if m.Overwrites.<MethodName> != nil {
+//         return m.Overwrites.<MethodName>(ctx, <Args>)
 //     }
 //     else if m.BaseClient != nil {
-//         return m.BaseClient.<MethodUsername>(ctx, <Args>)
+//         return m.BaseClient.<MethodName>(ctx, <Args>)
 //     }
-//     panic("Client.<MethodUsername> not implemented")
+//     panic("Client.<MethodName> not implemented")
 // }
 
 // --- Lifecycle & Initialization ---

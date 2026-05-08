@@ -138,12 +138,12 @@ func (e ValueExpr) hash() string {
 func (e AndExpr) hash() string {
 	hashes := slicest.Map(e.Exprs, func(e Expr) string { return e.hash() })
 	slices.Sort(hashes)
-	return string(exprAnd) + strings.Join(hashes, string(exprHashDelimiter))
+	return string(exprAnd) + string(exprBracesOpen) + strings.Join(hashes, string(exprHashDelimiter)) + string(exprBracesClose)
 }
 func (e OrExpr) hash() string {
 	hashes := slicest.Map(e.Exprs, func(e Expr) string { return e.hash() })
 	slices.Sort(hashes)
-	return string(exprOr) + strings.Join(hashes, string(exprHashDelimiter))
+	return string(exprOr) + string(exprBracesOpen) + strings.Join(hashes, string(exprHashDelimiter)) + string(exprBracesClose)
 }
 func (e NotExpr) hash() string {
 	return exprNot + string(exprBracesOpen) + e.Expr.hash() + string(exprBracesClose)
