@@ -10,25 +10,19 @@ import (
 )
 
 type SelectKeyMap struct {
-	LineUp       key.Binding
-	LineDown     key.Binding
-	PageUp       key.Binding
-	PageDown     key.Binding
-	HalfPageUp   key.Binding
-	HalfPageDown key.Binding
-	GotoTop      key.Binding
-	GotoBottom   key.Binding
-	Select       key.Binding
-	Cancel       key.Binding
+	Up     key.Binding
+	Down   key.Binding
+	Select key.Binding
+	Cancel key.Binding
 }
 
 func (km SelectKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.LineUp, km.LineDown, km.Select, km.Cancel}
+	return []key.Binding{km.Up, km.Down, km.Select, km.Cancel}
 }
 
 func (km SelectKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.LineUp, km.LineDown, km.PageUp, km.PageDown, km.HalfPageUp, km.HalfPageDown, km.GotoTop, km.GotoBottom},
+		{km.Up, km.Down},
 		{km.Select, km.Cancel},
 	}
 }
@@ -37,14 +31,8 @@ func (km SelectKeyMap) FullHelp() [][]key.Binding {
 var _ help.KeyMap = (*SelectKeyMap)(nil)
 
 var SelectBaseKeyMap = SelectKeyMap{
-	LineUp:       keys.LineUp(),
-	LineDown:     keys.LineDown(),
-	PageUp:       keys.PageUp(),
-	PageDown:     keys.PageDown(),
-	HalfPageUp:   keys.HalfPageUp(),
-	HalfPageDown: keys.HalfPageDown(),
-	GotoTop:      keys.GotoTop(),
-	GotoBottom:   keys.GotoBottom(),
-	Select:       keys.Select(),
-	Cancel:       keys.Cancel(),
+	Up:     keys.UpArrow(),
+	Down:   keys.DownArrow(),
+	Select: keys.Select(),
+	Cancel: keys.Cancel(),
 }

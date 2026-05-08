@@ -129,17 +129,7 @@ func (m *Model[T]) Update(msg tea.Msg) tea.Cmd {
 				popup.Close(),
 				m.fnOnRecordSelect(m.filteredRecords[m.tableModel.Cursor()]),
 			)
-		case key.Matches(
-			msg,
-			SelectBaseKeyMap.LineUp,
-			SelectBaseKeyMap.LineDown,
-			SelectBaseKeyMap.PageUp,
-			SelectBaseKeyMap.PageDown,
-			SelectBaseKeyMap.HalfPageUp,
-			SelectBaseKeyMap.HalfPageDown,
-			SelectBaseKeyMap.GotoTop,
-			SelectBaseKeyMap.GotoBottom,
-		):
+		case key.Matches(msg, SelectBaseKeyMap.Up, SelectBaseKeyMap.Down):
 			return util.UpdateTeaModelInplace(msg, m.tableModel)
 		}
 	}
