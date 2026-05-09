@@ -35,7 +35,7 @@ type TagsExprToSubqueryConfig2 struct {
 func applyExprToSelectQuery(sq *bun.SelectQuery, cfg TagsExprToSubqueryConfig2, joinAliasMap map[string]int, expr tags.Expr, parentMode bunMode, negated bool) *bun.SelectQuery {
 	switch expr := expr.(type) {
 	case tags.ValueExpr:
-		tagAlias := "tag_" + fmt.Sprint(joinAliasMap[expr.Value])
+		tagAlias := "tag_alias_" + fmt.Sprint(joinAliasMap[expr.Value])
 
 		strCond := " IS NOT NULL"
 		if negated {
@@ -104,6 +104,8 @@ func TagsExprToSubquery2(sq *bun.SelectQuery, cfg TagsExprToSubqueryConfig2, exp
 		joinAliasMap[expr.Value] = joinCounter
 	}
 
+	sq = sq.Distinct()
+
 	// add join for each value expression
 	for value, i := range joinAliasMap {
 		// escape value chars
@@ -115,25 +117,25 @@ func TagsExprToSubquery2(sq *bun.SelectQuery, cfg TagsExprToSubqueryConfig2, exp
 		containsWildcard := strings.Contains(value, tags.ExprWildcards) || strings.Contains(value, tags.ExprWildcard)
 
 		// create table aliases
-		taggedToTagAlias := "tagged_to_tag_" + fmt.Sprint(i)
-		tagAlias := "tag_" + fmt.Sprint(i)
+		taggedToTagAlias := "tagged_to_tag_alias_" + fmt.Sprint(i)
+		tagAlias := "tag_alias_" + fmt.Sprint(i)
 
 		sq = sq.
-			// JOIN tagged_to_tag AS tagged_to_tag_1
-			Join("/* " + value + " */ JOIN " + cfg.TaggedToTagTable + " AS " + taggedToTagAlias).
-			// ON tagged_to_tag_1.tagged_id = tagged.id
+			// LEFT JOIN tagged_to_tag AS tagged_to_tag_alias
+			Join(" LEFT JOIN " + cfg.TaggedToTagTable + " AS " + taggedToTagAlias).
+			// ON tagged_to_tag_alias.tagged_id = tagged.id
 			JoinOn(taggedToTagAlias + "." + cfg.TaggedToTagColumnTaggedId + " = " + cfg.TaggedTable + "." + cfg.TaggedColumnId).
-			// JOIN tag AS tag_1
-			Join("JOIN " + cfg.TagTable + " AS " + tagAlias)
+			// LEFT JOIN tag AS tag_1
+			Join("/* " + value + " */LEFT JOIN " + cfg.TagTable + " AS " + tagAlias)
 
 		if containsWildcard {
 			value = strings.ReplaceAll(value, tags.ExprWildcards, bunWildcards)
 			value = strings.ReplaceAll(value, tags.ExprWildcard, bunWildcard)
 
-			// ON tag_1.id = tagged_to_tag_1.tag_id AND tag_1.value LIKE ? ESCAPE '!'
+			// ON tag_alias_1.id = tagged_to_tag_1.tag_id AND tag_alias_1.value LIKE ? ESCAPE '!'
 			sq = sq.JoinOn(tagAlias+"."+cfg.TagColumnId+" = "+taggedToTagAlias+"."+cfg.TaggedToTagColumnTagId+" AND "+tagAlias+"."+cfg.TagColumnValue+" LIKE ? ESCAPE '"+bunEscape+"'", value)
 		} else {
-			// ON tag_1.id = tagged_to_tag_1.tag_id AND tag_1.value = ?
+			// ON tag_alias_1.id = tagged_to_tag_1.tag_id AND tag_alias_1.value = ?
 			sq = sq.JoinOn(tagAlias+"."+cfg.TagColumnId+" = "+taggedToTagAlias+"."+cfg.TaggedToTagColumnTagId+" AND "+tagAlias+"."+cfg.TagColumnValue+" = ?", value)
 		}
 	}
