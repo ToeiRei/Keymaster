@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/toeirei/keymaster/util/slicest"
-	"github.com/uptrace/bun"
 )
 
 const (
@@ -35,7 +34,6 @@ type Expr interface {
 	// Use semicolon as delimiter for sub expressions.
 	hash() string
 	Optimize() Expr
-	applyToBunQuery(qb bun.QueryBuilder, column string, mode bunMode) bun.QueryBuilder
 }
 
 type ValueExpr struct{ Value string }
@@ -63,17 +61,6 @@ var _ Expr = NotExpr{}
 // 	regexpr := regexp.MustCompile("^" + hash1 + "$")
 // 	return regexpr.MatchString(hash2)
 // }
-
-func (e NotExpr) tryResolve() Expr {
-	switch expr := e.Expr.(type) {
-	case AndExpr:
-		return OrExpr{slicest.Map(expr.Exprs, func(expr Expr) Expr { return NotExpr{expr} })}
-	case OrExpr:
-		return AndExpr{slicest.Map(expr.Exprs, func(expr Expr) Expr { return NotExpr{expr} })}
-	default:
-		return e
-	}
-}
 
 // --- [fmt.Stringer] implementations ---
 

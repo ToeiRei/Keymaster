@@ -1,13 +1,14 @@
 // Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
-package tags_test
+package tagsbunold_test
 
 import (
 	"fmt"
 	"testing"
 
 	tags "github.com/toeirei/keymaster/tags"
+	"github.com/toeirei/keymaster/tags/tagsbunold"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 	"github.com/uptrace/bun/schema"
@@ -54,7 +55,7 @@ func TestApplyToBunQuery(t *testing.T) {
 			}
 
 			// apply expr to new QueryBuilder
-			qb := tags.ApplyToBunQuery(expr, bun.NewSelectQuery(nil).QueryBuilder(), "tags")
+			qb := tagsbunold.ApplyToBunQuery(expr, bun.NewSelectQuery(nil).QueryBuilder(), "tags")
 
 			// render QueryBuilder to fresh []byte
 			queryBytes, err := qb.AppendQuery(schema.NewQueryGen(sqlitedialect.New()), []byte{})
