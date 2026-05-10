@@ -209,7 +209,7 @@ var testCases = []testCase{
 	{"*", []string{"luc"}},
 }
 
-func TestTagsExprToSqlQuery(t *testing.T) {
+func TestTagsExprToWhere(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.matcher, func(t *testing.T) {
 			expr, err := tags.ParseMatcher(tc.matcher)
