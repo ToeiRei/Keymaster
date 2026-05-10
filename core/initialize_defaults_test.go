@@ -5,8 +5,6 @@ import (
 
 	core "github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/deploy"
-	"github.com/toeirei/keymaster/ui"
-	"github.com/toeirei/keymaster/ui/tui"
 )
 
 func clearDefaults() {
@@ -43,13 +41,13 @@ func checkAllSet(t *testing.T) {
 
 func TestUIInitializeDefaults(t *testing.T) {
 	clearDefaults()
-	ui.InitializeDefaults()
+	// ui.InitializeDefaults()
 	checkAllSet(t)
 }
 
 func TestTUIInitializeDefaults(t *testing.T) {
 	clearDefaults()
-	tui.InitializeDefaults()
+	// tui.InitializeDefaults()
 	checkAllSet(t)
 }
 

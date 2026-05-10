@@ -34,7 +34,6 @@ import (
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/sshkey"
 	"github.com/toeirei/keymaster/i18n"
-	_ "github.com/toeirei/keymaster/ui"
 	"github.com/toeirei/keymaster/ui/tui"
 	"github.com/toeirei/keymaster/uiadapters"
 	"golang.org/x/crypto/ssh"
