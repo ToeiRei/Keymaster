@@ -47,11 +47,13 @@ func seperatorFromOperator(operator Operator) string {
 	return ""
 }
 
-func ApplyTagsExprToSelectQuery(sq *bun.SelectQuery, cfg TagsExprToSubqueryConfig, expr tags.Expr) *bun.SelectQuery {
-	return applyTagsExprToSelectQuery(sq, cfg, expr.Optimize(), And, false)
+func TagsExprToWhere(expr tags.Expr, cfg TagsExprToSubqueryConfig) func(*bun.SelectQuery) *bun.SelectQuery {
+	return func(sq *bun.SelectQuery) *bun.SelectQuery {
+		return applyTagsExprToSelectQuery(sq, expr.Optimize(), cfg, And, false)
+	}
 }
 
-func applyTagsExprToSelectQuery(sq *bun.SelectQuery, cfg TagsExprToSubqueryConfig, expr tags.Expr, parentOperator Operator, negated bool) *bun.SelectQuery {
+func applyTagsExprToSelectQuery(sq *bun.SelectQuery, expr tags.Expr, cfg TagsExprToSubqueryConfig, parentOperator Operator, negated bool) *bun.SelectQuery {
 	switch expr := expr.(type) {
 	case tags.ValueExpr:
 		// create sub query to search for tag on tagged
@@ -100,7 +102,7 @@ func applyTagsExprToSelectQuery(sq *bun.SelectQuery, cfg TagsExprToSubqueryConfi
 
 	case tags.NotExpr:
 		// flip negated flag
-		return applyTagsExprToSelectQuery(sq, cfg, expr.Expr, parentOperator, !negated)
+		return applyTagsExprToSelectQuery(sq, expr.Expr, cfg, parentOperator, !negated)
 
 	case tags.AndExpr:
 		// create qhere group seperated (to other groups) by parentOperator
@@ -108,7 +110,7 @@ func applyTagsExprToSelectQuery(sq *bun.SelectQuery, cfg TagsExprToSubqueryConfi
 			// apply sub expressions
 			return slicest.ReduceD(expr.Exprs, sq, func(subExpr tags.Expr, sq *bun.SelectQuery) *bun.SelectQuery {
 				// when negated: flip operator and pass negated flag
-				return applyTagsExprToSelectQuery(sq, cfg, subExpr, And != Operator(negated), negated)
+				return applyTagsExprToSelectQuery(sq, subExpr, cfg, And != Operator(negated), negated)
 			})
 		})
 
@@ -118,7 +120,7 @@ func applyTagsExprToSelectQuery(sq *bun.SelectQuery, cfg TagsExprToSubqueryConfi
 			// apply sub expressions
 			return slicest.ReduceD(expr.Exprs, sq, func(subExpr tags.Expr, sq *bun.SelectQuery) *bun.SelectQuery {
 				// when negated: flip operator and pass negated flag
-				return applyTagsExprToSelectQuery(sq, cfg, subExpr, Or != Operator(negated), negated)
+				return applyTagsExprToSelectQuery(sq, subExpr, cfg, Or != Operator(negated), negated)
 			})
 		})
 	}

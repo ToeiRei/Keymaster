@@ -217,17 +217,12 @@ func TestTagsExprToSqlQuery(t *testing.T) {
 				t.Fatalf("failed to parse matcher %q: %v", tc.matcher, err)
 			}
 
-			// prepare select statement
+			// create select statement
 			var taggeds []Tagged
 			sq := db.NewSelect().
 				Model(&taggeds).
 				Column("id", "name").
-				Comment(tc.matcher)
-
-			// apply tag matcher expression
-			sq = tagsbun.ApplyTagsExprToSelectQuery(
-				sq,
-				tagsbun.TagsExprToSubqueryConfig{
+				Apply(tagsbun.TagsExprToWhere(expr, tagsbun.TagsExprToSubqueryConfig{
 					TaggedTable:    "tagged",
 					TaggedColumnId: "id",
 
@@ -238,10 +233,10 @@ func TestTagsExprToSqlQuery(t *testing.T) {
 					TagTable:       "tag",
 					TagColumnId:    "id",
 					TagColumnValue: "value",
-				},
-				expr,
-			)
+				})).
+				Comment(tc.matcher)
 
+			// log rendered query for debugging
 			t.Logf("query: %s", queryToString(t, sq))
 
 			// run query
