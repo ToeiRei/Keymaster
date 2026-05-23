@@ -78,6 +78,7 @@ func New(storeParam interface{}) *Model {
 	}))
 
 	menuPtr := util.ModelPointer(menu.New(
+		menu.WithItem("dashboard.show", "Dashboard"),
 		menu.WithItem("publickey.list", "Public Keys"),
 		menu.WithItem("account.list", "Accounts"),
 		menu.WithItem("", "Deploy",
@@ -121,6 +122,9 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	// handle menu messages
 	if msg, ok := msg.(menu.ItemSelected); ok {
 		switch msg.Id {
+		case "dashboard.show":
+			return m.routerControll.Change(util.ModelPointer(dashboard.New(m.store)))
+
 		case "publickey.list":
 			return publickey.NewCrud(m.client, m.routerControll).OpenList()
 
