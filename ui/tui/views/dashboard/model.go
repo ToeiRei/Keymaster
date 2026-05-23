@@ -117,11 +117,6 @@ func (m Model) View() string {
 			}
 			logLines = append(logLines, formatLogEntry(al, entryWidth))
 		}
-		if len(m.data.RecentLogs) > maxLogRows {
-			remaining := len(m.data.RecentLogs) - maxLogRows
-			more := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(fmt.Sprintf("+%d more entries", remaining))
-			logLines = append(logLines, more)
-		}
 		logsBody = lipgloss.JoinVertical(lipgloss.Left, logLines...)
 	}
 
