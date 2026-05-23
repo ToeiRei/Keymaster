@@ -12,15 +12,15 @@ import (
 )
 
 type Model struct {
-	parentKeyMap  help.KeyMap
-	size       util.Size
-	help       *keyhelp.Model
+	parentKeyMap help.KeyMap
+	size         util.Size
+	help         *keyhelp.Model
 }
 
-func New(parentKeyMap  help.KeyMap) *Model {
+func New(parentKeyMap help.KeyMap) *Model {
 	return &Model{
-		parentKeyMap : parentKeyMap ,
-		help:       keyhelp.New(),
+		parentKeyMap: parentKeyMap,
+		help:         keyhelp.New(),
 		// TODO implement and add status component
 	}
 }
@@ -30,7 +30,7 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
-	// catch AnnounceFocusMsg and inject parentKeyMap 
+	// catch AnnounceFocusMsg and inject parentKeyMap
 	if msg, ok := msg.(util.AnnounceKeyMapMsg); ok {
 		return (*m.help).Update(util.AnnounceKeyMapMsg{
 			KeyMap: util.MergeKeyMaps(msg.KeyMap, m.parentKeyMap),

@@ -39,7 +39,7 @@ func (m Model) View() string {
 }
 
 func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
-	return util.AnnounceKeyMapCmd(parentKeyMap , DefaultKeyMap)
+	return util.AnnounceKeyMapCmd(parentKeyMap, DefaultKeyMap)
 }
 
 func (m *Model) Blur() {}

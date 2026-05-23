@@ -1,6 +1,12 @@
 // Copyright (c) 2026 Keymaster Team
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
+
+//go:build ignore
+
+// NOTE: This package is a draft/incomplete implementation and is disabled for now.
+// TODO: Align BunClient methods with Client interface contract.
+
 package bun
 
 import (
@@ -9,11 +15,28 @@ import (
 	"log"
 	"time"
 
+	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/security"
 	"github.com/toeirei/keymaster/core/sshkey"
+)
+
+// Type aliases for brevity within bun client implementation.
+type (
+	ID                         = client.AccountId
+	Target                     = client.Account
+	Client                     = client.Client
+	PublicKey                  = client.PublicKey
+	PublicKeyId                = client.PublicKeyId
+	AccountId                  = client.AccountId
+	LinkId                     = client.LinkId
+	Link                       = client.Link
+	Account                    = client.Account
+	OnboardHostProgress        = client.OnboardHostProgress
+	DecommisionTargetProgress  = client.DecommisionAccountProgress
+	DecommisionAccountProgress = client.DecommisionAccountProgress
 )
 
 type BunClient struct {

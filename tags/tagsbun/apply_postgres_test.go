@@ -6,6 +6,7 @@ package tagsbun_test
 import (
 	"context"
 	"database/sql"
+	"os"
 	"testing"
 	"time"
 
@@ -61,6 +62,10 @@ func WithPostgres(t *testing.T) *bun.DB {
 func TestTagsExprToWherePostgres(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping tests that require testcontainers.")
+	}
+	// Skip on Windows where Docker/rootless containers may not be available
+	if os.Getenv("SKIP_DOCKER_TESTS") != "" {
+		t.Skip("skipping Docker tests (SKIP_DOCKER_TESTS set)")
 	}
 
 	runTests(t, WithPostgres(t))

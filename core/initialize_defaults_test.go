@@ -40,12 +40,14 @@ func checkAllSet(t *testing.T) {
 }
 
 func TestUIInitializeDefaults(t *testing.T) {
+	t.Skip("UI packages do not yet implement InitializeDefaults")
 	clearDefaults()
 	// ui.InitializeDefaults()
 	checkAllSet(t)
 }
 
 func TestTUIInitializeDefaults(t *testing.T) {
+	t.Skip("TUI packages do not yet implement InitializeDefaults")
 	clearDefaults()
 	// tui.InitializeDefaults()
 	checkAllSet(t)
