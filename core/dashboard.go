@@ -4,9 +4,11 @@
 package core
 
 import (
-	"sort"
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 
-	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/core/model"
 )
 
@@ -33,7 +35,9 @@ type DashboardReader interface {
 	GetAllAuditLogEntries() ([]model.AuditLogEntry, error)
 }
 
-var _ DashboardReader = (db.Store)(nil) // db.Store implements DashboardReader
+type dashboardPublicKeyReader interface {
+	GetAllPublicKeys() ([]model.PublicKey, error)
+}
 
 // BuildDashboardData computes metrics using provided reader. Core no longer
 // depends on full DB packages directly; callers must supply a minimal DashboardReader.
@@ -53,6 +57,20 @@ func BuildDashboardData(reader DashboardReader) (DashboardData, error) {
 	logs, err := reader.GetAllAuditLogEntries()
 	if err != nil {
 		return out, err
+	}
+
+	accountsByID := make(map[int]model.Account, len(accs))
+	for _, acc := range accs {
+		accountsByID[acc.ID] = acc
+	}
+
+	keysByID := map[int]model.PublicKey{}
+	if keyReader, ok := reader.(dashboardPublicKeyReader); ok {
+		if keys, kerr := keyReader.GetAllPublicKeys(); kerr == nil {
+			for _, k := range keys {
+				keysByID[k.ID] = k
+			}
+		}
 	}
 
 	out.AccountCount = len(accs)
@@ -82,16 +100,84 @@ func BuildDashboardData(reader DashboardReader) (DashboardData, error) {
 		out.SystemKeySerial = sysKey.Serial
 	}
 
-	const maxLogs = 5
+	// Keep a larger tail in core so UIs can decide how many rows to render
+	// based on available terminal real estate.
+	const maxLogs = 25
 	if len(logs) > maxLogs {
-		out.RecentLogs = logs[:maxLogs]
+		out.RecentLogs = enrichDashboardLogs(logs[:maxLogs], accountsByID, keysByID)
 	} else {
-		out.RecentLogs = logs
+		out.RecentLogs = enrichDashboardLogs(logs, accountsByID, keysByID)
 	}
 
-	// Ensure deterministic ordering keys where necessary by sorting the AlgoCounts keys
-	// (callers can use the map; sorting is done when rendering).
-	_ = sort.Ints
-
 	return out, nil
+}
+
+var (
+	accountIDPattern = regexp.MustCompile(`(?i)(?:account\s*[:=]\s*|account_id\s*[:=]\s*|accountID\s*[:=]\s*)(\d+)`)
+	keyIDPattern     = regexp.MustCompile(`(?i)(?:key\s*[:=]\s*|key_id\s*[:=]\s*|keyID\s*[:=]\s*)(\d+)`)
+)
+
+func enrichDashboardLogs(logs []model.AuditLogEntry, accountsByID map[int]model.Account, keysByID map[int]model.PublicKey) []model.AuditLogEntry {
+	if len(logs) == 0 {
+		return logs
+	}
+
+	out := make([]model.AuditLogEntry, len(logs))
+	for i, logEntry := range logs {
+		details := strings.TrimSpace(logEntry.Details)
+
+		if accID, ok := extractID(accountIDPattern, details); ok {
+			if acc, found := accountsByID[accID]; found {
+				details = appendRef(details, fmt.Sprintf("account=%s(#%d)", acc.String(), accID))
+			}
+		}
+
+		if keyID, ok := extractID(keyIDPattern, details); ok {
+			if key, found := keysByID[keyID]; found {
+				keyName := key.Comment
+				if keyName == "" {
+					keyName = fmt.Sprintf("%s:%s", key.Algorithm, truncateKeyData(key.KeyData, 10))
+				}
+				details = appendRef(details, fmt.Sprintf("key=%s(#%d)", keyName, keyID))
+			}
+		}
+
+		logEntry.Details = details
+		out[i] = logEntry
+	}
+
+	return out
+}
+
+func extractID(pattern *regexp.Regexp, input string) (int, bool) {
+	m := pattern.FindStringSubmatch(input)
+	if len(m) < 2 {
+		return 0, false
+	}
+	id, err := strconv.Atoi(m[1])
+	if err != nil {
+		return 0, false
+	}
+	return id, true
+}
+
+func appendRef(details, ref string) string {
+	if strings.Contains(details, ref) {
+		return details
+	}
+	if details == "" {
+		return ref
+	}
+	return details + " | " + ref
+}
+
+func truncateKeyData(s string, max int) string {
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	if max <= 3 {
+		return string(r[:max])
+	}
+	return string(r[:max-3]) + "..."
 }

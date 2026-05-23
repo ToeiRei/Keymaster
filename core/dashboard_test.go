@@ -5,6 +5,7 @@ package core
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ type fakeStore struct {
 	accounts []model.Account
 	sysKey   *model.SystemKey
 	logs     []model.AuditLogEntry
+	keys     []model.PublicKey
 }
 
 func (f fakeStore) GetAllAccounts() ([]model.Account, error)              { return f.accounts, nil }
@@ -24,7 +26,7 @@ func (f fakeStore) GetActiveSystemKey() (*model.SystemKey, error)         { retu
 func (f fakeStore) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) { return f.logs, nil }
 
 // Stub methods to satisfy db.Store interface (not used by BuildDashboardData)
-func (f fakeStore) GetAllPublicKeys() ([]model.PublicKey, error)                   { return nil, nil }
+func (f fakeStore) GetAllPublicKeys() ([]model.PublicKey, error)                   { return f.keys, nil }
 func (f fakeStore) GetGlobalPublicKeys() ([]model.PublicKey, error)                { return nil, nil }
 func (f fakeStore) GetKeysForAccount(accountID int) ([]model.PublicKey, error)     { return nil, nil }
 func (f fakeStore) AddAccount(username, hostname, label, tags string) (int, error) { return 0, nil }
@@ -98,4 +100,40 @@ func TestBuildDashboardData(t *testing.T) {
 	if !reflect.DeepEqual(out.RecentLogs, logs) {
 		t.Fatalf("unexpected recent logs")
 	}
+}
+
+func TestBuildDashboardData_EnrichesLogDetails(t *testing.T) {
+	accounts := []model.Account{{ID: 7, Username: "deploy", Hostname: "prod-01", IsActive: true, Serial: 11}}
+	sys := &model.SystemKey{Serial: 11}
+	keys := []model.PublicKey{{ID: 42, Algorithm: "ssh-ed25519", KeyData: "AAAAB3NzaC1yc2EAAAADAQABAAABAQC", Comment: "ops-key"}}
+	logs := []model.AuditLogEntry{{
+		Timestamp: "2026-05-23 10:00:00",
+		Username:  "tester",
+		Action:    "ASSIGN_KEY",
+		Details:   "keyID: 42, accountID: 7",
+	}}
+
+	store := fakeStore{accounts: accounts, sysKey: sys, logs: logs, keys: keys}
+	out, err := BuildDashboardData(store)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(out.RecentLogs) != 1 {
+		t.Fatalf("expected one recent log, got %d", len(out.RecentLogs))
+	}
+	if got := out.RecentLogs[0].Details; got == logs[0].Details {
+		t.Fatalf("expected enriched details, got unchanged: %q", got)
+	}
+	if got := out.RecentLogs[0].Details; !containsAll(got, []string{"account=deploy@prod-01(#7)", "key=ops-key(#42)"}) {
+		t.Fatalf("expected account/key enrichment in details, got: %q", got)
+	}
+}
+
+func containsAll(input string, parts []string) bool {
+	for _, p := range parts {
+		if !strings.Contains(input, p) {
+			return false
+		}
+	}
+	return true
 }

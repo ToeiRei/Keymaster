@@ -42,6 +42,13 @@ func (s *storeAdapter) GetAllActiveAccounts() ([]model.Account, error) {
 	return db.GetAllActiveAccounts()
 }
 func (s *storeAdapter) GetAllAccounts() ([]model.Account, error) { return db.GetAllAccounts() }
+func (s *storeAdapter) GetAllPublicKeys() ([]model.PublicKey, error) {
+	km := db.DefaultKeyManager()
+	if km == nil {
+		return nil, fmt.Errorf("no key manager available")
+	}
+	return km.GetAllPublicKeys()
+}
 func (s *storeAdapter) GetAccount(id int) (*model.Account, error) {
 	accts, err := db.GetAllAccounts()
 	if err != nil {

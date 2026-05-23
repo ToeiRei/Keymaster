@@ -102,13 +102,25 @@ func (m Model) View() string {
 	if len(m.data.RecentLogs) == 0 {
 		logsBody = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Italic(true).Render("No recent entries")
 	} else {
-		logLines := make([]string, 0, minInt(len(m.data.RecentLogs), 3))
+		height := m.size.Height
+		if height <= 0 {
+			height = 24
+		}
+		maxLogRows := clampInt(height-14, 3, 10)
+		logLines := make([]string, 0, minInt(len(m.data.RecentLogs), maxLogRows+1))
 		entryWidth := contentWidth - 4
+		head := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Bold(true).Render("Time         | Action               | Details")
+		logLines = append(logLines, head)
 		for i, al := range m.data.RecentLogs {
-			if i >= 3 {
+			if i >= maxLogRows {
 				break
 			}
 			logLines = append(logLines, formatLogEntry(al, entryWidth))
+		}
+		if len(m.data.RecentLogs) > maxLogRows {
+			remaining := len(m.data.RecentLogs) - maxLogRows
+			more := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(fmt.Sprintf("+%d more entries", remaining))
+			logLines = append(logLines, more)
 		}
 		logsBody = lipgloss.JoinVertical(lipgloss.Left, logLines...)
 	}
@@ -143,13 +155,14 @@ func chooseOutdatedStyle(outdated int, normal, warn lipgloss.Style) lipgloss.Sty
 
 func formatLogEntry(al model.AuditLogEntry, width int) string {
 	ts := parseTimestamp(al.Timestamp)
-	action := strings.ReplaceAll(strings.TrimSpace(al.Action), "_", " ")
-	action = strings.ToLower(action)
-	action = strings.Title(action)
+	action := titleFromUnderscore(strings.TrimSpace(al.Action))
 	details := strings.TrimSpace(strings.ReplaceAll(al.Details, "\n", " "))
-
-	base := fmt.Sprintf("%s | %s", ts, action)
-	maxDetails := width - lipgloss.Width(base) - 3
+	if width < 38 {
+		width = 38
+	}
+	actionWidth := 20
+	base := fmt.Sprintf("%s | %s | ", ts, action)
+	maxDetails := width - lipgloss.Width(base)
 	if maxDetails < 8 {
 		maxDetails = 8
 	}
@@ -161,7 +174,8 @@ func formatLogEntry(al model.AuditLogEntry, width int) string {
 	actionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
 	detailStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
 
-	return timestampStyle.Render(ts) + " | " + actionStyle.Render(action) + " " + detailStyle.Render(details)
+	actionPadded := padRight(action, actionWidth)
+	return timestampStyle.Render(padRight(ts, 12)) + " | " + actionStyle.Render(actionPadded) + " | " + detailStyle.Render(details)
 }
 
 func parseTimestamp(raw string) string {
@@ -197,6 +211,40 @@ func minInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+func titleFromUnderscore(action string) string {
+	if action == "" {
+		return "Unknown"
+	}
+	parts := strings.Split(strings.ToLower(strings.ReplaceAll(action, "_", " ")), " ")
+	for i, p := range parts {
+		if p == "" {
+			continue
+		}
+		r := []rune(p)
+		r[0] = []rune(strings.ToUpper(string(r[0])))[0]
+		parts[i] = string(r)
+	}
+	return strings.Join(parts, " ")
+}
+
+func padRight(s string, width int) string {
+	w := lipgloss.Width(s)
+	if w >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-w)
 }
 
 func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
