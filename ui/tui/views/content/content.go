@@ -35,9 +35,10 @@ type Model struct {
 	router         *util.Model
 	routerControll router.Controll
 	client         client.Client
+	store          interface{}
 }
 
-func New() *Model {
+func New(storeParam interface{}) *Model {
 	// stack {
 	// 	 menu
 	//   router {
@@ -93,7 +94,7 @@ func New() *Model {
 			),
 		),
 	))
-	dashboardPtr := util.ModelPointer(dashboard.New(c))
+	dashboardPtr := util.ModelPointer(dashboard.New(storeParam))
 	routerModel, routerControll := router.New(dashboardPtr)
 	routerPtr := util.ModelPointer(routerModel)
 	stackModel := stack.New(
@@ -108,6 +109,7 @@ func New() *Model {
 		router:         routerPtr,
 		routerControll: routerControll,
 		client:         c,
+		store:          storeParam,
 	}
 }
 
