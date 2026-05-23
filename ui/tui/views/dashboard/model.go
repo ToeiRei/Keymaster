@@ -4,14 +4,11 @@
 package dashboard
 
 import (
-	"context"
-	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/ui/tui/util"
@@ -21,16 +18,15 @@ import (
 type Data = core.DashboardData
 
 type Model struct {
-	data Data
-	err  error
-
-	client client.Client
-	size   util.Size
+	data  Data
+	err   error
+	store interface{}
+	size  util.Size
 }
 
-func New(c client.Client) *Model {
+func New(storeParam interface{}) *Model {
 	return &Model{
-		client: c,
+		store: storeParam,
 	}
 }
 
@@ -92,17 +88,19 @@ var _ util.Model = (*Model)(nil)
 
 func (m *Model) reload() tea.Cmd {
 	return func() tea.Msg {
-		// TODO implement dashboard data loader
-		accounts, err1 := m.client.GetAccounts(context.Background())
-		accountsDirty, err2 := m.client.ListAccountsDirty(context.Background())
-		_ = accountsDirty
-		// _, _ := m.client.GetAccounts(context.Background())
+		// Type assert store to core.DashboardReader and call core.BuildDashboardData
+		reader, ok := m.store.(core.DashboardReader)
+		if !ok {
+			return msgReloadResult{
+				data: Data{},
+				err:  fmt.Errorf("store does not implement DashboardReader"),
+			}
+		}
 
+		data, err := core.BuildDashboardData(reader)
 		return msgReloadResult{
-			data: Data{
-				AccountCount: len(accounts),
-			},
-			err: errors.Join(err1, err2),
+			data: data,
+			err:  err,
 		}
 	}
 }
