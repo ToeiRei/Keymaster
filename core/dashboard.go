@@ -26,41 +26,31 @@ type DashboardData struct {
 // BuildDashboardData collects accounts, keys, system key and recent audit logs,
 // and computes aggregated metrics for the dashboard.
 
-// AccountReader provides account read operations that core needs for dashboard metrics.
-type AccountReader interface {
+// DashboardReader provides minimal read operations needed for dashboard metrics.
+type DashboardReader interface {
 	GetAllAccounts() ([]model.Account, error)
-}
-
-// AuditReader exposes audit log reads required by the dashboard.
-type AuditReader interface {
+	GetActiveSystemKey() (*model.SystemKey, error)
 	GetAllAuditLogEntries() ([]model.AuditLogEntry, error)
 }
 
-var _ AccountReader = (db.Store)(nil) // db.Store implements AccountReader
-// var _ KeyReader = (db.Store)(nil)     // db.Store implements KeyReader
-var _ AuditReader = (db.Store)(nil) // db.Store implements AuditReader
+var _ DashboardReader = (db.Store)(nil) // db.Store implements DashboardReader
 
-// BuildDashboardData computes metrics using provided readers. Core no longer
-// depends on DB packages directly; callers must supply implementations.
-func BuildDashboardData(store db.Store) (DashboardData, error) {
+// BuildDashboardData computes metrics using provided reader. Core no longer
+// depends on full DB packages directly; callers must supply a minimal DashboardReader.
+func BuildDashboardData(reader DashboardReader) (DashboardData, error) {
 	var out DashboardData
 
-	accs, err := store.GetAllAccounts()
+	accs, err := reader.GetAllAccounts()
 	if err != nil {
 		return out, err
 	}
 
-	// klist, err := store. GetAllPublicKeys()
-	// if err != nil {
-	// 	return out, err
-	// }
-
-	sysKey, err := store.GetActiveSystemKey()
+	sysKey, err := reader.GetActiveSystemKey()
 	if err != nil {
 		return out, err
 	}
 
-	logs, err := store.GetAllAuditLogEntries()
+	logs, err := reader.GetAllAuditLogEntries()
 	if err != nil {
 		return out, err
 	}
