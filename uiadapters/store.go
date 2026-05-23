@@ -208,6 +208,11 @@ func (s *storeAdapter) buildAuthorizedKeysContent(sk *model.SystemKey, gks, aks 
 	return keys.BuildAuthorizedKeysContent(sk, gks, aks)
 }
 
+// GetAllAuditLogEntries retrieves all audit log entries.
+func (s *storeAdapter) GetAllAuditLogEntries() ([]model.AuditLogEntry, error) {
+	return db.GetAllAuditLogEntries()
+}
+
 // ensure uiStoreAdapter satisfies core.Store at compile time
 var _ core.Store = (*storeAdapter)(nil)
 
