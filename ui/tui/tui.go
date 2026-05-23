@@ -8,9 +8,9 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/views/root"
 )
 
-func Run() error {
+func Run(store interface{}) error {
 	_, err := tea.NewProgram(
-		root.New(),
+		root.New(store),
 		tea.WithAltScreen(),
 		// tea.WithMouseCellMotion(),
 	).Run()
