@@ -26,7 +26,7 @@ type Model struct {
 	titleHandler *windowtitle.TitleHandler
 }
 
-func New() *Model {
+func New(store interface{}) *Model {
 	headerPtr := util.ModelPointer(header.New())
 	footerPtr := util.ModelPointer(footer.New(&BaseKeyMap))
 
@@ -37,7 +37,7 @@ func New() *Model {
 			stack.WithFocusNext(),
 			stack.WithItem(
 				util.ModelPointer(popup.NewInjector(
-					util.ModelPointer(content.New()),
+					util.ModelPointer(content.New(store)),
 				)),
 				stack.VariableSize(1)),
 			stack.WithItem(footerPtr, footer.SizeConfig),
