@@ -6,7 +6,6 @@ package tagsbun_test
 import (
 	"context"
 	"database/sql"
-	"os"
 	"testing"
 	"time"
 
@@ -20,16 +19,9 @@ import (
 )
 
 func WithPostgres(t *testing.T) *bun.DB {
-	dbName := "test"
-	dbUser := "test"
-	dbPassword := "test"
-
 	postgresC, err := postgres.Run(
 		t.Context(),
 		"postgres:18-alpine",
-		postgres.WithDatabase(dbName),
-		postgres.WithUsername(dbUser),
-		postgres.WithPassword(dbPassword),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
@@ -62,10 +54,6 @@ func WithPostgres(t *testing.T) *bun.DB {
 func TestTagsExprToWherePostgres(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping tests that require testcontainers.")
-	}
-	// Skip on Windows where Docker/rootless containers may not be available
-	if os.Getenv("SKIP_DOCKER_TESTS") != "" {
-		t.Skip("skipping Docker tests (SKIP_DOCKER_TESTS set)")
 	}
 
 	runTests(t, WithPostgres(t))

@@ -12,9 +12,6 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
-	"github.com/toeirei/keymaster/client/mock"
-	"github.com/toeirei/keymaster/client/testui"
-	"github.com/toeirei/keymaster/tags"
 	"github.com/toeirei/keymaster/ui/tui/components/menu"
 	"github.com/toeirei/keymaster/ui/tui/components/router"
 	"github.com/toeirei/keymaster/ui/tui/components/stack"
@@ -35,47 +32,15 @@ type Model struct {
 	router         *util.Model
 	routerControll router.Controll
 	client         client.Client
-	store          interface{}
 }
 
-func New(storeParam interface{}) *Model {
+func New(c client.Client) *Model {
 	// stack {
 	// 	 menu
 	//   router {
 	// 	   dashboard
 	// 	 }
 	// }
-
-	c := client.Client(testui.NewClient())
-
-	// test accounts
-	_, _ = c.CreateAccount(context.Background(), "root", "1.2.3.4", 22, "ssh", "password123")
-	_, _ = c.CreateAccount(context.Background(), "user", "1.2.3.4", 22, "ssh", "password123")
-	_, _ = c.CreateAccount(context.Background(), "srv", "10.0.0.1", 22, "ssh", "password123")
-	_, _ = c.CreateAccount(context.Background(), "mark", "1.2.3.4", 22, "ssh", "password123")
-	_, _ = c.CreateAccount(context.Background(), "admin", "10.20.0.1", 222, "cisco", "password123")
-	// test publicKeys
-	_, _ = c.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-zdpjwb", "my-key", tags.Tags{"user:jannes", "company:work", "server-ci"})
-	_, _ = c.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-öutyfb", "my-key", tags.Tags{"user:jannes", "company:none"})
-	_, _ = c.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskdasral_jklkhathrösdljhask-fdjfb", "419", tags.Tags{"user:toeirei", "company:big_money"})
-	_, _ = c.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjdfhal_sdvtzuthrösdljhaha-ögjfb", "420", tags.Tags{"user:toeirei", "company:work", "server-ci"})
-	_, _ = c.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjterhl_sdvkhaghdjfdljhask-ödhfb", "421", tags.Tags{"user:toeirei", "company:none"})
-	_, _ = c.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbdfhtdftrhhal_sdvkhaösu656zsk-ödjhtfb", "69", tags.Tags{"user:somebodyelse", "company:evilgoogle", "server-ci"})
-	// test links
-	_, _ = c.CreateLink(context.Background(), 1, "(user:jannes | user:toeirei) & !company:work", time.Now().Add(time.Hour))
-	_, _ = c.CreateLink(context.Background(), 2, "!user:somebodyelse", time.Now().Add(time.Hour))
-	_, _ = c.CreateLink(context.Background(), 3, "server-ci", time.Now().Add(time.Hour))
-	_, _ = c.CreateLink(context.Background(), 4, "company:evilgoogle", time.Now().Add(time.Hour))
-	_, _ = c.CreateLink(context.Background(), 5, "company:work", time.Now().Add(time.Hour))
-	_, _ = c.CreateLink(context.Background(), 5, "company:big_money", time.Now())
-
-	c = mock.NewClient(mock.WitchBaseClient(c), mock.WitchPre(func(method string, args map[string]any) error {
-		time.Sleep(time.Millisecond * 100)
-		if ctx, ok := args["ctx"].(context.Context); ok {
-			return ctx.Err()
-		}
-		return nil
-	}))
 
 	menuPtr := util.ModelPointer(menu.New(
 		menu.WithItem("dashboard.show", "Dashboard"),
@@ -95,7 +60,7 @@ func New(storeParam interface{}) *Model {
 			),
 		),
 	))
-	dashboardPtr := util.ModelPointer(dashboard.New(storeParam))
+	dashboardPtr := util.ModelPointer(dashboard.New(c))
 	routerModel, routerControll := router.New(dashboardPtr)
 	routerPtr := util.ModelPointer(routerModel)
 	stackModel := stack.New(
@@ -110,7 +75,6 @@ func New(storeParam interface{}) *Model {
 		router:         routerPtr,
 		routerControll: routerControll,
 		client:         c,
-		store:          storeParam,
 	}
 }
 
@@ -123,7 +87,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(menu.ItemSelected); ok {
 		switch msg.Id {
 		case "dashboard.show":
-			return m.routerControll.Change(util.ModelPointer(dashboard.New(m.store)))
+			return m.routerControll.Change(util.ModelPointer(dashboard.New(m.client)))
 
 		case "publickey.list":
 			return publickey.NewCrud(m.client, m.routerControll).OpenList()

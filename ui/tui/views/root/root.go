@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/buildvars"
+	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/ui/tui/components/header"
 	"github.com/toeirei/keymaster/ui/tui/components/stack"
 	"github.com/toeirei/keymaster/ui/tui/helpers/popup"
@@ -26,7 +27,7 @@ type Model struct {
 	titleHandler *windowtitle.TitleHandler
 }
 
-func New(store interface{}) *Model {
+func New(c client.Client) *Model {
 	headerPtr := util.ModelPointer(header.New())
 	footerPtr := util.ModelPointer(footer.New(&BaseKeyMap))
 
@@ -37,7 +38,7 @@ func New(store interface{}) *Model {
 			stack.WithFocusNext(),
 			stack.WithItem(
 				util.ModelPointer(popup.NewInjector(
-					util.ModelPointer(content.New(store)),
+					util.ModelPointer(content.New(c)),
 				)),
 				stack.VariableSize(1)),
 			stack.WithItem(footerPtr, footer.SizeConfig),

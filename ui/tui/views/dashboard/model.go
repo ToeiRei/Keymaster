@@ -4,30 +4,52 @@
 package dashboard
 
 import (
+	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toeirei/keymaster/core"
-	"github.com/toeirei/keymaster/core/model"
+	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/util/slicest"
 )
 
-type Data = core.DashboardData
-
-type Model struct {
-	data  Data
-	err   error
-	store interface{}
-	size  util.Size
+// copied from keymaster core for now
+type Data = struct {
+	AccountCount       int
+	ActiveAccountCount int
+	PublicKeyCount     int
+	GlobalKeyCount     int
+	AlgoCounts         map[string]int
+	HostsUpToDate      int
+	HostsOutdated      int
+	SystemKeySerial    int
+	RecentLogs         []AuditLogEntry
 }
 
-func New(storeParam interface{}) *Model {
+// copied from keymaster core for now
+type AuditLogEntry = struct {
+	Id        int
+	Timestamp string
+	Username  string
+	Action    string
+	Details   string
+}
+
+type Model struct {
+	data   Data
+	err    error
+	client client.Client
+	size   util.Size
+}
+
+func New(c client.Client) *Model {
 	return &Model{
-		store: storeParam,
+		client: c,
 	}
 }
 
@@ -50,11 +72,13 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m Model) View() string {
+	// TODO should not be needed! this being needed is a side effect of another problem.
 	width := m.size.Width
 	if width <= 0 {
 		width = 80
 	}
 
+	// TODO use util.Clamp
 	contentWidth := width - 4
 	if contentWidth < 36 {
 		contentWidth = 36
@@ -97,6 +121,7 @@ func (m Model) View() string {
 		formatKeyValue("System Key", fmt.Sprintf("serial #%d", m.data.SystemKeySerial), labelStyle, valueStyle),
 	))
 
+	// TODO use bubbles table (like everywhere else)
 	logsTitle := titleStyle.Render("Recent Audit Logs")
 	logsBody := ""
 	if len(m.data.RecentLogs) == 0 {
@@ -148,16 +173,19 @@ func chooseOutdatedStyle(outdated int, normal, warn lipgloss.Style) lipgloss.Sty
 	return normal
 }
 
-func formatLogEntry(al model.AuditLogEntry, width int) string {
+func formatLogEntry(al AuditLogEntry, width int) string {
 	ts := parseTimestamp(al.Timestamp)
 	action := titleFromUnderscore(strings.TrimSpace(al.Action))
 	details := strings.TrimSpace(strings.ReplaceAll(al.Details, "\n", " "))
+	// TODO use go builtin min()
 	if width < 38 {
 		width = 38
 	}
 	actionWidth := 20
+	// TODO use bubbles table (like everywhere else)
 	base := fmt.Sprintf("%s | %s | ", ts, action)
 	maxDetails := width - lipgloss.Width(base)
+	// TODO use go builtin min()
 	if maxDetails < 8 {
 		maxDetails = 8
 	}
@@ -173,6 +201,7 @@ func formatLogEntry(al model.AuditLogEntry, width int) string {
 	return timestampStyle.Render(padRight(ts, 12)) + " | " + actionStyle.Render(actionPadded) + " | " + detailStyle.Render(details)
 }
 
+// TODO decide if this function handles date, time or datetime
 func parseTimestamp(raw string) string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -190,6 +219,7 @@ func parseTimestamp(raw string) string {
 	return raw
 }
 
+// TODO use lipgloss
 func truncateRight(s string, max int) string {
 	if max <= 1 || lipgloss.Width(s) <= max {
 		return s
@@ -201,6 +231,7 @@ func truncateRight(s string, max int) string {
 	return s
 }
 
+// TODO use go builtin min()
 func minInt(a, b int) int {
 	if a < b {
 		return a
@@ -208,6 +239,7 @@ func minInt(a, b int) int {
 	return b
 }
 
+// TODO keymaster util package
 func clampInt(v, lo, hi int) int {
 	if v < lo {
 		return lo
@@ -218,6 +250,7 @@ func clampInt(v, lo, hi int) int {
 	return v
 }
 
+// TODO use lipgloss
 func titleFromUnderscore(action string) string {
 	if action == "" {
 		return "Unknown"
@@ -234,6 +267,7 @@ func titleFromUnderscore(action string) string {
 	return strings.Join(parts, " ")
 }
 
+// TODO use lipgloss
 func padRight(s string, width int) string {
 	w := lipgloss.Width(s)
 	if w >= width {
@@ -255,20 +289,52 @@ func (m *Model) Blur() {}
 var _ util.Model = (*Model)(nil)
 
 func (m *Model) reload() tea.Cmd {
+	// TODO add empty skeleton loading state
+
 	return func() tea.Msg {
-		// Type assert store to core.DashboardReader and call core.BuildDashboardData
-		reader, ok := m.store.(core.DashboardReader)
-		if !ok {
-			return msgReloadResult{
-				data: Data{},
-				err:  fmt.Errorf("store does not implement DashboardReader"),
-			}
+		accounts, err := m.client.ListAccounts(context.Background())
+		if err != nil {
+			return msgReloadResult{err: err}
 		}
 
-		data, err := core.BuildDashboardData(reader)
-		return msgReloadResult{
-			data: data,
-			err:  err,
+		publicKeys, err := m.client.ListPublicKeys(context.Background(), "")
+		if err != nil {
+			return msgReloadResult{err: err}
 		}
+
+		dirtyAccounts, err := slicest.FilterX(accounts, func(account client.Account) (bool, error) {
+			return m.client.IsAccountDirty(context.Background(), account)
+		})
+		if err != nil {
+			return msgReloadResult{err: err}
+		}
+
+		return msgReloadResult{data: Data{
+			len(accounts),
+			len(slicest.Filter(accounts, func(account client.Account) bool { return true /* cant't deactivate accounts */ })),
+			len(publicKeys),
+			0, // TODO does not exist in client
+			slicest.ToMap(
+				slicest.Reduce(
+					slicest.Map(
+						publicKeys,
+						func(publicKey client.PublicKey) string { return publicKey.Algorithm },
+					),
+					func(algo string, algos []string) []string {
+						if !slices.Contains(algos, algo) {
+							algos = append(algos, algo)
+						}
+						return algos
+					},
+				),
+				func(algo string) (string, int) {
+					return algo, len(slicest.Filter(publicKeys, func(publicKey client.PublicKey) bool { return publicKey.Algorithm == algo }))
+				},
+			),
+			len(accounts) - len(dirtyAccounts),
+			len(dirtyAccounts),
+			0,   // TODO does not exist in client
+			nil, // TODO does not exist in client yet (needs to be added)
+		}}
 	}
 }
