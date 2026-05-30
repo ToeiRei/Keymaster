@@ -126,6 +126,15 @@ type Link struct {
 	// ...
 }
 
+// AuditLogEntry represents a single audit event returned by client backends.
+type AuditLogEntry struct {
+	ID        int
+	Timestamp string
+	Username  string
+	Action    string
+	Details   string
+}
+
 type DeployProgressAccount struct {
 	Progress float64
 	Status   string

@@ -15,12 +15,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/client"
-	"github.com/toeirei/keymaster/core"
-	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/tablecontroll"
 	"github.com/toeirei/keymaster/ui/tui/util"
-	"github.com/toeirei/keymaster/uiadapters"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
@@ -37,8 +34,7 @@ type Data = struct {
 	RecentLogs         []AuditLogEntry
 }
 
-// copied from keymaster core for now
-type AuditLogEntry = model.AuditLogEntry
+type AuditLogEntry = client.AuditLogEntry
 
 type recentActivityRow struct {
 	Timestamp string
@@ -275,45 +271,41 @@ func (m *Model) reload() tea.Cmd {
 	// TODO add empty skeleton loading state
 
 	return func() tea.Msg {
-		// Prefer canonical dashboard aggregation from core to avoid placeholder data
-		// and keep dashboard behavior aligned across UIs.
-		coreData, err := core.BuildDashboardData(uiadapters.NewStoreAdapter())
-		if err == nil {
-			return msgReloadResult{data: Data{
-				AccountCount:       coreData.AccountCount,
-				ActiveAccountCount: coreData.ActiveAccountCount,
-				HostsUpToDate:      coreData.HostsUpToDate,
-				HostsOutdated:      coreData.HostsOutdated,
-				SystemKeySerial:    coreData.SystemKeySerial,
-				RecentLogs:         coreData.RecentLogs,
-			}}
-		}
+		ctx := context.Background()
 
-		// Fallback to the client-based approximation for environments that do not
-		// have core DB services initialized (for example, isolated TUI test clients).
-		accounts, err := m.client.ListAccounts(context.Background())
+		accounts, err := m.client.ListAccounts(ctx)
 		if err != nil {
 			return msgReloadResult{err: err}
 		}
 
-		publicKeys, err := m.client.ListPublicKeys(context.Background(), "")
+		publicKeys, err := m.client.ListPublicKeys(ctx, "")
 		if err != nil {
 			return msgReloadResult{err: err}
 		}
 
-		dirtyAccounts, err := slicest.FilterX(accounts, func(account client.Account) (bool, error) {
-			return m.client.IsAccountDirty(context.Background(), account)
-		})
+		dirtyAccounts, err := m.client.ListAccountsDirty(ctx)
 		if err != nil {
 			return msgReloadResult{err: err}
+		}
+
+		recentLogs := []AuditLogEntry{}
+		type recentAuditLogLister interface {
+			ListRecentAuditLogEntries(ctx context.Context, limit int) ([]client.AuditLogEntry, error)
+		}
+		if lister, ok := m.client.(recentAuditLogLister); ok {
+			logs, lerr := lister.ListRecentAuditLogEntries(ctx, 25)
+			if lerr != nil {
+				return msgReloadResult{err: lerr}
+			}
+			recentLogs = logs
 		}
 
 		return msgReloadResult{data: Data{
-			len(accounts),
-			len(slicest.Filter(accounts, func(account client.Account) bool { return true /* cant't deactivate accounts */ })),
-			len(publicKeys),
-			0, // TODO does not exist in client
-			slicest.ToMap(
+			AccountCount:       len(accounts),
+			ActiveAccountCount: len(accounts), // TODO client API currently has no account activation state
+			PublicKeyCount:     len(publicKeys),
+			GlobalKeyCount:     0, // TODO client API currently has no global-key flag on PublicKey
+			AlgoCounts: slicest.ToMap(
 				slicest.Reduce(
 					slicest.Map(
 						publicKeys,
@@ -330,10 +322,10 @@ func (m *Model) reload() tea.Cmd {
 					return algo, len(slicest.Filter(publicKeys, func(publicKey client.PublicKey) bool { return publicKey.Algorithm == algo }))
 				},
 			),
-			len(accounts) - len(dirtyAccounts),
-			len(dirtyAccounts),
-			0,   // TODO does not exist in client
-			nil, // TODO does not exist in client yet (needs to be added)
+			HostsUpToDate:   len(accounts) - len(dirtyAccounts),
+			HostsOutdated:   len(dirtyAccounts),
+			SystemKeySerial: 0,
+			RecentLogs:      recentLogs,
 		}}
 	}
 }
