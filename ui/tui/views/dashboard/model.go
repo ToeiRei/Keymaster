@@ -112,14 +112,13 @@ func (m Model) View() string {
 	lines := []string{
 		sectionTitleStyle.Render(i18n.T("dashboard.system_status")),
 		"",
-		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.accounts"), m.data.AccountCount, m.data.ActiveAccountCount)),
+		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.accounts"), m.data.ActiveAccountCount, m.data.AccountCount)),
 		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.public_keys"), m.data.PublicKeyCount, m.data.GlobalKeyCount)),
-		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.system_key"), formatSystemKeySerial(m.data.SystemKeySerial))),
 		"",
 		sectionTitleStyle.Render(i18n.T("dashboard.deployment_status")),
 		"",
 		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.hosts_current_key"), m.data.HostsUpToDate)),
-		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.hosts_past_keys"), m.data.HostsOutdated)),
+		warnValueStyle.Render(fmt.Sprintf(i18n.T("dashboard.hosts_past_keys"), m.data.HostsOutdated)),
 		"",
 		sectionTitleStyle.Render(i18n.T("dashboard.security_posture")),
 		"",
@@ -157,13 +156,6 @@ func (m Model) View() string {
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
-}
-
-func formatSystemKeySerial(serial int) string {
-	if serial <= 0 {
-		return i18n.T("dashboard.system_key.not_generated")
-	}
-	return fmt.Sprintf(i18n.T("dashboard.system_key_serial"), serial)
 }
 
 func formatAlgoSpread(algoCounts map[string]int, style lipgloss.Style) string {

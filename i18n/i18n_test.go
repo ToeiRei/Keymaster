@@ -36,7 +36,7 @@ func TestT_BasicAndFormatting(t *testing.T) {
 
 	// fmt-style formatting via non-map template args
 	got := T("dashboard.hosts_current_key", 7)
-	if got != "Hosts using current key: 7" {
+	if got != "Current: 7" {
 		t.Fatalf("unexpected formatted translation: %q", got)
 	}
 
