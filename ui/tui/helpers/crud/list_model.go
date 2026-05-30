@@ -86,8 +86,8 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 		m.refreshTable()
 		if msg.err != nil {
 			return choicepopup.Open("Error loading "+m.crud.Texts.EntityNameMultiple+":\n"+msg.err.Error(), choicepopup.Choices{
-				choicepopup.Choice{"Close", m.crud.routerControll.Pop(1), keys.KeyBindingList{keys.Close()}},
-				choicepopup.Choice{"Reload", m.reload(), nil},
+				choicepopup.Choice{Name: "Close", Cmd: m.crud.routerControll.Pop(1), KeyBindings: keys.KeyBindingList{keys.Close()}},
+				choicepopup.Choice{Name: "Reload", Cmd: m.reload(), KeyBindings: nil},
 			})
 		}
 		return nil

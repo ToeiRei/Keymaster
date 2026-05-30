@@ -87,7 +87,7 @@ func (c *Client) CreatePublicKey(ctx context.Context, key string, comment string
 	}
 	// algorithm, data := keyParts[0], strings.Join(slicest.SliceTo(keyParts, 1, len(keyParts)), " ")
 	algorithm, data := keyParts[0], keyParts[1]
-	publicKey := client.PublicKey{c.publicKeyIdCounter, algorithm, data, comment, tags}
+	publicKey := client.PublicKey{Id: c.publicKeyIdCounter, Algorithm: algorithm, Data: data, Comment: comment, Tags: tags}
 	c.publicKeys = append(c.publicKeys, publicKey)
 	return publicKey, nil
 }
@@ -170,7 +170,7 @@ func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 
 func (c *Client) CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
 	c.accountIdCounter++
-	account := client.Account{c.accountIdCounter, username, host, port, deploymentMethod, deploymentSecret, ""}
+	account := client.Account{Id: c.accountIdCounter, Username: username, Host: host, Port: port, DeployMethod: deploymentMethod, DeploySecret: deploymentSecret, DeployCache: ""}
 	c.accounts = append(c.accounts, account)
 	return account, nil
 }
@@ -264,7 +264,7 @@ func (c *Client) IsAccountDirty(ctx context.Context, account client.Account) (bo
 
 func (c *Client) CreateLink(ctx context.Context, accountId client.AccountId, tagMatcher string, expiresAt time.Time) (client.Link, error) {
 	c.linkIdCounter++
-	link := client.Link{c.linkIdCounter, accountId, tagMatcher, expiresAt}
+	link := client.Link{Id: c.linkIdCounter, AccountId: accountId, TagMatcher: tagMatcher, ExpiresAt: expiresAt}
 	c.links = append(c.links, link)
 	return link, nil
 }
@@ -347,9 +347,9 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 
 	deployProgressChan := make(chan client.DeployProgressAccounts)
 	deployProgress := client.DeployProgressAccounts{
-		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.DeployProgressAccount) {
-			return account.Id, &client.DeployProgressAccount{0, "not started", nil}
-		}),
+			Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.DeployProgressAccount) {
+				return account.Id, &client.DeployProgressAccount{Progress: 0, Status: "not started", Err: nil}
+			}),
 	}
 
 	checkContextCanceled := func(accountId client.AccountId, deployProgress client.DeployProgressAccounts) bool {
@@ -455,9 +455,9 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 	}
 
 	verifyProgressChan := make(chan client.VerifyProgressAccounts)
-	verifyProgress := client.VerifyProgressAccounts{
+		verifyProgress := client.VerifyProgressAccounts{
 		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.VerifyProgressAccount) {
-			return account.Id, &client.VerifyProgressAccount{0, "not started", nil}
+			return account.Id, &client.VerifyProgressAccount{Progress: 0, Status: "not started", Err: nil}
 		}),
 	}
 

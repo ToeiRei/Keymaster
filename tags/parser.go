@@ -33,7 +33,7 @@ func parseMatcher(matcher string, originalMatcher string, pos int) (Expr, error)
 			pos += len(part) + 1
 			return expr, err
 		})
-		return AndExpr{exprs}, err
+		return AndExpr{Exprs: exprs}, err
 	}
 
 	// or
@@ -43,13 +43,13 @@ func parseMatcher(matcher string, originalMatcher string, pos int) (Expr, error)
 			pos += len(part) + 1
 			return expr, err
 		})
-		return OrExpr{exprs}, err
+		return OrExpr{Exprs: exprs}, err
 	}
 
 	// negation
 	if matcher, negated := strings.CutPrefix(matcher, ExprNot); negated {
 		expr, err := parseMatcher(matcher, originalMatcher, pos+len(ExprNot))
-		return NotExpr{expr}, err
+		return NotExpr{Expr: expr}, err
 	}
 
 	// braces
@@ -60,7 +60,7 @@ func parseMatcher(matcher string, originalMatcher string, pos int) (Expr, error)
 
 	// raw value
 	if tagValidationRegexpr.MatchString(matcher) {
-		return ValueExpr{matcher}, nil
+		return ValueExpr{Value: matcher}, nil
 	}
 
 	// invalid matcher string

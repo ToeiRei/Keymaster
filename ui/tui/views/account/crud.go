@@ -92,7 +92,7 @@ func formRows[T comparable]() []form.FormOpt[T] {
 
 func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
-		crud.Texts{"Account", "Accounts"},
+		crud.Texts{EntityNameSingular: "Account", EntityNameMultiple: "Accounts"},
 
 		func(record recordT) recordIdT { return record.account.Id },
 		func(ctx context.Context, filter filterT) ([]recordT, error) {

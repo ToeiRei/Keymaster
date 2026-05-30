@@ -108,10 +108,10 @@ func (m *Model[T]) Update(msg tea.Msg) tea.Cmd {
 		m.filterRecords()
 		m.refreshTable()
 		if msg.err != nil {
-			return choicepopup.Open("Error loading records:\n"+msg.err.Error(), choicepopup.Choices{
-				choicepopup.Choice{"Close", popup.Close(), keys.KeyBindingList{keys.Close()}},
-				choicepopup.Choice{"Reload", m.reload(), nil},
-			})
+				return choicepopup.Open("Error loading records:\n"+msg.err.Error(), choicepopup.Choices{
+					choicepopup.Choice{Name: "Close", Cmd: popup.Close(), KeyBindings: keys.KeyBindingList{keys.Close()}},
+					choicepopup.Choice{Name: "Reload", Cmd: m.reload(), KeyBindings: nil},
+				})
 		}
 		return nil
 	case tea.KeyMsg:

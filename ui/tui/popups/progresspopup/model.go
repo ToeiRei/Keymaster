@@ -131,7 +131,7 @@ func (m *Model) Init() tea.Cmd {
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	if m.size.UpdateFromMsg(msg) {
 		m.barModel.Width = util.Clamp(20, m.size.Width/2, m.size.Width)
-		return m.formModel.Update(util.Size{m.size.Width, 3}.ToMsg())
+		return m.formModel.Update(util.Size{Width: m.size.Width, Height: 3}.ToMsg())
 	}
 
 	if msg, ok := msg.(progressMsg); ok && msg.id() == m.id {

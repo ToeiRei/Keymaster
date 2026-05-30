@@ -58,8 +58,8 @@ func Deploy(ctx context.Context, c client.Client, accounts ...client.Account) te
 			// map [client.DeployProgressAccounts] chan to [progresspopup.Progress] chan
 			for dp = range dpc {
 				pc <- progresspopup.Progress{
-					dp.Progress(),
-					strings.Join(
+					Progress: dp.Progress(),
+					Status: strings.Join(
 						slicest.Map(ids, func(id client.AccountId) string {
 							return fmt.Sprintf("%s [%s]", accountNameRenderer.Render(accountNamesMap[id]), dp.Accounts[id].Status)
 						}),

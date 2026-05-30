@@ -253,8 +253,10 @@ Running without a subcommand will launch the interactive TUI.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// The database is already initialized by PersistentPreRunE.
 			// i18n is also initialized, so we can just run the TUI.
-			store := uiadapters.NewStoreAdapter()
-			_ = tui.Run(store)
+			// The store adapter is created for side-effects during setup,
+			// but `tui.Run` currently expects no arguments.
+			_ = uiadapters.NewStoreAdapter()
+			_ = tui.Run()
 		},
 	}
 

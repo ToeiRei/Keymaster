@@ -101,9 +101,9 @@ func pushNegatesToValues(expr tags.Expr) tags.Expr {
 			return expr
 		}
 	case tags.AndExpr:
-		return tags.AndExpr{slicest.Map(expr.Exprs, func(expr tags.Expr) tags.Expr { return pushNegatesToValues(expr) })}
+		return tags.AndExpr{Exprs: slicest.Map(expr.Exprs, func(expr tags.Expr) tags.Expr { return pushNegatesToValues(expr) })}
 	case tags.OrExpr:
-		return tags.OrExpr{slicest.Map(expr.Exprs, func(expr tags.Expr) tags.Expr { return pushNegatesToValues(expr) })}
+		return tags.OrExpr{Exprs: slicest.Map(expr.Exprs, func(expr tags.Expr) tags.Expr { return pushNegatesToValues(expr) })}
 	default:
 		return expr
 	}
@@ -112,9 +112,9 @@ func pushNegatesToValues(expr tags.Expr) tags.Expr {
 func tryResolveNotExpr(e tags.NotExpr) tags.Expr {
 	switch expr := e.Expr.(type) {
 	case tags.AndExpr:
-		return tags.OrExpr{slicest.Map(expr.Exprs, func(expr tags.Expr) tags.Expr { return tags.NotExpr{expr} })}
+		return tags.OrExpr{Exprs: slicest.Map(expr.Exprs, func(expr tags.Expr) tags.Expr { return tags.NotExpr{Expr: expr} })}
 	case tags.OrExpr:
-		return tags.AndExpr{slicest.Map(expr.Exprs, func(expr tags.Expr) tags.Expr { return tags.NotExpr{expr} })}
+		return tags.AndExpr{Exprs: slicest.Map(expr.Exprs, func(expr tags.Expr) tags.Expr { return tags.NotExpr{Expr: expr} })}
 	default:
 		return e
 	}
