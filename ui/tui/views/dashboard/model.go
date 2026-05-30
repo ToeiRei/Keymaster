@@ -14,6 +14,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/i18n"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/util/slicest"
 )
@@ -97,7 +98,7 @@ func (m Model) View() string {
 		errTitle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("1")).
 			Bold(true).
-			Render("Dashboard Error")
+			Render(i18n.T("dashboard.error_title"))
 		errBody := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("8")).
 			Width(contentWidth - 2).
@@ -114,18 +115,18 @@ func (m Model) View() string {
 
 	metricsPanel := borderStyle.Render(lipgloss.JoinVertical(
 		lipgloss.Left,
-		titleStyle.Render("System Metrics"),
+		titleStyle.Render(i18n.T("dashboard.system_metrics")),
 		"",
-		formatKeyValue("Accounts", fmt.Sprintf("%d total / %d active", m.data.AccountCount, m.data.ActiveAccountCount), labelStyle, valueStyle),
-		formatKeyValue("Hosts", formatHostStatus(m.data.HostsUpToDate, m.data.HostsOutdated), labelStyle, chooseOutdatedStyle(m.data.HostsOutdated, valueStyle, warnValueStyle)),
-		formatKeyValue("System Key", fmt.Sprintf("serial #%d", m.data.SystemKeySerial), labelStyle, valueStyle),
+		formatKeyValue(i18n.T("dashboard.label.accounts"), fmt.Sprintf(i18n.T("dashboard.accounts_summary"), m.data.AccountCount, m.data.ActiveAccountCount), labelStyle, valueStyle),
+		formatKeyValue(i18n.T("dashboard.label.hosts"), formatHostStatus(m.data.HostsUpToDate, m.data.HostsOutdated), labelStyle, chooseOutdatedStyle(m.data.HostsOutdated, valueStyle, warnValueStyle)),
+		formatKeyValue(i18n.T("dashboard.label.system_key"), fmt.Sprintf(i18n.T("dashboard.system_key_serial"), m.data.SystemKeySerial), labelStyle, valueStyle),
 	))
 
 	// TODO use bubbles table (like everywhere else)
-	logsTitle := titleStyle.Render("Recent Audit Logs")
+	logsTitle := titleStyle.Render(i18n.T("dashboard.recent_audit_logs"))
 	logsBody := ""
 	if len(m.data.RecentLogs) == 0 {
-		logsBody = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Italic(true).Render("No recent entries")
+		logsBody = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Italic(true).Render(i18n.T("dashboard.no_recent_entries"))
 	} else {
 		height := m.size.Height
 		if height <= 0 {
@@ -134,7 +135,12 @@ func (m Model) View() string {
 		maxLogRows := clampInt(height-14, 3, 10)
 		logLines := make([]string, 0, minInt(len(m.data.RecentLogs), maxLogRows+1))
 		entryWidth := contentWidth - 4
-		head := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Bold(true).Render("Time         | Action               | Details")
+		logTimeCol := padRight(i18n.T("dashboard.log_col_time"), 12)
+		logActionCol := padRight(i18n.T("dashboard.log_col_action"), 20)
+		logDetailsCol := i18n.T("dashboard.log_col_details")
+		head := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Bold(true).Render(
+			fmt.Sprintf("%s | %s | %s", logTimeCol, logActionCol, logDetailsCol),
+		)
 		logLines = append(logLines, head)
 		for i, al := range m.data.RecentLogs {
 			if i >= maxLogRows {
@@ -161,9 +167,9 @@ func formatKeyValue(label, value string, labelStyle, valueStyle lipgloss.Style) 
 
 func formatHostStatus(upToDate, outdated int) string {
 	if outdated > 0 {
-		return fmt.Sprintf("%d up-to-date, %d outdated", upToDate, outdated)
+		return fmt.Sprintf(i18n.T("dashboard.hosts_status_mixed"), upToDate, outdated)
 	}
-	return fmt.Sprintf("%d up-to-date, all clean", upToDate)
+	return fmt.Sprintf(i18n.T("dashboard.hosts_status_clean"), upToDate)
 }
 
 func chooseOutdatedStyle(outdated int, normal, warn lipgloss.Style) lipgloss.Style {
@@ -205,7 +211,7 @@ func formatLogEntry(al AuditLogEntry, width int) string {
 func parseTimestamp(raw string) string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
-		return "--:--"
+		return i18n.T("dashboard.no_timestamp")
 	}
 	layouts := []string{time.RFC3339, "2006-01-02 15:04:05", "2006-01-02T15:04:05Z07:00"}
 	for _, layout := range layouts {
@@ -253,7 +259,7 @@ func clampInt(v, lo, hi int) int {
 // TODO use lipgloss
 func titleFromUnderscore(action string) string {
 	if action == "" {
-		return "Unknown"
+		return i18n.T("dashboard.unknown_action")
 	}
 	parts := strings.Split(strings.ToLower(strings.ReplaceAll(action, "_", " ")), " ")
 	for i, p := range parts {
