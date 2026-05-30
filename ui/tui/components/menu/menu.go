@@ -64,7 +64,8 @@ func (m *Model) view() string {
 	// Clip view if too big for viewport
 	height := lipgloss.Height(view)
 	if height > m.size.Height {
-		// TODO comment
+		// Center the clipped region around the active path depth to keep focused
+		// items visible while navigating nested menus.
 		align := float64(slicest.Reduce(m.ActiveStack, func(i int, sum int) int { return sum + i + 1 })) / float64(height)
 		lines := strings.Split(view, "\n")
 		i := int(float64(height-m.size.Height) * align)
