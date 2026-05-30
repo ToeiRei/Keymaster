@@ -7,6 +7,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"os/user"
 	"strings"
 	"time"
 
@@ -22,18 +24,53 @@ type Client struct {
 	publicKeys   []client.PublicKey
 	accounts     []client.Account
 	links        []client.Link
+	auditLogs    []client.AuditLog
 	remoteStates map[client.AccountId]string
 
 	// id counter to simulate serial
 	publicKeyIdCounter client.PublicKeyId
 	accountIdCounter   client.AccountId
 	linkIdCounter      client.LinkId
+	auditLogIdCounter  client.AuditLogId
 }
 
 // *[Client] implements [client.Client]
 var _ client.Client = (*Client)(nil)
 
 // --- utils ---
+
+func (c *Client) AddAuditLog(
+	extraMetadata map[string]string,
+	action string,
+	details string,
+) error {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+
+	osuser, err := user.Current()
+	if err != nil {
+		return err
+	}
+
+	c.auditLogIdCounter++
+	c.auditLogs = append(c.auditLogs, client.AuditLog{
+		c.auditLogIdCounter,
+		time.Now(),
+
+		client.AuditLogMetadata{
+			hostname,
+			osuser.Username,
+			extraMetadata,
+		},
+
+		action,
+		details,
+	})
+
+	return nil
+}
 
 func (c *Client) accountDeployData(ctx context.Context, account client.Account) (string, error) {
 	publicKeys, err := c.ListPublicKeysLinkedToAccount(ctx, account.Id, false)
@@ -540,6 +577,17 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 }
 
 // --- Other ---
+
+func (c *Client) ListAuditLogs(ctx context.Context, limit int) ([]client.AuditLog, error) {
+	var logs []client.AuditLog
+	if limit <= 0 {
+		logs = c.auditLogs
+	} else {
+		logs = c.auditLogs[:min(len(c.auditLogs), limit)]
+	}
+
+	return append([]client.AuditLog(nil), logs...), nil
+}
 
 func (c *Client) ListExistingTags(ctx context.Context) tags.Tags {
 	return slicest.Reduce(c.publicKeys, func(publicKey client.PublicKey, tags tags.Tags) tags.Tags {

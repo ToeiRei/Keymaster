@@ -31,10 +31,10 @@ type Data = struct {
 	HostsUpToDate      int
 	HostsOutdated      int
 	SystemKeySerial    int
-	RecentLogs         []AuditLogEntry
+	AuditLogs          []AuditLogEntry
 }
 
-type AuditLogEntry = client.AuditLogEntry
+type AuditLogEntry = client.AuditLog
 
 type recentActivityRow struct {
 	Timestamp string
@@ -106,7 +106,7 @@ func (m Model) View() string {
 		height = 24
 	}
 
-	recentActivityRows := recentActivityTableRows(m.data.RecentLogs)
+	recentActivityRows := recentActivityTableRows(m.data.AuditLogs)
 	accountsLine := fmt.Sprintf(i18n.T("dashboard.accounts"), m.data.ActiveAccountCount, m.data.AccountCount)
 	publicKeysLine := fmt.Sprintf(i18n.T("dashboard.public_keys"), m.data.PublicKeyCount, m.data.GlobalKeyCount)
 	currentLine := fmt.Sprintf(i18n.T("dashboard.hosts_current_key"), m.data.HostsUpToDate)
@@ -184,7 +184,7 @@ func formatAlgoSpread(algoCounts map[string]int, style lipgloss.Style) string {
 func recentActivityTableRows(logs []AuditLogEntry) []recentActivityRow {
 	return slicest.Map(logs, func(al AuditLogEntry) recentActivityRow {
 		return recentActivityRow{
-			Timestamp: parseTimestamp(al.Timestamp),
+			Timestamp: al.Timestamp.Format("Jan 02 15:04"),
 			Action:    titleFromUnderscore(strings.TrimSpace(al.Action)),
 			Details:   strings.TrimSpace(strings.ReplaceAll(al.Details, "\n", " ")),
 		}
@@ -288,16 +288,9 @@ func (m *Model) reload() tea.Cmd {
 			return msgReloadResult{err: err}
 		}
 
-		recentLogs := []AuditLogEntry{}
-		type recentAuditLogLister interface {
-			ListRecentAuditLogEntries(ctx context.Context, limit int) ([]client.AuditLogEntry, error)
-		}
-		if lister, ok := m.client.(recentAuditLogLister); ok {
-			logs, lerr := lister.ListRecentAuditLogEntries(ctx, 25)
-			if lerr != nil {
-				return msgReloadResult{err: lerr}
-			}
-			recentLogs = logs
+		auditLogs, err := m.client.ListAuditLogs(ctx, 25)
+		if err != nil {
+			return msgReloadResult{err: err}
 		}
 
 		return msgReloadResult{data: Data{
@@ -325,7 +318,7 @@ func (m *Model) reload() tea.Cmd {
 			HostsUpToDate:   len(accounts) - len(dirtyAccounts),
 			HostsOutdated:   len(dirtyAccounts),
 			SystemKeySerial: 0,
-			RecentLogs:      recentLogs,
+			AuditLogs:       auditLogs,
 		}}
 	}
 }

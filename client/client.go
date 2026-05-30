@@ -79,6 +79,8 @@ type Client interface {
 
 	// --- Other ---
 
+	ListAuditLogs(ctx context.Context, limit int) ([]AuditLog, error) // TODO doesn't account for filtering and pagination
+
 	ListExistingTags(ctx context.Context) tags.Tags
 
 	OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan OnboardHostProgress, error)
@@ -126,13 +128,24 @@ type Link struct {
 	// ...
 }
 
-// AuditLogEntry represents a single audit event returned by client backends.
-type AuditLogEntry struct {
-	ID        int
-	Timestamp string
-	Username  string
-	Action    string
-	Details   string
+type AuditLogId id
+type AuditLog struct {
+	Id        AuditLogId
+	Timestamp time.Time
+
+	Metadata AuditLogMetadata
+
+	Action  string
+	Details string
+}
+type AuditLogMetadata struct {
+	Hostname string
+	Hostuser string
+	Extra    map[string]string
+}
+
+func (a AuditLogMetadata) String() string {
+	return fmt.Sprintf("%s@%s", a.Hostuser, a.Hostname)
 }
 
 type DeployProgressAccount struct {

@@ -58,6 +58,7 @@ type ClientOverwrites struct {
 	VerifyAccounts func(ctx context.Context, accountIds ...client.AccountId) (chan client.VerifyProgressAccounts, error)
 
 	// --- Other ---
+	ListAuditLogs      func(ctx context.Context, limit int) ([]client.AuditLog, error)
 	ListExistingTags   func(ctx context.Context) tags.Tags
 	OnboardHost        func(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error)
 	DecommisionAccount func(ctx context.Context, id client.AccountId) (chan client.DecommisionAccountProgress, error)
@@ -558,6 +559,21 @@ func (m *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 }
 
 // --- Other ---
+
+func (m *Client) ListAuditLogs(ctx context.Context, limit int) ([]client.AuditLog, error) {
+	if m.Pre != nil {
+		err := m.Pre("ListAuditLogs", map[string]any{"ctx": ctx, "limit": limit})
+		if err != nil {
+			return nil, nil
+		}
+	}
+	if m.Overwrites.ListAuditLogs != nil {
+		return m.Overwrites.ListAuditLogs(ctx, limit)
+	} else if m.BaseClient != nil {
+		return m.BaseClient.ListAuditLogs(ctx, limit)
+	}
+	panic("Client.ListAuditLogs not implemented")
+}
 
 func (m *Client) ListExistingTags(ctx context.Context) tags.Tags {
 	if m.Pre != nil {
