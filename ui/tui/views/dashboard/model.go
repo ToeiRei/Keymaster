@@ -159,13 +159,6 @@ func (m Model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
 }
 
-func formatHostStatus(upToDate, outdated int) string {
-	if outdated > 0 {
-		return fmt.Sprintf(i18n.T("dashboard.hosts_status_mixed"), upToDate, outdated)
-	}
-	return fmt.Sprintf(i18n.T("dashboard.hosts_status_clean"), upToDate)
-}
-
 func formatSystemKeySerial(serial int) string {
 	if serial <= 0 {
 		return i18n.T("dashboard.system_key.not_generated")
