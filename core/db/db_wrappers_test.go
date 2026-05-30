@@ -4,6 +4,8 @@
 package db
 
 import (
+	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -161,6 +163,34 @@ func TestAccountAndKeyWrappers(t *testing.T) {
 		}
 		if !foundEntry {
 			t.Fatalf("expected audit entry not found: %+v", entries)
+		}
+
+		SetAuditContext("cli", "unit-test")
+		if err := LogAction("TEST_META", "details"); err != nil {
+			t.Fatalf("LogAction with metadata: %v", err)
+		}
+		var meta struct {
+			Hostname   sql.NullString `bun:"hostname"`
+			ClientImpl sql.NullString `bun:"client_impl"`
+			Referrer   sql.NullString `bun:"referrer"`
+		}
+		if err := QueryRawInto(
+			context.Background(),
+			BunDB(),
+			&meta,
+			"SELECT hostname, client_impl, referrer FROM audit_log WHERE action = ? ORDER BY id DESC LIMIT 1",
+			"TEST_META",
+		); err != nil {
+			t.Fatalf("query metadata columns: %v", err)
+		}
+		if !meta.Hostname.Valid {
+			t.Fatalf("expected hostname to be captured")
+		}
+		if !meta.ClientImpl.Valid || meta.ClientImpl.String != "cli" {
+			t.Fatalf("unexpected client_impl: %+v", meta.ClientImpl)
+		}
+		if !meta.Referrer.Valid || meta.Referrer.String != "unit-test" {
+			t.Fatalf("unexpected referrer: %+v", meta.Referrer)
 		}
 
 		// Export/Import backup paths (basic round-trip)

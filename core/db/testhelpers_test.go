@@ -20,6 +20,7 @@ func WithTestStore(t *testing.T, fn func(s *BunStore)) {
 	prevDefaultAccountManager := defaultAccountManager
 	prevDefaultKeyManager := defaultKeyManager
 	prevDefaultAuditWriter := defaultAuditWriter
+	prevAuditContext := getAuditContext()
 
 	// Initialize in-memory sqlite DB for this test
 	dsn := "file:" + t.Name() + "?mode=memory&cache=shared"
@@ -40,6 +41,7 @@ func WithTestStore(t *testing.T, fn func(s *BunStore)) {
 		defaultAccountManager = prevDefaultAccountManager
 		defaultKeyManager = prevDefaultKeyManager
 		defaultAuditWriter = prevDefaultAuditWriter
+		SetAuditContext(prevAuditContext.ClientImplementation, prevAuditContext.Referrer)
 	}()
 
 	fn(s)
