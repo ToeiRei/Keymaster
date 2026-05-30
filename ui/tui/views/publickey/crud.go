@@ -157,13 +157,13 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		},
 
 		tablecontroll.New(tablecontroll.Columns[recordT]{
-			{Title: "Comment", View: func(r recordT) string { return r.publicKey.Comment }},
-			{Title: "Tags", View: func(r recordT) string { return r.publicKey.Tags.String() }, MaxWidth: 0.5},
-			{Title: "Algorithm", View: func(r recordT) string { return r.publicKey.Algorithm }},
-			{Title: "Links (active/total)", View: func(r recordT) string {
+			{Title: func() string { return "Comment" }, View: func(r recordT) string { return r.publicKey.Comment }},
+			{Title: func() string { return "Tags" }, View: func(r recordT) string { return r.publicKey.Tags.String() }, MaxWidth: 0.5},
+			{Title: func() string { return "Algorithm" }, View: func(r recordT) string { return r.publicKey.Algorithm }},
+			{Title: func() string { return "Links (active/total)" }, View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkCount, r.totalLinkCount)
 			}},
-			{Title: "Accounts (active/total)", View: func(r recordT) string {
+			{Title: func() string { return "Accounts (active/total)" }, View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkedAccountCount, r.totalLinkedAccountCount)
 			}},
 		}).RenderBubblesTable,

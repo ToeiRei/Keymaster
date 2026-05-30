@@ -67,10 +67,10 @@ func formRows[T comparable](c client.Client) func() []form.FormOpt[T] {
 						func(r client.Account) tea.Cmd { return returnValue(r) },
 						// display Accounts
 						tablecontroll.New(tablecontroll.Columns[client.Account]{
-							{Title: "Username", View: func(r client.Account) string { return r.Username }},
-							{Title: "Host", View: func(r client.Account) string { return r.Host }},
-							{Title: "Port", View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
-							{Title: "Deploy Method", View: func(r client.Account) string { return r.DeployMethod }},
+							{Title: func() string { return "Username" }, View: func(r client.Account) string { return r.Username }},
+							{Title: func() string { return "Host" }, View: func(r client.Account) string { return r.Host }},
+							{Title: func() string { return "Port" }, View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
+							{Title: func() string { return "Deploy Method" }, View: func(r client.Account) string { return r.DeployMethod }},
 						}),
 						// extra options
 						selectpopup.WithFilter(func(filter string, records []client.Account) []client.Account {
@@ -179,10 +179,10 @@ func NewCrud(c client.Client, rc router.Controll, publicKey client.PublicKey) *c
 		},
 
 		tablecontroll.New(tablecontroll.Columns[recordT]{
-			{Title: "Tag Matcher", View: func(r recordT) string { return r.link.TagMatcher }},
-			{Title: "Expires At", View: func(r recordT) string { return util.StringifyTime(r.link.ExpiresAt) }},
-			{Title: "Account", View: func(r recordT) string { return r.account.String() }},
-			{Title: "Public Keys", View: func(r recordT) string { return fmt.Sprint(r.linkedPublicKeyCount) }},
+			{Title: func() string { return "Tag Matcher" }, View: func(r recordT) string { return r.link.TagMatcher }},
+			{Title: func() string { return "Expires At" }, View: func(r recordT) string { return util.StringifyTime(r.link.ExpiresAt) }},
+			{Title: func() string { return "Account" }, View: func(r recordT) string { return r.account.String() }},
+			{Title: func() string { return "Public Keys" }, View: func(r recordT) string { return fmt.Sprint(r.linkedPublicKeyCount) }},
 		}).RenderBubblesTable,
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{

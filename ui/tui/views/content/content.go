@@ -115,10 +115,10 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 					return messagepopup.Open(messagepopup.Info, "You selected: "+r.String(), nil)
 				},
 				tablecontroll.New(tablecontroll.Columns[client.Account]{
-					{Title: "Username", View: func(r client.Account) string { return r.Username }},
-					{Title: "Host", View: func(r client.Account) string { return r.Host }},
-					{Title: "Port", View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
-					{Title: "Deploy Method", View: func(r client.Account) string { return r.DeployMethod }},
+					{Title: func() string { return "Username" }, View: func(r client.Account) string { return r.Username }},
+					{Title: func() string { return "Host" }, View: func(r client.Account) string { return r.Host }},
+					{Title: func() string { return "Port" }, View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
+					{Title: func() string { return "Deploy Method" }, View: func(r client.Account) string { return r.DeployMethod }},
 				}),
 			)
 
@@ -132,10 +132,10 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 					return messagepopup.Open(messagepopup.Info, "You selected: "+r.String(), nil)
 				},
 				tablecontroll.New(tablecontroll.Columns[client.Account]{
-					{Title: "Username", View: func(r client.Account) string { return r.Username }},
-					{Title: "Host", View: func(r client.Account) string { return r.Host }},
-					{Title: "Port", View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
-					{Title: "Deploy Method", View: func(r client.Account) string { return r.DeployMethod }},
+					{Title: func() string { return "Username" }, View: func(r client.Account) string { return r.Username }},
+					{Title: func() string { return "Host" }, View: func(r client.Account) string { return r.Host }},
+					{Title: func() string { return "Port" }, View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
+					{Title: func() string { return "Deploy Method" }, View: func(r client.Account) string { return r.DeployMethod }},
 				}),
 				selectpopup.WithFilter(func(filter string, records []client.Account) []client.Account {
 					return slicest.Filter(records, func(record client.Account) bool {

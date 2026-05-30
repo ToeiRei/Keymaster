@@ -132,10 +132,10 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 		},
 
 		tablecontroll.New(tablecontroll.Columns[recordT]{
-			{Title: "Tag Matcher", View: func(r recordT) string { return r.link.TagMatcher }},
-			{Title: "Expires At", View: func(r recordT) string { return util.StringifyTime(r.link.ExpiresAt) }},
-			{Title: "Account", View: func(r recordT) string { return account.String() }},
-			{Title: "Public Keys", View: func(r recordT) string { return fmt.Sprint(r.linkedPublicKeyCount) }},
+			{Title: func() string { return "Tag Matcher" }, View: func(r recordT) string { return r.link.TagMatcher }},
+			{Title: func() string { return "Expires At" }, View: func(r recordT) string { return util.StringifyTime(r.link.ExpiresAt) }},
+			{Title: func() string { return "Account" }, View: func(r recordT) string { return account.String() }},
+			{Title: func() string { return "Public Keys" }, View: func(r recordT) string { return fmt.Sprint(r.linkedPublicKeyCount) }},
 		}).RenderBubblesTable,
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{

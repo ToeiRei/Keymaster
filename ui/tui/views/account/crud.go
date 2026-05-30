@@ -172,15 +172,15 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		},
 
 		tablecontroll.New(tablecontroll.Columns[recordT]{
-			{Title: "Username", View: func(r recordT) string { return r.account.Username }},
-			{Title: "Host", View: func(r recordT) string { return r.account.Host }},
-			{Title: "Port", View: func(r recordT) string { return fmt.Sprint(r.account.Port) }},
-			{Title: "Deploy Method", View: func(r recordT) string { return r.account.DeployMethod }},
-			{Title: "Dirty", View: func(r recordT) string { return fmt.Sprint(r.isDirty) }},
-			{Title: "Links (active/total)", View: func(r recordT) string {
+			{Title: func() string { return "Username" }, View: func(r recordT) string { return r.account.Username }},
+			{Title: func() string { return "Host" }, View: func(r recordT) string { return r.account.Host }},
+			{Title: func() string { return "Port" }, View: func(r recordT) string { return fmt.Sprint(r.account.Port) }},
+			{Title: func() string { return "Deploy Method" }, View: func(r recordT) string { return r.account.DeployMethod }},
+			{Title: func() string { return "Dirty" }, View: func(r recordT) string { return fmt.Sprint(r.isDirty) }},
+			{Title: func() string { return "Links (active/total)" }, View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkCount, r.totalLinkCount)
 			}},
-			{Title: "Public Keys (active/total)", View: func(r recordT) string {
+			{Title: func() string { return "Public Keys (active/total)" }, View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkedPublicKeyCount, r.totalLinkedPublicKeyCount)
 			}},
 		}).RenderBubblesTable,
