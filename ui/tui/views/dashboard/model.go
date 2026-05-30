@@ -108,17 +108,23 @@ func (m Model) View() string {
 	}
 
 	recentActivityRows := recentActivityTableRows(m.data.RecentLogs)
+	accountsLine := fmt.Sprintf(i18n.T("dashboard.accounts"), m.data.ActiveAccountCount, m.data.AccountCount)
+	publicKeysLine := fmt.Sprintf(i18n.T("dashboard.public_keys"), m.data.PublicKeyCount, m.data.GlobalKeyCount)
+	currentLine := fmt.Sprintf(i18n.T("dashboard.hosts_current_key"), m.data.HostsUpToDate)
+	dirtyLine := fmt.Sprintf(i18n.T("dashboard.hosts_past_keys"), m.data.HostsOutdated)
+	accountsRendered, publicKeysRendered := renderAlignedPair(accountsLine, publicKeysLine, valueStyle, valueStyle, false)
+	currentRendered, dirtyRendered := renderAlignedPair(currentLine, dirtyLine, valueStyle, warnValueStyle, true)
 
 	lines := []string{
 		sectionTitleStyle.Render(i18n.T("dashboard.system_status")),
 		"",
-		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.accounts"), m.data.ActiveAccountCount, m.data.AccountCount)),
-		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.public_keys"), m.data.PublicKeyCount, m.data.GlobalKeyCount)),
+		accountsRendered,
+		publicKeysRendered,
 		"",
 		sectionTitleStyle.Render(i18n.T("dashboard.deployment_status")),
 		"",
-		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.hosts_current_key"), m.data.HostsUpToDate)),
-		warnValueStyle.Render(fmt.Sprintf(i18n.T("dashboard.hosts_past_keys"), m.data.HostsOutdated)),
+		currentRendered,
+		dirtyRendered,
 		"",
 		sectionTitleStyle.Render(i18n.T("dashboard.security_posture")),
 		"",
@@ -184,6 +190,36 @@ func recentActivityTableRows(logs []AuditLogEntry) []recentActivityRow {
 			Details:   strings.TrimSpace(strings.ReplaceAll(al.Details, "\n", " ")),
 		}
 	})
+}
+
+func renderAlignedPair(line1, line2 string, style1, style2 lipgloss.Style, alignValueRight bool) (string, string) {
+	label1, value1 := splitLabelValue(line1)
+	label2, value2 := splitLabelValue(line2)
+	labelWidth := max(lipgloss.Width(label1), lipgloss.Width(label2))
+	labelRenderer := lipgloss.NewStyle().Width(labelWidth)
+
+	valueRenderer := lipgloss.NewStyle()
+	if alignValueRight {
+		valueWidth := max(lipgloss.Width(value1), lipgloss.Width(value2))
+		valueRenderer = valueRenderer.Width(valueWidth).Align(lipgloss.Right)
+	}
+
+	render := func(label, value string, style lipgloss.Style) string {
+		if value == "" {
+			return style.Render(label)
+		}
+		return style.Render(labelRenderer.Render(label) + " " + valueRenderer.Render(value))
+	}
+
+	return render(label1, value1, style1), render(label2, value2, style2)
+}
+
+func splitLabelValue(line string) (string, string) {
+	parts := strings.SplitN(line, ":", 2)
+	if len(parts) < 2 {
+		return line, ""
+	}
+	return parts[0] + ":", strings.TrimSpace(parts[1])
 }
 
 // TODO decide if this function handles date, time or datetime
