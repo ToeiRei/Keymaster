@@ -96,6 +96,16 @@ func DefaultKeyGenerator() KeyGenerator { return sshKeyGen{} }
 // SetDefaultKeyManager so callers don't need to import `core/db`.
 func SetDefaultKeyManager(m KeyManager) { db.SetDefaultKeyManager(m) }
 
+// SetAuditContext sets process-level audit metadata for subsequent writes.
+func SetAuditContext(clientImplementation, referrer string) {
+	db.SetAuditContext(clientImplementation, referrer)
+}
+
+// ClearAuditContext clears process-level audit metadata for subsequent writes.
+func ClearAuditContext() {
+	db.ClearAuditContext()
+}
+
 // (SetDefaultAccountManager is implemented in defaults_db.go and also
 // delegates to the DB package; no duplicate implementation here.)
 
