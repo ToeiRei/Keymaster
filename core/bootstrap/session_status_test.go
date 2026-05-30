@@ -34,6 +34,7 @@ func TestBootstrapSession_UpdateStatusPersists(t *testing.T) {
 	}
 	if bs == nil {
 		t.Fatalf("expected bootstrap session in DB, got nil")
+		return
 	}
 	if bs.Status != string(StatusCommitting) {
 		t.Fatalf("unexpected status in DB: %q", bs.Status)

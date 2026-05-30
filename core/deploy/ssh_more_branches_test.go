@@ -40,6 +40,7 @@ func TestNewDeployer_PrivateKeySuccess(t *testing.T) {
 	}
 	if d == nil {
 		t.Fatalf("expected non-nil Deployer")
+		return
 	}
 	d.client = nil
 	d.Close()

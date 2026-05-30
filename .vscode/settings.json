@@ -22,4 +22,7 @@
   "go.inlayHints.parameterNames": true,
   "go.inlayHints.compositeLiteralFields": true,
   "go.inlayHints.constantValues": true,
+  "chat.tools.terminal.autoApprove": {
+    ".\\golangci\\golangci-lint-2.11.4-windows-amd64\\golangci-lint.exe": true
+  },
 }

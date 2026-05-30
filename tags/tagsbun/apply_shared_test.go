@@ -68,7 +68,7 @@ func addTagged(t *testing.T, db *bun.DB, name string, tagValues tags.Tags) error
 		var actualTags []Tag
 		if err := tx.NewSelect().
 			Model(&actualTags).
-			Where("value IN (?)", bun.In(tagValues)).
+			Where("value IN (?)", bun.List(tagValues)).
 			Scan(ctx); err != nil {
 			return err
 		}

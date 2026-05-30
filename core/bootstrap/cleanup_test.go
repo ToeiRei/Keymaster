@@ -178,6 +178,7 @@ func TestCleanupSession_UpdatesStatus(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatalf("expected session present in DB after cleanup")
+		return
 	}
 	if got.Status != string(StatusFailed) {
 		t.Fatalf("expected status %s, got %s", StatusFailed, got.Status)

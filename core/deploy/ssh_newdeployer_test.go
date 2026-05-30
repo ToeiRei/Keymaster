@@ -63,6 +63,7 @@ func TestNewDeployer_PrivateKeyFailsAgentSucceeds(t *testing.T) {
 	}
 	if d == nil {
 		t.Fatalf("expected non-nil Deployer")
+		return
 	}
 	// avoid Close calling into zero-valued ssh.Client in tests
 	d.client = nil

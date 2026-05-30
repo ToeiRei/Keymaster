@@ -14,7 +14,6 @@ import (
 
 // Helper to joinLines lines for cleaner test cases
 func joinLinesSlc(lines []string) string { return strings.Join(lines, "\n") }
-func joinLines(lines ...string) string   { return joinLinesSlc(lines) }
 func joinSlc(lines []string) string      { return strings.Join(lines, "") }
 
 var testRows = [][]string{

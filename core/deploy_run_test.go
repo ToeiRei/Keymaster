@@ -69,6 +69,7 @@ func TestRunDeploymentForAccount_SetsSerial(t *testing.T) {
 	}
 	if found == nil {
 		t.Fatalf("account not found after deploy")
+		return
 	}
 	if found.Serial != serial {
 		t.Fatalf("expected serial %d, got %d", serial, found.Serial)

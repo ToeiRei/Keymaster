@@ -8,7 +8,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/helpers/form/element"
 	windowtitle "github.com/toeirei/keymaster/ui/tui/helpers/title"
@@ -29,9 +28,8 @@ type CreateModel[
 	crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 
 	// state
-	publicKey client.PublicKey
-	focussed  bool
-	preset    TRecordCreate
+	focussed bool
+	preset   TRecordCreate
 
 	// util
 	size util.Size

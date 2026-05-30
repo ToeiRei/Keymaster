@@ -63,17 +63,19 @@ func (c *Client) Close(ctx context.Context) error {
 // NOT THREAD SAFE! ONLY FOR TESTING!
 func (c *Client) WithTransaction(ctx context.Context, fn func(c client.Client) error) error {
 	// create copy of client to use in transaction
-	var transactionClient *Client
-	copier.Copy(transactionClient, c)
+	transactionClient := &Client{}
+	if err := copier.Copy(transactionClient, c); err != nil {
+		return err
+	}
 
 	// run callback with transaction client
-	err := fn(c)
+	err := fn(transactionClient)
 	if err != nil {
 		return err
 	}
 
 	// apply changes
-	c = transactionClient
+	*c = *transactionClient
 	return nil
 }
 

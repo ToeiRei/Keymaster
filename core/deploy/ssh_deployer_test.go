@@ -70,6 +70,7 @@ func TestNewDeployerWithExpectedHostKey_Success(t *testing.T) {
 	}
 	if d == nil {
 		t.Fatalf("expected non-nil Deployer")
+		return
 	}
 	// Avoid calling Close on a zero-valued ssh.Client returned from our fake dial.
 	d.client = nil

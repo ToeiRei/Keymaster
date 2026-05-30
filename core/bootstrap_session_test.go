@@ -54,6 +54,7 @@ func TestNewSession_NilStore(t *testing.T) {
 	}
 	if s == nil {
 		t.Fatalf("expected session, got nil")
+		return
 	}
 	if s.TempKeyPair == nil || len(s.TempKeyPair.GetPrivateKeyPEM()) == 0 {
 		t.Fatalf("expected temporary private key to be present")
@@ -69,6 +70,7 @@ func TestNewSession_WithStore_Success(t *testing.T) {
 	}
 	if s == nil {
 		t.Fatalf("expected session, got nil")
+		return
 	}
 	if s.TempKeyPair == nil || len(s.TempKeyPair.GetPrivateKeyPEM()) == 0 {
 		t.Fatalf("expected temporary private key to be present")

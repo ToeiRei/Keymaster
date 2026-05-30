@@ -57,7 +57,6 @@ func ShortHelpView(m help.Model, bindings []key.Binding) string {
 				b.WriteString(item)
 			} else {
 				// else just add the tail
-				usedWidth += tailLen
 				b.WriteString(tail)
 				break
 			}
@@ -141,7 +140,6 @@ func FullHelpView(m help.Model, groups [][]key.Binding) string {
 				result = append(result, col)
 			} else {
 				// else just add the tail
-				usedWidth += tailLen
 				result = append(result, tail)
 				break
 			}

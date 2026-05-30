@@ -23,6 +23,7 @@ func TestRotateKeyCmd_HelpText(t *testing.T) {
 	rotateCmd := findSubcommand(cmd, "rotate-key")
 	if rotateCmd == nil {
 		t.Fatalf("rotate-key command not found")
+		return
 	}
 
 	if rotateCmd.Short == "" {
@@ -42,6 +43,7 @@ func TestAuditCmd_HelpText(t *testing.T) {
 	auditCmd := findSubcommand(cmd, "audit")
 	if auditCmd == nil {
 		t.Fatalf("audit command not found")
+		return
 	}
 
 	if auditCmd.Short == "" {
@@ -58,6 +60,7 @@ func TestDeployCmd_HelpText(t *testing.T) {
 	deployCmd := findSubcommand(cmd, "deploy")
 	if deployCmd == nil {
 		t.Fatalf("deploy command not found")
+		return
 	}
 
 	if deployCmd.Short == "" {

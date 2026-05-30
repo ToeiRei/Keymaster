@@ -15,6 +15,7 @@ func TestNewBootstrapSession(t *testing.T) {
 	}
 	if s == nil {
 		t.Fatal("expected session, got nil")
+		return
 	}
 	if s.ID == "" {
 		t.Error("expected non-empty session ID")
