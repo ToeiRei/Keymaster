@@ -16,13 +16,13 @@ import (
 type DashboardData struct {
 	AccountCount       int
 	ActiveAccountCount int
-	// PublicKeyCount     int
-	// GlobalKeyCount     int
-	// AlgoCounts         map[string]int
-	HostsUpToDate   int
-	HostsOutdated   int
-	SystemKeySerial int
-	RecentLogs      []model.AuditLogEntry
+	PublicKeyCount     int
+	GlobalKeyCount     int
+	AlgoCounts         map[string]int
+	HostsUpToDate      int
+	HostsOutdated      int
+	SystemKeySerial    int
+	RecentLogs         []model.AuditLogEntry
 }
 
 // BuildDashboardData collects accounts, keys, system key and recent audit logs,
@@ -70,6 +70,14 @@ func BuildDashboardData(reader DashboardReader) (DashboardData, error) {
 			for _, k := range keys {
 				keysByID[k.ID] = k
 			}
+			out.PublicKeyCount = len(keys)
+			out.AlgoCounts = make(map[string]int)
+			for _, k := range keys {
+				if k.IsGlobal {
+					out.GlobalKeyCount++
+				}
+				out.AlgoCounts[k.Algorithm]++
+			}
 		}
 	}
 
@@ -86,15 +94,6 @@ func BuildDashboardData(reader DashboardReader) (DashboardData, error) {
 			}
 		}
 	}
-
-	// out.PublicKeyCount = len(klist)
-	// out.AlgoCounts = make(map[string]int)
-	// for _, k := range klist {
-	// 	if k.IsGlobal {
-	// 		out.GlobalKeyCount++
-	// 	}
-	// 	out.AlgoCounts[k.Algorithm]++
-	// }
 
 	if sysKey != nil {
 		out.SystemKeySerial = sysKey.Serial
