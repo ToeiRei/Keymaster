@@ -1,0 +1,3 @@
+ALTER TABLE audit_log ADD COLUMN hostname VARCHAR(255);
+ALTER TABLE audit_log ADD COLUMN client_impl VARCHAR(64);
+ALTER TABLE audit_log ADD COLUMN referrer VARCHAR(255);
