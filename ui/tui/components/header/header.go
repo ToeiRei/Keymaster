@@ -14,7 +14,9 @@ const logo2 string = "" +
 	"╦╔═┌─┐┬ ┬┌┬┐┌─┐┌─┐┌┬┐┌─┐┬─┐\n" +
 	"╠╩╗├┤ └┬┘│││├─┤└─┐ │ ├┤ ├┬┘\n" +
 	"╩ ╩└─┘ ┴ ┴ ┴┴ ┴└─┘ ┴ └─┘┴└─"
-const logo string = "🗝️ Master 🔑"
+const logoTitle string = "🔑 Keymaster"
+const logoTagline string = "An agentless SSH key manager that just does the job."
+const logo string = logoTitle + "\n" + logoTagline
 
 // Keep `logo2` available for the TUI rewrite. Reference it so linters
 // don't flag it as unused while the new UI consumes it.
@@ -38,14 +40,21 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m Model) View() string {
+	brand := lipgloss.NewStyle().
+		Bold(true).
+		Render(logoTitle) + "\n" +
+		lipgloss.NewStyle().
+			Foreground(lipgloss.Color("8")).
+			Render(logoTagline)
+
 	return lipgloss.
 		NewStyle().
-		Border(lipgloss.NormalBorder(), false).
+		BorderStyle(lipgloss.NormalBorder()).
 		BorderBottom(true).
 		Render(lipgloss.PlaceHorizontal(
-			m.size.Width,    //m.size.Height-1,
-			lipgloss.Center, //lipgloss.Center,
-			logo,
+			m.size.Width,
+			lipgloss.Left,
+			brand,
 		))
 }
 
