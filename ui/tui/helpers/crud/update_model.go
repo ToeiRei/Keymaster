@@ -71,7 +71,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 		form.WithOnSubmit(func(result TRecordUpdate, err error) (tea.Cmd, bool) {
 			return progresspopup.Open(
 				progresspopup.Spinner,
-				"Updating "+m.crud.Texts.EntityNameSingular,
+				"Updating "+m.crud.Texts.EntityNameSingular(),
 				func(ctx context.Context, _ progresspopup.ProgressChan) tea.Cmd {
 					record, err := m.crud.updateRecord(ctx, m.crud.getRecordId(m.record), result)
 					return util.TeaMsgToCmd(updateMsgUpdateResult[TRecord]{record, err})
@@ -116,7 +116,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 	case updateMsgUpdateResult[TRecord]:
 		if msg.err != nil {
 			if msg.err != nil {
-				return messagepopup.Open(messagepopup.Error, "Error updating "+m.crud.Texts.EntityNameSingular+":\n"+msg.err.Error(), nil)
+				return messagepopup.Open(messagepopup.Error, "Error updating "+m.crud.Texts.EntityNameSingular()+":\n"+msg.err.Error(), nil)
 			}
 			return nil
 		}
@@ -143,7 +143,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 	}
 	m.focussed = true
 	return tea.Batch(
-		windowtitle.Announce(m.crud.Texts.EntityNameMultiple),
+		windowtitle.Announce(m.crud.Texts.EntityNameMultiple()),
 		m.form.Focus(parentKeyMap),
 	)
 }

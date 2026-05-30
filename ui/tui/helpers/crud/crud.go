@@ -15,8 +15,8 @@ import (
 )
 
 type Texts struct {
-	EntityNameSingular string
-	EntityNameMultiple string
+	EntityNameSingular func() string
+	EntityNameMultiple func() string
 }
 
 type Crud[
