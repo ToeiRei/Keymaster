@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"os/user"
 	"strings"
 	"time"
@@ -129,11 +130,14 @@ type PublicKeyModel struct {
 // AuditLogModel maps the audit_log table.
 type AuditLogModel struct {
 	bun.BaseModel `bun:"table:audit_log"`
-	ID            int    `bun:"id,pk,autoincrement"`
-	Timestamp     string `bun:"timestamp"`
-	Username      string `bun:"username"`
-	Action        string `bun:"action"`
-	Details       string `bun:"details"`
+	ID            int            `bun:"id,pk,autoincrement"`
+	Timestamp     string         `bun:"timestamp"`
+	Username      string         `bun:"username"`
+	Hostname      sql.NullString `bun:"hostname"`
+	ClientImpl    sql.NullString `bun:"client_impl"`
+	Referrer      sql.NullString `bun:"referrer"`
+	Action        string         `bun:"action"`
+	Details       string         `bun:"details"`
 }
 
 // KnownHostModel maps known_hosts.
@@ -429,6 +433,7 @@ func GetAllAuditLogEntriesBun(bdb *bun.DB) ([]model.AuditLogEntry, error) {
 // LogActionBun inserts an audit log entry with the current OS user.
 func LogActionBun(bdb *bun.DB, action string, details string) error {
 	ctx := context.Background()
+	auditCtx := getAuditContext()
 	curUser, err := user.Current()
 	username := "unknown"
 	if err == nil {
@@ -438,7 +443,24 @@ func LogActionBun(bdb *bun.DB, action string, details string) error {
 			username = curUser.Username
 		}
 	}
-	_, err = ExecRaw(ctx, bdb, "INSERT INTO audit_log (username, action, details) VALUES (?, ?, ?)", username, action, details)
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = ""
+	}
+
+	clientImpl := strings.TrimSpace(auditCtx.ClientImplementation)
+	referrer := strings.TrimSpace(auditCtx.Referrer)
+	_, err = ExecRaw(
+		ctx,
+		bdb,
+		"INSERT INTO audit_log (username, hostname, client_impl, referrer, action, details) VALUES (?, ?, ?, ?, ?, ?)",
+		username,
+		hostname,
+		clientImpl,
+		referrer,
+		action,
+		details,
+	)
 	return MapDBError(err)
 }
 
