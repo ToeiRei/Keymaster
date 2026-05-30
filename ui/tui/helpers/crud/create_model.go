@@ -72,7 +72,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 		form.WithOnSubmit(func(result TRecordCreate, err error) (tea.Cmd, bool) {
 			return progresspopup.Open(
 				progresspopup.Spinner,
-				"Creating "+m.crud.Texts.EntityNameSingular,
+				"Creating "+m.crud.Texts.EntityNameSingular(),
 				func(ctx context.Context, _ progresspopup.ProgressChan) tea.Cmd {
 					record, err := m.crud.createRecord(ctx, result)
 					return util.TeaMsgToCmd(createMsgCreateResult[TRecord]{record, err})
@@ -112,7 +112,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 	switch msg := msg.(type) {
 	case createMsgCreateResult[TRecord]:
 		if msg.err != nil {
-			return messagepopup.Open(messagepopup.Error, "Error creating "+m.crud.Texts.EntityNameSingular+":\n"+msg.err.Error(), nil)
+			return messagepopup.Open(messagepopup.Error, "Error creating "+m.crud.Texts.EntityNameSingular()+":\n"+msg.err.Error(), nil)
 		}
 		return tea.Sequence(m.crud.routerControll.Pop(1), util.TeaMsgToCmd(CreateMsgCreated[TRecord]{msg.record}))
 	}
@@ -137,7 +137,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 	}
 	m.focussed = true
 	return tea.Batch(
-		windowtitle.Announce(m.crud.Texts.EntityNameMultiple),
+		windowtitle.Announce(m.crud.Texts.EntityNameMultiple()),
 		m.form.Focus(parentKeyMap),
 	)
 }

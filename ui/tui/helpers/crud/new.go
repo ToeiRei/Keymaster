@@ -167,7 +167,7 @@ func WithListDuplicateAction[
 ](recordToRecordCreate func(record TRecord) TRecordCreate) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return WithListAction(func(ctx ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) tea.Cmd {
 		if ctx.SelectedRecord == nil {
-			return messagepopup.Open(messagepopup.Error, "Please select a "+ctx.Crud.Texts.EntityNameSingular+" to duplicate.", nil)
+			return messagepopup.Open(messagepopup.Error, "Please select a "+ctx.Crud.Texts.EntityNameSingular()+" to duplicate.", nil)
 		}
 
 		return ctx.Crud.OpenCreate(recordToRecordCreate(*ctx.SelectedRecord))

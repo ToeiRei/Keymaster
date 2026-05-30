@@ -92,7 +92,10 @@ func publicKeyToRecord(ctx context.Context, c client.Client, publicKey client.Pu
 
 func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
-		crud.Texts{EntityNameSingular: "Public Key", EntityNameMultiple: "Public Keys"},
+		crud.Texts{
+			EntityNameSingular: func() string { return "Public Key" },
+			EntityNameMultiple: func() string { return "Public Keys" },
+		},
 
 		func(record recordT) recordIdT { return record.publicKey.Id },
 		func(ctx context.Context, filter filterT) ([]recordT, error) {
@@ -234,7 +237,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		crud.WithListAction(
 			func(ctx crud.ListMsgInterceptorCtx[recordT, recordCreateT, recordUpdateT, recordIdT, filterT]) tea.Cmd {
 				if ctx.SelectedRecord == nil {
-					return messagepopup.Open(messagepopup.Error, "Please select a "+ctx.Crud.Texts.EntityNameSingular+".", nil)
+					return messagepopup.Open(messagepopup.Error, "Please select a "+ctx.Crud.Texts.EntityNameSingular()+".", nil)
 				}
 
 				ctx.Crud.ReloadOnNextFocus = true

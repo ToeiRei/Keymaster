@@ -92,7 +92,10 @@ func formRows[T comparable]() []form.FormOpt[T] {
 
 func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
-		crud.Texts{EntityNameSingular: "Account", EntityNameMultiple: "Accounts"},
+		crud.Texts{
+			EntityNameSingular: func() string { return "Account" },
+			EntityNameMultiple: func() string { return "Accounts" },
+		},
 
 		func(record recordT) recordIdT { return record.account.Id },
 		func(ctx context.Context, filter filterT) ([]recordT, error) {
@@ -208,7 +211,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		crud.WithListAction(
 			func(ctx crud.ListMsgInterceptorCtx[recordT, recordCreateT, recordUpdateT, recordIdT, filterT]) tea.Cmd {
 				if ctx.SelectedRecord == nil {
-					return messagepopup.Open(messagepopup.Error, "Please select a "+ctx.Crud.Texts.EntityNameSingular+".", nil)
+					return messagepopup.Open(messagepopup.Error, "Please select a "+ctx.Crud.Texts.EntityNameSingular()+".", nil)
 				}
 
 				ctx.Crud.ReloadOnNextFocus = true
