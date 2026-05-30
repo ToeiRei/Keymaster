@@ -77,12 +77,10 @@ func (m Model) View() string {
 	}
 
 	contentWidth := util.Clamp(36, width-4, 76)
-
-	borderStyle := lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("6")).
-		Padding(0, 1).
-		Width(contentWidth)
+	sectionTitleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
+	bodyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	valueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
+	warnValueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true)
 
 	if m.err != nil {
 		errTitle := lipgloss.NewStyle().
@@ -91,68 +89,50 @@ func (m Model) View() string {
 			Render(i18n.T("dashboard.error_title"))
 		errBody := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("8")).
-			Width(contentWidth - 2).
+			Width(contentWidth).
 			Render(m.err.Error())
-		return borderStyle.Render(lipgloss.JoinVertical(lipgloss.Left, errTitle, "", errBody))
+		return lipgloss.JoinVertical(lipgloss.Left, errTitle, "", errBody)
 	}
 
-	titleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("6")).
-		Bold(true)
-	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	valueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
-	warnValueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true)
+	height := m.size.Height
+	if height <= 0 {
+		height = 24
+	}
 
-	metricsPanel := borderStyle.Render(lipgloss.JoinVertical(
-		lipgloss.Left,
-		titleStyle.Render(i18n.T("dashboard.system_metrics")),
+	lines := []string{
+		sectionTitleStyle.Render(i18n.T("dashboard.system_status")),
 		"",
-		formatKeyValue(i18n.T("dashboard.label.accounts"), fmt.Sprintf(i18n.T("dashboard.accounts_summary"), m.data.AccountCount, m.data.ActiveAccountCount), labelStyle, valueStyle),
-		formatKeyValue(i18n.T("dashboard.label.hosts"), formatHostStatus(m.data.HostsUpToDate, m.data.HostsOutdated), labelStyle, chooseOutdatedStyle(m.data.HostsOutdated, valueStyle, warnValueStyle)),
-		formatKeyValue(i18n.T("dashboard.label.system_key"), formatSystemKeySerial(m.data.SystemKeySerial), labelStyle, valueStyle),
-	))
+		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.accounts"), m.data.AccountCount, m.data.ActiveAccountCount)),
+		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.public_keys"), m.data.PublicKeyCount, m.data.GlobalKeyCount)),
+		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.system_key"), formatSystemKeySerial(m.data.SystemKeySerial))),
+		"",
+		sectionTitleStyle.Render(i18n.T("dashboard.deployment_status")),
+		"",
+		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.hosts_current_key"), m.data.HostsUpToDate)),
+		valueStyle.Render(fmt.Sprintf(i18n.T("dashboard.hosts_past_keys"), m.data.HostsOutdated)),
+		"",
+		sectionTitleStyle.Render(i18n.T("dashboard.security_posture")),
+		"",
+		bodyStyle.Render(fmt.Sprintf(i18n.T("dashboard.key_type_spread"), formatAlgoSpread(m.data.AlgoCounts, warnValueStyle))),
+		"",
+		sectionTitleStyle.Render(i18n.T("dashboard.recent_activity")),
+		"",
+	}
 
-	// TODO use bubbles table (like everywhere else)
-	logsTitle := titleStyle.Render(i18n.T("dashboard.recent_audit_logs"))
-	logsBody := ""
 	if len(m.data.RecentLogs) == 0 {
-		logsBody = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Italic(true).Render(i18n.T("dashboard.no_recent_entries"))
+		lines = append(lines, bodyStyle.Italic(true).Render(i18n.T("dashboard.no_recent_activity")))
 	} else {
-		height := m.size.Height
-		if height <= 0 {
-			height = 24
-		}
 		maxLogRows := util.Clamp(3, height-14, 10)
-		logLines := make([]string, 0, min(len(m.data.RecentLogs), maxLogRows+1))
 		entryWidth := contentWidth - 4
-		logTimeCol := padRight(i18n.T("dashboard.log_col_time"), 12)
-		logActionCol := padRight(i18n.T("dashboard.log_col_action"), 20)
-		logDetailsCol := i18n.T("dashboard.log_col_details")
-		head := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Bold(true).Render(
-			fmt.Sprintf("%s | %s | %s", logTimeCol, logActionCol, logDetailsCol),
-		)
-		logLines = append(logLines, head)
 		for i, al := range m.data.RecentLogs {
 			if i >= maxLogRows {
 				break
 			}
-			logLines = append(logLines, formatLogEntry(al, entryWidth))
+			lines = append(lines, bodyStyle.Render(formatLogEntry(al, entryWidth)))
 		}
-		logsBody = lipgloss.JoinVertical(lipgloss.Left, logLines...)
 	}
 
-	logsPanel := borderStyle.Render(lipgloss.JoinVertical(
-		lipgloss.Left,
-		logsTitle,
-		"",
-		logsBody,
-	))
-
-	return lipgloss.JoinVertical(lipgloss.Left, metricsPanel, "", logsPanel)
-}
-
-func formatKeyValue(label, value string, labelStyle, valueStyle lipgloss.Style) string {
-	return labelStyle.Render(label+":") + " " + valueStyle.Render(value)
+	return lipgloss.JoinVertical(lipgloss.Left, lines...)
 }
 
 func formatHostStatus(upToDate, outdated int) string {
@@ -167,13 +147,6 @@ func formatSystemKeySerial(serial int) string {
 		return i18n.T("dashboard.system_key.not_generated")
 	}
 	return fmt.Sprintf(i18n.T("dashboard.system_key_serial"), serial)
-}
-
-func chooseOutdatedStyle(outdated int, normal, warn lipgloss.Style) lipgloss.Style {
-	if outdated > 0 {
-		return warn
-	}
-	return normal
 }
 
 func formatLogEntry(al AuditLogEntry, width int) string {
@@ -196,6 +169,24 @@ func formatLogEntry(al AuditLogEntry, width int) string {
 
 	actionPadded := padRight(action, actionWidth)
 	return timestampStyle.Render(padRight(ts, 12)) + " | " + actionStyle.Render(actionPadded) + " | " + detailStyle.Render(details)
+}
+
+func formatAlgoSpread(algoCounts map[string]int, style lipgloss.Style) string {
+	if len(algoCounts) == 0 {
+		return "-"
+	}
+
+	algorithms := make([]string, 0, len(algoCounts))
+	for algorithm := range algoCounts {
+		algorithms = append(algorithms, algorithm)
+	}
+	slices.Sort(algorithms)
+
+	parts := make([]string, 0, len(algorithms))
+	for _, algorithm := range algorithms {
+		parts = append(parts, style.Render(fmt.Sprintf("%s: %d", algorithm, algoCounts[algorithm])))
+	}
+	return strings.Join(parts, ", ")
 }
 
 // TODO decide if this function handles date, time or datetime
