@@ -76,14 +76,7 @@ func (m Model) View() string {
 		width = 80
 	}
 
-	// TODO use util.Clamp
-	contentWidth := width - 4
-	if contentWidth < 36 {
-		contentWidth = 36
-	}
-	if contentWidth > 76 {
-		contentWidth = 76
-	}
+	contentWidth := util.Clamp(36, width-4, 76)
 
 	borderStyle := lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
@@ -129,8 +122,8 @@ func (m Model) View() string {
 		if height <= 0 {
 			height = 24
 		}
-		maxLogRows := clampInt(height-14, 3, 10)
-		logLines := make([]string, 0, minInt(len(m.data.RecentLogs), maxLogRows+1))
+		maxLogRows := util.Clamp(3, height-14, 10)
+		logLines := make([]string, 0, min(len(m.data.RecentLogs), maxLogRows+1))
 		entryWidth := contentWidth - 4
 		logTimeCol := padRight(i18n.T("dashboard.log_col_time"), 12)
 		logActionCol := padRight(i18n.T("dashboard.log_col_action"), 20)
@@ -187,18 +180,12 @@ func formatLogEntry(al AuditLogEntry, width int) string {
 	ts := parseTimestamp(al.Timestamp)
 	action := titleFromUnderscore(strings.TrimSpace(al.Action))
 	details := strings.TrimSpace(strings.ReplaceAll(al.Details, "\n", " "))
-	// TODO use go builtin min()
-	if width < 38 {
-		width = 38
-	}
+	width = max(width, 38)
 	actionWidth := 20
 	// TODO use bubbles table (like everywhere else)
 	base := fmt.Sprintf("%s | %s | ", ts, action)
 	maxDetails := width - lipgloss.Width(base)
-	// TODO use go builtin min()
-	if maxDetails < 8 {
-		maxDetails = 8
-	}
+	maxDetails = max(maxDetails, 8)
 	if lipgloss.Width(details) > maxDetails {
 		details = truncateRight(details, maxDetails)
 	}
@@ -239,25 +226,6 @@ func truncateRight(s string, max int) string {
 		return string(r[:max-3]) + "..."
 	}
 	return s
-}
-
-// TODO use go builtin min()
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// TODO keymaster util package
-func clampInt(v, lo, hi int) int {
-	if v < lo {
-		return lo
-	}
-	if v > hi {
-		return hi
-	}
-	return v
 }
 
 // TODO use lipgloss
