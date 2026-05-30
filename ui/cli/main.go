@@ -50,6 +50,7 @@ var fullRestore bool // Flag for the restore command
 var password string // Flag for rotate-key password
 var verbose bool
 var showVersionFlag bool
+var auditReferrer string
 
 // TODO should be moved to project root
 var appConfig config.Config
@@ -151,7 +152,17 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 	// Start background session reaper
 	core.StartSessionReaper()
 
+	core.SetAuditContext("cli", sanitizeAuditReferrer(auditReferrer))
+
 	return nil
+}
+
+func sanitizeAuditReferrer(referrer string) string {
+	referrer = strings.TrimSpace(referrer)
+	if len(referrer) > 255 {
+		referrer = referrer[:255]
+	}
+	return referrer
 }
 
 // Execute runs the CLI entrypoint. The cmd/keymaster main package should
@@ -251,6 +262,7 @@ Running without a subcommand will launch the interactive TUI.`,
 			return setupDefaultServices(cmd, args)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
+			core.SetAuditContext("tui", sanitizeAuditReferrer(auditReferrer))
 			// The database is already initialized by PersistentPreRunE.
 			// i18n is also initialized, so we can just run the TUI.
 			// The store adapter is created for side-effects during setup,
@@ -287,6 +299,7 @@ Running without a subcommand will launch the interactive TUI.`,
 	// Define flags
 	cmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output (sets -v for DB logs)")
 	cmd.PersistentFlags().BoolVarP(&showVersionFlag, "version", "V", false, "Print version and exit")
+	cmd.PersistentFlags().StringVar(&auditReferrer, "referrer", "", "Optional referrer metadata included in audit logs")
 	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
 	cmd.PersistentFlags().String("language", "en", `TUI language ("en", "de")`)
 	applyDefaultFlags(cmd)
