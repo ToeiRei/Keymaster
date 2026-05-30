@@ -60,11 +60,13 @@ func New(c client.Client) *Model {
 }
 
 func (m Model) Init() tea.Cmd {
+	// TODO setup table model and table controll
 	return m.reload()
 }
 
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	if m.size.UpdateFromMsg(msg) {
+		// TODO rerender table (only here)
 		return nil
 	}
 
@@ -72,6 +74,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	case msgReloadResult:
 		m.data = msg.data
 		m.err = msg.err
+		// TODO rerender table (only here)
 	}
 
 	return nil
