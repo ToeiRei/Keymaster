@@ -5,6 +5,7 @@
         "mikestead.dotenv",
         "usernamehw.errorlens",
         "redhat.vscode-yaml",
-        "gruntfuggly.todo-tree"
+        "gruntfuggly.todo-tree",
+        "letmaik.git-tree-compare"
     ]
 }
