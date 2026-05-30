@@ -114,6 +114,7 @@ func TestIsDirtyFlags(t *testing.T) {
 		tpk, _ := GetPublicKeyByCommentBun(bdb, "tk")
 		if tpk == nil {
 			t.Fatalf("expected tk key present")
+			return
 		}
 		if err := TogglePublicKeyGlobalBun(bdb, tpk.ID); err != nil {
 			t.Fatalf("TogglePublicKeyGlobalBun failed: %v", err)
@@ -141,6 +142,7 @@ func TestIsDirtyFlags(t *testing.T) {
 		ek, _ := GetPublicKeyByCommentBun(bdb, "ek")
 		if ek == nil {
 			t.Fatalf("expected ek present")
+			return
 		}
 		if err := AssignKeyToAccountBun(bdb, ek.ID, a1); err != nil {
 			t.Fatalf("Assign ek failed: %v", err)

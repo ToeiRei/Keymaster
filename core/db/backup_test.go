@@ -38,6 +38,7 @@ func TestBackupImport_RoundTrip(t *testing.T) {
 	}
 	if pk == nil {
 		t.Fatalf("expected public key model, got nil")
+		return
 	}
 
 	// Assign key to account

@@ -16,6 +16,7 @@ func TestDebugDeleteKeyHash(t *testing.T) {
 		pk, _ := GetPublicKeyByCommentBun(bdb, "ekd")
 		if pk == nil {
 			t.Fatalf("no pk")
+			return
 		}
 		_ = AssignKeyToAccountBun(bdb, pk.ID, a1)
 		_ = UpdateAccountIsDirtyBun(bdb, a1, false)
@@ -33,6 +34,10 @@ func TestDebugDeleteKeyHash(t *testing.T) {
 		t.Logf("key_hash after delete: %q", khAfter)
 
 		a, _ := GetAccountByIDBun(bdb, a1)
+		if a == nil {
+			t.Fatalf("account not found after delete")
+			return
+		}
 		t.Logf("account dirty after delete: %v", a.IsDirty)
 	})
 }
@@ -50,6 +55,7 @@ func TestDebugDeleteKeyHashViaManager(t *testing.T) {
 		ek, _ := km.AddPublicKeyAndGetModel("ssh-ed25519", "ZZZZ", "m-ek", false, time.Now())
 		if ek == nil {
 			t.Fatalf("no ek")
+			return
 		}
 		_ = km.AssignKeyToAccount(ek.ID, a1)
 		_ = UpdateAccountIsDirty(a1, false)
@@ -66,6 +72,10 @@ func TestDebugDeleteKeyHashViaManager(t *testing.T) {
 		_ = QueryRawInto(context.Background(), s.bun, &khAfter, "SELECT key_hash FROM accounts WHERE id = ?", a1)
 		t.Logf("manager key_hash after delete: %q", khAfter)
 		a, _ := GetAccountByIDBun(s.bun, a1)
+		if a == nil {
+			t.Fatalf("account not found after manager delete")
+			return
+		}
 		t.Logf("manager account dirty after delete: %v", a.IsDirty)
 	})
 }

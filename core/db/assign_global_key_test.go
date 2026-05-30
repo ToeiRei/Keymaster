@@ -26,6 +26,7 @@ func TestAssignKeyToAccount_GlobalKey_ReturnsError(t *testing.T) {
 	acc, _ := GetAccountByIDBun(bdb, 1)
 	if acc == nil {
 		t.Fatal("account not found after insert")
+		return
 	}
 
 	// Create a GLOBAL key
@@ -36,6 +37,7 @@ func TestAssignKeyToAccount_GlobalKey_ReturnsError(t *testing.T) {
 	pk, _ := GetPublicKeyByCommentBun(bdb, "global-key")
 	if pk == nil {
 		t.Fatal("key not found after insert")
+		return
 	}
 
 	// Try to assign the global key to an account - should fail
@@ -73,6 +75,7 @@ func TestAssignKeyToAccount_NonGlobalKey_Succeeds(t *testing.T) {
 	acc, _ := GetAccountByIDBun(bdb, 1)
 	if acc == nil {
 		t.Fatal("account not found after insert")
+		return
 	}
 
 	// Create a NON-GLOBAL key
@@ -83,6 +86,7 @@ func TestAssignKeyToAccount_NonGlobalKey_Succeeds(t *testing.T) {
 	pk, _ := GetPublicKeyByCommentBun(bdb, "regular-key")
 	if pk == nil {
 		t.Fatal("key not found after insert")
+		return
 	}
 
 	// Assign the non-global key to an account - should succeed

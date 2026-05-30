@@ -88,6 +88,7 @@ func TestAddPublicKeyAndImportIntegrate(t *testing.T) {
 		}
 		if pk == nil {
 			t.Fatalf("expected pk model on first insert")
+			return
 		}
 
 		// Duplicate insert should return (nil, nil)

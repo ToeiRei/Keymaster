@@ -33,6 +33,7 @@ func TestNewRootCmd_RegistersSubcommandsAndVersion(t *testing.T) {
 	cmd := NewRootCmd()
 	if cmd == nil {
 		t.Fatalf("NewRootCmd returned nil")
+		return
 	}
 
 	// Version should include our values

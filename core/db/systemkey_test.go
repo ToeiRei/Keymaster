@@ -44,6 +44,7 @@ func TestSystemKey_CreateRotateAndActive(t *testing.T) {
 	}
 	if active == nil {
 		t.Fatalf("expected active system key, got nil")
+		return
 	}
 	if active.Serial != s1 {
 		t.Fatalf("expected active serial %d, got %d", s1, active.Serial)
@@ -65,6 +66,7 @@ func TestSystemKey_CreateRotateAndActive(t *testing.T) {
 	}
 	if active == nil {
 		t.Fatalf("expected active system key after rotate, got nil")
+		return
 	}
 	if active.Serial != s2 {
 		t.Fatalf("expected active serial %d after rotate, got %d", s2, active.Serial)

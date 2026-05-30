@@ -28,6 +28,7 @@ func TestPublicKeyExpiryToggleDeleteAssignFlow(t *testing.T) {
 		}
 		if pk == nil {
 			t.Fatalf("expected pk")
+			return
 		}
 
 		// Assign key to account and ensure account marked dirty

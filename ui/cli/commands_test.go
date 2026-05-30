@@ -77,6 +77,7 @@ func TestImportCmd_HelpText(t *testing.T) {
 	importCmd := findSubcommand(cmd, "import")
 	if importCmd == nil {
 		t.Fatalf("import command not found")
+		return
 	}
 
 	if importCmd.Short == "" {
@@ -93,6 +94,7 @@ func TestTrustHostCmd_HelpText(t *testing.T) {
 	trustCmd := findSubcommand(cmd, "trust-host")
 	if trustCmd == nil {
 		t.Fatalf("trust-host command not found")
+		return
 	}
 
 	if trustCmd.Short == "" {
@@ -109,6 +111,7 @@ func TestBackupCmd_HelpText(t *testing.T) {
 	backupCmd := findSubcommand(cmd, "backup")
 	if backupCmd == nil {
 		t.Fatalf("backup command not found")
+		return
 	}
 
 	if backupCmd.Short == "" {
@@ -125,6 +128,7 @@ func TestRestoreCmd_HelpText(t *testing.T) {
 	restoreCmd := findSubcommand(cmd, "restore")
 	if restoreCmd == nil {
 		t.Fatalf("restore command not found")
+		return
 	}
 
 	if restoreCmd.Short == "" {
@@ -141,6 +145,7 @@ func TestDecommissionCmd_HelpText(t *testing.T) {
 	decommCmd := findSubcommand(cmd, "decommission")
 	if decommCmd == nil {
 		t.Fatalf("decommission command not found")
+		return
 	}
 
 	if decommCmd.Short == "" {
@@ -157,6 +162,7 @@ func TestMigrateCmd_HelpText(t *testing.T) {
 	migrateCmd := findSubcommand(cmd, "migrate")
 	if migrateCmd == nil {
 		t.Fatalf("migrate command not found")
+		return
 	}
 
 	if migrateCmd.Short == "" {
@@ -173,6 +179,7 @@ func TestExportSSHConfigCmd_HelpText(t *testing.T) {
 	exportCmd := findSubcommand(cmd, "export-ssh-client-config")
 	if exportCmd == nil {
 		t.Fatalf("export-ssh-client-config command not found")
+		return
 	}
 
 	if exportCmd.Short == "" {
@@ -189,6 +196,7 @@ func TestDebugCmd_HelpText(t *testing.T) {
 	debugCmd := findSubcommand(cmd, "debug")
 	if debugCmd == nil {
 		t.Fatalf("debug command not found")
+		return
 	}
 
 	if debugCmd.Short == "" {
@@ -205,6 +213,7 @@ func TestTransferCmd_HelpText(t *testing.T) {
 	transferCmd := findSubcommand(cmd, "transfer")
 	if transferCmd == nil {
 		t.Fatalf("transfer command not found")
+		return
 	}
 
 	if transferCmd.Short == "" {
@@ -221,11 +230,13 @@ func TestAuditCmd_ModeFlag(t *testing.T) {
 	auditCmd := findSubcommand(cmd, "audit")
 	if auditCmd == nil {
 		t.Fatalf("audit command not found")
+		return
 	}
 
 	modeFlag := auditCmd.Flags().Lookup("mode")
 	if modeFlag == nil {
 		t.Fatalf("audit command should have --mode flag")
+		return
 	}
 	if modeFlag.DefValue != "strict" {
 		t.Fatalf("expected audit --mode default to be 'strict', got %s", modeFlag.DefValue)
@@ -238,24 +249,28 @@ func TestDecommissionCmd_Flags(t *testing.T) {
 	decommCmd := findSubcommand(cmd, "decommission")
 	if decommCmd == nil {
 		t.Fatalf("decommission command not found")
+		return
 	}
 
 	// Check for --force flag
 	forceFlag := decommCmd.Flags().Lookup("force")
 	if forceFlag == nil {
 		t.Fatalf("decommission command should have --force flag")
+		return
 	}
 
 	// Check for --dry-run flag
 	dryRunFlag := decommCmd.Flags().Lookup("dry-run")
 	if dryRunFlag == nil {
 		t.Fatalf("decommission command should have --dry-run flag")
+		return
 	}
 
 	// Check for --tag flag
 	tagFlag := decommCmd.Flags().Lookup("tag")
 	if tagFlag == nil {
 		t.Fatalf("decommission command should have --tag flag")
+		return
 	}
 }
 
@@ -265,11 +280,13 @@ func TestRestoreCmd_FullFlag(t *testing.T) {
 	restoreCmd := findSubcommand(cmd, "restore")
 	if restoreCmd == nil {
 		t.Fatalf("restore command not found")
+		return
 	}
 
 	fullFlag := restoreCmd.Flags().Lookup("full")
 	if fullFlag == nil {
 		t.Fatalf("restore command should have --full flag")
+		return
 	}
 }
 
@@ -279,11 +296,13 @@ func TestRotateKeyCmd_PasswordFlag(t *testing.T) {
 	rotateCmd := findSubcommand(cmd, "rotate-key")
 	if rotateCmd == nil {
 		t.Fatalf("rotate-key command not found")
+		return
 	}
 
 	pwdFlag := rotateCmd.Flags().Lookup("password")
 	if pwdFlag == nil {
 		t.Fatalf("rotate-key command should have --password/-p flag")
+		return
 	}
 }
 
@@ -295,18 +314,21 @@ func TestRootCmd_PersistentFlags(t *testing.T) {
 	verboseFlag := cmd.PersistentFlags().Lookup("verbose")
 	if verboseFlag == nil {
 		t.Fatalf("root command should have --verbose/-v flag")
+		return
 	}
 
 	// Check --config flag
 	configFlag := cmd.PersistentFlags().Lookup("config")
 	if configFlag == nil {
 		t.Fatalf("root command should have --config flag")
+		return
 	}
 
 	// Check --language flag
 	langFlag := cmd.PersistentFlags().Lookup("language")
 	if langFlag == nil {
 		t.Fatalf("root command should have --language flag")
+		return
 	}
 	if langFlag.DefValue != "en" {
 		t.Fatalf("expected --language default to be 'en', got %s", langFlag.DefValue)
@@ -321,6 +343,7 @@ func TestRootCmd_DatabaseFlags(t *testing.T) {
 	dbTypeFlag := cmd.Flags().Lookup("database.type")
 	if dbTypeFlag == nil {
 		t.Fatalf("root command should have --database.type flag")
+		return
 	}
 	if dbTypeFlag.DefValue != "sqlite" {
 		t.Fatalf("expected --database.type default to be 'sqlite', got %s", dbTypeFlag.DefValue)
@@ -330,6 +353,7 @@ func TestRootCmd_DatabaseFlags(t *testing.T) {
 	dbDsnFlag := cmd.Flags().Lookup("database.dsn")
 	if dbDsnFlag == nil {
 		t.Fatalf("root command should have --database.dsn flag")
+		return
 	}
 	if !strings.Contains(dbDsnFlag.DefValue, "keymaster.db") {
 		t.Fatalf("expected --database.dsn default to contain 'keymaster.db', got %s", dbDsnFlag.DefValue)
@@ -421,6 +445,7 @@ func TestGetConfigPathFromCli_WithPath(t *testing.T) {
 	}
 	if path == nil {
 		t.Fatalf("expected non-nil path")
+		return
 	}
 	if *path != configPath {
 		t.Fatalf("expected path %s, got: %s", configPath, *path)
@@ -526,6 +551,7 @@ func TestVersionCmd_Output(t *testing.T) {
 	versionCmd := findSubcommand(cmd, "version")
 	if versionCmd == nil {
 		t.Fatalf("version command not found")
+		return
 	}
 
 	// Capture output

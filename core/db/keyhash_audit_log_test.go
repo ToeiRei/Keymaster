@@ -61,6 +61,7 @@ func TestMaybeMarkAccountDirtyTx_InsertsAuditAndMarksDirty(t *testing.T) {
 		}
 		if a == nil {
 			t.Fatalf("account missing after update")
+			return
 		}
 		if !a.IsDirty {
 			t.Fatalf("expected account to be marked dirty")

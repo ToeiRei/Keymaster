@@ -119,6 +119,7 @@ func TestStoreAdapter_CreateSystemKey_Then_GetActiveSystemKey(t *testing.T) {
 	}
 	if sk == nil {
 		t.Fatalf("expected non-nil system key")
+		return
 	}
 	if sk.Serial != id {
 		t.Fatalf("expected serial %d, got %d", id, sk.Serial)
@@ -145,7 +146,14 @@ func TestStoreAdapter_RotateSystemKey(t *testing.T) {
 	}
 
 	// Verify new key is active
-	sk, _ := a.GetActiveSystemKey()
+	sk, err := a.GetActiveSystemKey()
+	if err != nil {
+		t.Fatalf("GetActiveSystemKey failed: %v", err)
+	}
+	if sk == nil {
+		t.Fatalf("expected non-nil system key")
+		return
+	}
 	if sk.Serial != id2 {
 		t.Fatalf("expected new key to be active")
 	}

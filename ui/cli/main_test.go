@@ -464,6 +464,7 @@ func TestRotateKeyCmd(t *testing.T) {
 		}
 		if activeKey == nil {
 			t.Fatal("Expected an active system key, but found none.")
+			return
 		}
 		if activeKey.Serial != 1 {
 			t.Errorf("Expected active key to have serial 1, but got %d", activeKey.Serial)
@@ -489,6 +490,7 @@ func TestRotateKeyCmd(t *testing.T) {
 		}
 		if activeKey == nil {
 			t.Fatal("Expected an active system key, but found none.")
+			return
 		}
 		if activeKey.Serial != 2 {
 			t.Errorf("Expected active key to have serial 2, but got %d", activeKey.Serial)
@@ -501,6 +503,7 @@ func TestRotateKeyCmd(t *testing.T) {
 		}
 		if oldKey == nil {
 			t.Fatal("Expected to find old system key (serial 1), but it was gone.")
+			return
 		}
 		if oldKey.IsActive {
 			t.Error("Expected old system key (serial 1) to be inactive, but it was still active.")
