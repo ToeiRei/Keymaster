@@ -347,9 +347,9 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 
 	deployProgressChan := make(chan client.DeployProgressAccounts)
 	deployProgress := client.DeployProgressAccounts{
-			Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.DeployProgressAccount) {
-				return account.Id, &client.DeployProgressAccount{Progress: 0, Status: "not started", Err: nil}
-			}),
+		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.DeployProgressAccount) {
+			return account.Id, &client.DeployProgressAccount{Progress: 0, Status: "not started", Err: nil}
+		}),
 	}
 
 	checkContextCanceled := func(accountId client.AccountId, deployProgress client.DeployProgressAccounts) bool {
@@ -455,7 +455,7 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 	}
 
 	verifyProgressChan := make(chan client.VerifyProgressAccounts)
-		verifyProgress := client.VerifyProgressAccounts{
+	verifyProgress := client.VerifyProgressAccounts{
 		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.VerifyProgressAccount) {
 			return account.Id, &client.VerifyProgressAccount{Progress: 0, Status: "not started", Err: nil}
 		}),
