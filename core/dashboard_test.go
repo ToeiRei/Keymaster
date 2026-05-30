@@ -76,6 +76,11 @@ func TestBuildDashboardData(t *testing.T) {
 		accounts: accounts,
 		sysKey:   sys,
 		logs:     logs,
+		keys: []model.PublicKey{
+			{ID: 1, Algorithm: "ssh-ed25519", IsGlobal: true},
+			{ID: 2, Algorithm: "ssh-ed25519", IsGlobal: false},
+			{ID: 3, Algorithm: "ssh-rsa", IsGlobal: true},
+		},
 	}
 
 	out, err := BuildDashboardData(store)
@@ -92,8 +97,15 @@ func TestBuildDashboardData(t *testing.T) {
 	if out.HostsUpToDate != 1 || out.HostsOutdated != 1 {
 		t.Fatalf("unexpected hosts up-to-date/outdated: %d/%d", out.HostsUpToDate, out.HostsOutdated)
 	}
-	// Note: PublicKeyCount and GlobalKeyCount are commented out in DashboardData
-	// Remove these assertions as they test fields that no longer exist
+	if out.PublicKeyCount != 3 {
+		t.Fatalf("expected 3 public keys, got %d", out.PublicKeyCount)
+	}
+	if out.GlobalKeyCount != 2 {
+		t.Fatalf("expected 2 global keys, got %d", out.GlobalKeyCount)
+	}
+	if out.AlgoCounts["ssh-ed25519"] != 2 || out.AlgoCounts["ssh-rsa"] != 1 {
+		t.Fatalf("unexpected algorithm counts: %#v", out.AlgoCounts)
+	}
 	if out.SystemKeySerial != 100 {
 		t.Fatalf("expected system key serial 100, got %d", out.SystemKeySerial)
 	}
