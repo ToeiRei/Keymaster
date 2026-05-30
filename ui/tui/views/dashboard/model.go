@@ -14,8 +14,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/i18n"
 	"github.com/toeirei/keymaster/ui/tui/util"
+	"github.com/toeirei/keymaster/uiadapters"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
@@ -33,13 +36,7 @@ type Data = struct {
 }
 
 // copied from keymaster core for now
-type AuditLogEntry = struct {
-	Id        int
-	Timestamp string
-	Username  string
-	Action    string
-	Details   string
-}
+type AuditLogEntry = model.AuditLogEntry
 
 type Model struct {
 	data   Data
@@ -119,7 +116,7 @@ func (m Model) View() string {
 		"",
 		formatKeyValue(i18n.T("dashboard.label.accounts"), fmt.Sprintf(i18n.T("dashboard.accounts_summary"), m.data.AccountCount, m.data.ActiveAccountCount), labelStyle, valueStyle),
 		formatKeyValue(i18n.T("dashboard.label.hosts"), formatHostStatus(m.data.HostsUpToDate, m.data.HostsOutdated), labelStyle, chooseOutdatedStyle(m.data.HostsOutdated, valueStyle, warnValueStyle)),
-		formatKeyValue(i18n.T("dashboard.label.system_key"), fmt.Sprintf(i18n.T("dashboard.system_key_serial"), m.data.SystemKeySerial), labelStyle, valueStyle),
+		formatKeyValue(i18n.T("dashboard.label.system_key"), formatSystemKeySerial(m.data.SystemKeySerial), labelStyle, valueStyle),
 	))
 
 	// TODO use bubbles table (like everywhere else)
@@ -170,6 +167,13 @@ func formatHostStatus(upToDate, outdated int) string {
 		return fmt.Sprintf(i18n.T("dashboard.hosts_status_mixed"), upToDate, outdated)
 	}
 	return fmt.Sprintf(i18n.T("dashboard.hosts_status_clean"), upToDate)
+}
+
+func formatSystemKeySerial(serial int) string {
+	if serial <= 0 {
+		return i18n.T("dashboard.system_key.not_generated")
+	}
+	return fmt.Sprintf(i18n.T("dashboard.system_key_serial"), serial)
 }
 
 func chooseOutdatedStyle(outdated int, normal, warn lipgloss.Style) lipgloss.Style {
@@ -298,6 +302,22 @@ func (m *Model) reload() tea.Cmd {
 	// TODO add empty skeleton loading state
 
 	return func() tea.Msg {
+		// Prefer canonical dashboard aggregation from core to avoid placeholder data
+		// and keep dashboard behavior aligned across UIs.
+		coreData, err := core.BuildDashboardData(uiadapters.NewStoreAdapter())
+		if err == nil {
+			return msgReloadResult{data: Data{
+				AccountCount:       coreData.AccountCount,
+				ActiveAccountCount: coreData.ActiveAccountCount,
+				HostsUpToDate:      coreData.HostsUpToDate,
+				HostsOutdated:      coreData.HostsOutdated,
+				SystemKeySerial:    coreData.SystemKeySerial,
+				RecentLogs:         coreData.RecentLogs,
+			}}
+		}
+
+		// Fallback to the client-based approximation for environments that do not
+		// have core DB services initialized (for example, isolated TUI test clients).
 		accounts, err := m.client.ListAccounts(context.Background())
 		if err != nil {
 			return msgReloadResult{err: err}
