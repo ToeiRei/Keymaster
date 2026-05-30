@@ -11,12 +11,14 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/tui/helpers/tablecontroll"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/uiadapters"
 	"github.com/toeirei/keymaster/util/slicest"
@@ -37,6 +39,12 @@ type Data = struct {
 
 // copied from keymaster core for now
 type AuditLogEntry = model.AuditLogEntry
+
+type recentActivityRow struct {
+	Timestamp string
+	Action    string
+	Details   string
+}
 
 type Model struct {
 	data   Data
@@ -99,6 +107,8 @@ func (m Model) View() string {
 		height = 24
 	}
 
+	recentActivityRows := recentActivityTableRows(m.data.RecentLogs)
+
 	lines := []string{
 		sectionTitleStyle.Render(i18n.T("dashboard.system_status")),
 		"",
@@ -119,17 +129,31 @@ func (m Model) View() string {
 		"",
 	}
 
-	if len(m.data.RecentLogs) == 0 {
+	if len(recentActivityRows) == 0 {
 		lines = append(lines, bodyStyle.Italic(true).Render(i18n.T("dashboard.no_recent_activity")))
 	} else {
 		maxLogRows := util.Clamp(3, height-14, 10)
-		entryWidth := contentWidth - 4
-		for i, al := range m.data.RecentLogs {
-			if i >= maxLogRows {
-				break
-			}
-			lines = append(lines, bodyStyle.Render(formatLogEntry(al, entryWidth)))
+		if len(recentActivityRows) > maxLogRows {
+			recentActivityRows = recentActivityRows[:maxLogRows]
 		}
+
+		recentActivityControll := tablecontroll.New(tablecontroll.Columns[recentActivityRow]{
+			{Title: i18n.T("dashboard.log_col_time"), View: func(row recentActivityRow) string { return row.Timestamp }, MaxWidth: 0.18},
+			{Title: i18n.T("dashboard.log_col_action"), View: func(row recentActivityRow) string { return row.Action }, MaxWidth: 0.24},
+			{Title: i18n.T("dashboard.log_col_details"), View: func(row recentActivityRow) string { return row.Details }, MaxWidth: 0.58},
+		})
+
+		tableWidth := recentActivityControll.PreferredWidth(recentActivityRows, contentWidth)
+		columns, rows := recentActivityControll.RenderBubblesTable(recentActivityRows, tableWidth)
+
+		tableModel := table.New()
+		tableModel.SetColumns(columns)
+		tableModel.SetRows(rows)
+		tableModel.SetCursor(-1)
+		tableModel.SetWidth(tableWidth)
+		tableModel.SetHeight(len(rows) + 1)
+
+		lines = append(lines, strings.Split(tableModel.View(), "\n")...)
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
@@ -149,28 +173,6 @@ func formatSystemKeySerial(serial int) string {
 	return fmt.Sprintf(i18n.T("dashboard.system_key_serial"), serial)
 }
 
-func formatLogEntry(al AuditLogEntry, width int) string {
-	ts := parseTimestamp(al.Timestamp)
-	action := titleFromUnderscore(strings.TrimSpace(al.Action))
-	details := strings.TrimSpace(strings.ReplaceAll(al.Details, "\n", " "))
-	width = max(width, 38)
-	actionWidth := 20
-	// TODO use bubbles table (like everywhere else)
-	base := fmt.Sprintf("%s | %s | ", ts, action)
-	maxDetails := width - lipgloss.Width(base)
-	maxDetails = max(maxDetails, 8)
-	if lipgloss.Width(details) > maxDetails {
-		details = truncateRight(details, maxDetails)
-	}
-
-	timestampStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	actionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
-	detailStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
-
-	actionPadded := padRight(action, actionWidth)
-	return timestampStyle.Render(padRight(ts, 12)) + " | " + actionStyle.Render(actionPadded) + " | " + detailStyle.Render(details)
-}
-
 func formatAlgoSpread(algoCounts map[string]int, style lipgloss.Style) string {
 	if len(algoCounts) == 0 {
 		return "-"
@@ -187,6 +189,16 @@ func formatAlgoSpread(algoCounts map[string]int, style lipgloss.Style) string {
 		parts = append(parts, style.Render(fmt.Sprintf("%s: %d", algorithm, algoCounts[algorithm])))
 	}
 	return strings.Join(parts, ", ")
+}
+
+func recentActivityTableRows(logs []AuditLogEntry) []recentActivityRow {
+	return slicest.Map(logs, func(al AuditLogEntry) recentActivityRow {
+		return recentActivityRow{
+			Timestamp: parseTimestamp(al.Timestamp),
+			Action:    titleFromUnderscore(strings.TrimSpace(al.Action)),
+			Details:   strings.TrimSpace(strings.ReplaceAll(al.Details, "\n", " ")),
+		}
+	})
 }
 
 // TODO decide if this function handles date, time or datetime
@@ -208,18 +220,6 @@ func parseTimestamp(raw string) string {
 }
 
 // TODO use lipgloss
-func truncateRight(s string, max int) string {
-	if max <= 1 || lipgloss.Width(s) <= max {
-		return s
-	}
-	r := []rune(s)
-	if len(r) >= max {
-		return string(r[:max-3]) + "..."
-	}
-	return s
-}
-
-// TODO use lipgloss
 func titleFromUnderscore(action string) string {
 	if action == "" {
 		return i18n.T("dashboard.unknown_action")
@@ -235,16 +235,6 @@ func titleFromUnderscore(action string) string {
 	}
 	return strings.Join(parts, " ")
 }
-
-// TODO use lipgloss
-func padRight(s string, width int) string {
-	w := lipgloss.Width(s)
-	if w >= width {
-		return s
-	}
-	return s + strings.Repeat(" ", width-w)
-}
-
 func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	return tea.Batch(
 		m.reload(),
