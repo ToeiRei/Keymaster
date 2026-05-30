@@ -20,4 +20,6 @@
     "*.go": "${capture}*_test.go"
   },
   "go.inlayHints.parameterNames": true,
+  "go.inlayHints.compositeLiteralFields": true,
+  "go.inlayHints.constantValues": true,
 }
