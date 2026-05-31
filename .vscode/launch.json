@@ -23,7 +23,7 @@
             "console": "integratedTerminal",
             "hideSystemGoroutines": true,
             "buildFlags": [
-                "-ldflags=-X github.com/toeirei/keymaster/buildvars.Version=development"
+                "-ldflags=-X github.com/toeirei/keymaster/buildvars.Version=dev"
             ]
         },
         {
