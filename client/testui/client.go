@@ -16,6 +16,7 @@ import (
 	"github.com/jinzhu/copier"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/tags"
+	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
@@ -39,10 +40,10 @@ var _ client.Client = (*Client)(nil)
 
 // --- utils ---
 
-func (c *Client) AddAuditLog(
-	extraMetadata map[string]string,
+func (c *Client) writeAuditLog(
 	action string,
 	details string,
+	extraMetadata *map[string]string,
 ) error {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -62,7 +63,7 @@ func (c *Client) AddAuditLog(
 		client.AuditLogMetadata{
 			hostname,
 			osuser.Username,
-			extraMetadata,
+			util.DerefOrZeroValue(extraMetadata),
 		},
 
 		action,
@@ -128,6 +129,8 @@ func (c *Client) CreatePublicKey(ctx context.Context, key string, comment string
 	algorithm, data := keyParts[0], keyParts[1]
 	publicKey := client.PublicKey{Id: c.publicKeyIdCounter, Algorithm: algorithm, Data: data, Comment: comment, Tags: tags}
 	c.publicKeys = append(c.publicKeys, publicKey)
+
+	c.writeAuditLog("public_key.create", fmt.Sprintf("%#v", publicKey), nil)
 	return publicKey, nil
 }
 
@@ -184,6 +187,8 @@ func (c *Client) UpdateLink(ctx context.Context, id client.LinkId, accountId cli
 		c.links[i].AccountId = accountId
 		c.links[i].TagMatcher = tagMatcher
 		c.links[i].ExpiresAt = expiresAt
+
+		c.writeAuditLog("link.update", fmt.Sprintf("%#v", c.links[i]), nil)
 		return c.links[i], nil
 	}
 	return client.Link{}, fmt.Errorf("account with id %v not found", id)
@@ -195,6 +200,8 @@ func (c *Client) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, com
 	}); ok {
 		c.publicKeys[i].Comment = comment
 		c.publicKeys[i].Tags = tags
+
+		c.writeAuditLog("public_key.update", fmt.Sprintf("%#v", c.publicKeys[i]), nil)
 		return c.publicKeys[i], nil
 	}
 	return client.PublicKey{}, fmt.Errorf("public key with id %v not found", id)
@@ -202,6 +209,8 @@ func (c *Client) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, com
 
 func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId) error {
 	c.publicKeys = slicest.Filter(c.publicKeys, func(publicKey client.PublicKey) bool { return !slices.Contains(ids, publicKey.Id) })
+
+	c.writeAuditLog("public_key.delete", fmt.Sprintf("%#v", ids), nil)
 	return nil
 }
 
@@ -211,6 +220,8 @@ func (c *Client) CreateAccount(ctx context.Context, username string, host string
 	c.accountIdCounter++
 	account := client.Account{Id: c.accountIdCounter, Username: username, Host: host, Port: port, DeployMethod: deploymentMethod, DeploySecret: deploymentSecret, DeployCache: ""}
 	c.accounts = append(c.accounts, account)
+
+	c.writeAuditLog("account.create", fmt.Sprintf("%#v", account), nil)
 	return account, nil
 }
 
@@ -280,6 +291,8 @@ func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, usernam
 		c.accounts[i].Port = port
 		c.accounts[i].DeployMethod = deploymentMethod
 		c.accounts[i].DeploySecret = deploymentSecret
+
+		c.writeAuditLog("account.update", fmt.Sprintf("%#v", c.accounts[i]), nil)
 		return c.accounts[i], nil
 	}
 	return client.Account{}, fmt.Errorf("account with id %v not found", id)
@@ -287,6 +300,8 @@ func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, usernam
 
 func (c *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) error {
 	c.accounts = slicest.Filter(c.accounts, func(account client.Account) bool { return !slices.Contains(ids, account.Id) })
+
+	c.writeAuditLog("account.delete", fmt.Sprintf("%#v", ids), nil)
 	return nil
 }
 
@@ -305,6 +320,8 @@ func (c *Client) CreateLink(ctx context.Context, accountId client.AccountId, tag
 	c.linkIdCounter++
 	link := client.Link{Id: c.linkIdCounter, AccountId: accountId, TagMatcher: tagMatcher, ExpiresAt: expiresAt}
 	c.links = append(c.links, link)
+
+	c.writeAuditLog("link.create", fmt.Sprintf("%#v", link), nil)
 	return link, nil
 }
 
@@ -347,6 +364,8 @@ func (c *Client) ListLinksForPublicKey(ctx context.Context, publicKeyId client.P
 
 func (c *Client) DeleteLinks(ctx context.Context, ids ...client.LinkId) error {
 	c.links = slicest.Filter(c.links, func(link client.Link) bool { return !slices.Contains(ids, link.Id) })
+
+	c.writeAuditLog("link.delete", fmt.Sprintf("%#v", ids), nil)
 	return nil
 }
 
@@ -449,6 +468,8 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 
 			// simulate deploying data to remote
 			c.remoteStates[account.Id] = c.accountDeployCache(account, deployDatas[i])
+
+			c.writeAuditLog("account.deploy", fmt.Sprintf("%#v", account), nil)
 
 			c.accounts[_i].DeployCache = c.remoteStates[account.Id]
 			deployProgress.Accounts[account.Id].Status = "finished"
@@ -567,6 +588,8 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 				verifyProgress.Accounts[account.Id].Status = "finished"
 			}
 
+			c.writeAuditLog("account.verify", fmt.Sprintf("%#v", account), nil)
+
 			verifyProgress.Accounts[account.Id].Progress = 1
 			verifyProgressChan <- verifyProgress
 		}
@@ -583,7 +606,7 @@ func (c *Client) ListAuditLogs(ctx context.Context, limit int) ([]client.AuditLo
 	if limit <= 0 {
 		logs = c.auditLogs
 	} else {
-		logs = c.auditLogs[:min(len(c.auditLogs), limit)]
+		logs = c.auditLogs[len(c.auditLogs)-min(len(c.auditLogs), limit):]
 	}
 
 	return append([]client.AuditLog(nil), logs...), nil

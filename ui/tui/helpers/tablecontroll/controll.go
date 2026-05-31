@@ -4,6 +4,8 @@
 package tablecontroll
 
 import (
+	"slices"
+
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/toeirei/keymaster/util/slicest"
 )
@@ -23,6 +25,9 @@ type Column[T any] struct {
 	// When using a number 0..1 it will be used as partial max width relative to the totalb available width.
 	// When using a number 1..* it will be used as fixed max width.
 	MaxWidth float64
+
+	// The order in wich the sizes will be evaluated.
+	EvictionOrder int
 }
 
 type Columns[T any] []Column[T]
@@ -55,6 +60,43 @@ func (c Controll[T]) PreferredWidth(records []T, availableWidth int) int {
 }
 
 func (c Controll[T]) ColumnDimensions(rows [][]string, availableWidth int) ([]int, int) {
+	// columnIndexsByPrio := make(map[int][]int)
+
+	// for i, column := range c.Columns {
+	// 	columnIndexsByPrio[column.Prio] = append(columnIndexsByPrio[column.Prio], i)
+	// }
+
+	// sortedPrios := slicest.MapKeys(columnIndexsByPrio)
+	// slices.Sort(sortedPrios)
+	// slices.Reverse(sortedPrios)
+
+	// var totalWidth int
+	// columnWidths := make([]int, len(c.Columns))
+
+	// for _, prio := range sortedPrios {
+	// 	columnIndexs := columnIndexsByPrio[prio]
+
+	// 	for _, columnIndex := range columnIndexs {
+	// 		column := &c.Columns[columnIndex]
+
+	// 		columnWidth := max(
+	// 			len(column.Title()),
+	// 			slicest.Reduce(rows, func(row []string, w int) int { return max(w, len(row[columnIndex])) }),
+	// 		)
+	// 		// apply column width modifiers
+	// 		if column.MaxWidth > 0 {
+	// 			if column.MaxWidth < 1 {
+	// 				columnWidth = min(columnWidth, int(column.MaxWidth*float64(availableWidth)))
+	// 			} else {
+	// 				columnWidth = min(columnWidth, int(column.MaxWidth))
+	// 			}
+	// 		}
+	// 		// save result to slice and total sum
+	// 		totalWidth += columnWidth
+	// 		columnWidths[columnIndex] = columnWidth
+	// 	}
+	// }
+
 	var totalWidth int
 	columnWidths := slicest.MapI(c.Columns, func(i int, column Column[T]) int {
 		// calculate max width of all cells and the header
@@ -99,12 +141,55 @@ func (c Controll[T]) RenderBubblesTable(records []T, width int) ([]table.Column,
 			}
 		}), bubblesRows
 	} else {
-		// size columns down weighted by their desired width, when not ennough space is available
+		// organize column indexes by their prio
+		columnIndexsByPrio := make(map[int][]int)
+		for i, column := range c.Columns {
+			columnIndexsByPrio[column.EvictionOrder] = append(columnIndexsByPrio[column.EvictionOrder], i)
+		}
+
+		// retrieve and sort existing prios
+		sortedPrios := slicest.MapKeys(columnIndexsByPrio)
+		slices.Sort(sortedPrios)
+
+		// size columns in each prio down weighted by their desired width until the columns fit into the provided width
+		for _, prio := range sortedPrios {
+			columnIndexs := columnIndexsByPrio[prio]
+
+			// get total column width for all columns in this prio
+			var totalPrioColumnWidth int
+			for _, columnIndex := range columnIndexs {
+				totalPrioColumnWidth += columnWidths[columnIndex]
+			}
+
+			// get the width needed to be stripped from this prio
+			strippedWidth := min(totalPrioColumnWidth, -remainingWidth)
+			remainingWidth += strippedWidth
+
+			// strip strippedWidth from columns in this prio evenly
+			for _, columnIndex := range columnIndexs {
+				columnWidths[columnIndex] = ((totalPrioColumnWidth - strippedWidth) * columnWidths[columnIndex]) / totalPrioColumnWidth
+			}
+
+			// break when there is ennough remainingWidth left
+			if remainingWidth >= 0 {
+				break
+			}
+		}
+
 		return slicest.MapI(c.Columns, func(i int, column Column[T]) table.Column {
 			return table.Column{
 				Title: column.Title(),
-				Width: (availableWidth * columnWidths[i]) / totalColumnWidth,
+				Width: columnWidths[i],
 			}
 		}), bubblesRows
+
+		// old implementation
+		// // size columns down weighted by their desired width, when not ennough space is available
+		// return slicest.MapI(c.Columns, func(i int, column Column[T]) table.Column {
+		// 	return table.Column{
+		// 		Title: column.Title(),
+		// 		Width: (availableWidth * columnWidths[i]) / totalColumnWidth,
+		// 	}
+		// }), bubblesRows
 	}
 }

@@ -79,11 +79,12 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 func (m Model) View() string {
 	// TODO should not be needed! this being needed is a side effect of another problem.
 	width := m.size.Width
-	if width <= 0 {
-		width = 80
-	}
+	// if width <= 0 {
+	// 	width = 80
+	// }
 
-	contentWidth := util.Clamp(36, width-4, 76)
+	contentWidth := width
+	// contentWidth := util.Clamp(36, width-4, 76)
 	sectionTitleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
 	bodyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	valueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
@@ -101,10 +102,10 @@ func (m Model) View() string {
 		return lipgloss.JoinVertical(lipgloss.Left, errTitle, "", errBody)
 	}
 
-	height := m.size.Height
-	if height <= 0 {
-		height = 24
-	}
+	// height := m.size.Height
+	// if height <= 0 {
+	// 	height = 24
+	// }
 
 	recentActivityRows := recentActivityTableRows(m.data.AuditLogs)
 	accountsLine := fmt.Sprintf(i18n.T("dashboard.accounts"), m.data.ActiveAccountCount, m.data.AccountCount)
@@ -136,25 +137,25 @@ func (m Model) View() string {
 	if len(recentActivityRows) == 0 {
 		lines = append(lines, bodyStyle.Italic(true).Render(i18n.T("dashboard.no_recent_activity")))
 	} else {
-		maxLogRows := util.Clamp(3, height-14, 10)
-		if len(recentActivityRows) > maxLogRows {
-			recentActivityRows = recentActivityRows[:maxLogRows]
-		}
+		// maxLogRows := util.Clamp(3, height-14, 10)
+		// if len(recentActivityRows) > maxLogRows {
+		// 	recentActivityRows = recentActivityRows[:maxLogRows]
+		// }
 
 		recentActivityControll := tablecontroll.New(tablecontroll.Columns[recentActivityRow]{
-			{Title: func() string { return i18n.T("dashboard.log_col_time") }, View: func(row recentActivityRow) string { return row.Timestamp }, MaxWidth: 0.18},
-			{Title: func() string { return i18n.T("dashboard.log_col_action") }, View: func(row recentActivityRow) string { return row.Action }, MaxWidth: 0.24},
-			{Title: func() string { return i18n.T("dashboard.log_col_details") }, View: func(row recentActivityRow) string { return row.Details }, MaxWidth: 0.58},
+			{Title: func() string { return i18n.T("dashboard.log_col_time") }, View: func(row recentActivityRow) string { return row.Timestamp }},
+			{Title: func() string { return i18n.T("dashboard.log_col_action") }, View: func(row recentActivityRow) string { return row.Action }},
+			{Title: func() string { return i18n.T("dashboard.log_col_details") }, View: func(row recentActivityRow) string { return row.Details }, EvictionOrder: -1},
 		})
 
-		tableWidth := recentActivityControll.PreferredWidth(recentActivityRows, contentWidth)
-		columns, rows := recentActivityControll.RenderBubblesTable(recentActivityRows, tableWidth)
+		// tableWidth := recentActivityControll.PreferredWidth(recentActivityRows, contentWidth)
+		columns, rows := recentActivityControll.RenderBubblesTable(recentActivityRows, contentWidth)
 
 		tableModel := table.New()
 		tableModel.SetColumns(columns)
+		tableModel.SetRows(nil) // unsets/hides cursor, because the authors could not code
 		tableModel.SetRows(rows)
-		tableModel.SetCursor(-1)
-		tableModel.SetWidth(tableWidth)
+		tableModel.SetWidth(contentWidth)
 		tableModel.SetHeight(len(rows) + 1)
 
 		lines = append(lines, strings.Split(tableModel.View(), "\n")...)
@@ -182,13 +183,15 @@ func formatAlgoSpread(algoCounts map[string]int, style lipgloss.Style) string {
 }
 
 func recentActivityTableRows(logs []AuditLogEntry) []recentActivityRow {
-	return slicest.Map(logs, func(al AuditLogEntry) recentActivityRow {
+	rows := slicest.Map(logs, func(al AuditLogEntry) recentActivityRow {
 		return recentActivityRow{
 			Timestamp: al.Timestamp.Format("Jan 02 15:04"),
 			Action:    titleFromUnderscore(strings.TrimSpace(al.Action)),
 			Details:   strings.TrimSpace(strings.ReplaceAll(al.Details, "\n", " ")),
 		}
 	})
+	slices.Reverse(rows)
+	return rows
 }
 
 func renderAlignedPair(line1, line2 string, style1, style2 lipgloss.Style, alignValueRight bool) (string, string) {

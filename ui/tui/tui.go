@@ -37,9 +37,6 @@ func Run() error {
 	_, _ = ct.CreateLink(context.Background(), 4, "company:evilgoogle", time.Now().Add(time.Hour))
 	_, _ = ct.CreateLink(context.Background(), 5, "company:work", time.Now().Add(time.Hour))
 	_, _ = ct.CreateLink(context.Background(), 5, "company:big_money", time.Now())
-	// test auditLogs
-	// TODO add more mock data for testing
-	_ = ct.AddAuditLog(map[string]string{}, "Doing", "Something")
 
 	// add delay "middleware"
 	cm := mock.NewClient(mock.WitchBaseClient(ct), mock.WitchPre(func(method string, args map[string]any) error {
