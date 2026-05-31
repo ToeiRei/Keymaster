@@ -141,7 +141,7 @@ type AuditLog struct {
 type AuditLogMetadata struct {
 	Hostname string
 	Hostuser string
-	Extra    map[string]string
+	Referer  string
 }
 
 func (a AuditLogMetadata) String() string {
