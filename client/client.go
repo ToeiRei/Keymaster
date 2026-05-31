@@ -141,11 +141,11 @@ type AuditLog struct {
 type AuditLogMetadata struct {
 	Hostname string
 	Hostuser string
-	Extra    map[string]string
+	Referer  string
 }
 
 func (a AuditLogMetadata) String() string {
-	return fmt.Sprintf("%s@%s", a.Hostuser, a.Hostname)
+	return fmt.Sprintf("%s %s@%s", a.Referer, a.Hostuser, a.Hostname)
 }
 
 type DeployProgressAccount struct {

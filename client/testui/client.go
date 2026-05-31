@@ -16,7 +16,6 @@ import (
 	"github.com/jinzhu/copier"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/tags"
-	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
@@ -40,11 +39,7 @@ var _ client.Client = (*Client)(nil)
 
 // --- utils ---
 
-func (c *Client) writeAuditLog(
-	action string,
-	details string,
-	extraMetadata *map[string]string,
-) error {
+func (c *Client) writeAuditLog(action string, details string) error {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return err
@@ -63,7 +58,7 @@ func (c *Client) writeAuditLog(
 		client.AuditLogMetadata{
 			hostname,
 			osuser.Username,
-			util.DerefOrZeroValue(extraMetadata),
+			"testui",
 		},
 
 		action,
@@ -137,7 +132,7 @@ func (c *Client) CreatePublicKey(ctx context.Context, key string, comment string
 	publicKey := client.PublicKey{Id: c.publicKeyIdCounter, Algorithm: algorithm, Data: data, Comment: comment, Tags: tags}
 	c.publicKeys[publicKey.Id] = publicKey
 
-	c.writeAuditLog("public_key.create", fmt.Sprintf("%#v", publicKey), nil)
+	c.writeAuditLog("public_key.create", fmt.Sprintf("%#v", publicKey))
 	return publicKey, nil
 }
 
@@ -192,7 +187,7 @@ func (c *Client) UpdateLink(ctx context.Context, id client.LinkId, accountId cli
 		link.ExpiresAt = expiresAt
 		c.links[id] = link
 
-		c.writeAuditLog("link.update", fmt.Sprintf("%#v", link), nil)
+		c.writeAuditLog("link.update", fmt.Sprintf("%#v", link))
 		return link, nil
 	}
 	return client.Link{}, fmt.Errorf("account with id %v not found", id)
@@ -204,7 +199,7 @@ func (c *Client) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, com
 		publicKey.Tags = tags
 		c.publicKeys[id] = publicKey
 
-		c.writeAuditLog("public_key.update", fmt.Sprintf("%#v", publicKey), nil)
+		c.writeAuditLog("public_key.update", fmt.Sprintf("%#v", publicKey))
 		return publicKey, nil
 	}
 	return client.PublicKey{}, fmt.Errorf("public key with id %v not found", id)
@@ -219,7 +214,7 @@ func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 
 	for _, id := range ids {
 		delete(c.publicKeys, id)
-		c.writeAuditLog("public_key.delete", fmt.Sprintf("%#v", id), nil)
+		c.writeAuditLog("public_key.delete", fmt.Sprintf("%#v", id))
 	}
 
 	return nil
@@ -232,7 +227,7 @@ func (c *Client) CreateAccount(ctx context.Context, username string, host string
 	account := client.Account{Id: c.accountIdCounter, Username: username, Host: host, Port: port, DeployMethod: deploymentMethod, DeploySecret: deploymentSecret, DeployCache: ""}
 	c.accounts[account.Id] = account
 
-	c.writeAuditLog("account.create", fmt.Sprintf("%#v", account), nil)
+	c.writeAuditLog("account.create", fmt.Sprintf("%#v", account))
 	return account, nil
 }
 
@@ -280,7 +275,7 @@ func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, usernam
 		account.DeploySecret = deploymentSecret
 		c.accounts[id] = account
 
-		c.writeAuditLog("account.update", fmt.Sprintf("%#v", account), nil)
+		c.writeAuditLog("account.update", fmt.Sprintf("%#v", account))
 		return account, nil
 	}
 	return client.Account{}, fmt.Errorf("account with id %v not found", id)
@@ -295,7 +290,7 @@ func (c *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) er
 
 	for _, id := range ids {
 		delete(c.accounts, id)
-		c.writeAuditLog("account.delete", fmt.Sprintf("%#v", id), nil)
+		c.writeAuditLog("account.delete", fmt.Sprintf("%#v", id))
 	}
 
 	return nil
@@ -317,7 +312,7 @@ func (c *Client) CreateLink(ctx context.Context, accountId client.AccountId, tag
 	link := client.Link{Id: c.linkIdCounter, AccountId: accountId, TagMatcher: tagMatcher, ExpiresAt: expiresAt}
 	c.links[link.Id] = link
 
-	c.writeAuditLog("link.create", fmt.Sprintf("%#v", link), nil)
+	c.writeAuditLog("link.create", fmt.Sprintf("%#v", link))
 	return link, nil
 }
 
@@ -365,7 +360,7 @@ func (c *Client) DeleteLinks(ctx context.Context, ids ...client.LinkId) error {
 
 	for _, id := range ids {
 		delete(c.links, id)
-		c.writeAuditLog("link.delete", fmt.Sprintf("%#v", id), nil)
+		c.writeAuditLog("link.delete", fmt.Sprintf("%#v", id))
 	}
 
 	return nil
@@ -472,7 +467,7 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 			// simulate deploying data to remote
 			c.remoteStates[account.Id] = c.accountDeployCache(account, deployDatas[i])
 
-			c.writeAuditLog("account.deploy", fmt.Sprintf("%#v", account), nil)
+			c.writeAuditLog("account.deploy", fmt.Sprintf("%#v", account))
 
 			// update accounts deploy cache
 			_account := c.accounts[account.Id]
@@ -599,7 +594,7 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 				verifyProgress.Accounts[account.Id].Status = "finished"
 			}
 
-			c.writeAuditLog("account.verify", fmt.Sprintf("%#v", account), nil)
+			c.writeAuditLog("account.verify", fmt.Sprintf("%#v", account))
 
 			verifyProgress.Accounts[account.Id].Progress = 1
 			verifyProgressChan <- verifyProgress
