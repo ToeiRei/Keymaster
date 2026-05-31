@@ -29,6 +29,11 @@ var (
 	availableLocales map[string]string
 )
 
+func init() {
+	// initialize package with english as default to prevent panics when global state was not already initialized
+	Init(language.English.String())
+}
+
 // Init initializes the i18n bundle, discovers available locales, and sets the default language.
 func Init(defaultLang string) {
 	bundle = i18n.NewBundle(language.English) // English is the fallback
