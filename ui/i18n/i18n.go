@@ -8,19 +8,16 @@
 package i18n
 
 import (
-	"embed"
 	"fmt"
 	"path" // Use the 'path' package for consistent forward slashes
 	"strings"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/toeirei/keymaster/locales"
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
 	"gopkg.in/yaml.v3"
 )
-
-//go:embed locales/*.yaml
-var localeFS embed.FS
 
 var (
 	bundle           *i18n.Bundle
@@ -43,7 +40,7 @@ func Init(defaultLang string) {
 	availableLocales = make(map[string]string)
 
 	// Discover and load all locale files from the embedded filesystem.
-	files, err := localeFS.ReadDir("locales")
+	files, err := locales.LocaleFS.ReadDir("locales")
 	if err != nil {
 		// This should not happen with a valid embed.
 		panic(fmt.Sprintf("failed to read embedded locales directory: %v", err))
@@ -73,7 +70,7 @@ func Init(defaultLang string) {
 
 			// Load the file into the bundle
 			filePath := path.Join("locales", fileName)
-			_, err := bundle.LoadMessageFileFS(localeFS, filePath)
+			_, err := bundle.LoadMessageFileFS(locales.LocaleFS, filePath)
 			if err != nil {
 				panic(fmt.Sprintf("failed to load locale file %s: %v", fileName, err))
 			}
