@@ -2,8 +2,6 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-//go:build ignore
-
 package bun_test
 
 import (
@@ -12,105 +10,48 @@ import (
 	"log"
 	"testing"
 
+	"github.com/toeirei/keymaster/client/bun"
 	"github.com/toeirei/keymaster/config"
 )
 
-func TestBunClient_TargetsCRUD(t *testing.T) {
+// TestBunClient_AccountHostPort verifies that accounts properly encode/decode
+// host:port information from the model.Account.Hostname field.
+func TestBunClient_AccountHostPort(t *testing.T) {
 	cfg := config.Config{Database: config.ConfigDatabase{Type: "sqlite", Dsn: ":memory:"}}
 	logger := log.New(io.Discard, "", 0)
 
-	c, err := NewBunClient(cfg, logger)
+	client, err := bun.NewBunClient(cfg, logger)
 	if err != nil {
 		t.Fatalf("NewBunClient failed: %v", err)
 	}
-	defer func() { _ = c.Close(context.Background()) }()
+	defer func() { _ = client.Close(context.Background()) }()
 
 	ctx := context.Background()
 
-	// Create
-	t1, err := c.CreateTarget(ctx, "example.com", 22)
+	// Create account with non-standard port
+	acc, err := client.CreateAccount(ctx, "deploy", "remote.server.com", 2222, "ssh", "secret")
 	if err != nil {
-		t.Fatalf("CreateTarget failed: %v", err)
-	}
-	if t1.Id == 0 {
-		t.Fatalf("expected non-zero id")
-	}
-	if t1.Host != "example.com" {
-		t.Fatalf("unexpected host: %s", t1.Host)
-	}
-	if t1.Port != 22 {
-		t.Fatalf("unexpected port: %d", t1.Port)
+		t.Fatalf("CreateAccount failed: %v", err)
 	}
 
-	// Get
-	g, err := c.GetTarget(ctx, t1.Id)
-	if err != nil {
-		t.Fatalf("GetTarget failed: %v", err)
+	// Verify host and port are correctly encoded
+	if acc.Host != "remote.server.com" {
+		t.Errorf("expected host 'remote.server.com', got %s", acc.Host)
 	}
-	if g.Id != t1.Id || g.Host != t1.Host || g.Port != t1.Port {
-		t.Fatalf("GetTarget returned mismatch: %#v vs %#v", g, t1)
-	}
-
-	// Create same host with different port -> should return same id and update port
-	t2, err := c.CreateTarget(ctx, "example.com", 2222)
-	if err != nil {
-		t.Fatalf("CreateTarget (update) failed: %v", err)
-	}
-	if t2.Id != t1.Id {
-		t.Fatalf("expected same id for same host")
-	}
-	if t2.Port != 2222 {
-		t.Fatalf("expected updated port 2222, got %d", t2.Port)
+	if acc.Port != 2222 {
+		t.Errorf("expected port 2222, got %d", acc.Port)
 	}
 
-	// GetTargets
-	list, err := c.GetTargets(ctx, t1.Id)
+	// Retrieve and verify the encoding persisted
+	retrieved, err := client.GetAccount(ctx, acc.Id)
 	if err != nil {
-		t.Fatalf("GetTargets failed: %v", err)
-	}
-	if len(list) != 1 || list[0].Id != t1.Id {
-		t.Fatalf("GetTargets unexpected result: %#v", list)
+		t.Fatalf("GetAccount failed: %v", err)
 	}
 
-	// ListTargets
-	all, err := c.ListTargets(ctx)
-	if err != nil {
-		t.Fatalf("ListTargets failed: %v", err)
+	if retrieved.Host != "remote.server.com" {
+		t.Errorf("persisted host mismatch: expected 'remote.server.com', got %s", retrieved.Host)
 	}
-	found := false
-	for _, tt := range all {
-		if tt.Id == t1.Id && tt.Host == "example.com" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatalf("ListTargets did not include created target")
-	}
-
-	// UpdateTarget: change host
-	if err := c.UpdateTarget(ctx, t1.Id, "new.example.com", 2222); err != nil {
-		t.Fatalf("UpdateTarget failed: %v", err)
-	}
-	updated, err := c.GetTarget(ctx, t1.Id)
-	if err != nil {
-		t.Fatalf("GetTarget after update failed: %v", err)
-	}
-	if updated.Host != "new.example.com" {
-		t.Fatalf("UpdateTarget did not change host, got %s", updated.Host)
-	}
-
-	// DeleteTargets
-	if err := c.DeleteTargets(ctx, t1.Id); err != nil {
-		t.Fatalf("DeleteTargets failed: %v", err)
-	}
-	after, err := c.ListTargets(ctx)
-	if err != nil {
-		t.Fatalf("ListTargets after delete failed: %v", err)
-	}
-	for _, tt := range after {
-		if tt.Id == t1.Id {
-			t.Fatalf("target was not deleted")
-		}
+	if retrieved.Port != 2222 {
+		t.Errorf("persisted port mismatch: expected 2222, got %d", retrieved.Port)
 	}
 }

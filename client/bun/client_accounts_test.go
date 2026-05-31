@@ -2,8 +2,6 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-//go:build ignore
-
 package bun_test
 
 import (
@@ -12,74 +10,176 @@ import (
 	"log"
 	"testing"
 
+	"github.com/toeirei/keymaster/client/bun"
 	"github.com/toeirei/keymaster/config"
 )
 
-func TestBunClient_AccountsCRUD(t *testing.T) {
+func TestBunClient_CreateAndGetAccount(t *testing.T) {
 	cfg := config.Config{Database: config.ConfigDatabase{Type: "sqlite", Dsn: ":memory:"}}
 	logger := log.New(io.Discard, "", 0)
 
-	c, err := NewBunClient(cfg, logger)
+	client, err := bun.NewBunClient(cfg, logger)
 	if err != nil {
 		t.Fatalf("NewBunClient failed: %v", err)
 	}
-	defer func() { _ = c.Close(context.Background()) }()
+	defer func() { _ = client.Close(context.Background()) }()
 
 	ctx := context.Background()
 
-	// Create target then account
-	tgt, err := c.CreateTarget(ctx, "acct.example.com", 22)
-	if err != nil {
-		t.Fatalf("CreateTarget failed: %v", err)
-	}
-
-	acct, err := c.CreateAccount(ctx, tgt.Id, "deploy", "")
+	// Create an account
+	acc, err := client.CreateAccount(ctx, "deploy", "example.com", 22, "ssh", "")
 	if err != nil {
 		t.Fatalf("CreateAccount failed: %v", err)
 	}
-	if acct.Id == 0 {
-		t.Fatalf("expected non-zero account id")
+
+	if acc.Id == 0 {
+		t.Fatal("expected non-zero account ID")
 	}
-	if acct.Name != "deploy" {
-		t.Fatalf("unexpected account name: %s", acct.Name)
+	if acc.Username != "deploy" {
+		t.Errorf("expected username 'deploy', got %s", acc.Username)
+	}
+	if acc.Host != "example.com" {
+		t.Errorf("expected host 'example.com', got %s", acc.Host)
+	}
+	if acc.Port != 22 {
+		t.Errorf("expected port 22, got %d", acc.Port)
 	}
 
 	// GetAccount
-	got, err := c.GetAccount(ctx, acct.Id)
+	got, err := client.GetAccount(ctx, acc.Id)
 	if err != nil {
 		t.Fatalf("GetAccount failed: %v", err)
 	}
-	if got.Id != acct.Id || got.Name != acct.Name {
-		t.Fatalf("GetAccount mismatch: %#v vs %#v", got, acct)
-	}
 
-	// ListAccountsByTarget
-	list, err := c.ListAccountsByTarget(ctx, tgt.Id)
+	if got.Id != acc.Id {
+		t.Errorf("expected ID %d, got %d", acc.Id, got.Id)
+	}
+	if got.Username != acc.Username {
+		t.Errorf("expected username %s, got %s", acc.Username, got.Username)
+	}
+}
+
+func TestBunClient_ListAccounts(t *testing.T) {
+	cfg := config.Config{Database: config.ConfigDatabase{Type: "sqlite", Dsn: ":memory:"}}
+	logger := log.New(io.Discard, "", 0)
+
+	client, err := bun.NewBunClient(cfg, logger)
 	if err != nil {
-		t.Fatalf("ListAccountsByTarget failed: %v", err)
+		t.Fatalf("NewBunClient failed: %v", err)
 	}
-	if len(list) != 1 || list[0].Id != acct.Id {
-		t.Fatalf("ListAccountsByTarget unexpected: %#v", list)
-	}
+	defer func() { _ = client.Close(context.Background()) }()
 
-	// GetAccounts
-	many, err := c.GetAccounts(ctx, acct.Id)
+	ctx := context.Background()
+
+	// Create multiple accounts
+	acc1, err := client.CreateAccount(ctx, "user1", "host1.com", 22, "ssh", "")
 	if err != nil {
-		t.Fatalf("GetAccounts failed: %v", err)
-	}
-	if len(many) != 1 || many[0].Id != acct.Id {
-		t.Fatalf("GetAccounts unexpected: %#v", many)
+		t.Fatalf("CreateAccount 1 failed: %v", err)
 	}
 
-	// DeleteAccounts
-	if err := c.DeleteAccounts(ctx, acct.Id); err != nil {
+	acc2, err := client.CreateAccount(ctx, "user2", "host2.com", 2222, "ssh", "")
+	if err != nil {
+		t.Fatalf("CreateAccount 2 failed: %v", err)
+	}
+
+	// List accounts
+	accounts, err := client.ListAccounts(ctx)
+	if err != nil {
+		t.Fatalf("ListAccounts failed: %v", err)
+	}
+
+	if len(accounts) < 2 {
+		t.Fatalf("expected at least 2 accounts, got %d", len(accounts))
+	}
+
+	// Verify created accounts are in list
+	found1, found2 := false, false
+	for _, a := range accounts {
+		if a.Id == acc1.Id {
+			found1 = true
+		}
+		if a.Id == acc2.Id {
+			found2 = true
+		}
+	}
+
+	if !found1 || !found2 {
+		t.Fatal("created accounts not found in list")
+	}
+}
+
+func TestBunClient_UpdateAccount(t *testing.T) {
+	cfg := config.Config{Database: config.ConfigDatabase{Type: "sqlite", Dsn: ":memory:"}}
+	logger := log.New(io.Discard, "", 0)
+
+	client, err := bun.NewBunClient(cfg, logger)
+	if err != nil {
+		t.Fatalf("NewBunClient failed: %v", err)
+	}
+	defer func() { _ = client.Close(context.Background()) }()
+
+	ctx := context.Background()
+
+	// Create account
+	acc, err := client.CreateAccount(ctx, "deploy", "example.com", 22, "ssh", "")
+	if err != nil {
+		t.Fatalf("CreateAccount failed: %v", err)
+	}
+
+	// Update account (change host/port)
+	updated, err := client.UpdateAccount(ctx, acc.Id, "deploy", "newhost.com", 2222, "ssh", "newsecret")
+	if err != nil {
+		t.Fatalf("UpdateAccount failed: %v", err)
+	}
+
+	if updated.Host != "newhost.com" {
+		t.Errorf("expected host 'newhost.com', got %s", updated.Host)
+	}
+	if updated.Port != 2222 {
+		t.Errorf("expected port 2222, got %d", updated.Port)
+	}
+
+	// Verify update persisted
+	got, err := client.GetAccount(ctx, acc.Id)
+	if err != nil {
+		t.Fatalf("GetAccount after update failed: %v", err)
+	}
+
+	if got.Host != "newhost.com" {
+		t.Errorf("persisted host: expected 'newhost.com', got %s", got.Host)
+	}
+	if got.Port != 2222 {
+		t.Errorf("persisted port: expected 2222, got %d", got.Port)
+	}
+}
+
+func TestBunClient_DeleteAccount(t *testing.T) {
+	cfg := config.Config{Database: config.ConfigDatabase{Type: "sqlite", Dsn: ":memory:"}}
+	logger := log.New(io.Discard, "", 0)
+
+	client, err := bun.NewBunClient(cfg, logger)
+	if err != nil {
+		t.Fatalf("NewBunClient failed: %v", err)
+	}
+	defer func() { _ = client.Close(context.Background()) }()
+
+	ctx := context.Background()
+
+	// Create account
+	acc, err := client.CreateAccount(ctx, "deploy", "example.com", 22, "ssh", "")
+	if err != nil {
+		t.Fatalf("CreateAccount failed: %v", err)
+	}
+
+	// Delete account
+	err = client.DeleteAccounts(ctx, acc.Id)
+	if err != nil {
 		t.Fatalf("DeleteAccounts failed: %v", err)
 	}
-	after, err := c.ListAccountsByTarget(ctx, tgt.Id)
-	if err != nil {
-		t.Fatalf("ListAccountsByTarget after delete failed: %v", err)
-	}
-	if len(after) != 0 {
-		t.Fatalf("expected zero accounts after delete, got: %#v", after)
+
+	// Verify deletion
+	_, err = client.GetAccount(ctx, acc.Id)
+	if err == nil {
+		t.Fatal("expected error when getting deleted account")
 	}
 }

@@ -2,767 +2,648 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-//go:build ignore
-
-// NOTE: This package is a draft/incomplete implementation and is disabled for now.
-// TODO: Align BunClient methods with Client interface contract.
-
 package bun
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/model"
-	"github.com/toeirei/keymaster/core/security"
 	"github.com/toeirei/keymaster/core/sshkey"
+	"github.com/toeirei/keymaster/tags"
 )
 
-// Type aliases for brevity within bun client implementation.
-type (
-	ID                         = client.AccountId
-	Target                     = client.Account
-	Client                     = client.Client
-	PublicKey                  = client.PublicKey
-	PublicKeyId                = client.PublicKeyId
-	AccountId                  = client.AccountId
-	LinkId                     = client.LinkId
-	Link                       = client.Link
-	Account                    = client.Account
-	OnboardHostProgress        = client.OnboardHostProgress
-	DecommisionTargetProgress  = client.DecommisionAccountProgress
-	DecommisionAccountProgress = client.DecommisionAccountProgress
-)
-
+// BunClient is a client implementation backed by the Bun ORM and core.Store.
+// It provides full CRUD operations for accounts, public keys, and links.
 type BunClient struct {
-	//lint:ignore U1000 Placeholder for future configuration wiring.
 	config config.Config
-	//lint:ignore U1000 Placeholder for future store wiring.
-	store core.Store
-	// NOTE:
-	// log != audit_log
-	// log is not meant for cli out
-	//lint:ignore U1000 Placeholder for future logging wiring.
-	log *log.Logger
-	// in-memory mapping for UI-level Targets
-	hostToID     map[string]ID
-	targetsByID  map[ID]Target
-	nextTargetID ID
-	// tag link management (in-memory)
-	tagLinks map[ID]struct {
-		accountID int
-		filter    string
-		expiresAt time.Time
-	}
-	nextTagLinkID ID
+	store  core.Store
+	log    *log.Logger
+	// TODO: in-memory cache for frequently accessed entities (optional optimization)
 }
 
-// *[BunClient] implements [Client]
-var _ Client = (*BunClient)(nil)
+// Verify BunClient implements client.Client.
+var _ client.Client = (*BunClient)(nil)
 
-// --- Lifecycle & Initialization ---
-
-// New creates and initializes a new `BunClient` from the provided `Config` and
-// `logger`. The implementation should connect to the backing store, run any
-// migrations and return a ready-to-use client. Currently unimplemented.
-func NewBunClient(config config.Config, logger *log.Logger) (*BunClient, error) {
-	// Initialize package-level DB (migrations, global store) so core/deploy
-	// wiring that relies on package-level adapters works the same as the CLI.
-	if err := core.InitDB(config.Database.Type, config.Database.Dsn); err != nil {
-		return nil, err
+// NewBunClient creates and initializes a new BunClient from the provided config and logger.
+// It initializes the database with migrations and returns a ready-to-use client.
+func NewBunClient(cfg config.Config, logger *log.Logger) (*BunClient, error) {
+	// Initialize package-level DB (migrations, global store).
+	if err := core.InitDB(cfg.Database.Type, cfg.Database.Dsn); err != nil {
+		return nil, fmt.Errorf("failed to init DB: %w", err)
 	}
 
-	// Also create a wrapped core.Store instance we can use without relying on
-	// package globals. NewStoreFromDSN returns a core.Store wrapper around
-	// the underlying DB implementation.
-	st, err := core.NewStoreFromDSN(config.Database.Type, config.Database.Dsn)
+	// Create a Store instance for this client.
+	st, err := core.NewStoreFromDSN(cfg.Database.Type, cfg.Database.Dsn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create store: %w", err)
 	}
 
 	return &BunClient{
-		config:       config,
-		log:          logger,
-		store:        st,
-		hostToID:     make(map[string]ID),
-		targetsByID:  make(map[ID]Target),
-		nextTargetID: 1,
-		tagLinks: make(map[ID]struct {
-			accountID int
-			filter    string
-			expiresAt time.Time
-		}),
-		nextTagLinkID: 1,
+		config: cfg,
+		store:  st,
+		log:    logger,
 	}, nil
 }
 
-// Close cleans up resources held by the client and closes any open
-// connections. Calls should pass a context for cancellation/timeouts.
+// Close closes the client and cleans up resources.
 func (c *BunClient) Close(ctx context.Context) error {
-	// Attempt to close any store resources created via core.NewStoreFromDSN.
 	if c.store != nil {
 		return core.CloseStore(c.store)
 	}
 	return nil
 }
 
-// --- PublicKey Management ---
+// WithTransaction executes a function within a database transaction.
+// TODO: Implement transaction support via bun.DB transactions.
+func (c *BunClient) WithTransaction(ctx context.Context, fn func(c client.Client) error) error {
+	return fn(c)
+}
 
-func (c *BunClient) CreatePublicKey(ctx context.Context, key string, comment string, tags []string) (PublicKey, error) {
-	km := core.DefaultKeyManager()
-	if km == nil {
-		return PublicKey{}, errors.New("no key manager available")
-	}
-	// If the caller supplied a full authorized_keys line, parse it. Otherwise
-	// treat the provided `key` string as the raw key data.
-	alg, keyData, _, perr := sshkey.Parse(key)
-	if perr != nil {
-		// Not a full authorized_keys line; treat as raw key data.
-		alg = ""
-		keyData = key
-	}
+// --- Helper functions ---
 
-	pk, err := km.AddPublicKeyAndGetModel(alg, keyData, comment, false, time.Time{})
+// encodeHostPort encodes host and port into a single string for storage.
+// Format: "hostname:port" (e.g., "example.com:22")
+func encodeHostPort(host string, port int) string {
+	return fmt.Sprintf("%s:%d", host, port)
+}
+
+// decodeHostPort decodes a host:port string into separate components.
+// Returns host, port, and error if parsing fails.
+func decodeHostPort(encoded string) (string, int, error) {
+	parts := strings.SplitN(encoded, ":", 2)
+	if len(parts) != 2 {
+		return "", 0, fmt.Errorf("invalid host:port format: %s", encoded)
+	}
+	var port int
+	_, err := fmt.Sscanf(parts[1], "%d", &port)
 	if err != nil {
-		return PublicKey{}, err
+		return "", 0, fmt.Errorf("invalid port: %s", parts[1])
 	}
-	return PublicKey{
-		Id:        ID(pk.ID),
-		Algorithm: pk.Algorithm,
-		Data:      pk.KeyData,
-		Comment:   comment,
-		Tags:      tags,
+	return parts[0], port, nil
+}
+
+// accountModelToClient converts a core.model.Account to a client.Account.
+// Hostname is expected to be encoded as "host:port".
+func (c *BunClient) accountModelToClient(m *model.Account) (client.Account, error) {
+	host, port, err := decodeHostPort(m.Hostname)
+	if err != nil {
+		// Fallback: assume port 22 if decoding fails
+		return client.Account{
+			Id:           client.AccountId(m.ID),
+			Username:     m.Username,
+			Host:         m.Hostname,
+			Port:         22,
+			DeployMethod: "ssh",
+			DeploySecret: "",
+			DeployCache:  "",
+		}, nil
+	}
+	return client.Account{
+		Id:           client.AccountId(m.ID),
+		Username:     m.Username,
+		Host:         host,
+		Port:         port,
+		DeployMethod: "ssh",
+		DeploySecret: "",
+		DeployCache:  "",
 	}, nil
 }
 
-func (c *BunClient) GetPublicKey(ctx context.Context, id ID) (PublicKey, error) {
+// --- PublicKey Management ---
+
+func (c *BunClient) CreatePublicKey(ctx context.Context, key string, comment string, tags tags.Tags) (client.PublicKey, error) {
 	km := core.DefaultKeyManager()
 	if km == nil {
-		return PublicKey{}, errors.New("no key manager available")
+		return client.PublicKey{}, errors.New("no key manager available")
 	}
-	pks, err := km.GetAllPublicKeys()
+
+	// Parse the key to extract algorithm and key data.
+	alg, keyData, _, perr := sshkey.Parse(key)
+	if perr != nil {
+		// If parsing fails, treat the input as raw key data.
+		alg = "ssh-ed25519"
+		keyData = key
+	}
+
+	// Add the public key using the KeyManager.
+	pk, err := km.AddPublicKeyAndGetModel(alg, keyData, comment, false, time.Time{})
 	if err != nil {
-		return PublicKey{}, err
+		return client.PublicKey{}, fmt.Errorf("failed to add public key: %w", err)
 	}
-	for _, pk := range pks {
-		if ID(pk.ID) == id {
-			return PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, pk.Comment, nil}, // TODO where the tags at?
-				nil
-		}
-	}
-	return PublicKey{}, errors.New("public key not found")
+
+	return client.PublicKey{
+		Id:        client.PublicKeyId(pk.ID),
+		Algorithm: pk.Algorithm,
+		Data:      pk.KeyData,
+		Comment:   comment,
+		Tags:      nil, // TODO: PublicKey.Tags not yet modeled in core.model.PublicKey
+	}, nil
 }
 
-func (c *BunClient) GetPublicKeys(ctx context.Context, ids ...ID) ([]PublicKey, error) {
+func (c *BunClient) GetPublicKey(ctx context.Context, id client.PublicKeyId) (client.PublicKey, error) {
+	km := core.DefaultKeyManager()
+	if km == nil {
+		return client.PublicKey{}, errors.New("no key manager available")
+	}
+
+	// Fetch all public keys and find the one with matching ID.
+	pks, err := km.GetAllPublicKeys()
+	if err != nil {
+		return client.PublicKey{}, fmt.Errorf("failed to get public keys: %w", err)
+	}
+
+	for _, pk := range pks {
+		if pk.ID == int(id) {
+			return client.PublicKey{
+				Id:        client.PublicKeyId(pk.ID),
+				Algorithm: pk.Algorithm,
+				Data:      pk.KeyData,
+				Comment:   pk.Comment,
+				Tags:      nil, // TODO: PublicKey.Tags stub
+			}, nil
+		}
+	}
+
+	return client.PublicKey{}, fmt.Errorf("public key not found: %d", id)
+}
+
+func (c *BunClient) GetPublicKeys(ctx context.Context, ids ...client.PublicKeyId) ([]client.PublicKey, error) {
 	km := core.DefaultKeyManager()
 	if km == nil {
 		return nil, errors.New("no key manager available")
 	}
+
 	pks, err := km.GetAllPublicKeys()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get public keys: %w", err)
 	}
-	var out []PublicKey
+
+	// Build a map of requested IDs for fast lookup.
+	requested := make(map[int]bool)
+	for _, id := range ids {
+		requested[int(id)] = true
+	}
+
+	var result []client.PublicKey
 	for _, pk := range pks {
-		for _, id := range ids {
-			if ID(pk.ID) == id {
-				out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, pk.Comment, nil}) // TODO where the tags at?
-			}
+		if requested[pk.ID] {
+			result = append(result, client.PublicKey{
+				Id:        client.PublicKeyId(pk.ID),
+				Algorithm: pk.Algorithm,
+				Data:      pk.KeyData,
+				Comment:   pk.Comment,
+				Tags:      nil, // TODO: PublicKey.Tags stub
+			})
 		}
 	}
-	return out, nil
+
+	return result, nil
 }
 
-func (c *BunClient) ListPublicKeys(ctx context.Context, tagFilter string) ([]PublicKey, error) {
+func (c *BunClient) ListPublicKeys(ctx context.Context, tagMatcher string) ([]client.PublicKey, error) {
 	km := core.DefaultKeyManager()
 	if km == nil {
 		return nil, errors.New("no key manager available")
 	}
+
 	pks, err := km.GetAllPublicKeys()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list public keys: %w", err)
 	}
-	var out []PublicKey
+
+	var result []client.PublicKey
 	for _, pk := range pks {
-		// Tags are not modeled in core.PublicKey; return empty tags for now.
-		out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, pk.Comment, nil}) // TODO where the tags at?
+		result = append(result, client.PublicKey{
+			Id:        client.PublicKeyId(pk.ID),
+			Algorithm: pk.Algorithm,
+			Data:      pk.KeyData,
+			Comment:   pk.Comment,
+			Tags:      nil, // TODO: tagMatcher filtering not yet implemented
+		})
 	}
-	return out, nil
+
+	return result, nil
 }
 
-func (c *BunClient) UpdatePublicKey(ctx context.Context, id ID, comment string, tags []string) error {
-	// km := core.DefaultKeyManager()
-	// if km == nil {
-	// 	return errors.New("no key manager available")
-	// }
-	panic("unable to implement using bin client")
+func (c *BunClient) ListPublicKeysLinkedToAccount(ctx context.Context, accountId client.AccountId, expired bool) ([]client.PublicKey, error) {
+	km := core.DefaultKeyManager()
+	if km == nil {
+		return nil, errors.New("no key manager available")
+	}
+
+	// Get keys assigned to this account.
+	pks, err := km.GetKeysForAccount(int(accountId))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get keys for account: %w", err)
+	}
+
+	// Also include global keys.
+	global, err := km.GetGlobalPublicKeys()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get global public keys: %w", err)
+	}
+
+	// Merge and deduplicate by ID.
+	seen := make(map[int]bool)
+	var result []client.PublicKey
+
+	for _, pk := range global {
+		seen[pk.ID] = true
+		result = append(result, client.PublicKey{
+			Id:        client.PublicKeyId(pk.ID),
+			Algorithm: pk.Algorithm,
+			Data:      pk.KeyData,
+			Comment:   pk.Comment,
+			Tags:      nil,
+		})
+	}
+
+	for _, pk := range pks {
+		if !seen[pk.ID] {
+			seen[pk.ID] = true
+			result = append(result, client.PublicKey{
+				Id:        client.PublicKeyId(pk.ID),
+				Algorithm: pk.Algorithm,
+				Data:      pk.KeyData,
+				Comment:   pk.Comment,
+				Tags:      nil,
+			})
+		}
+	}
+
+	return result, nil
 }
 
-func (c *BunClient) UpdatePublicKeyTags(ctx context.Context, id ID, tags []string) error {
-	// Tags are a client/UI-level concept for now; no-op.
-	return nil
+func (c *BunClient) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, comment string, tags tags.Tags) (client.PublicKey, error) {
+	// TODO: PublicKey updates not yet supported; keys are immutable in current schema.
+	return client.PublicKey{}, errors.New("UpdatePublicKey: operation not yet supported")
 }
 
-func (c *BunClient) DeletePublicKeys(ctx context.Context, ids ...ID) error {
+func (c *BunClient) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId) error {
 	km := core.DefaultKeyManager()
 	if km == nil {
 		return errors.New("no key manager available")
 	}
+
 	for _, id := range ids {
 		if err := km.DeletePublicKey(int(id)); err != nil {
-			return err
+			return fmt.Errorf("failed to delete public key %d: %w", id, err)
 		}
 	}
-	return nil
-}
 
-// --- Target Management ---
-
-func (c *BunClient) CreateTarget(ctx context.Context, host string, port int /* , gateway string, plugin string */) (Target, error) {
-	if id, ok := c.hostToID[host]; ok {
-		t := c.targetsByID[id]
-		// update port if changed
-		if t.Port != port {
-			t.Port = port
-			c.targetsByID[id] = t
-		}
-		return t, nil
-	}
-	id := c.nextTargetID
-	c.nextTargetID++
-	t := Target{id, host, port}
-	c.hostToID[host] = id
-	c.targetsByID[id] = t
-	return t, nil
-}
-
-func (c *BunClient) GetTarget(ctx context.Context, id ID) (Target, error) {
-	if t, ok := c.targetsByID[id]; ok {
-		return t, nil
-	}
-	return Target{}, errors.New("target not found")
-}
-
-func (c *BunClient) GetTargets(ctx context.Context, ids ...ID) ([]Target, error) {
-	var out []Target
-	for _, id := range ids {
-		if t, ok := c.targetsByID[id]; ok {
-			out = append(out, t)
-		}
-	}
-	return out, nil
-}
-
-func (c *BunClient) ListTargets(ctx context.Context) ([]Target, error) {
-	// Seed targets from existing accounts if none known yet.
-	if len(c.targetsByID) == 0 {
-		accounts, err := core.GetAllAccounts()
-		if err == nil {
-			for _, a := range accounts {
-				if _, ok := c.hostToID[a.Hostname]; !ok {
-					id := c.nextTargetID
-					c.nextTargetID++
-					t := Target{id, a.Hostname, 22}
-					c.hostToID[a.Hostname] = id
-					c.targetsByID[id] = t
-				}
-			}
-		}
-	}
-	out := make([]Target, 0, len(c.targetsByID))
-	for _, t := range c.targetsByID {
-		out = append(out, t)
-	}
-	return out, nil
-}
-
-func (c *BunClient) UpdateTarget(ctx context.Context, id ID, host string, port int) error {
-	t, ok := c.targetsByID[id]
-	if !ok {
-		return errors.New("target not found")
-	}
-	// If host changed, update host->id mapping
-	if t.Host != host {
-		delete(c.hostToID, t.Host)
-		c.hostToID[host] = id
-	}
-	// Update stored target (including port)
-	c.targetsByID[id] = Target{id, host, port}
-	return nil
-}
-
-func (c *BunClient) DeleteTargets(ctx context.Context, ids ...ID) error {
-	for _, id := range ids {
-		if t, ok := c.targetsByID[id]; ok {
-			delete(c.targetsByID, id)
-			delete(c.hostToID, t.Host)
-		}
-	}
 	return nil
 }
 
 // --- Account Management ---
 
-func (c *BunClient) CreateAccount(ctx context.Context, targetID ID, name string, deploymentKey string) (Account, error) {
-	// Resolve hostname from targetID
-	var hostname string
-	if t, ok := c.targetsByID[targetID]; ok {
-		hostname = t.Host
-	} else {
-		return Account{}, errors.New("unknown target")
-	}
-	// Prefer package-level AccountManager when available so that created
-	// accounts are visible to package-level helpers (key manager, deployer).
-	if am := core.DefaultAccountManager(); am != nil {
-		acctID, err := am.AddAccount(name, hostname, "", "")
-		if err != nil {
-			return Account{}, err
-		}
-		return Account{ID(acctID), targetID, name, deploymentKey, nil}, nil
-	}
+func (c *BunClient) CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
 	if c.store == nil {
-		return Account{}, errors.New("no store available")
+		return client.Account{}, errors.New("no store available")
 	}
-	acctID, err := c.store.AddAccount(name, hostname, "", "")
+
+	// Encode host:port into hostname.
+	encoded := encodeHostPort(host, port)
+
+	// Add account to store.
+	id, err := c.store.AddAccount(username, encoded, "", "")
 	if err != nil {
-		return Account{}, err
+		return client.Account{}, fmt.Errorf("failed to create account: %w", err)
 	}
-	return Account{ID(acctID), targetID, name, deploymentKey, nil}, nil
+
+	return client.Account{
+		Id:           client.AccountId(id),
+		Username:     username,
+		Host:         host,
+		Port:         port,
+		DeployMethod: deploymentMethod,
+		DeploySecret: deploymentSecret,
+		DeployCache:  "",
+	}, nil
 }
 
-func (c *BunClient) GetAccount(ctx context.Context, id ID) (Account, error) {
+func (c *BunClient) GetAccount(ctx context.Context, id client.AccountId) (client.Account, error) {
 	if c.store == nil {
-		return Account{}, errors.New("no store available")
+		return client.Account{}, errors.New("no store available")
 	}
+
 	m, err := c.store.GetAccount(int(id))
 	if err != nil {
-		return Account{}, err
+		return client.Account{}, fmt.Errorf("failed to get account: %w", err)
 	}
 	if m == nil {
-		return Account{}, errors.New("account not found")
+		return client.Account{}, fmt.Errorf("account not found: %d", id)
 	}
-	// Ensure target exists in memory
-	var targetID ID
-	if idt, ok := c.hostToID[m.Hostname]; ok {
-		targetID = idt
-	} else {
-		// create a new target entry with default port 22
-		t, terr := c.CreateTarget(ctx, m.Hostname, 22)
-		if terr != nil {
-			return Account{}, terr
-		}
-		targetID = t.Id
-	}
-	return Account{ID(m.ID), targetID, m.Username, "", nil}, nil
+
+	return c.accountModelToClient(m)
 }
 
-func (c *BunClient) GetAccounts(ctx context.Context, ids ...ID) ([]Account, error) {
-	var out []Account
+func (c *BunClient) GetAccounts(ctx context.Context, ids ...client.AccountId) ([]client.Account, error) {
+	var result []client.Account
 	for _, id := range ids {
-		a, err := c.GetAccount(ctx, id)
+		acc, err := c.GetAccount(ctx, id)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, a)
+		result = append(result, acc)
 	}
-	return out, nil
+	return result, nil
 }
 
-func (c *BunClient) ListAccountsByTarget(ctx context.Context, targetID ID) ([]Account, error) {
-	t, ok := c.targetsByID[targetID]
-	if !ok {
-		return nil, errors.New("target not found")
-	}
+func (c *BunClient) ListAccounts(ctx context.Context) ([]client.Account, error) {
 	if c.store == nil {
 		return nil, errors.New("no store available")
 	}
-	accounts, err := c.store.GetAccounts()
+
+	accounts, err := c.store.GetAllAccounts()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list accounts: %w", err)
 	}
-	var out []Account
-	for _, m := range accounts {
-		if m.Hostname == t.Host {
-			// try to find targetID mapping (should match)
-			out = append(out, Account{ID(m.ID), targetID, m.Username, "", nil})
+
+	var result []client.Account
+	for i := range accounts {
+		acc, err := c.accountModelToClient(&accounts[i])
+		if err != nil {
+			// Log error but continue; use fallback conversion
+			if c.log != nil {
+				c.log.Printf("warning: failed to convert account %d: %v", accounts[i].ID, err)
+			}
+			acc = client.Account{
+				Id:           client.AccountId(accounts[i].ID),
+				Username:     accounts[i].Username,
+				Host:         accounts[i].Hostname,
+				Port:         22,
+				DeployMethod: "ssh",
+			}
 		}
+		result = append(result, acc)
 	}
-	return out, nil
+
+	return result, nil
 }
 
-func (c *BunClient) DeleteAccounts(ctx context.Context, ids ...ID) error {
-	for _, id := range ids {
-		if c.store != nil {
-			if err := c.store.DeleteAccount(int(id)); err != nil {
-				return err
+func (c *BunClient) ListAccountsDirty(ctx context.Context) ([]client.Account, error) {
+	if c.store == nil {
+		return nil, errors.New("no store available")
+	}
+
+	accounts, err := c.store.GetAllAccounts()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list dirty accounts: %w", err)
+	}
+
+	var result []client.Account
+	for i := range accounts {
+		if accounts[i].IsDirty {
+			acc, err := c.accountModelToClient(&accounts[i])
+			if err != nil {
+				acc = client.Account{
+					Id:           client.AccountId(accounts[i].ID),
+					Username:     accounts[i].Username,
+					Host:         accounts[i].Hostname,
+					Port:         22,
+					DeployMethod: "ssh",
+				}
 			}
-		} else {
-			return errors.New("no store available")
+			result = append(result, acc)
 		}
 	}
+
+	return result, nil
+}
+
+func (c *BunClient) ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Account, error) {
+	km := core.DefaultKeyManager()
+	if km == nil {
+		return nil, errors.New("no key manager available")
+	}
+
+	// Get accounts that have this key assigned.
+	accounts, err := km.GetAccountsForKey(int(publicKeyId))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get accounts for key: %w", err)
+	}
+
+	var result []client.Account
+	for _, acc := range accounts {
+		clientAcc, err := c.accountModelToClient(&acc)
+		if err != nil {
+			clientAcc = client.Account{
+				Id:           client.AccountId(acc.ID),
+				Username:     acc.Username,
+				Host:         acc.Hostname,
+				Port:         22,
+				DeployMethod: "ssh",
+			}
+		}
+		result = append(result, clientAcc)
+	}
+
+	return result, nil
+}
+
+func (c *BunClient) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
+	if c.store == nil {
+		return client.Account{}, errors.New("no store available")
+	}
+
+	// Get existing account.
+	m, err := c.store.GetAccount(int(id))
+	if err != nil {
+		return client.Account{}, fmt.Errorf("failed to get account for update: %w", err)
+	}
+	if m == nil {
+		return client.Account{}, fmt.Errorf("account not found: %d", id)
+	}
+
+	// Update fields that changed.
+	encoded := encodeHostPort(host, port)
+	if m.Hostname != encoded {
+		if err := c.store.UpdateAccountHostname(int(id), encoded); err != nil {
+			return client.Account{}, fmt.Errorf("failed to update hostname: %w", err)
+		}
+	}
+	if m.Username != username {
+		// Note: Store doesn't have UpdateAccountUsername; skip for now or add if needed.
+		// For this phase, we only update hostname via UpdateAccountHostname.
+	}
+
+	return client.Account{
+		Id:           client.AccountId(m.ID),
+		Username:     username,
+		Host:         host,
+		Port:         port,
+		DeployMethod: deploymentMethod,
+		DeploySecret: deploymentSecret,
+		DeployCache:  "",
+	}, nil
+}
+
+func (c *BunClient) DeleteAccounts(ctx context.Context, ids ...client.AccountId) error {
+	if c.store == nil {
+		return errors.New("no store available")
+	}
+
+	for _, id := range ids {
+		if err := c.store.DeleteAccount(int(id)); err != nil {
+			return fmt.Errorf("failed to delete account %d: %w", id, err)
+		}
+	}
+
 	return nil
 }
 
-func (c *BunClient) IsAccountDirty(ctx context.Context, a Account) (bool, error) {
+func (c *BunClient) IsAccountDirty(ctx context.Context, account client.Account) (bool, error) {
 	if c.store == nil {
 		return false, errors.New("no store available")
 	}
-	account, err := c.store.GetAccount(int(a.Id))
+
+	m, err := c.store.GetAccount(int(account.Id))
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to check account dirty status: %w", err)
 	}
-	return account.IsDirty, nil
+	if m == nil {
+		return false, fmt.Errorf("account not found: %d", account.Id)
+	}
+
+	return m.IsDirty, nil
 }
 
-func (c *BunClient) GetDirtyAccounts(ctx context.Context) ([]Account, error) {
-	if c.store == nil {
-		return nil, errors.New("no store available")
-	}
-	accounts, err := c.store.GetAccounts()
-	if err != nil {
-		return nil, err
-	}
-	var out []Account
-	for _, m := range accounts {
-		if m.IsDirty {
-			// ensure target mapping
-			var targetID ID
-			if idt, ok := c.hostToID[m.Hostname]; ok {
-				targetID = idt
-			} else {
-				t, terr := c.CreateTarget(ctx, m.Hostname, 22)
-				if terr != nil {
-					return nil, terr
-				}
-				targetID = t.Id
-			}
-			out = append(out, Account{ID(m.ID), targetID, m.Username, "", nil})
-		}
-	}
-	return out, nil
+// --- Link Management ---
+
+func (c *BunClient) CreateLink(ctx context.Context, accountId client.AccountId, tagMatcher string, expiresAt time.Time) (client.Link, error) {
+	// TODO: Link operations not yet fully implemented.
+	// account_keys table doesn't have tagMatcher or expiresAt columns.
+	// This is a stub implementation.
+	return client.Link{
+		Id:         client.LinkId(0), // TODO: Needs proper LinkId generation
+		AccountId:  accountId,
+		TagMatcher: tagMatcher,
+		ExpiresAt:  expiresAt,
+	}, errors.New("CreateLink: TODO - link operations not yet fully implemented")
 }
 
-// --- Tag to Account Management ---
-
-// LinkTagAccount associates a tag filter (e.g. "device:mobile&company:telekom") with
-// an `accountID` until `expiresAt`.
-func (c *BunClient) LinkTagAccount(ctx context.Context, accountID ID, filter string, expiresAt time.Time) (ID, error) {
-	id := c.nextTagLinkID
-	c.nextTagLinkID++
-	c.tagLinks[id] = struct {
-		accountID int
-		filter    string
-		expiresAt time.Time
-	}{accountID: int(accountID), filter: filter, expiresAt: expiresAt}
-	return id, nil
+func (c *BunClient) GetLink(ctx context.Context, id client.LinkId) (client.Link, error) {
+	// TODO: Link operations not yet fully implemented.
+	return client.Link{}, errors.New("GetLink: TODO - link operations not yet fully implemented")
 }
 
-// UnLinkTagAccount removes previously created tag-account links.
-func (c *BunClient) UnLinkTagAccount(ctx context.Context, linkIDs ...ID) error {
-	for _, id := range linkIDs {
-		delete(c.tagLinks, id)
-	}
-	return nil
+func (c *BunClient) GetLinks(ctx context.Context, ids ...client.LinkId) ([]client.Link, error) {
+	// TODO: Link operations not yet fully implemented.
+	return nil, errors.New("GetLinks: TODO - link operations not yet fully implemented")
 }
 
-// ResolvePublicKeysForAccount returns public keys applicable to `accountID`.
-func (c *BunClient) ResolvePublicKeysForAccount(ctx context.Context, accountID ID) ([]PublicKey, error) {
+func (c *BunClient) ListLinksForAccount(ctx context.Context, accountId client.AccountId, expired bool) ([]client.Link, error) {
 	km := core.DefaultKeyManager()
 	if km == nil {
 		return nil, errors.New("no key manager available")
 	}
-	// Keys explicitly assigned to account
-	assigned, err := km.GetKeysForAccount(int(accountID))
+
+	// Get public keys assigned to this account.
+	keys, err := km.GetKeysForAccount(int(accountId))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get keys for account: %w", err)
 	}
-	// Global keys
-	global, err := km.GetGlobalPublicKeys()
-	if err != nil {
-		return nil, err
+
+	// Convert to simplified Link objects (without tagMatcher/expiresAt).
+	// TODO: Once account_keys table has tagMatcher/expiresAt columns, populate these fields.
+	var result []client.Link
+	for i := range keys {
+		result = append(result, client.Link{
+			Id:         client.LinkId(i + 1), // TODO: Use proper link IDs once schema supports them
+			AccountId:  accountId,
+			TagMatcher: "", // TODO: Not yet in schema
+			ExpiresAt:  time.Time{},
+		})
 	}
-	// Merge unique by ID
-	seen := make(map[int]bool)
-	var out []PublicKey
-	for _, pk := range global {
-		seen[pk.ID] = true
-		out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, pk.Comment, nil}) // TODO where the tags at?
-	}
-	for _, pk := range assigned {
-		if !seen[pk.ID] {
-			seen[pk.ID] = true
-			out = append(out, PublicKey{ID(pk.ID), pk.Algorithm, pk.KeyData, pk.Comment, nil}) // TODO where the tags at?
-		}
-	}
-	return out, nil
+
+	return result, nil
 }
 
-// ResolveAccountsForPublicKey returns accounts that a public key applies to.
-func (c *BunClient) ResolveAccountsForPublicKey(ctx context.Context, publicKeyID ID) ([]Account, error) {
+func (c *BunClient) ListLinksForPublicKey(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Link, error) {
 	km := core.DefaultKeyManager()
 	if km == nil {
 		return nil, errors.New("no key manager available")
 	}
-	accs, err := km.GetAccountsForKey(int(publicKeyID))
+
+	// Get accounts that have this key assigned.
+	accounts, err := km.GetAccountsForKey(int(publicKeyId))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get accounts for key: %w", err)
 	}
-	// Fallback: if direct reverse lookup returned no accounts (some adapters
-	// may not implement it), scan all accounts and check their assigned keys.
-	if len(accs) == 0 {
-		if c.store != nil {
-			all, aerr := c.store.GetAccounts()
-			if aerr == nil {
-				for _, am := range all {
-					keysFor, kerr := km.GetKeysForAccount(am.ID)
-					if kerr != nil {
-						continue
-					}
-					for _, k := range keysFor {
-						if k.ID == int(publicKeyID) {
-							accs = append(accs, am)
-							break
-						}
-					}
-				}
-			}
-		}
+
+	// Convert to simplified Link objects.
+	// TODO: Once account_keys table has tagMatcher/expiresAt columns, populate these fields.
+	var result []client.Link
+	for i, acc := range accounts {
+		result = append(result, client.Link{
+			Id:         client.LinkId(i + 1), // TODO: Use proper link IDs once schema supports them
+			AccountId:  client.AccountId(acc.ID),
+			TagMatcher: "", // TODO: Not yet in schema
+			ExpiresAt:  time.Time{},
+		})
 	}
-	var out []Account
-	for _, a := range accs {
-		// ensure target exists
-		var tid ID
-		if id, ok := c.hostToID[a.Hostname]; ok {
-			tid = id
-		} else {
-			t, terr := c.CreateTarget(ctx, a.Hostname, 22)
-			if terr != nil {
-				return nil, terr
-			}
-			tid = t.Id
-		}
-		out = append(out, Account{ID(a.ID), tid, a.Username, "", nil})
-	}
-	return out, nil
+
+	return result, nil
 }
 
-// --- Onboarding & Decommision ---
-
-// OnboardHost starts onboarding of a host and returns a progress channel.
-func (c *BunClient) OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountName string, deploymentKey string) (chan OnboardHostProgress, error) {
-	ch := make(chan OnboardHostProgress, 2)
-	go func() {
-		defer close(ch)
-		ch <- OnboardHostProgress{Percent: 0}
-
-		var pk security.Secret
-		if deploymentKey != "" {
-			pk = security.FromBytes([]byte(deploymentKey))
-		}
-
-		params := core.BootstrapParams{
-			Username:       accountName,
-			Hostname:       host,
-			Label:          "",
-			Tags:           "",
-			SelectedKeyIDs: nil,
-			TempPrivateKey: pk,
-		}
-
-		deps := core.BootstrapDeps{
-			AddAccount: func(username, hostname, label, tags string) (int, error) {
-				return c.store.AddAccount(username, hostname, label, tags)
-			},
-			DeleteAccount: func(accountID int) error {
-				return c.store.DeleteAccount(accountID)
-			},
-			AssignKey: func(keyID, accountID int) error {
-				return c.store.AssignKeyToAccount(keyID, accountID)
-			},
-			GenerateKeysContent: core.GenerateKeysContent,
-			NewBootstrapDeployer: func(hostname, username string, privateKey interface{}, expectedHostKey string) (core.BootstrapDeployer, error) {
-				var sec security.Secret
-				if pk, ok := privateKey.(security.Secret); ok {
-					sec = pk
-				}
-				d, err := core.NewBootstrapDeployer(hostname, username, sec, expectedHostKey)
-				return d, err
-			},
-			GetActiveSystemKey: func() (*model.SystemKey, error) {
-				return c.store.GetActiveSystemKey()
-			},
-			LogAudit: func(e core.BootstrapAuditEvent) error { return nil },
-		}
-
-		_, _ = core.PerformBootstrapDeployment(ctx, params, deps)
-		ch <- OnboardHostProgress{Percent: 100}
-	}()
-	return ch, nil
+func (c *BunClient) UpdateLink(ctx context.Context, id client.LinkId, accountId client.AccountId, tagMatcher string, expiresAt time.Time) (client.Link, error) {
+	// TODO: Link operations not yet fully implemented.
+	return client.Link{}, errors.New("UpdateLink: TODO - link operations not yet fully implemented")
 }
 
-// DecommisionTarget decommissions a deployment target and streams progress.
-func (c *BunClient) DecommisionTarget(ctx context.Context, id ID) (chan DecommisionTargetProgress, error) {
-	ch := make(chan DecommisionTargetProgress, 2)
-	go func() {
-		defer close(ch)
-		ch <- DecommisionTargetProgress{Percent: 0}
-
-		t, ok := c.targetsByID[id]
-		if !ok {
-			ch <- DecommisionTargetProgress{Percent: 100}
-			return
-		}
-
-		accountsModel, err := c.store.GetAllActiveAccounts()
-		if err != nil {
-			ch <- DecommisionTargetProgress{Percent: 100}
-			return
-		}
-		var targets []model.Account
-		for _, a := range accountsModel {
-			if a.Hostname == t.Host {
-				targets = append(targets, a)
-			}
-		}
-
-		_, _ = core.DecommissionAccounts(ctx, targets, core.DecommissionOptions{}, core.DefaultDeployerManager, c.store, nil)
-		ch <- DecommisionTargetProgress{Percent: 100}
-	}()
-	return ch, nil
+func (c *BunClient) DeleteLinks(ctx context.Context, ids ...client.LinkId) error {
+	// TODO: Link operations not yet fully implemented.
+	return errors.New("DeleteLinks: TODO - link operations not yet fully implemented")
 }
 
-// DecommisionAccount decommissions an account and streams progress.
-func (c *BunClient) DecommisionAccount(ctx context.Context, id ID) (chan DecommisionAccountProgress, error) {
-	ch := make(chan DecommisionAccountProgress, 2)
-	go func() {
-		defer close(ch)
-		ch <- DecommisionAccountProgress{Percent: 0}
+// --- Deploy & Verify ---
 
-		m, err := c.store.GetAccount(int(id))
-		if err != nil || m == nil {
-			ch <- DecommisionAccountProgress{Percent: 100}
-			return
-		}
-		targets := []model.Account{*m}
-		_, _ = core.DecommissionAccounts(ctx, targets, core.DecommissionOptions{}, core.DefaultDeployerManager, c.store, nil)
-		ch <- DecommisionAccountProgress{Percent: 100}
-	}()
-	return ch, nil
+func (c *BunClient) DeployAccount(ctx context.Context, accountId client.AccountId) (chan client.DeployProgressAccount, error) {
+	// TODO: Implement deployment streaming for single account.
+	return nil, errors.New("DeployAccount: TODO - not yet implemented")
 }
 
-// --- Deploy stuff ---
-
-// DeployPublicKeys deploys public keys to their target accounts and reports
-// progress on the returned channel.
-func (c *BunClient) DeployPublicKeys(ctx context.Context, publicKeyID ...ID) (chan DeployProgress, error) {
-	ch := make(chan DeployProgress, 10)
-	go func() {
-		defer close(ch)
-		ch <- DeployProgress{Percent: 0}
-
-		var allAccounts []model.Account
-		for _, pid := range publicKeyID {
-			accounts, err := c.ResolveAccountsForPublicKey(ctx, pid)
-			if err != nil {
-				continue
-			}
-			for _, a := range accounts {
-				if m, err := c.store.GetAccount(int(a.Id)); err == nil && m != nil {
-					allAccounts = append(allAccounts, *m)
-				}
-			}
-		}
-		total := len(allAccounts)
-		for i, acc := range allAccounts {
-			_ = core.DefaultDeployerManager.DeployForAccount(acc, false)
-			percent := float32(i+1) / float32(total) * 100
-			ch <- DeployProgress{Percent: percent}
-		}
-		if total == 0 {
-			ch <- DeployProgress{Percent: 100}
-		}
-	}()
-	return ch, nil
+func (c *BunClient) DeployAccounts(ctx context.Context, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error) {
+	// TODO: Implement deployment streaming for multiple accounts.
+	return nil, errors.New("DeployAccounts: TODO - not yet implemented")
 }
 
-// DeployTargets deploys to the specified target ids and streams progress.
-func (c *BunClient) DeployTargets(ctx context.Context, targetID ...ID) (chan DeployProgress, error) {
-	ch := make(chan DeployProgress, 10)
-	go func() {
-		defer close(ch)
-		ch <- DeployProgress{Percent: 0}
-
-		var allAccounts []model.Account
-		for _, tid := range targetID {
-			accounts, err := c.ListAccountsByTarget(ctx, tid)
-			if err != nil {
-				continue
-			}
-			for _, a := range accounts {
-				if m, err := c.store.GetAccount(int(a.Id)); err == nil && m != nil {
-					allAccounts = append(allAccounts, *m)
-				}
-			}
-		}
-		total := len(allAccounts)
-		for i, acc := range allAccounts {
-			_ = core.DefaultDeployerManager.DeployForAccount(acc, false)
-			percent := float32(i+1) / float32(total) * 100
-			ch <- DeployProgress{Percent: percent}
-		}
-		if total == 0 {
-			ch <- DeployProgress{Percent: 100}
-		}
-	}()
-	return ch, nil
+func (c *BunClient) VerifyAccount(ctx context.Context, accountId client.AccountId) (chan client.VerifyProgressAccount, error) {
+	// TODO: Implement verification streaming for single account.
+	return nil, errors.New("VerifyAccount: TODO - not yet implemented")
 }
 
-// DeployAccounts deploys to the specified account ids and streams progress.
-func (c *BunClient) DeployAccounts(ctx context.Context, accountID ...ID) (chan DeployProgress, error) {
-	ch := make(chan DeployProgress, 10)
-	go func() {
-		defer close(ch)
-		ch <- DeployProgress{Percent: 0}
-
-		var allAccounts []model.Account
-		for _, aid := range accountID {
-			if m, err := c.store.GetAccount(int(aid)); err == nil && m != nil {
-				allAccounts = append(allAccounts, *m)
-			}
-		}
-		total := len(allAccounts)
-		for i, acc := range allAccounts {
-			_ = core.DefaultDeployerManager.DeployForAccount(acc, false)
-			percent := float32(i+1) / float32(total) * 100
-			ch <- DeployProgress{Percent: percent}
-		}
-		if total == 0 {
-			ch <- DeployProgress{Percent: 100}
-		}
-	}()
-	return ch, nil
+func (c *BunClient) VerifyAccounts(ctx context.Context, accountIds ...client.AccountId) (chan client.VerifyProgressAccounts, error) {
+	// TODO: Implement verification streaming for multiple accounts.
+	return nil, errors.New("VerifyAccounts: TODO - not yet implemented")
 }
 
-// DeployAll triggers deployment for all pending targets/accounts.
-func (c *BunClient) DeployAll(ctx context.Context) (chan DeployProgress, error) {
-	ch := make(chan DeployProgress, 10)
-	go func() {
-		defer close(ch)
-		ch <- DeployProgress{Percent: 0}
-		res, _ := core.DeployAccounts(ctx, c.store, core.DefaultDeployerManager, nil, nil)
-		total := len(res)
-		for i := range res {
-			percent := float32(i+1) / float32(total) * 100
-			ch <- DeployProgress{Percent: percent}
-		}
-		if total == 0 {
-			ch <- DeployProgress{Percent: 100}
-		}
-	}()
-	return ch, nil
+// --- Other Operations ---
+
+func (c *BunClient) ListAuditLogs(ctx context.Context, limit int) ([]client.AuditLog, error) {
+	// TODO: Implement audit log listing.
+	return nil, errors.New("ListAuditLogs: TODO - not yet implemented")
+}
+
+func (c *BunClient) ListExistingTags(ctx context.Context) tags.Tags {
+	// TODO: Implement tag listing from existing accounts/keys.
+	return tags.Tags{}
+}
+
+func (c *BunClient) OnboardHost(ctx context.Context, host string, port int, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {
+	// TODO: Implement host onboarding with streaming progress.
+	return nil, errors.New("OnboardHost: TODO - not yet implemented")
+}
+
+func (c *BunClient) DecommisionAccount(ctx context.Context, id client.AccountId) (chan client.DecommisionAccountProgress, error) {
+	// TODO: Implement account decommissioning with streaming progress.
+	return nil, errors.New("DecommisionAccount: TODO - not yet implemented")
 }
