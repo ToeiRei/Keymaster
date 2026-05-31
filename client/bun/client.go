@@ -470,10 +470,7 @@ func (c *BunClient) UpdateAccount(ctx context.Context, id client.AccountId, user
 			return client.Account{}, fmt.Errorf("failed to update hostname: %w", err)
 		}
 	}
-	if m.Username != username {
-		// Note: Store doesn't have UpdateAccountUsername; skip for now or add if needed.
-		// For this phase, we only update hostname via UpdateAccountHostname.
-	}
+	// Username is not persisted through this store path yet.
 
 	return client.Account{
 		Id:           client.AccountId(m.ID),
