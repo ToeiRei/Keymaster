@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/table"
@@ -222,24 +221,6 @@ func splitLabelValue(line string) (string, string) {
 		return line, ""
 	}
 	return parts[0] + ":", strings.TrimSpace(parts[1])
-}
-
-// TODO decide if this function handles date, time or datetime
-func parseTimestamp(raw string) string {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return i18n.T("dashboard.no_timestamp")
-	}
-	layouts := []string{time.RFC3339, "2006-01-02 15:04:05", "2006-01-02T15:04:05Z07:00"}
-	for _, layout := range layouts {
-		if t, err := time.Parse(layout, raw); err == nil {
-			return t.Format("Jan 02 15:04")
-		}
-	}
-	if len(raw) > 12 {
-		return raw[:12]
-	}
-	return raw
 }
 
 // TODO use lipgloss

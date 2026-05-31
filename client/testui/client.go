@@ -52,17 +52,15 @@ func (c *Client) writeAuditLog(action string, details string) error {
 
 	c.auditLogIdCounter++
 	c.auditLogs = append(c.auditLogs, client.AuditLog{
-		c.auditLogIdCounter,
-		time.Now(),
-
-		client.AuditLogMetadata{
-			hostname,
-			osuser.Username,
-			"testui",
+		Id:        c.auditLogIdCounter,
+		Timestamp: time.Now(),
+		Metadata: client.AuditLogMetadata{
+			Hostname: hostname,
+			Hostuser: osuser.Username,
+			Referer:  "testui",
 		},
-
-		action,
-		details,
+		Action:  action,
+		Details: details,
 	})
 
 	return nil
@@ -449,7 +447,7 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 			if !ok {
 				deployProgress.Accounts[account.Id].Status = "error"
 				deployProgress.Accounts[account.Id].Progress = 1
-				deployProgress.Accounts[account.Id].Err = fmt.Errorf("Some weird error on account with id %v", account.Id)
+				deployProgress.Accounts[account.Id].Err = fmt.Errorf("some weird error on account with id %v", account.Id)
 				deployProgressChan <- deployProgress
 				continue
 			}
@@ -564,7 +562,7 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 			if !ok {
 				verifyProgress.Accounts[account.Id].Status = "error"
 				verifyProgress.Accounts[account.Id].Progress = 1
-				verifyProgress.Accounts[account.Id].Err = fmt.Errorf("Some weird error on account with id %v", account.Id)
+				verifyProgress.Accounts[account.Id].Err = fmt.Errorf("some weird error on account with id %v", account.Id)
 				verifyProgressChan <- verifyProgress
 				continue
 			}

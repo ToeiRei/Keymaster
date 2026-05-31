@@ -9,7 +9,6 @@ package i18n
 
 import (
 	"fmt"
-	"path" // Use the 'path' package for consistent forward slashes
 	"strings"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -40,7 +39,7 @@ func Init(defaultLang string) {
 	availableLocales = make(map[string]string)
 
 	// Discover and load all locale files from the embedded filesystem.
-	files, err := locales.LocaleFS.ReadDir("locales")
+	files, err := locales.LocaleFS.ReadDir(".")
 	if err != nil {
 		// This should not happen with a valid embed.
 		panic(fmt.Sprintf("failed to read embedded locales directory: %v", err))
@@ -69,8 +68,7 @@ func Init(defaultLang string) {
 			availableLocales[langCode] = displayName
 
 			// Load the file into the bundle
-			filePath := path.Join("locales", fileName)
-			_, err := bundle.LoadMessageFileFS(locales.LocaleFS, filePath)
+			_, err := bundle.LoadMessageFileFS(locales.LocaleFS, fileName)
 			if err != nil {
 				panic(fmt.Sprintf("failed to load locale file %s: %v", fileName, err))
 			}
