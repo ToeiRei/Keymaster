@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"slices"
 	"strings"
 	"time"
 
-	"github.com/bobg/go-generics/v4/slices"
 	"github.com/jinzhu/copier"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/tags"
@@ -22,9 +22,9 @@ import (
 
 type Client struct {
 	// local temporary repository for testing ui features
-	publicKeys   []client.PublicKey
-	accounts     []client.Account
-	links        []client.Link
+	publicKeys   map[client.PublicKeyId]client.PublicKey
+	accounts     map[client.AccountId]client.Account
+	links        map[client.LinkId]client.Link
 	auditLogs    []client.AuditLog
 	remoteStates map[client.AccountId]string
 
@@ -79,6 +79,8 @@ func (c *Client) accountDeployData(ctx context.Context, account client.Account) 
 		return "", err
 	}
 
+	slices.SortFunc(publicKeys, func(pk1, pk2 client.PublicKey) int { return int(pk1.Id - pk2.Id) })
+
 	return strings.Join(slicest.Map(publicKeys, func(pk client.PublicKey) string {
 		return fmt.Sprintf("%s %s %s", pk.Algorithm, pk.Data, pk.Comment)
 	}), "\n"), nil
@@ -91,7 +93,12 @@ func (c *Client) accountDeployCache(account client.Account, deployCache string) 
 // --- Lifecycle & Initialization ---
 
 func NewClient() *Client {
-	return &Client{remoteStates: make(map[client.AccountId]string)}
+	return &Client{
+		publicKeys:   make(map[client.PublicKeyId]client.PublicKey),
+		accounts:     make(map[client.AccountId]client.Account),
+		links:        make(map[client.LinkId]client.Link),
+		remoteStates: make(map[client.AccountId]string),
+	}
 }
 
 func (c *Client) Close(ctx context.Context) error {
@@ -128,30 +135,28 @@ func (c *Client) CreatePublicKey(ctx context.Context, key string, comment string
 	// algorithm, data := keyParts[0], strings.Join(slicest.SliceTo(keyParts, 1, len(keyParts)), " ")
 	algorithm, data := keyParts[0], keyParts[1]
 	publicKey := client.PublicKey{Id: c.publicKeyIdCounter, Algorithm: algorithm, Data: data, Comment: comment, Tags: tags}
-	c.publicKeys = append(c.publicKeys, publicKey)
+	c.publicKeys[publicKey.Id] = publicKey
 
 	c.writeAuditLog("public_key.create", fmt.Sprintf("%#v", publicKey), nil)
 	return publicKey, nil
 }
 
 func (c *Client) GetPublicKey(ctx context.Context, id client.PublicKeyId) (client.PublicKey, error) {
-	if i, ok := slices.BinarySearchFunc(c.publicKeys, id, func(publicKey client.PublicKey, id client.PublicKeyId) int {
-		return int(publicKey.Id - id)
-	}); ok {
-		return c.publicKeys[i], nil
+	if publicKey, ok := c.publicKeys[id]; ok {
+		return publicKey, nil
 	}
 	return client.PublicKey{}, fmt.Errorf("public key with id %v not found", id)
 }
 
 func (c *Client) GetPublicKeys(ctx context.Context, ids ...client.PublicKeyId) ([]client.PublicKey, error) {
-	return slicest.Filter(c.publicKeys, func(publicKey client.PublicKey) bool {
-		return slices.Contains(ids, publicKey.Id)
-	}), nil
+	return slicest.MapX(ids, func(id client.PublicKeyId) (client.PublicKey, error) {
+		return c.GetPublicKey(ctx, id)
+	})
 }
 
 func (c *Client) ListPublicKeys(ctx context.Context, tagMatcher string) ([]client.PublicKey, error) {
 	if len(tagMatcher) == 0 {
-		return slices.Clone(c.publicKeys), nil
+		return slicest.MapValues(c.publicKeys), nil
 	}
 
 	expr, err := tags.ParseMatcher(tagMatcher)
@@ -159,7 +164,7 @@ func (c *Client) ListPublicKeys(ctx context.Context, tagMatcher string) ([]clien
 		return nil, err
 	}
 
-	return slicest.Filter(c.publicKeys, func(publicKey client.PublicKey) bool {
+	return slicest.Filter(slicest.MapValues(c.publicKeys), func(publicKey client.PublicKey) bool {
 		return expr.Eval(publicKey.Tags)
 	}), nil
 }
@@ -181,36 +186,42 @@ func (c *Client) ListPublicKeysLinkedToAccount(ctx context.Context, accountId cl
 }
 
 func (c *Client) UpdateLink(ctx context.Context, id client.LinkId, accountId client.AccountId, tagMatcher string, expiresAt time.Time) (client.Link, error) {
-	if i, ok := slices.BinarySearchFunc(c.links, id, func(link client.Link, id client.LinkId) int {
-		return int(link.Id - id)
-	}); ok {
-		c.links[i].AccountId = accountId
-		c.links[i].TagMatcher = tagMatcher
-		c.links[i].ExpiresAt = expiresAt
+	if link, ok := c.links[id]; ok {
+		link.AccountId = accountId
+		link.TagMatcher = tagMatcher
+		link.ExpiresAt = expiresAt
+		c.links[id] = link
 
-		c.writeAuditLog("link.update", fmt.Sprintf("%#v", c.links[i]), nil)
-		return c.links[i], nil
+		c.writeAuditLog("link.update", fmt.Sprintf("%#v", link), nil)
+		return link, nil
 	}
 	return client.Link{}, fmt.Errorf("account with id %v not found", id)
 }
 
 func (c *Client) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, comment string, tags tags.Tags) (client.PublicKey, error) {
-	if i, ok := slices.BinarySearchFunc(c.publicKeys, id, func(publicKey client.PublicKey, id client.PublicKeyId) int {
-		return int(publicKey.Id - id)
-	}); ok {
-		c.publicKeys[i].Comment = comment
-		c.publicKeys[i].Tags = tags
+	if publicKey, ok := c.publicKeys[id]; ok {
+		publicKey.Comment = comment
+		publicKey.Tags = tags
+		c.publicKeys[id] = publicKey
 
-		c.writeAuditLog("public_key.update", fmt.Sprintf("%#v", c.publicKeys[i]), nil)
-		return c.publicKeys[i], nil
+		c.writeAuditLog("public_key.update", fmt.Sprintf("%#v", publicKey), nil)
+		return publicKey, nil
 	}
 	return client.PublicKey{}, fmt.Errorf("public key with id %v not found", id)
 }
 
 func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId) error {
-	c.publicKeys = slicest.Filter(c.publicKeys, func(publicKey client.PublicKey) bool { return !slices.Contains(ids, publicKey.Id) })
+	for _, id := range ids {
+		if _, ok := c.publicKeys[id]; !ok {
+			return fmt.Errorf("public key with id %v not found", id)
+		}
+	}
 
-	c.writeAuditLog("public_key.delete", fmt.Sprintf("%#v", ids), nil)
+	for _, id := range ids {
+		delete(c.publicKeys, id)
+		c.writeAuditLog("public_key.delete", fmt.Sprintf("%#v", id), nil)
+	}
+
 	return nil
 }
 
@@ -219,49 +230,27 @@ func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 func (c *Client) CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
 	c.accountIdCounter++
 	account := client.Account{Id: c.accountIdCounter, Username: username, Host: host, Port: port, DeployMethod: deploymentMethod, DeploySecret: deploymentSecret, DeployCache: ""}
-	c.accounts = append(c.accounts, account)
+	c.accounts[account.Id] = account
 
 	c.writeAuditLog("account.create", fmt.Sprintf("%#v", account), nil)
 	return account, nil
 }
 
 func (c *Client) GetAccount(ctx context.Context, id client.AccountId) (client.Account, error) {
-	if i, ok := slices.BinarySearchFunc(c.accounts, id, func(account client.Account, id client.AccountId) int {
-		return int(account.Id - id)
-	}); ok {
-		return c.accounts[i], nil
+	if account, ok := c.accounts[id]; ok {
+		return account, nil
 	}
 	return client.Account{}, fmt.Errorf("account with id %v not found", id)
 }
 
 func (c *Client) GetAccounts(ctx context.Context, ids ...client.AccountId) ([]client.Account, error) {
-	accounts := slicest.Filter(c.accounts, func(account client.Account) bool {
-		return slices.Contains(ids, account.Id)
+	return slicest.MapX(ids, func(id client.AccountId) (client.Account, error) {
+		return c.GetAccount(ctx, id)
 	})
-
-	if len(accounts) != len(ids) {
-		return nil, fmt.Errorf(
-			"accounts with the following ids could not be found: %s",
-			strings.Join(
-				slicest.Map(
-					slicest.Filter(ids, func(id client.AccountId) bool {
-						_, ok := slices.BinarySearchFunc(accounts, id, func(account client.Account, id client.AccountId) int {
-							return int(account.Id - id)
-						})
-						return !ok
-					}),
-					func(id client.AccountId) string { return fmt.Sprint(id) },
-				),
-				", ",
-			),
-		)
-	}
-
-	return accounts, nil
 }
 
 func (c *Client) ListAccounts(ctx context.Context) ([]client.Account, error) {
-	return slices.Clone(c.accounts), nil
+	return slicest.MapValues(c.accounts), nil
 }
 
 func (c *Client) ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Account, error) {
@@ -276,32 +265,39 @@ func (c *Client) ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId 
 }
 
 func (c *Client) ListAccountsDirty(ctx context.Context) ([]client.Account, error) {
-	return slicest.FilterX(c.accounts, func(account client.Account) (bool, error) {
+	return slicest.FilterX(slicest.MapValues(c.accounts), func(account client.Account) (bool, error) {
 		return c.IsAccountDirty(ctx, account)
 	})
 }
 
 func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
-	if i, ok := slices.BinarySearchFunc(c.accounts, id, func(account client.Account, id client.AccountId) int {
-		return int(account.Id - id)
-	}); ok {
-		c.accounts[i].Username = username
-		c.accounts[i].Username = username
-		c.accounts[i].Host = host
-		c.accounts[i].Port = port
-		c.accounts[i].DeployMethod = deploymentMethod
-		c.accounts[i].DeploySecret = deploymentSecret
+	if account, ok := c.accounts[id]; ok {
+		account.Username = username
+		account.Username = username
+		account.Host = host
+		account.Port = port
+		account.DeployMethod = deploymentMethod
+		account.DeploySecret = deploymentSecret
+		c.accounts[id] = account
 
-		c.writeAuditLog("account.update", fmt.Sprintf("%#v", c.accounts[i]), nil)
-		return c.accounts[i], nil
+		c.writeAuditLog("account.update", fmt.Sprintf("%#v", account), nil)
+		return account, nil
 	}
 	return client.Account{}, fmt.Errorf("account with id %v not found", id)
 }
 
 func (c *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) error {
-	c.accounts = slicest.Filter(c.accounts, func(account client.Account) bool { return !slices.Contains(ids, account.Id) })
+	for _, id := range ids {
+		if _, ok := c.accounts[id]; !ok {
+			return fmt.Errorf("account with id %v not found", id)
+		}
+	}
 
-	c.writeAuditLog("account.delete", fmt.Sprintf("%#v", ids), nil)
+	for _, id := range ids {
+		delete(c.accounts, id)
+		c.writeAuditLog("account.delete", fmt.Sprintf("%#v", id), nil)
+	}
+
 	return nil
 }
 
@@ -319,29 +315,27 @@ func (c *Client) IsAccountDirty(ctx context.Context, account client.Account) (bo
 func (c *Client) CreateLink(ctx context.Context, accountId client.AccountId, tagMatcher string, expiresAt time.Time) (client.Link, error) {
 	c.linkIdCounter++
 	link := client.Link{Id: c.linkIdCounter, AccountId: accountId, TagMatcher: tagMatcher, ExpiresAt: expiresAt}
-	c.links = append(c.links, link)
+	c.links[link.Id] = link
 
 	c.writeAuditLog("link.create", fmt.Sprintf("%#v", link), nil)
 	return link, nil
 }
 
 func (c *Client) GetLink(ctx context.Context, id client.LinkId) (client.Link, error) {
-	if i, ok := slices.BinarySearchFunc(c.links, id, func(link client.Link, id client.LinkId) int {
-		return int(link.Id - id)
-	}); ok {
-		return c.links[i], nil
+	if link, ok := c.links[id]; ok {
+		return link, nil
 	}
 	return client.Link{}, fmt.Errorf("link with id %v not found", id)
 }
 
 func (c *Client) GetLinks(ctx context.Context, ids ...client.LinkId) ([]client.Link, error) {
-	return slicest.Filter(c.links, func(link client.Link) bool {
-		return slices.Contains(ids, link.Id)
-	}), nil
+	return slicest.MapX(ids, func(id client.LinkId) (client.Link, error) {
+		return c.GetLink(ctx, id)
+	})
 }
 
 func (c *Client) ListLinksForAccount(ctx context.Context, accountId client.AccountId, expired bool) ([]client.Link, error) {
-	return slicest.Filter(c.links, func(link client.Link) bool {
+	return slicest.Filter(slicest.MapValues(c.links), func(link client.Link) bool {
 		return link.AccountId == accountId && (expired || time.Now().Before(link.ExpiresAt))
 	}), nil
 }
@@ -352,7 +346,7 @@ func (c *Client) ListLinksForPublicKey(ctx context.Context, publicKeyId client.P
 		return nil, err
 	}
 
-	return slicest.FilterX(c.links, func(link client.Link) (bool, error) {
+	return slicest.FilterX(slicest.MapValues(c.links), func(link client.Link) (bool, error) {
 		expr, err := tags.ParseMatcher(link.TagMatcher)
 		if err != nil {
 			return false, err
@@ -363,9 +357,17 @@ func (c *Client) ListLinksForPublicKey(ctx context.Context, publicKeyId client.P
 }
 
 func (c *Client) DeleteLinks(ctx context.Context, ids ...client.LinkId) error {
-	c.links = slicest.Filter(c.links, func(link client.Link) bool { return !slices.Contains(ids, link.Id) })
+	for _, id := range ids {
+		if _, ok := c.links[id]; !ok {
+			return fmt.Errorf("link with id %v not found", id)
+		}
+	}
 
-	c.writeAuditLog("link.delete", fmt.Sprintf("%#v", ids), nil)
+	for _, id := range ids {
+		delete(c.links, id)
+		c.writeAuditLog("link.delete", fmt.Sprintf("%#v", id), nil)
+	}
+
 	return nil
 }
 
@@ -447,11 +449,12 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 				deployProgressChan <- deployProgress
 			}
 
-			_i, ok := slices.BinarySearchFunc(c.accounts, account.Id, func(a client.Account, id client.AccountId) int { return int(a.Id - id) })
+			// potential error i guess
+			ok := true
 			if !ok {
 				deployProgress.Accounts[account.Id].Status = "error"
 				deployProgress.Accounts[account.Id].Progress = 1
-				deployProgress.Accounts[account.Id].Err = fmt.Errorf("account with id %v not found", account.Id)
+				deployProgress.Accounts[account.Id].Err = fmt.Errorf("Some weird error on account with id %v", account.Id)
 				deployProgressChan <- deployProgress
 				continue
 			}
@@ -471,7 +474,11 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 
 			c.writeAuditLog("account.deploy", fmt.Sprintf("%#v", account), nil)
 
-			c.accounts[_i].DeployCache = c.remoteStates[account.Id]
+			// update accounts deploy cache
+			_account := c.accounts[account.Id]
+			_account.DeployCache = c.remoteStates[account.Id]
+			c.accounts[account.Id] = _account
+
 			deployProgress.Accounts[account.Id].Status = "finished"
 			deployProgress.Accounts[account.Id].Progress = 1
 			deployProgressChan <- deployProgress
@@ -558,11 +565,11 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 				verifyProgressChan <- verifyProgress
 			}
 
-			_i, ok := slices.BinarySearchFunc(c.accounts, account.Id, func(a client.Account, id client.AccountId) int { return int(a.Id - id) })
+			ok := true
 			if !ok {
 				verifyProgress.Accounts[account.Id].Status = "error"
 				verifyProgress.Accounts[account.Id].Progress = 1
-				verifyProgress.Accounts[account.Id].Err = fmt.Errorf("account with id %v not found", account.Id)
+				verifyProgress.Accounts[account.Id].Err = fmt.Errorf("Some weird error on account with id %v", account.Id)
 				verifyProgressChan <- verifyProgress
 				continue
 			}
@@ -581,7 +588,11 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 			remoteState, hasState := c.remoteStates[account.Id]
 
 			if !hasState || c.accountDeployCache(account, deployDatas[i]) != remoteState {
-				c.accounts[_i].DeployCache = remoteState // update local DeployCache to reflect the remotes state
+				// update accounts deploy cache to reflect remotes state
+				_account := c.accounts[account.Id]
+				_account.DeployCache = c.remoteStates[account.Id]
+				c.accounts[account.Id] = _account
+
 				verifyProgress.Accounts[account.Id].Status = "error"
 				verifyProgress.Accounts[account.Id].Err = errors.New("account is out of sync")
 			} else {
@@ -613,9 +624,13 @@ func (c *Client) ListAuditLogs(ctx context.Context, limit int) ([]client.AuditLo
 }
 
 func (c *Client) ListExistingTags(ctx context.Context) tags.Tags {
-	return slicest.Reduce(c.publicKeys, func(publicKey client.PublicKey, tags tags.Tags) tags.Tags {
-		return append(tags, publicKey.Tags...)
-	})
+	tags := make(map[tags.Tag]struct{}) // abuse map as set
+	for _, publicKey := range c.publicKeys {
+		for _, tag := range publicKey.Tags {
+			tags[tag] = struct{}{}
+		}
+	}
+	return slicest.MapKeys(tags)
 }
 
 func (c *Client) OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {
