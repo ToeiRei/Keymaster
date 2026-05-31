@@ -8,7 +8,7 @@ import (
 
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/state"
-	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/i18n"
 )
 
 // fakeKeyReaderForAudit is a minimal test implementation of KeyReader interface

@@ -15,7 +15,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/client"
-	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/tablecontroll"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/util/slicest"

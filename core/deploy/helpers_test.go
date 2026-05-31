@@ -9,7 +9,7 @@ import (
 
 	"github.com/toeirei/keymaster/core/deploy"
 	"github.com/toeirei/keymaster/core/model"
-	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/i18n"
 )
 
 // TestCanonicalizeHostPort_StandardHost tests standard hostname with default port.

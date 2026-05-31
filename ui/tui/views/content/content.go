@@ -12,7 +12,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
-	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/components/menu"
 	"github.com/toeirei/keymaster/ui/tui/components/router"
 	"github.com/toeirei/keymaster/ui/tui/components/stack"

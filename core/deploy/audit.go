@@ -12,7 +12,7 @@ import (
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/sshkey"
 	"github.com/toeirei/keymaster/core/state"
-	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/i18n"
 )
 
 // AuditAccountStrict performs a strict audit by comparing the full normalized

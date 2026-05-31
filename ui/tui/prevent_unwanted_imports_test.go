@@ -26,7 +26,7 @@ func TestPreventUnwantedImports(t *testing.T) {
 		regexp.QuoteMeta("github.com/toeirei/keymaster/util") + ".*",
 		regexp.QuoteMeta("github.com/toeirei/keymaster/tags") + ".*",
 		regexp.QuoteMeta("github.com/toeirei/keymaster/client") + ".*",
-		regexp.QuoteMeta("github.com/toeirei/keymaster/i18n"),
+		regexp.QuoteMeta("github.com/toeirei/keymaster/ui/i18n"),
 		regexp.QuoteMeta("github.com/toeirei/keymaster/buildvars"),
 	}
 

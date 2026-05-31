@@ -6,7 +6,7 @@ import (
 
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/security"
-	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/i18n"
 )
 
 // fake bootstrap deployer used to test NewBootstrapDeployer wrapper

@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/toeirei/keymaster/core"
-	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/i18n"
 )
 
 func TestInitTargetDB_SQLiteMemory(t *testing.T) {

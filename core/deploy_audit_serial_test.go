@@ -5,7 +5,7 @@ import (
 
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/security"
-	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/i18n"
 )
 
 // fakeRemote from deploy_audit_test.go reused pattern

@@ -22,7 +22,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/core/bootstrap"
-	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/i18n"
 
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/sshkey"

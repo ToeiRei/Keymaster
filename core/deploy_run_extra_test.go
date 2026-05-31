@@ -5,7 +5,7 @@ import (
 
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/security"
-	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/i18n"
 )
 
 // fakeKRPartial returns a system key for serial lookups but nil for active key

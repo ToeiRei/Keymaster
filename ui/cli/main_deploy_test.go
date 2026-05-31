@@ -8,7 +8,7 @@ import (
 
 	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/model"
-	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/i18n"
 )
 
 func TestRunDeploymentForAccount_NoActiveSystemKey_ReturnsError(t *testing.T) {

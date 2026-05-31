@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/model"
-	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/i18n"
 )
 
 // TestRotateKeyCmd_HelpText verifies rotate-key command help text is present

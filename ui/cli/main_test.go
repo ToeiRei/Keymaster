@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/deploy"
-	"github.com/toeirei/keymaster/i18n"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"golang.org/x/crypto/ssh"
 )
 
