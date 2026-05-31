@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/toeirei/keymaster/client"
@@ -23,9 +24,11 @@ import (
 // BunClient is a client implementation backed by the Bun ORM and core.Store.
 // It provides full CRUD operations for accounts, public keys, and links.
 type BunClient struct {
-	config config.Config
-	store  core.Store
-	log    *log.Logger
+	config  config.Config
+	store   core.Store
+	log     *log.Logger
+	txMu    sync.Mutex
+	txDepth int
 	// TODO: in-memory cache for frequently accessed entities (optional optimization)
 }
 
@@ -61,10 +64,45 @@ func (c *BunClient) Close(ctx context.Context) error {
 	return nil
 }
 
-// WithTransaction executes a function within a database transaction.
-// TODO: Implement transaction support via bun.DB transactions.
+// WithTransaction executes fn as an atomic unit.
+//
+// Current implementation uses store backup/restore to provide rollback semantics
+// across the Bun-backed CRUD flows. This keeps behavior deterministic until all
+// write paths can be moved to explicit bun.Tx plumbing.
 func (c *BunClient) WithTransaction(ctx context.Context, fn func(c client.Client) error) error {
-	return fn(c)
+	if c.store == nil {
+		return errors.New("no store available")
+	}
+
+	c.txMu.Lock()
+	defer c.txMu.Unlock()
+
+	// Nested transactions reuse the outer snapshot scope.
+	if c.txDepth > 0 {
+		c.txDepth++
+		defer func() { c.txDepth-- }()
+		return fn(c)
+	}
+
+	snapshot, err := c.store.ExportDataForBackup()
+	if err != nil {
+		return fmt.Errorf("failed to create transaction snapshot: %w", err)
+	}
+
+	c.txDepth = 1
+	defer func() { c.txDepth = 0 }()
+
+	if err := fn(c); err != nil {
+		if restoreErr := c.store.ImportDataFromBackup(snapshot); restoreErr != nil {
+			if c.log != nil {
+				c.log.Printf("failed to rollback transaction snapshot: %v", restoreErr)
+			}
+			return fmt.Errorf("transaction failed: %w; rollback failed: %v", err, restoreErr)
+		}
+		return err
+	}
+
+	return nil
 }
 
 // --- Helper functions ---

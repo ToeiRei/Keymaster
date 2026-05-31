@@ -6,6 +6,7 @@ package tagsbun_test
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,6 +29,9 @@ func WithPostgres(t *testing.T) *bun.DB {
 				WithStartupTimeout(10*time.Second),
 		),
 	)
+	if err != nil && isContainerRuntimeUnavailable(err) {
+		t.Skipf("skipping postgres testcontainers test: %v", err)
+	}
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -49,6 +53,29 @@ func WithPostgres(t *testing.T) *bun.DB {
 	})
 
 	return db
+}
+
+func isContainerRuntimeUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	msg := strings.ToLower(err.Error())
+	indicators := []string{
+		"failed to create docker provider",
+		"rootless docker is not supported on windows",
+		"cannot connect to the docker daemon",
+		"docker daemon is not running",
+		"no such host",
+	}
+
+	for _, indicator := range indicators {
+		if strings.Contains(msg, indicator) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func TestTagsExprToWherePostgres(t *testing.T) {
