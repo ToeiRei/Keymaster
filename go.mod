@@ -12,7 +12,7 @@ require (
 	github.com/charmbracelet/log v1.0.0
 	github.com/davidmz/go-pageant v1.0.2
 	github.com/go-sql-driver/mysql v1.10.0
-	github.com/jackc/pgx/v5 v5.9.2
+	github.com/jackc/pgx/v5 v5.10.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/klauspost/compress v1.18.6
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
@@ -32,7 +32,7 @@ require (
 	golang.org/x/term v0.43.0
 	golang.org/x/text v0.37.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.50.1
+	modernc.org/sqlite v1.52.0
 )
 
 require (
