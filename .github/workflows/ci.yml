@@ -23,7 +23,7 @@ jobs:
       KEYMASTER_DB_MAX_OPEN_CONNS: '1'
       KEYMASTER_DB_MAX_IDLE_CONNS: '1'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Do not persist the automatically-provided GITHUB_TOKEN to the
           # checked-out repository. This prevents accidental leakage of the
@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
