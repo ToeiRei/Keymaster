@@ -43,7 +43,7 @@ jobs:
           rm -rf ~/.cache/go-build || true
 
       - name: Cache Go modules
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cache/go-build
