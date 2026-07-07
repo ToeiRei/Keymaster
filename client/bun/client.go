@@ -56,6 +56,11 @@ func NewBunClient(cfg config.Config, logger *log.Logger) (*BunClient, error) {
 	}, nil
 }
 
+// NewDefaultBunClient creates a BunClient using the default client config.
+func NewDefaultBunClient(logger *log.Logger) (*BunClient, error) {
+	return NewBunClient(client.NewDefaultConfig(), logger)
+}
+
 // Close closes the client and cleans up resources.
 func (c *BunClient) Close(ctx context.Context) error {
 	if c.store != nil {
