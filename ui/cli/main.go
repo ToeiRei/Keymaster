@@ -21,6 +21,8 @@ import (
 
 	"runtime/debug"
 
+	stdlog "log"
+
 	_ "github.com/go-sql-driver/mysql" // Blank import for migrate command
 	_ "github.com/jackc/pgx/v5/stdlib" // Blank import for migrate command
 	"github.com/klauspost/compress/zstd"
@@ -28,6 +30,7 @@ import (
 	"github.com/spf13/viper"
 
 	log "github.com/charmbracelet/log"
+	"github.com/toeirei/keymaster/client/bun"
 	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/deploy"
@@ -264,11 +267,18 @@ Running without a subcommand will launch the interactive TUI.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			core.SetAuditContext("tui", sanitizeAuditReferrer(auditReferrer))
 			// The database is already initialized by PersistentPreRunE.
-			// i18n is also initialized, so we can just run the TUI.
-			// The store adapter is created for side-effects during setup,
-			// but `tui.Run` currently expects no arguments.
+			// i18n is also initialized, so create a TUI client from the configured DB.
 			_ = uiadapters.NewStoreAdapter()
-			_ = tui.Run()
+			logger := stdlog.New(os.Stdout, "[tui] ", stdlog.LstdFlags)
+			client, err := bun.NewBunClient(appConfig, logger)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "failed to initialize TUI client: %v\n", err)
+				os.Exit(1)
+			}
+			defer func() {
+				_ = client.Close(cmd.Context())
+			}()
+			_ = tui.RunWithClient(client)
 		},
 	}
 
