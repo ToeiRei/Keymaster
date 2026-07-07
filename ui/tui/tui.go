@@ -5,49 +5,29 @@ package tui
 
 import (
 	"context"
-	"time"
+	"log"
+	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/toeirei/keymaster/client/mock"
-	"github.com/toeirei/keymaster/client/testui"
-	"github.com/toeirei/keymaster/tags"
+	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/client/bun"
 	"github.com/toeirei/keymaster/ui/tui/views/root"
 )
 
 func Run() error {
-	ct := testui.NewClient()
+	logger := log.New(os.Stdout, "[tui] ", log.LstdFlags)
+	cm, err := bun.NewDefaultBunClient(logger)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = cm.Close(context.Background())
+	}()
 
-	// test accounts
-	_a1, _ := ct.CreateAccount(context.Background(), "root", "1.2.3.4", 22, "ssh", "password123")
-	_a2, _ := ct.CreateAccount(context.Background(), "user", "1.2.3.4", 22, "ssh", "password123")
-	_a3, _ := ct.CreateAccount(context.Background(), "srv", "10.0.0.1", 22, "ssh", "password123")
-	_a4, _ := ct.CreateAccount(context.Background(), "mark", "1.2.3.4", 22, "ssh", "password123")
-	_a5, _ := ct.CreateAccount(context.Background(), "admin", "10.20.0.1", 222, "cisco", "password123")
-	// test publicKeys
-	_, _ = ct.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-zdpjwb", "my-key", tags.Tags{"user:jannes", "company:work", "server-ci"})
-	_, _ = ct.CreatePublicKey(context.Background(), "Sha-your-mom ashtdjhk-fbaskjdfhal_sdvkhaösdljhask-öutyfb", "my-key", tags.Tags{"user:jannes", "company:none"})
-	_, _ = ct.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskdasral_jklkhathrösdljhask-fdjfb", "419", tags.Tags{"user:toeirei", "company:big_money"})
-	_, _ = ct.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjdfhal_sdvtzuthrösdljhaha-ögjfb", "420", tags.Tags{"user:toeirei", "company:work", "server-ci"})
-	_, _ = ct.CreatePublicKey(context.Background(), "Sha-420 asdjhk-fbaskjterhl_sdvkhaghdjfdljhask-ödhfb", "421", tags.Tags{"user:toeirei", "company:none"})
-	_, _ = ct.CreatePublicKey(context.Background(), "Sha-69 asdjkhk-fbdfhtdftrhhal_sdvkhaösu656zsk-ödjhtfb", "69", tags.Tags{"user:somebodyelse", "company:evilgoogle", "server-ci"})
-	// test links
-	_, _ = ct.CreateLink(context.Background(), _a1.Id, "(user:jannes | user:toeirei) & !company:work", time.Now().Add(time.Hour))
-	_, _ = ct.CreateLink(context.Background(), _a2.Id, "!user:somebodyelse", time.Now().Add(time.Hour))
-	_, _ = ct.CreateLink(context.Background(), _a3.Id, "server-ci", time.Now().Add(time.Hour))
-	_, _ = ct.CreateLink(context.Background(), _a4.Id, "company:evilgoogle", time.Now().Add(time.Hour))
-	_, _ = ct.CreateLink(context.Background(), _a5.Id, "company:work", time.Now().Add(time.Hour))
-	_, _ = ct.CreateLink(context.Background(), _a5.Id, "company:big_money", time.Now())
+	return RunWithClient(cm)
+}
 
-	// add delay "middleware"
-	cm := mock.NewClient(mock.WitchBaseClient(ct), mock.WitchPre(func(method string, args map[string]any) error {
-		time.Sleep(time.Millisecond * 100)
-		if ctx, ok := args["ctx"].(context.Context); ok {
-			return ctx.Err()
-		}
-		return nil
-	}))
-
-	// create and run tea programm
+func RunWithClient(cm client.Client) error {
 	_, err := tea.NewProgram(root.New(cm), tea.WithAltScreen()).Run()
 	return err
 }
