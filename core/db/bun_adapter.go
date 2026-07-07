@@ -103,7 +103,7 @@ func RotateSystemKeyBun(bdb *bun.DB, publicKey, privateKey string) (int, error) 
 	return newSerial, nil
 }
 
-// AccountModel maps the `accounts` table for Bun queries.
+// [AccountModel] maps the `accounts` table for Bun queries.
 type AccountModel struct {
 	bun.BaseModel `bun:"table:accounts"`
 	ID            int            `bun:"id,pk,autoincrement"`
@@ -114,9 +114,11 @@ type AccountModel struct {
 	Serial        int            `bun:"serial"`
 	IsActive      bool           `bun:"is_active"`
 	IsDirty       bool           `bun:"is_dirty"`
+
+	Links []LinkModel `bun:"rel:has-many,join:id=account_id"`
 }
 
-// PublicKeyModel maps the subset of public_keys used in joins.
+// [PublicKeyModel] maps the subset of public_keys used in joins.
 type PublicKeyModel struct {
 	bun.BaseModel `bun:"table:public_keys"`
 	ID            int          `bun:"id,pk,autoincrement"`
@@ -125,9 +127,43 @@ type PublicKeyModel struct {
 	Comment       string       `bun:"comment"`
 	ExpiresAt     sql.NullTime `bun:"expires_at"`
 	IsGlobal      bool         `bun:"is_global"`
+
+	Tags []TagModel `bun:"m2m:public_key_to_tags,join:PublicKey=Tag"`
 }
 
-// AuditLogModel maps the audit_log table.
+// [TagModel] stores Tag
+type TagModel struct {
+	bun.BaseModel `bun:"table:tags"`
+
+	ID          int    `bun:"id,pk,autoincrement"`
+	Slug        string `bun:"slug"`
+	Color       string `bun:"color"`
+	Description string `bun:"description"`
+
+	PublicKeys []PublicKeyModel `bun:"m2m:public_key_to_tags,join:Tag=PublicKey"`
+}
+
+// [PublicKeyToTagModel] stores PublicKeyToTag
+type PublicKeyToTagModel struct {
+	bun.BaseModel `bun:"table:public_key_to_tags"`
+
+	PublicKeyId int             `bun:"public_key_id,pk"`
+	PublicKey   *PublicKeyModel `bun:"rel:belongs-to,join:public_key_id=id"`
+	TagId       int             `bun:"tag_id,pk"`
+	Tag         *TagModel       `bun:"rel:belongs-to,join:tag_id=id"`
+}
+
+// [LinkModel] stores Link
+type LinkModel struct {
+	bun.BaseModel `bun:"table:links"`
+
+	AccountId  int           `bun:"account_id,pk"`
+	Account    *AccountModel `bun:"rel:belongs-to,join:account_id=id"`
+	TagMatcher string        `bun:"tag_matcher,pk"`
+	ExpiresAt  time.Time     `bun:"expires_at"`
+}
+
+// [AuditLogModel] maps the audit_log table.
 type AuditLogModel struct {
 	bun.BaseModel `bun:"table:audit_log"`
 	ID            int            `bun:"id,pk,autoincrement"`
@@ -140,14 +176,14 @@ type AuditLogModel struct {
 	Details       string         `bun:"details"`
 }
 
-// KnownHostModel maps known_hosts.
+// [KnownHostModel] maps known_hosts.
 type KnownHostModel struct {
 	bun.BaseModel `bun:"table:known_hosts"`
 	Hostname      string `bun:"hostname,pk"`
 	Key           string `bun:"key"`
 }
 
-// BootstrapSessionModel maps bootstrap_sessions for export/import.
+// [BootstrapSessionModel] maps bootstrap_sessions for export/import.
 type BootstrapSessionModel struct {
 	bun.BaseModel `bun:"table:bootstrap_sessions"`
 	ID            string         `bun:"id,pk"`

@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// Account represents a user on a specific host (e.g., deploy@server-01).
+// [Account] represents a user on a specific host (e.g., deploy@server-01).
 // This is the core entity for which we manage access.
 type Account struct {
 	ID       int    // The primary key for the account.
@@ -30,7 +30,7 @@ type Account struct {
 	IsDirty bool
 }
 
-// String returns a user-friendly representation of the account.
+// [Account.String] returns a user-friendly representation of the account.
 // It formats as "Label (user@host)" if a label is present, otherwise just "user@host".
 func (a Account) String() string {
 	base := fmt.Sprintf("%s@%s", a.Username, a.Hostname)
@@ -40,7 +40,7 @@ func (a Account) String() string {
 	return base
 }
 
-// PublicKey represents a single SSH public key stored in the database.
+// [PublicKey] represents a single SSH public key stored in the database.
 type PublicKey struct {
 	ID        int    // The primary key for the public key.
 	Algorithm string // The key algorithm (e.g., "ssh-ed25519").
@@ -52,12 +52,43 @@ type PublicKey struct {
 	ExpiresAt time.Time
 }
 
-// String returns the full public key line suitable for an authorized_keys file.
+// [PublicKey.String] returns the full public key line suitable for an authorized_keys file.
 func (k PublicKey) String() string {
 	return fmt.Sprintf("%s %s %s", k.Algorithm, k.KeyData, k.Comment)
 }
 
-// SystemKey represents a key pair used by Keymaster itself for deployment.
+// [Tag] links a [Link.TagMatcher] from a [Link].
+type Tag struct {
+	// [PK]
+	ID int
+	// [Unique]
+	Slug string
+	//
+	Color string
+	//
+	Description string
+}
+
+// [PublicKeyToTag] links a [PublicKey] to a [Tag].
+type PublicKeyToTag struct {
+	// [PK]
+	PublicKeyId int
+	// [PK]
+	TagId int
+}
+
+// [Link] represents a relation from an [Account] to several [PublicKey]s ([PublicKey]s are resolved via the [Link.TagMatcher]).
+type Link struct {
+	// [PK, FK] The primary key for the [Account].
+	AccountId int
+	// [PK]     Tag matcher describing, wich [PublicKey]s are authorized for access to referenced [Account].
+	TagMatcher string
+	// ExpiresAt is the optional expiration time for this [PublicKey]. A zero value means no expiration.
+	ExpiresAt time.Time
+	// ...
+}
+
+// [SystemKey] represents a key pair used by Keymaster itself for deployment.
 // The private key is stored to allow for agentless operation.
 type SystemKey struct {
 	ID         int    // The primary key for the system key.
@@ -68,7 +99,7 @@ type SystemKey struct {
 	IsActive bool
 }
 
-// AuditLogEntry represents a single event in the audit log.
+// [AuditLogEntry] represents a single event in the audit log.
 type AuditLogEntry struct {
 	ID        int    // The primary key for the log entry.
 	Timestamp string // The timestamp of the event (as a string for display simplicity).
@@ -77,7 +108,7 @@ type AuditLogEntry struct {
 	Details   string // A free-text description of the event.
 }
 
-// BootstrapSession represents an ongoing bootstrap operation for a new host.
+// [BootstrapSession] represents an ongoing bootstrap operation for a new host.
 // Sessions track temporary keys and pending account information during the bootstrap workflow.
 type BootstrapSession struct {
 	ID            string    // Unique session identifier.
