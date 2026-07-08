@@ -136,7 +136,7 @@ type TagModel struct {
 	bun.BaseModel `bun:"table:tags"`
 
 	ID          int    `bun:"id,pk,autoincrement"`
-	Slug        string `bun:"slug"`
+	Slug        string `bun:"slug,unique"`
 	Color       string `bun:"color"`
 	Description string `bun:"description"`
 

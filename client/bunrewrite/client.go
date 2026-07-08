@@ -13,12 +13,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bobg/go-generics/v4/slices"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/core"
+	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/sshkey"
 	"github.com/toeirei/keymaster/tags"
+	"github.com/toeirei/keymaster/tags/tagsbun"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/mysqldialect"
 	"github.com/uptrace/bun/dialect/pgdialect"
@@ -30,18 +33,15 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// BunClient is a client implementation backed by the Bun ORM.
 type BunClient struct {
 	config config.Config
 	log    *log.Logger
 	bun    bun.IDB
 }
 
-// Verify BunClient implements client.Client.
+// *[BunClient] implements [client.Client]
 var _ client.Client = (*BunClient)(nil)
 
-// NewBunClient creates and initializes a new BunClient from the provided config and logger.
-// It initializes the database with migrations and returns a ready-to-use client.
 func NewBunClient(config config.Config, logger *log.Logger) (*BunClient, error) {
 	// resolve db drive
 	var dbDriver string
@@ -73,28 +73,17 @@ func NewBunClient(config config.Config, logger *log.Logger) (*BunClient, error) 
 		dbBun = bun.NewDB(dbConn, mysqldialect.New())
 	}
 
-	return &BunClient{
-		config: config,
-		log:    logger,
-		bun:    dbBun,
-	}, nil
+	return &BunClient{config, logger, dbBun}, nil
 }
 
-// NewDefaultBunClient creates a BunClient using the default client config.
 func NewDefaultBunClient(logger *log.Logger) (*BunClient, error) {
 	return NewBunClient(client.NewDefaultConfig(), logger)
 }
 
-// Close closes the client and cleans up resources.
 func (c *BunClient) Close(ctx context.Context) error {
 	return c.bun.(*bun.DB).Close()
 }
 
-// WithTransaction executes fn as an atomic unit.
-//
-// Current implementation uses store backup/restore to provide rollback semantics
-// across the Bun-backed CRUD flows. This keeps behavior deterministic until all
-// write paths can be moved to explicit bun.Tx plumbing.
 func (c *BunClient) WithTransaction(ctx context.Context, fn func(ctx context.Context, c client.Client) error) error {
 	return c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		return fn(ctx, &BunClient{c.config, c.log, tx})
@@ -153,118 +142,182 @@ func (c *BunClient) accountModelToClient(m *model.Account) (client.Account, erro
 
 // --- PublicKey Management ---
 
-func (c *BunClient) CreatePublicKey(ctx context.Context, key string, comment string, tags tags.Tags) (client.PublicKey, error) {
-	km := core.DefaultKeyManager()
-	if km == nil {
-		return client.PublicKey{}, errors.New("no key manager available")
-	}
-
-	// Parse the key to extract algorithm and key data.
-	alg, keyData, _, perr := sshkey.Parse(key)
-	if perr != nil {
-		// If parsing fails, treat the input as raw key data.
-		alg = "ssh-ed25519"
-		keyData = key
-	}
-
-	// Add the public key using the KeyManager.
-	pk, err := km.AddPublicKeyAndGetModel(alg, keyData, comment, false, time.Time{})
-	if err != nil {
-		return client.PublicKey{}, fmt.Errorf("failed to add public key: %w", err)
-	}
-
+func modelToClientPublicKey(publicKeyModel db.PublicKeyModel) client.PublicKey {
 	return client.PublicKey{
-		Id:        client.PublicKeyId(pk.ID),
-		Algorithm: pk.Algorithm,
-		Data:      pk.KeyData,
+		Id:        client.PublicKeyId(publicKeyModel.ID),
+		Algorithm: publicKeyModel.Algorithm,
+		Data:      publicKeyModel.KeyData,
+		Comment:   publicKeyModel.Comment,
+		Tags: slices.Map(publicKeyModel.Tags, func(tagModel db.TagModel) tags.Tag {
+			return tags.Tag(tagModel.Slug)
+		}),
+	}
+}
+
+func (c *BunClient) CreatePublicKey(ctx context.Context, key string, comment string, tags tags.Tags) (client.PublicKey, error) {
+	// Parse the key to extract algorithm and key data.
+	alg, data, _, err := sshkey.Parse(key)
+	if err != nil {
+		return client.PublicKey{}, err
+	}
+
+	// mock expiresAt
+	expiresAt, _ := time.Parse(time.DateOnly, "9999-01-02")
+
+	// create public key model
+	publicKeyModel := db.PublicKeyModel{
+		Algorithm: alg,
+		KeyData:   data,
 		Comment:   comment,
-		Tags:      nil, // TODO: PublicKey.Tags not yet modeled in core.model.PublicKey
-	}, nil
+		ExpiresAt: sql.NullTime{expiresAt, true},
+	}
+
+	err = c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		// insert public key
+		_, err = tx.NewInsert().
+			Model(&publicKeyModel).
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
+
+		if len(tags) > 0 {
+			// upsert missing tags
+			tagModels_Insert := slices.Map(tags.Slice(), func(tag string) *db.TagModel {
+				return &db.TagModel{Slug: tag}
+			})
+
+			_, err = tx.NewInsert().
+				Model(tagModels_Insert).
+				Ignore().
+				Exec(ctx)
+			if err != nil {
+				return err
+			}
+
+			// resolve tags
+			var tagModels_Select []db.TagModel
+
+			_, err = tx.NewSelect().
+				Model(&tagModels_Select).
+				Where("slug IN (?)", bun.List(tags.Slice())).
+				Exec(ctx)
+			if err != nil {
+				return err
+			}
+
+			if len(tagModels_Select) != len(tags) {
+				return errors.New("tags quantity missmatch after upsert")
+			}
+
+			publicKeyModel.Tags = tagModels_Select
+
+			// connect tags to public key
+			publicKeyToTagModels := slices.Map(tagModels_Select, func(tagModel db.TagModel) *db.PublicKeyToTagModel {
+				return &db.PublicKeyToTagModel{
+					PublicKeyId: publicKeyModel.ID,
+					TagId:       tagModel.ID,
+				}
+			})
+
+			_, err = tx.NewInsert().
+				Model(publicKeyToTagModels).
+				Exec(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return client.PublicKey{}, err
+	}
+
+	return modelToClientPublicKey(publicKeyModel), nil
 }
 
 func (c *BunClient) GetPublicKey(ctx context.Context, id client.PublicKeyId) (client.PublicKey, error) {
-	km := core.DefaultKeyManager()
-	if km == nil {
-		return client.PublicKey{}, errors.New("no key manager available")
-	}
-
-	// Fetch all public keys and find the one with matching ID.
-	pks, err := km.GetAllPublicKeys()
+	publicKeyModel := db.PublicKeyModel{ID: int(id)}
+	_, err := c.bun.NewSelect().
+		Model(&publicKeyModel).
+		WherePK().
+		Relation("Tags").
+		Exec(ctx)
 	if err != nil {
-		return client.PublicKey{}, fmt.Errorf("failed to get public keys: %w", err)
+		return client.PublicKey{}, err
 	}
 
-	for _, pk := range pks {
-		if pk.ID == int(id) {
-			return client.PublicKey{
-				Id:        client.PublicKeyId(pk.ID),
-				Algorithm: pk.Algorithm,
-				Data:      pk.KeyData,
-				Comment:   pk.Comment,
-				Tags:      nil, // TODO: PublicKey.Tags stub
-			}, nil
-		}
-	}
-
-	return client.PublicKey{}, fmt.Errorf("public key not found: %d", id)
+	return modelToClientPublicKey(publicKeyModel), nil
 }
 
 func (c *BunClient) GetPublicKeys(ctx context.Context, ids ...client.PublicKeyId) ([]client.PublicKey, error) {
-	km := core.DefaultKeyManager()
-	if km == nil {
-		return nil, errors.New("no key manager available")
-	}
-
-	pks, err := km.GetAllPublicKeys()
+	var publicKeysModel []*db.PublicKeyModel
+	_, err := c.bun.NewSelect().
+		Model(publicKeysModel).
+		Where("id IN (?)", bun.List(ids)).
+		Relation("Tags").
+		Exec(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get public keys: %w", err)
+		return nil, err
 	}
 
-	// Build a map of requested IDs for fast lookup.
-	requested := make(map[int]bool)
-	for _, id := range ids {
-		requested[int(id)] = true
+	publicKeys := slices.Map(publicKeysModel, func(publicKeyModel *db.PublicKeyModel) client.PublicKey {
+		return modelToClientPublicKey(*publicKeyModel)
+	})
+
+	if len(publicKeys) != len(ids) {
+		publicKeyIds := slices.Map(publicKeys, func(publicKey client.PublicKey) client.PublicKeyId { return publicKey.Id })
+		missingIds := slices.Map(slices.Filter(ids, func(id client.PublicKeyId) bool {
+			return !slices.Contains(publicKeyIds, id)
+		}), func(id client.PublicKeyId) string { return fmt.Sprint(id) })
+		return nil, fmt.Errorf("public keys with ids could not be found: %s", strings.Join(missingIds, ", "))
 	}
 
-	var result []client.PublicKey
-	for _, pk := range pks {
-		if requested[pk.ID] {
-			result = append(result, client.PublicKey{
-				Id:        client.PublicKeyId(pk.ID),
-				Algorithm: pk.Algorithm,
-				Data:      pk.KeyData,
-				Comment:   pk.Comment,
-				Tags:      nil, // TODO: PublicKey.Tags stub
-			})
-		}
-	}
-
-	return result, nil
+	return publicKeys, nil
 }
 
 func (c *BunClient) ListPublicKeys(ctx context.Context, tagMatcher string) ([]client.PublicKey, error) {
-	km := core.DefaultKeyManager()
-	if km == nil {
-		return nil, errors.New("no key manager available")
+	var publicKeysModel []*db.PublicKeyModel
+
+	if len(tagMatcher) == 0 {
+		_, err := c.bun.NewSelect().
+			Model(publicKeysModel).
+			Relation("Tags").
+			Exec(ctx)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		expr, err := tags.ParseMatcher(tagMatcher)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse matcher %q: %v", tagMatcher, err)
+		}
+
+		_, err = c.bun.NewSelect().
+			Model(publicKeysModel).
+			Relation("Tags").
+			Apply(tagsbun.TagsExprToWhere(expr, tagsbun.TagsExprToSubqueryConfig{
+				TaggedTable:    "public_keys",
+				TaggedColumnId: "id",
+
+				TaggedToTagTable:          "public_key_to_tags",
+				TaggedToTagColumnTagId:    "tag_id",
+				TaggedToTagColumnTaggedId: "public_key_id",
+
+				TagTable:       "tags",
+				TagColumnId:    "id",
+				TagColumnValue: "slug",
+			})).
+			Exec(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	pks, err := km.GetAllPublicKeys()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list public keys: %w", err)
-	}
-
-	var result []client.PublicKey
-	for _, pk := range pks {
-		result = append(result, client.PublicKey{
-			Id:        client.PublicKeyId(pk.ID),
-			Algorithm: pk.Algorithm,
-			Data:      pk.KeyData,
-			Comment:   pk.Comment,
-			Tags:      nil, // TODO: tagMatcher filtering not yet implemented
-		})
-	}
-
-	return result, nil
+	return slices.Map(publicKeysModel, func(publicKeyModel *db.PublicKeyModel) client.PublicKey {
+		return modelToClientPublicKey(*publicKeyModel)
+	}), nil
 }
 
 func (c *BunClient) ListPublicKeysLinkedToAccount(ctx context.Context, accountId client.AccountId, expired bool) ([]client.PublicKey, error) {
@@ -317,23 +370,134 @@ func (c *BunClient) ListPublicKeysLinkedToAccount(ctx context.Context, accountId
 }
 
 func (c *BunClient) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, comment string, tags tags.Tags) (client.PublicKey, error) {
-	// TODO: PublicKey updates not yet supported; keys are immutable in current schema.
-	return client.PublicKey{}, errors.New("UpdatePublicKey: operation not yet supported")
+	// mock expiresAt
+	expiresAt, _ := time.Parse(time.DateOnly, "9999-01-02")
+
+	publicKeyModel := db.PublicKeyModel{ID: int(id)}
+
+	err := c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		// update public key
+		_, err := tx.NewUpdate().
+			Model((*db.PublicKeyModel)(nil)).
+			Where("id = ?", int(id)).
+			Set("comment = ?", comment).
+			Set("expires_at = ?", sql.NullTime{expiresAt, true}).
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.NewSelect().
+			Model(&publicKeyModel).
+			WherePK().
+			Relation("Tags").
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
+
+		existingTags := slices.Map(publicKeyModel.Tags, func(tagModel db.TagModel) string {
+			return tagModel.Slug
+		})
+		newTags := slices.Filter(tags.Slice(), func(tag string) bool {
+			return !slices.Contains(existingTags, tag)
+		})
+		oldTags := slices.Filter(existingTags, func(tag string) bool {
+			return !slices.Contains(tags.Slice(), tag)
+		})
+
+		// upsert new tags
+		tagModels_Insert := slices.Map(newTags, func(tag string) *db.TagModel {
+			return &db.TagModel{Slug: tag}
+		})
+
+		_, err = tx.NewInsert().
+			Model(tagModels_Insert).
+			Ignore().
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
+
+		// resolve tags
+		var newTagIds, oldTagIds []int
+
+		err = tx.NewSelect().
+			Model((*db.TagModel)(nil)).
+			Where("slug IN (?)", bun.List(newTags)).
+			Column("id").
+			Scan(ctx, &newTagIds)
+		if err != nil {
+			return err
+		}
+
+		err = tx.NewSelect().
+			Model((*db.TagModel)(nil)).
+			Where("slug IN (?)", bun.List(oldTags)).
+			Column("id").
+			Scan(ctx, &oldTagIds)
+		if err != nil {
+			return err
+		}
+
+		// update relations
+
+		_, err = tx.NewDelete().
+			Model((*db.PublicKeyToTagModel)(nil)).
+			Where("public_key_id = ?", publicKeyModel.ID).
+			Where("tag_id IN (?)", bun.List(oldTags)).
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
+
+		newTagModels := slices.Map(newTagIds, func(tagId int) *db.PublicKeyToTagModel {
+			return &db.PublicKeyToTagModel{
+				PublicKeyId: publicKeyModel.ID,
+				TagId:       tagId,
+			}
+		})
+		_, err = tx.NewInsert().
+			Model(newTagModels).
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
+
+		// TODO update [publicKeyModel.Tags] to avoid another db query
+		// publicKeyModel.Tags = tagModels_Select
+
+		return nil
+	})
+	if err != nil {
+		return client.PublicKey{}, err
+	}
+
+	return modelToClientPublicKey(publicKeyModel), nil
 }
 
 func (c *BunClient) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId) error {
-	km := core.DefaultKeyManager()
-	if km == nil {
-		return errors.New("no key manager available")
-	}
-
-	for _, id := range ids {
-		if err := km.DeletePublicKey(int(id)); err != nil {
-			return fmt.Errorf("failed to delete public key %d: %w", id, err)
+	return c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		res, err := tx.NewDelete().
+			Model((*db.PublicKeyModel)(nil)).
+			Where("id IN (?)", bun.List(ids)).
+			Exec(ctx)
+		if err != nil {
+			return err
 		}
-	}
 
-	return nil
+		rowsAffected, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+
+		unaffectedRows := int64(len(ids)) - rowsAffected
+		if unaffectedRows > 0 {
+			return fmt.Errorf("%d public key ids could not be found", unaffectedRows)
+		}
+
+		return nil
+	})
 }
 
 // --- Account Management ---
