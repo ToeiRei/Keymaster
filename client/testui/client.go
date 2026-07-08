@@ -99,16 +99,21 @@ func (c *Client) Close(ctx context.Context) error {
 }
 
 // NOT THREAD SAFE! ONLY FOR TESTING!
-func (c *Client) WithTransaction(ctx context.Context, fn func(c client.Client) error) error {
+func (c *Client) WithTransaction(ctx context.Context, fn func(ctx context.Context, c client.Client) error) error {
 	// create copy of client to use in transaction
 	transactionClient := &Client{}
 	if err := copier.Copy(transactionClient, c); err != nil {
 		return err
 	}
 
+	// prepare cancelable context
+	cctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+
 	// run callback with transaction client
-	err := fn(transactionClient)
+	err := fn(cctx, transactionClient)
 	if err != nil {
+		cancel(err)
 		return err
 	}
 

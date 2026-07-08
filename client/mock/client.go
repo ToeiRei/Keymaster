@@ -20,7 +20,7 @@ type Client struct {
 type ClientOverwrites struct {
 	// --- Lifecycle & Initialization ---
 	Close           func(ctx context.Context) error
-	WithTransaction func(ctx context.Context, fn func(c client.Client) error) error
+	WithTransaction func(ctx context.Context, fn func(ctx context.Context, c client.Client) error) error
 
 	// --- PublicKey Management ---
 	CreatePublicKey               func(ctx context.Context, key string, comment string, tags tags.Tags) (client.PublicKey, error)
@@ -124,7 +124,7 @@ func (m *Client) Close(ctx context.Context) error {
 	panic("Client.Close not implemented")
 }
 
-func (m *Client) WithTransaction(ctx context.Context, fn func(c client.Client) error) error {
+func (m *Client) WithTransaction(ctx context.Context, fn func(ctx context.Context, c client.Client) error) error {
 	if m.Pre != nil {
 		err := m.Pre("WithTransaction", map[string]any{"ctx": ctx, "fn": fn})
 		if err != nil {

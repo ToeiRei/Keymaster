@@ -27,7 +27,7 @@ func TestBunClient_WithTransaction_CommitsOnSuccess(t *testing.T) {
 	defer func() { _ = c.Close(context.Background()) }()
 
 	ctx := context.Background()
-	if err := c.WithTransaction(ctx, func(tx client.Client) error {
+	if err := c.WithTransaction(ctx, func(ctx context.Context, tx client.Client) error {
 		_, err := tx.CreateAccount(ctx, "alice", "example.com", 22, "ssh", "")
 		return err
 	}); err != nil {
@@ -55,7 +55,7 @@ func TestBunClient_WithTransaction_RollsBackOnError(t *testing.T) {
 
 	ctx := context.Background()
 	expected := errors.New("boom")
-	if err := c.WithTransaction(ctx, func(tx client.Client) error {
+	if err := c.WithTransaction(ctx, func(ctx context.Context, tx client.Client) error {
 		if _, err := tx.CreateAccount(ctx, "bob", "rollback.example", 22, "ssh", ""); err != nil {
 			return err
 		}

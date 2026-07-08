@@ -17,7 +17,7 @@ type Client interface {
 
 	Close(ctx context.Context) error
 
-	WithTransaction(ctx context.Context, fn func(c Client) error) error
+	WithTransaction(ctx context.Context, fn func(ctx context.Context, c Client) error) error
 
 	// --- PublicKey Management ---
 

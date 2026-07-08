@@ -74,7 +74,7 @@ func (c *BunClient) Close(ctx context.Context) error {
 // Current implementation uses store backup/restore to provide rollback semantics
 // across the Bun-backed CRUD flows. This keeps behavior deterministic until all
 // write paths can be moved to explicit bun.Tx plumbing.
-func (c *BunClient) WithTransaction(ctx context.Context, fn func(c client.Client) error) error {
+func (c *BunClient) WithTransaction(ctx context.Context, fn func(ctx context.Context, c client.Client) error) error {
 	if c.store == nil {
 		return errors.New("no store available")
 	}
@@ -86,7 +86,7 @@ func (c *BunClient) WithTransaction(ctx context.Context, fn func(c client.Client
 	if c.txDepth > 0 {
 		c.txDepth++
 		defer func() { c.txDepth-- }()
-		return fn(c)
+		return fn(ctx, c)
 	}
 
 	snapshot, err := c.store.ExportDataForBackup()
@@ -97,7 +97,7 @@ func (c *BunClient) WithTransaction(ctx context.Context, fn func(c client.Client
 	c.txDepth = 1
 	defer func() { c.txDepth = 0 }()
 
-	if err := fn(c); err != nil {
+	if err := fn(ctx, c); err != nil {
 		if restoreErr := c.store.ImportDataFromBackup(snapshot); restoreErr != nil {
 			if c.log != nil {
 				c.log.Printf("failed to rollback transaction snapshot: %v", restoreErr)
