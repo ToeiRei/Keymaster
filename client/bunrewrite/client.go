@@ -654,16 +654,20 @@ func (c *BunClient) ListAccountsLinkedToPublicKey(ctx context.Context, publicKey
 }
 
 func (c *BunClient) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
-	accountModel := db.AccountModel{ID: int(id)}
+	accountModel := db.AccountModel{
+		ID:           int(id),
+		Username:     username,
+		Hostname:     encodeHostPort(host, port),
+		DeployMethod: deploymentMethod,
+		DeploySecret: deploymentSecret,
+	}
 
 	err := c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		// update account
 		_, err := tx.NewUpdate().
-			Model((*db.AccountModel)(nil)).
-			Where("id = ?", int(id)).
-			Set("username = ?", username).
-			Set("hostname = ?", encodeHostPort(host, port)).
-			Set("deploy_method = ?", deploymentMethod).
-			Set("deploy_secret = ?", deploymentSecret).
+			Model(&accountModel).
+			Column("username", "hostname", "deploy_method", "deploy_secret").
+			WherePK().
 			Exec(ctx)
 		if err != nil {
 			return err
