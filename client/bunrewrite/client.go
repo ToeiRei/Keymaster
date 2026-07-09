@@ -244,6 +244,9 @@ func (c *BunClient) GetPublicKey(ctx context.Context, id client.PublicKeyId) (cl
 		WherePK().
 		Relation("Tags").
 		Exec(ctx)
+	if errors.Is(err, sql.ErrNoRows) {
+		return client.PublicKey{}, fmt.Errorf("public key not found: %d", id)
+	}
 	if err != nil {
 		return client.PublicKey{}, err
 	}
@@ -254,7 +257,7 @@ func (c *BunClient) GetPublicKey(ctx context.Context, id client.PublicKeyId) (cl
 func (c *BunClient) GetPublicKeys(ctx context.Context, ids ...client.PublicKeyId) ([]client.PublicKey, error) {
 	var publicKeysModel []*db.PublicKeyModel
 	_, err := c.bun.NewSelect().
-		Model(publicKeysModel).
+		Model(&publicKeysModel).
 		Where("id IN (?)", bun.List(ids)).
 		Relation("Tags").
 		Exec(ctx)
@@ -282,7 +285,7 @@ func (c *BunClient) ListPublicKeys(ctx context.Context, tagMatcher string) ([]cl
 
 	if len(tagMatcher) == 0 {
 		_, err := c.bun.NewSelect().
-			Model(publicKeysModel).
+			Model(&publicKeysModel).
 			Relation("Tags").
 			Exec(ctx)
 		if err != nil {
@@ -295,7 +298,7 @@ func (c *BunClient) ListPublicKeys(ctx context.Context, tagMatcher string) ([]cl
 		}
 
 		_, err = c.bun.NewSelect().
-			Model(publicKeysModel).
+			Model(&publicKeysModel).
 			Relation("Tags").
 			Apply(tagsbun.TagsExprToWhere(expr, tagsbun.TagsExprToSubqueryConfig{
 				TaggedTable:    "public_keys",
@@ -373,15 +376,18 @@ func (c *BunClient) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, 
 	// mock expiresAt
 	expiresAt, _ := time.Parse(time.DateOnly, "9999-01-02")
 
-	publicKeyModel := db.PublicKeyModel{ID: int(id)}
+	publicKeyModel := db.PublicKeyModel{
+		ID:        int(id),
+		Comment:   comment,
+		ExpiresAt: sql.NullTime{expiresAt, true},
+	}
 
 	err := c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		// update public key
 		_, err := tx.NewUpdate().
-			Model((*db.PublicKeyModel)(nil)).
-			Where("id = ?", int(id)).
-			Set("comment = ?", comment).
-			Set("expires_at = ?", sql.NullTime{expiresAt, true}).
+			Model(&publicKeyModel).
+			Column("comment", "expires_at").
+			WherePK().
 			Exec(ctx)
 		if err != nil {
 			return err
@@ -420,52 +426,59 @@ func (c *BunClient) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, 
 		}
 
 		// resolve tags
-		var newTagIds, oldTagIds []int
+		var newTagModels_Select, oldTagModels_Select []db.TagModel
 
-		err = tx.NewSelect().
-			Model((*db.TagModel)(nil)).
+		_, err = tx.NewSelect().
+			Model(&newTagModels_Select).
 			Where("slug IN (?)", bun.List(newTags)).
-			Column("id").
-			Scan(ctx, &newTagIds)
+			Exec(ctx)
 		if err != nil {
 			return err
 		}
 
-		err = tx.NewSelect().
-			Model((*db.TagModel)(nil)).
+		_, err = tx.NewSelect().
+			Model(&oldTagModels_Select).
 			Where("slug IN (?)", bun.List(oldTags)).
-			Column("id").
-			Scan(ctx, &oldTagIds)
+			Exec(ctx)
 		if err != nil {
 			return err
 		}
 
 		// update relations
 
+		oldTagIds := slices.Map(oldTagModels_Select, func(tagModel db.TagModel) int {
+			return tagModel.ID
+		})
+
 		_, err = tx.NewDelete().
 			Model((*db.PublicKeyToTagModel)(nil)).
 			Where("public_key_id = ?", publicKeyModel.ID).
-			Where("tag_id IN (?)", bun.List(oldTags)).
+			Where("tag_id IN (?)", bun.List(oldTagIds)).
 			Exec(ctx)
 		if err != nil {
 			return err
 		}
 
-		newTagModels := slices.Map(newTagIds, func(tagId int) *db.PublicKeyToTagModel {
+		newPublicKeyToTagModels := slices.Map(newTagModels_Select, func(tagModel db.TagModel) *db.PublicKeyToTagModel {
 			return &db.PublicKeyToTagModel{
 				PublicKeyId: publicKeyModel.ID,
-				TagId:       tagId,
+				TagId:       tagModel.ID,
 			}
 		})
 		_, err = tx.NewInsert().
-			Model(newTagModels).
+			Model(newPublicKeyToTagModels).
 			Exec(ctx)
 		if err != nil {
 			return err
 		}
 
-		// TODO update [publicKeyModel.Tags] to avoid another db query
-		// publicKeyModel.Tags = tagModels_Select
+		// update [publicKeyModel.Tags] in-place to avoid another db query
+		publicKeyModel.Tags = append(
+			slices.Filter(publicKeyModel.Tags, func(tagModel db.TagModel) bool {
+				return !slices.Contains(oldTags, tagModel.Slug)
+			}),
+			newTagModels_Select...,
+		)
 
 		return nil
 	})
@@ -502,119 +515,112 @@ func (c *BunClient) DeletePublicKeys(ctx context.Context, ids ...client.PublicKe
 
 // --- Account Management ---
 
-func (c *BunClient) CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
-	if c.store == nil {
-		return client.Account{}, errors.New("no store available")
-	}
-
-	// Encode host:port into hostname.
-	encoded := encodeHostPort(host, port)
-
-	// Add account to store.
-	id, err := c.store.AddAccount(username, encoded, "", "")
+func modelToClientAccount(accountModel db.AccountModel) client.Account {
+	host, port, err := decodeHostPort(accountModel.Hostname)
 	if err != nil {
-		return client.Account{}, fmt.Errorf("failed to create account: %w", err)
+		// Fallback: assume port 22 if decoding fails.
+		host, port = accountModel.Hostname, 22
 	}
 
 	return client.Account{
-		Id:           client.AccountId(id),
-		Username:     username,
+		Id:           client.AccountId(accountModel.ID),
+		Username:     accountModel.Username,
 		Host:         host,
 		Port:         port,
+		DeployMethod: accountModel.DeployMethod,
+		DeploySecret: accountModel.DeploySecret,
+		DeployCache:  "",
+	}
+}
+
+func (c *BunClient) CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
+	accountModel := db.AccountModel{
+		Username:     username,
+		Hostname:     encodeHostPort(host, port),
+		IsActive:     true,
+		IsDirty:      true,
 		DeployMethod: deploymentMethod,
 		DeploySecret: deploymentSecret,
-		DeployCache:  "",
-	}, nil
+	}
+
+	_, err := c.bun.NewInsert().
+		Model(&accountModel).
+		Exec(ctx)
+	if err != nil {
+		return client.Account{}, err
+	}
+
+	return modelToClientAccount(accountModel), nil
 }
 
 func (c *BunClient) GetAccount(ctx context.Context, id client.AccountId) (client.Account, error) {
-	if c.store == nil {
-		return client.Account{}, errors.New("no store available")
-	}
-
-	m, err := c.store.GetAccount(int(id))
-	if err != nil {
-		return client.Account{}, fmt.Errorf("failed to get account: %w", err)
-	}
-	if m == nil {
+	accountModel := db.AccountModel{ID: int(id)}
+	_, err := c.bun.NewSelect().
+		Model(&accountModel).
+		WherePK().
+		Exec(ctx)
+	if errors.Is(err, sql.ErrNoRows) {
 		return client.Account{}, fmt.Errorf("account not found: %d", id)
 	}
+	if err != nil {
+		return client.Account{}, err
+	}
 
-	return c.accountModelToClient(m)
+	return modelToClientAccount(accountModel), nil
 }
 
 func (c *BunClient) GetAccounts(ctx context.Context, ids ...client.AccountId) ([]client.Account, error) {
-	var result []client.Account
-	for _, id := range ids {
-		acc, err := c.GetAccount(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, acc)
+	var accountModels []*db.AccountModel
+	_, err := c.bun.NewSelect().
+		Model(&accountModels).
+		Where("id IN (?)", bun.List(ids)).
+		Exec(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return result, nil
+
+	accounts := slices.Map(accountModels, func(accountModel *db.AccountModel) client.Account {
+		return modelToClientAccount(*accountModel)
+	})
+
+	if len(accounts) != len(ids) {
+		accountIds := slices.Map(accounts, func(account client.Account) client.AccountId { return account.Id })
+		missingIds := slices.Map(slices.Filter(ids, func(id client.AccountId) bool {
+			return !slices.Contains(accountIds, id)
+		}), func(id client.AccountId) string { return fmt.Sprint(id) })
+		return nil, fmt.Errorf("accounts with ids could not be found: %s", strings.Join(missingIds, ", "))
+	}
+
+	return accounts, nil
 }
 
 func (c *BunClient) ListAccounts(ctx context.Context) ([]client.Account, error) {
-	if c.store == nil {
-		return nil, errors.New("no store available")
-	}
-
-	accounts, err := c.store.GetAllAccounts()
+	var accountModels []*db.AccountModel
+	_, err := c.bun.NewSelect().
+		Model(&accountModels).
+		Exec(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list accounts: %w", err)
+		return nil, err
 	}
 
-	var result []client.Account
-	for i := range accounts {
-		acc, err := c.accountModelToClient(&accounts[i])
-		if err != nil {
-			// Log error but continue; use fallback conversion
-			if c.log != nil {
-				c.log.Printf("warning: failed to convert account %d: %v", accounts[i].ID, err)
-			}
-			acc = client.Account{
-				Id:           client.AccountId(accounts[i].ID),
-				Username:     accounts[i].Username,
-				Host:         accounts[i].Hostname,
-				Port:         22,
-				DeployMethod: "ssh",
-			}
-		}
-		result = append(result, acc)
-	}
-
-	return result, nil
+	return slices.Map(accountModels, func(accountModel *db.AccountModel) client.Account {
+		return modelToClientAccount(*accountModel)
+	}), nil
 }
 
 func (c *BunClient) ListAccountsDirty(ctx context.Context) ([]client.Account, error) {
-	if c.store == nil {
-		return nil, errors.New("no store available")
-	}
-
-	accounts, err := c.store.GetAllAccounts()
+	var accountModels []*db.AccountModel
+	_, err := c.bun.NewSelect().
+		Model(&accountModels).
+		Where("is_dirty = ?", true).
+		Exec(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list dirty accounts: %w", err)
+		return nil, err
 	}
 
-	var result []client.Account
-	for i := range accounts {
-		if accounts[i].IsDirty {
-			acc, err := c.accountModelToClient(&accounts[i])
-			if err != nil {
-				acc = client.Account{
-					Id:           client.AccountId(accounts[i].ID),
-					Username:     accounts[i].Username,
-					Host:         accounts[i].Hostname,
-					Port:         22,
-					DeployMethod: "ssh",
-				}
-			}
-			result = append(result, acc)
-		}
-	}
-
-	return result, nil
+	return slices.Map(accountModels, func(accountModel *db.AccountModel) client.Account {
+		return modelToClientAccount(*accountModel)
+	}), nil
 }
 
 func (c *BunClient) ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Account, error) {
@@ -648,67 +654,77 @@ func (c *BunClient) ListAccountsLinkedToPublicKey(ctx context.Context, publicKey
 }
 
 func (c *BunClient) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
-	if c.store == nil {
-		return client.Account{}, errors.New("no store available")
-	}
+	accountModel := db.AccountModel{ID: int(id)}
 
-	// Get existing account.
-	m, err := c.store.GetAccount(int(id))
-	if err != nil {
-		return client.Account{}, fmt.Errorf("failed to get account for update: %w", err)
-	}
-	if m == nil {
-		return client.Account{}, fmt.Errorf("account not found: %d", id)
-	}
-
-	// Update fields that changed.
-	encoded := encodeHostPort(host, port)
-	if m.Hostname != encoded {
-		if err := c.store.UpdateAccountHostname(int(id), encoded); err != nil {
-			return client.Account{}, fmt.Errorf("failed to update hostname: %w", err)
+	err := c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		_, err := tx.NewUpdate().
+			Model((*db.AccountModel)(nil)).
+			Where("id = ?", int(id)).
+			Set("username = ?", username).
+			Set("hostname = ?", encodeHostPort(host, port)).
+			Set("deploy_method = ?", deploymentMethod).
+			Set("deploy_secret = ?", deploymentSecret).
+			Exec(ctx)
+		if err != nil {
+			return err
 		}
-	}
-	// Username is not persisted through this store path yet.
 
-	return client.Account{
-		Id:           client.AccountId(m.ID),
-		Username:     username,
-		Host:         host,
-		Port:         port,
-		DeployMethod: deploymentMethod,
-		DeploySecret: deploymentSecret,
-		DeployCache:  "",
-	}, nil
+		_, err = tx.NewSelect().
+			Model(&accountModel).
+			WherePK().
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return client.Account{}, err
+	}
+
+	return modelToClientAccount(accountModel), nil
 }
 
 func (c *BunClient) DeleteAccounts(ctx context.Context, ids ...client.AccountId) error {
-	if c.store == nil {
-		return errors.New("no store available")
-	}
-
-	for _, id := range ids {
-		if err := c.store.DeleteAccount(int(id)); err != nil {
-			return fmt.Errorf("failed to delete account %d: %w", id, err)
+	return c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		res, err := tx.NewDelete().
+			Model((*db.AccountModel)(nil)).
+			Where("id IN (?)", bun.List(ids)).
+			Exec(ctx)
+		if err != nil {
+			return err
 		}
-	}
 
-	return nil
+		rowsAffected, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+
+		unaffectedRows := int64(len(ids)) - rowsAffected
+		if unaffectedRows > 0 {
+			return fmt.Errorf("%d account ids could not be found", unaffectedRows)
+		}
+
+		return nil
+	})
 }
 
 func (c *BunClient) IsAccountDirty(ctx context.Context, account client.Account) (bool, error) {
-	if c.store == nil {
-		return false, errors.New("no store available")
-	}
-
-	m, err := c.store.GetAccount(int(account.Id))
-	if err != nil {
-		return false, fmt.Errorf("failed to check account dirty status: %w", err)
-	}
-	if m == nil {
+	accountModel := db.AccountModel{ID: int(account.Id)}
+	_, err := c.bun.NewSelect().
+		Model(&accountModel).
+		Column("is_dirty").
+		WherePK().
+		Exec(ctx)
+	if errors.Is(err, sql.ErrNoRows) {
 		return false, fmt.Errorf("account not found: %d", account.Id)
 	}
+	if err != nil {
+		return false, err
+	}
 
-	return m.IsDirty, nil
+	return accountModel.IsDirty, nil
 }
 
 // --- Link Management ---

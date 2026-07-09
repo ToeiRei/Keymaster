@@ -113,7 +113,9 @@ type AccountModel struct {
 	Tags          sql.NullString `bun:"tags"`
 	Serial        int            `bun:"serial"`
 	IsActive      bool           `bun:"is_active"`
-	IsDirty       bool           `bun:"is_dirty"`
+	IsDirty       bool           `bun:"is_dirty"` // DEPRECATED
+	DeployMethod  string         `bun:"deploy_method"`
+	DeploySecret  string         `bun:"deploy_secret"`
 
 	Links []LinkModel `bun:"rel:has-many,join:id=account_id"`
 }
@@ -126,7 +128,7 @@ type PublicKeyModel struct {
 	KeyData       string       `bun:"key_data"`
 	Comment       string       `bun:"comment"`
 	ExpiresAt     sql.NullTime `bun:"expires_at"`
-	IsGlobal      bool         `bun:"is_global"`
+	IsGlobal      bool         `bun:"is_global"` // DEPRECATED
 
 	Tags []TagModel `bun:"m2m:public_key_to_tags,join:PublicKey=Tag"`
 }
