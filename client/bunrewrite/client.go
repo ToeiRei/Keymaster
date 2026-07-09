@@ -16,9 +16,7 @@ import (
 	"github.com/bobg/go-generics/v4/slices"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/config"
-	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/db"
-	"github.com/toeirei/keymaster/core/model"
 	"github.com/toeirei/keymaster/core/sshkey"
 	"github.com/toeirei/keymaster/tags"
 	"github.com/toeirei/keymaster/tags/tagsbun"
@@ -53,7 +51,7 @@ func NewBunClient(config config.Config, logger *log.Logger) (*BunClient, error) 
 	case "mysql":
 		dbDriver = "mysql"
 	default:
-		return nil, fmt.Errorf("unknown db type: %w", config.Database.Type)
+		return nil, fmt.Errorf("unknown db type: %s", config.Database.Type)
 	}
 
 	// create connection
@@ -111,33 +109,6 @@ func decodeHostPort(encoded string) (string, int, error) {
 		return "", 0, fmt.Errorf("invalid port: %s", parts[1])
 	}
 	return parts[0], port, nil
-}
-
-// accountModelToClient converts a core.model.Account to a client.Account.
-// Hostname is expected to be encoded as "host:port".
-func (c *BunClient) accountModelToClient(m *model.Account) (client.Account, error) {
-	host, port, err := decodeHostPort(m.Hostname)
-	if err != nil {
-		// Fallback: assume port 22 if decoding fails
-		return client.Account{
-			Id:           client.AccountId(m.ID),
-			Username:     m.Username,
-			Host:         m.Hostname,
-			Port:         22,
-			DeployMethod: "ssh",
-			DeploySecret: "",
-			DeployCache:  "",
-		}, nil
-	}
-	return client.Account{
-		Id:           client.AccountId(m.ID),
-		Username:     m.Username,
-		Host:         host,
-		Port:         port,
-		DeployMethod: "ssh",
-		DeploySecret: "",
-		DeployCache:  "",
-	}, nil
 }
 
 // --- PublicKey Management ---
@@ -324,52 +295,7 @@ func (c *BunClient) ListPublicKeys(ctx context.Context, tagMatcher string) ([]cl
 }
 
 func (c *BunClient) ListPublicKeysLinkedToAccount(ctx context.Context, accountId client.AccountId, expired bool) ([]client.PublicKey, error) {
-	km := core.DefaultKeyManager()
-	if km == nil {
-		return nil, errors.New("no key manager available")
-	}
-
-	// Get keys assigned to this account.
-	pks, err := km.GetKeysForAccount(int(accountId))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get keys for account: %w", err)
-	}
-
-	// Also include global keys.
-	global, err := km.GetGlobalPublicKeys()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get global public keys: %w", err)
-	}
-
-	// Merge and deduplicate by ID.
-	seen := make(map[int]bool)
-	var result []client.PublicKey
-
-	for _, pk := range global {
-		seen[pk.ID] = true
-		result = append(result, client.PublicKey{
-			Id:        client.PublicKeyId(pk.ID),
-			Algorithm: pk.Algorithm,
-			Data:      pk.KeyData,
-			Comment:   pk.Comment,
-			Tags:      nil,
-		})
-	}
-
-	for _, pk := range pks {
-		if !seen[pk.ID] {
-			seen[pk.ID] = true
-			result = append(result, client.PublicKey{
-				Id:        client.PublicKeyId(pk.ID),
-				Algorithm: pk.Algorithm,
-				Data:      pk.KeyData,
-				Comment:   pk.Comment,
-				Tags:      nil,
-			})
-		}
-	}
-
-	return result, nil
+	panic("not implemented")
 }
 
 func (c *BunClient) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, comment string, tags tags.Tags) (client.PublicKey, error) {
@@ -624,33 +550,7 @@ func (c *BunClient) ListAccountsDirty(ctx context.Context) ([]client.Account, er
 }
 
 func (c *BunClient) ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Account, error) {
-	km := core.DefaultKeyManager()
-	if km == nil {
-		return nil, errors.New("no key manager available")
-	}
-
-	// Get accounts that have this key assigned.
-	accounts, err := km.GetAccountsForKey(int(publicKeyId))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get accounts for key: %w", err)
-	}
-
-	var result []client.Account
-	for _, acc := range accounts {
-		clientAcc, err := c.accountModelToClient(&acc)
-		if err != nil {
-			clientAcc = client.Account{
-				Id:           client.AccountId(acc.ID),
-				Username:     acc.Username,
-				Host:         acc.Hostname,
-				Port:         22,
-				DeployMethod: "ssh",
-			}
-		}
-		result = append(result, clientAcc)
-	}
-
-	return result, nil
+	panic("not implemented")
 }
 
 func (c *BunClient) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
@@ -734,131 +634,65 @@ func (c *BunClient) IsAccountDirty(ctx context.Context, account client.Account) 
 // --- Link Management ---
 
 func (c *BunClient) CreateLink(ctx context.Context, accountId client.AccountId, tagMatcher string, expiresAt time.Time) (client.Link, error) {
-	// TODO: Link operations not yet fully implemented.
-	// account_keys table doesn't have tagMatcher or expiresAt columns.
-	// This is a stub implementation.
-	return client.Link{
-		Id:         client.LinkId(0), // TODO: Needs proper LinkId generation
-		AccountId:  accountId,
-		TagMatcher: tagMatcher,
-		ExpiresAt:  expiresAt,
-	}, errors.New("CreateLink: TODO - link operations not yet fully implemented")
+	panic("not implemented")
 }
 
 func (c *BunClient) GetLink(ctx context.Context, id client.LinkId) (client.Link, error) {
-	// TODO: Link operations not yet fully implemented.
-	return client.Link{}, errors.New("GetLink: TODO - link operations not yet fully implemented")
+	panic("not implemented")
 }
 
 func (c *BunClient) GetLinks(ctx context.Context, ids ...client.LinkId) ([]client.Link, error) {
-	// TODO: Link operations not yet fully implemented.
-	return nil, errors.New("GetLinks: TODO - link operations not yet fully implemented")
+	panic("not implemented")
 }
 
 func (c *BunClient) ListLinksForAccount(ctx context.Context, accountId client.AccountId, expired bool) ([]client.Link, error) {
-	km := core.DefaultKeyManager()
-	if km == nil {
-		return nil, errors.New("no key manager available")
-	}
-
-	// Get public keys assigned to this account.
-	keys, err := km.GetKeysForAccount(int(accountId))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get keys for account: %w", err)
-	}
-
-	// Convert to simplified Link objects (without tagMatcher/expiresAt).
-	// TODO: Once account_keys table has tagMatcher/expiresAt columns, populate these fields.
-	var result []client.Link
-	for i := range keys {
-		result = append(result, client.Link{
-			Id:         client.LinkId(i + 1), // TODO: Use proper link IDs once schema supports them
-			AccountId:  accountId,
-			TagMatcher: "", // TODO: Not yet in schema
-			ExpiresAt:  time.Time{},
-		})
-	}
-
-	return result, nil
+	panic("not implemented")
 }
 
 func (c *BunClient) ListLinksForPublicKey(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Link, error) {
-	km := core.DefaultKeyManager()
-	if km == nil {
-		return nil, errors.New("no key manager available")
-	}
-
-	// Get accounts that have this key assigned.
-	accounts, err := km.GetAccountsForKey(int(publicKeyId))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get accounts for key: %w", err)
-	}
-
-	// Convert to simplified Link objects.
-	// TODO: Once account_keys table has tagMatcher/expiresAt columns, populate these fields.
-	var result []client.Link
-	for i, acc := range accounts {
-		result = append(result, client.Link{
-			Id:         client.LinkId(i + 1), // TODO: Use proper link IDs once schema supports them
-			AccountId:  client.AccountId(acc.ID),
-			TagMatcher: "", // TODO: Not yet in schema
-			ExpiresAt:  time.Time{},
-		})
-	}
-
-	return result, nil
+	panic("not implemented")
 }
 
 func (c *BunClient) UpdateLink(ctx context.Context, id client.LinkId, accountId client.AccountId, tagMatcher string, expiresAt time.Time) (client.Link, error) {
-	// TODO: Link operations not yet fully implemented.
-	return client.Link{}, errors.New("UpdateLink: TODO - link operations not yet fully implemented")
+	panic("not implemented")
 }
 
 func (c *BunClient) DeleteLinks(ctx context.Context, ids ...client.LinkId) error {
-	// TODO: Link operations not yet fully implemented.
-	return errors.New("DeleteLinks: TODO - link operations not yet fully implemented")
+	panic("not implemented")
 }
 
 // --- Deploy & Verify ---
 
 func (c *BunClient) DeployAccount(ctx context.Context, accountId client.AccountId) (chan client.DeployProgressAccount, error) {
-	// TODO: Implement deployment streaming for single account.
-	return nil, errors.New("DeployAccount: TODO - not yet implemented")
+	panic("not implemented")
 }
 
 func (c *BunClient) DeployAccounts(ctx context.Context, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error) {
-	// TODO: Implement deployment streaming for multiple accounts.
-	return nil, errors.New("DeployAccounts: TODO - not yet implemented")
+	panic("not implemented")
 }
 
 func (c *BunClient) VerifyAccount(ctx context.Context, accountId client.AccountId) (chan client.VerifyProgressAccount, error) {
-	// TODO: Implement verification streaming for single account.
-	return nil, errors.New("VerifyAccount: TODO - not yet implemented")
+	panic("not implemented")
 }
 
 func (c *BunClient) VerifyAccounts(ctx context.Context, accountIds ...client.AccountId) (chan client.VerifyProgressAccounts, error) {
-	// TODO: Implement verification streaming for multiple accounts.
-	return nil, errors.New("VerifyAccounts: TODO - not yet implemented")
+	panic("not implemented")
 }
 
 // --- Other Operations ---
 
 func (c *BunClient) ListAuditLogs(ctx context.Context, limit int) ([]client.AuditLog, error) {
-	// TODO: Implement audit log listing.
-	return nil, errors.New("ListAuditLogs: TODO - not yet implemented")
+	panic("not implemented")
 }
 
 func (c *BunClient) ListExistingTags(ctx context.Context) tags.Tags {
-	// TODO: Implement tag listing from existing accounts/keys.
-	return tags.Tags{}
+	panic("not implemented")
 }
 
 func (c *BunClient) OnboardHost(ctx context.Context, host string, port int, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {
-	// TODO: Implement host onboarding with streaming progress.
-	return nil, errors.New("OnboardHost: TODO - not yet implemented")
+	panic("not implemented")
 }
 
 func (c *BunClient) DecommisionAccount(ctx context.Context, id client.AccountId) (chan client.DecommisionAccountProgress, error) {
-	// TODO: Implement account decommissioning with streaming progress.
-	return nil, errors.New("DecommisionAccount: TODO - not yet implemented")
+	panic("not implemented")
 }
