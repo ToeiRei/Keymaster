@@ -6,10 +6,8 @@ package client
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
-
-	"github.com/toeirei/keymaster/tags"
-	"github.com/toeirei/keymaster/util/slicest"
 )
 
 type Client interface {
@@ -21,16 +19,16 @@ type Client interface {
 
 	// --- PublicKey Management ---
 
-	CreatePublicKey(ctx context.Context, key string, comment string, tags tags.Tags) (PublicKey, error)
+	CreatePublicKey(ctx context.Context, key string, comment string, isGlobal bool, expiresAt time.Time) (PublicKey, error)
 
 	GetPublicKey(ctx context.Context, id PublicKeyId) (PublicKey, error)
 
 	GetPublicKeys(ctx context.Context, ids ...PublicKeyId) ([]PublicKey, error)
 
-	ListPublicKeys(ctx context.Context, tagMatcher string) ([]PublicKey, error)
+	ListPublicKeys(ctx context.Context) ([]PublicKey, error)
 	ListPublicKeysLinkedToAccount(ctx context.Context, accountId AccountId, expired bool) ([]PublicKey, error)
 
-	UpdatePublicKey(ctx context.Context, id PublicKeyId, comment string, tags tags.Tags) (PublicKey, error)
+	UpdatePublicKey(ctx context.Context, id PublicKeyId, comment string, isGlobal bool, expiresAt time.Time) (PublicKey, error)
 
 	DeletePublicKeys(ctx context.Context, ids ...PublicKeyId) error
 
@@ -54,18 +52,16 @@ type Client interface {
 
 	// --- Link Management ---
 
-	CreateLink(ctx context.Context, accountId AccountId, tagMatcher string, expiresAt time.Time) (Link, error)
+	CreateLink(ctx context.Context, accountId AccountId, publicKeyId PublicKeyId, expiresAt time.Time) (Link, error)
 
-	GetLink(ctx context.Context, id LinkId) (Link, error)
-
-	GetLinks(ctx context.Context, ids ...LinkId) ([]Link, error)
+	GetLink(ctx context.Context, accountId AccountId, publicKeyId PublicKeyId) (Link, error)
 
 	ListLinksForAccount(ctx context.Context, accountId AccountId, expired bool) ([]Link, error)
 	ListLinksForPublicKey(ctx context.Context, publicKeyId PublicKeyId, expired bool) ([]Link, error)
 
-	UpdateLink(ctx context.Context, id LinkId, accountId AccountId, tagMatcher string, expiresAt time.Time) (Link, error)
+	UpdateLink(ctx context.Context, accountId AccountId, publicKeyId PublicKeyId, expiresAt time.Time) (Link, error)
 
-	DeleteLinks(ctx context.Context, ids ...LinkId) error
+	DeleteLink(ctx context.Context, accountId AccountId, publicKeyId PublicKeyId) error
 
 	// --- Deploy & Verify ---
 
@@ -80,8 +76,6 @@ type Client interface {
 	// --- Other ---
 
 	ListAuditLogs(ctx context.Context, limit int) ([]AuditLog, error) // TODO doesn't account for filtering and pagination
-
-	ListExistingTags(ctx context.Context) tags.Tags
 
 	OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan OnboardHostProgress, error)
 
@@ -98,7 +92,8 @@ type PublicKey struct {
 	Algorithm string
 	Data      string
 	Comment   string
-	Tags      tags.Tags
+	IsGlobal  bool
+	ExpiresAt time.Time
 	// ...
 }
 
@@ -119,12 +114,10 @@ func (a Account) String() string {
 	return fmt.Sprintf("%s %s@%s:%d", a.DeployMethod, a.Username, a.Host, a.Port)
 }
 
-type LinkId id
 type Link struct {
-	Id         LinkId
-	AccountId  AccountId
-	TagMatcher string
-	ExpiresAt  time.Time
+	AccountId   AccountId
+	PublicKeyId PublicKeyId
+	ExpiresAt   time.Time
 	// ...
 }
 
@@ -132,16 +125,40 @@ type AuditLogId id
 type AuditLog struct {
 	Id        AuditLogId
 	Timestamp time.Time
-
-	Metadata AuditLogMetadata
-
-	Action  string
-	Details string
+	Action    string
+	Details   AuditLogDetails
+	Metadata  AuditLogMetadata
 }
+type AuditLogDetail struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+type AuditLogDetails []AuditLogDetail
 type AuditLogMetadata struct {
 	Hostname string
 	Hostuser string
 	Referer  string
+}
+
+func escapeAuditLogDetailStr(str string) string {
+	// escape string if it containes spaces or "
+	if strings.ContainsAny(str, "\" ") {
+		return "\"" + strings.ReplaceAll(str, "\"", "\\\"") + "\""
+	}
+	return str
+}
+
+func (a AuditLogDetail) String() string {
+	return escapeAuditLogDetailStr(a.Key) + "=" + escapeAuditLogDetailStr(a.Value)
+}
+
+func (a AuditLogDetails) String() string {
+	strs := make([]string, 0, len(a))
+	for _, d := range a {
+		strs = append(strs, d.String())
+	}
+
+	return strings.Join(strs, " ")
 }
 
 func (a AuditLogMetadata) String() string {
@@ -159,10 +176,12 @@ type DeployProgressAccounts struct {
 }
 
 func (dp DeployProgressAccounts) Progress() float64 {
-	return slicest.Reduce(
-		slicest.MapValues(dp.Accounts),
-		func(dap *DeployProgressAccount, total float64) float64 { return total + dap.Progress },
-	) / float64(len(dp.Accounts))
+	var total float64
+	for _, dap := range dp.Accounts {
+		total += dap.Progress
+	}
+
+	return total / float64(len(dp.Accounts))
 }
 
 type VerifyProgressAccount = DeployProgressAccount

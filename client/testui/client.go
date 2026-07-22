@@ -15,7 +15,6 @@ import (
 
 	"github.com/jinzhu/copier"
 	"github.com/toeirei/keymaster/client"
-	"github.com/toeirei/keymaster/tags"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
@@ -23,15 +22,20 @@ type Client struct {
 	// local temporary repository for testing ui features
 	publicKeys   map[client.PublicKeyId]client.PublicKey
 	accounts     map[client.AccountId]client.Account
-	links        map[client.LinkId]client.Link
+	links        map[linkKey]client.Link
 	auditLogs    []client.AuditLog
 	remoteStates map[client.AccountId]string
 
 	// id counter to simulate serial
 	publicKeyIdCounter client.PublicKeyId
 	accountIdCounter   client.AccountId
-	linkIdCounter      client.LinkId
 	auditLogIdCounter  client.AuditLogId
+}
+
+// linkKey identifies a link by its (account, public key) pair.
+type linkKey struct {
+	accountId   client.AccountId
+	publicKeyId client.PublicKeyId
 }
 
 // *[Client] implements [client.Client]
@@ -39,7 +43,7 @@ var _ client.Client = (*Client)(nil)
 
 // --- utils ---
 
-func (c *Client) writeAuditLog(action string, details string) error {
+func (c *Client) writeAuditLog(action string, details client.AuditLogDetails) error {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return err
@@ -89,7 +93,7 @@ func NewClient() *Client {
 	return &Client{
 		publicKeys:   make(map[client.PublicKeyId]client.PublicKey),
 		accounts:     make(map[client.AccountId]client.Account),
-		links:        make(map[client.LinkId]client.Link),
+		links:        make(map[linkKey]client.Link),
 		remoteStates: make(map[client.AccountId]string),
 	}
 }
@@ -124,7 +128,7 @@ func (c *Client) WithTransaction(ctx context.Context, fn func(ctx context.Contex
 
 // --- client.PublicKey Management ---
 
-func (c *Client) CreatePublicKey(ctx context.Context, key string, comment string, tags tags.Tags) (client.PublicKey, error) {
+func (c *Client) CreatePublicKey(ctx context.Context, key string, comment string, isGlobal bool, expiresAt time.Time) (client.PublicKey, error) {
 	c.publicKeyIdCounter++
 	keyParts := strings.Split(key, " ")
 	if len(keyParts) < 2 {
@@ -132,10 +136,10 @@ func (c *Client) CreatePublicKey(ctx context.Context, key string, comment string
 	}
 	// algorithm, data := keyParts[0], strings.Join(slicest.SliceTo(keyParts, 1, len(keyParts)), " ")
 	algorithm, data := keyParts[0], keyParts[1]
-	publicKey := client.PublicKey{Id: c.publicKeyIdCounter, Algorithm: algorithm, Data: data, Comment: comment, Tags: tags}
+	publicKey := client.PublicKey{Id: c.publicKeyIdCounter, Algorithm: algorithm, Data: data, Comment: comment, IsGlobal: isGlobal, ExpiresAt: expiresAt}
 	c.publicKeys[publicKey.Id] = publicKey
 
-	_ = c.writeAuditLog("public_key.create", fmt.Sprintf("%#v", publicKey))
+	_ = c.writeAuditLog("public_key.create", client.AuditLogDetails{{"publicKey", fmt.Sprintf("%#v", publicKey)}})
 	return publicKey, nil
 }
 
@@ -152,19 +156,8 @@ func (c *Client) GetPublicKeys(ctx context.Context, ids ...client.PublicKeyId) (
 	})
 }
 
-func (c *Client) ListPublicKeys(ctx context.Context, tagMatcher string) ([]client.PublicKey, error) {
-	if len(tagMatcher) == 0 {
-		return slicest.MapValues(c.publicKeys), nil
-	}
-
-	expr, err := tags.ParseMatcher(tagMatcher)
-	if err != nil {
-		return nil, err
-	}
-
-	return slicest.Filter(slicest.MapValues(c.publicKeys), func(publicKey client.PublicKey) bool {
-		return expr.Eval(publicKey.Tags)
-	}), nil
+func (c *Client) ListPublicKeys(ctx context.Context) ([]client.PublicKey, error) {
+	return slicest.MapValues(c.publicKeys), nil
 }
 
 func (c *Client) ListPublicKeysLinkedToAccount(ctx context.Context, accountId client.AccountId, expired bool) ([]client.PublicKey, error) {
@@ -173,36 +166,66 @@ func (c *Client) ListPublicKeysLinkedToAccount(ctx context.Context, accountId cl
 		return nil, err
 	}
 
-	publicKeyss, err := slicest.MapXI(links, func(_ int, link client.Link) ([]client.PublicKey, error) {
-		return c.ListPublicKeys(ctx, link.TagMatcher)
-	})
-	if err != nil {
-		return nil, err
+	seen := make(map[client.PublicKeyId]struct{})
+	var result []client.PublicKey
+
+	// keys directly linked to the account
+	for _, link := range links {
+		if _, ok := seen[link.PublicKeyId]; ok {
+			continue
+		}
+		publicKey, err := c.GetPublicKey(ctx, link.PublicKeyId)
+		if err != nil {
+			return nil, err
+		}
+		seen[publicKey.Id] = struct{}{}
+		result = append(result, publicKey)
 	}
 
-	return slicest.Flatten(publicKeyss), nil
+	// global keys apply to every account, as long as the key has not expired
+	for _, publicKey := range c.publicKeys {
+		if !publicKey.IsGlobal {
+			continue
+		}
+		if _, ok := seen[publicKey.Id]; ok {
+			continue
+		}
+		if !publicKeyActive(publicKey, expired) {
+			continue
+		}
+		seen[publicKey.Id] = struct{}{}
+		result = append(result, publicKey)
+	}
+
+	return result, nil
 }
 
-func (c *Client) UpdateLink(ctx context.Context, id client.LinkId, accountId client.AccountId, tagMatcher string, expiresAt time.Time) (client.Link, error) {
-	if link, ok := c.links[id]; ok {
-		link.AccountId = accountId
-		link.TagMatcher = tagMatcher
-		link.ExpiresAt = expiresAt
-		c.links[id] = link
+// publicKeyActive reports whether a public key is currently valid: a zero
+// ExpiresAt never expires, and the expired flag bypasses the check entirely.
+func publicKeyActive(publicKey client.PublicKey, expired bool) bool {
+	return expired || publicKey.ExpiresAt.IsZero() || time.Now().Before(publicKey.ExpiresAt)
+}
 
-		_ = c.writeAuditLog("link.update", fmt.Sprintf("%#v", link))
+func (c *Client) UpdateLink(ctx context.Context, accountId client.AccountId, publicKeyId client.PublicKeyId, expiresAt time.Time) (client.Link, error) {
+	key := linkKey{accountId, publicKeyId}
+	if link, ok := c.links[key]; ok {
+		link.ExpiresAt = expiresAt
+		c.links[key] = link
+
+		_ = c.writeAuditLog("link.update", client.AuditLogDetails{{"link", fmt.Sprintf("%#v", link)}})
 		return link, nil
 	}
-	return client.Link{}, fmt.Errorf("account with id %v not found", id)
+	return client.Link{}, fmt.Errorf("link not found: account %v, public key %v", accountId, publicKeyId)
 }
 
-func (c *Client) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, comment string, tags tags.Tags) (client.PublicKey, error) {
+func (c *Client) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, comment string, isGlobal bool, expiresAt time.Time) (client.PublicKey, error) {
 	if publicKey, ok := c.publicKeys[id]; ok {
 		publicKey.Comment = comment
-		publicKey.Tags = tags
+		publicKey.IsGlobal = isGlobal
+		publicKey.ExpiresAt = expiresAt
 		c.publicKeys[id] = publicKey
 
-		_ = c.writeAuditLog("public_key.update", fmt.Sprintf("%#v", publicKey))
+		_ = c.writeAuditLog("public_key.update", client.AuditLogDetails{{"publicKey", fmt.Sprintf("%#v", publicKey)}})
 		return publicKey, nil
 	}
 	return client.PublicKey{}, fmt.Errorf("public key with id %v not found", id)
@@ -217,7 +240,7 @@ func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 
 	for _, id := range ids {
 		delete(c.publicKeys, id)
-		_ = c.writeAuditLog("public_key.delete", fmt.Sprintf("%#v", id))
+		_ = c.writeAuditLog("public_key.delete", client.AuditLogDetails{{"id", fmt.Sprintf("%#v", id)}})
 	}
 
 	return nil
@@ -230,7 +253,7 @@ func (c *Client) CreateAccount(ctx context.Context, username string, host string
 	account := client.Account{Id: c.accountIdCounter, Username: username, Host: host, Port: port, DeployMethod: deploymentMethod, DeploySecret: deploymentSecret, DeployCache: ""}
 	c.accounts[account.Id] = account
 
-	_ = c.writeAuditLog("account.create", fmt.Sprintf("%#v", account))
+	_ = c.writeAuditLog("account.create", client.AuditLogDetails{{"account", fmt.Sprintf("%#v", account)}})
 	return account, nil
 }
 
@@ -252,6 +275,18 @@ func (c *Client) ListAccounts(ctx context.Context) ([]client.Account, error) {
 }
 
 func (c *Client) ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Account, error) {
+	// A global key reaches every account, as long as the key has not expired.
+	publicKey, err := c.GetPublicKey(ctx, publicKeyId)
+	if err != nil {
+		return nil, err
+	}
+	if publicKey.IsGlobal {
+		if !publicKeyActive(publicKey, expired) {
+			return []client.Account{}, nil
+		}
+		return c.ListAccounts(ctx)
+	}
+
 	links, err := c.ListLinksForPublicKey(ctx, publicKeyId, expired)
 	if err != nil {
 		return nil, err
@@ -278,7 +313,7 @@ func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, usernam
 		account.DeploySecret = deploymentSecret
 		c.accounts[id] = account
 
-		_ = c.writeAuditLog("account.update", fmt.Sprintf("%#v", account))
+		_ = c.writeAuditLog("account.update", client.AuditLogDetails{{"account", fmt.Sprintf("%#v", account)}})
 		return account, nil
 	}
 	return client.Account{}, fmt.Errorf("account with id %v not found", id)
@@ -293,7 +328,7 @@ func (c *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) er
 
 	for _, id := range ids {
 		delete(c.accounts, id)
-		_ = c.writeAuditLog("account.delete", fmt.Sprintf("%#v", id))
+		_ = c.writeAuditLog("account.delete", client.AuditLogDetails{{"id", fmt.Sprintf("%#v", id)}})
 	}
 
 	return nil
@@ -310,61 +345,41 @@ func (c *Client) IsAccountDirty(ctx context.Context, account client.Account) (bo
 
 // --- client.Link Management ---
 
-func (c *Client) CreateLink(ctx context.Context, accountId client.AccountId, tagMatcher string, expiresAt time.Time) (client.Link, error) {
-	c.linkIdCounter++
-	link := client.Link{Id: c.linkIdCounter, AccountId: accountId, TagMatcher: tagMatcher, ExpiresAt: expiresAt}
-	c.links[link.Id] = link
+func (c *Client) CreateLink(ctx context.Context, accountId client.AccountId, publicKeyId client.PublicKeyId, expiresAt time.Time) (client.Link, error) {
+	link := client.Link{AccountId: accountId, PublicKeyId: publicKeyId, ExpiresAt: expiresAt}
+	c.links[linkKey{accountId, publicKeyId}] = link
 
-	_ = c.writeAuditLog("link.create", fmt.Sprintf("%#v", link))
+	_ = c.writeAuditLog("link.create", client.AuditLogDetails{{"link", fmt.Sprintf("%#v", link)}})
 	return link, nil
 }
 
-func (c *Client) GetLink(ctx context.Context, id client.LinkId) (client.Link, error) {
-	if link, ok := c.links[id]; ok {
+func (c *Client) GetLink(ctx context.Context, accountId client.AccountId, publicKeyId client.PublicKeyId) (client.Link, error) {
+	if link, ok := c.links[linkKey{accountId, publicKeyId}]; ok {
 		return link, nil
 	}
-	return client.Link{}, fmt.Errorf("link with id %v not found", id)
-}
-
-func (c *Client) GetLinks(ctx context.Context, ids ...client.LinkId) ([]client.Link, error) {
-	return slicest.MapX(ids, func(id client.LinkId) (client.Link, error) {
-		return c.GetLink(ctx, id)
-	})
+	return client.Link{}, fmt.Errorf("link not found: account %v, public key %v", accountId, publicKeyId)
 }
 
 func (c *Client) ListLinksForAccount(ctx context.Context, accountId client.AccountId, expired bool) ([]client.Link, error) {
 	return slicest.Filter(slicest.MapValues(c.links), func(link client.Link) bool {
-		return link.AccountId == accountId && (expired || time.Now().Before(link.ExpiresAt))
+		return link.AccountId == accountId && (expired || link.ExpiresAt.IsZero() || time.Now().Before(link.ExpiresAt))
 	}), nil
 }
 
 func (c *Client) ListLinksForPublicKey(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Link, error) {
-	publicKey, err := c.GetPublicKey(ctx, publicKeyId)
-	if err != nil {
-		return nil, err
-	}
-
-	return slicest.FilterX(slicest.MapValues(c.links), func(link client.Link) (bool, error) {
-		expr, err := tags.ParseMatcher(link.TagMatcher)
-		if err != nil {
-			return false, err
-		}
-
-		return expr.Eval(publicKey.Tags) && (expired || time.Now().Before(link.ExpiresAt)), nil
-	})
+	return slicest.Filter(slicest.MapValues(c.links), func(link client.Link) bool {
+		return link.PublicKeyId == publicKeyId && (expired || link.ExpiresAt.IsZero() || time.Now().Before(link.ExpiresAt))
+	}), nil
 }
 
-func (c *Client) DeleteLinks(ctx context.Context, ids ...client.LinkId) error {
-	for _, id := range ids {
-		if _, ok := c.links[id]; !ok {
-			return fmt.Errorf("link with id %v not found", id)
-		}
+func (c *Client) DeleteLink(ctx context.Context, accountId client.AccountId, publicKeyId client.PublicKeyId) error {
+	key := linkKey{accountId, publicKeyId}
+	if _, ok := c.links[key]; !ok {
+		return fmt.Errorf("link not found: account %v, public key %v", accountId, publicKeyId)
 	}
 
-	for _, id := range ids {
-		delete(c.links, id)
-		_ = c.writeAuditLog("link.delete", fmt.Sprintf("%#v", id))
-	}
+	delete(c.links, key)
+	_ = c.writeAuditLog("link.delete", client.AuditLogDetails{{"key", fmt.Sprintf("%#v", key)}})
 
 	return nil
 }
@@ -470,7 +485,7 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 			// simulate deploying data to remote
 			c.remoteStates[account.Id] = c.accountDeployCache(account, deployDatas[i])
 
-			_ = c.writeAuditLog("account.deploy", fmt.Sprintf("%#v", account))
+			_ = c.writeAuditLog("account.deploy", client.AuditLogDetails{{"account", fmt.Sprintf("%#v", account)}})
 
 			// update accounts deploy cache
 			_account := c.accounts[account.Id]
@@ -597,7 +612,7 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 				verifyProgress.Accounts[account.Id].Status = "finished"
 			}
 
-			_ = c.writeAuditLog("account.verify", fmt.Sprintf("%#v", account))
+			_ = c.writeAuditLog("account.verify", client.AuditLogDetails{{"account", fmt.Sprintf("%#v", account)}})
 
 			verifyProgress.Accounts[account.Id].Progress = 1
 			verifyProgressChan <- verifyProgress
@@ -619,16 +634,6 @@ func (c *Client) ListAuditLogs(ctx context.Context, limit int) ([]client.AuditLo
 	}
 
 	return append([]client.AuditLog(nil), logs...), nil
-}
-
-func (c *Client) ListExistingTags(ctx context.Context) tags.Tags {
-	tags := make(map[tags.Tag]struct{}) // abuse map as set
-	for _, publicKey := range c.publicKeys {
-		for _, tag := range publicKey.Tags {
-			tags[tag] = struct{}{}
-		}
-	}
-	return slicest.MapKeys(tags)
 }
 
 func (c *Client) OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {
