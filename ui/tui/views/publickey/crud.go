@@ -177,7 +177,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 				}
 				return ""
 			}},
-			{Title: func() string { return "Expires At" }, View: func(r recordT) string { return util.StringifyTime(r.publicKey.ExpiresAt) }},
+			{Title: func() string { return "Expires At" }, View: func(r recordT) string { return util.RenderExpiry(r.publicKey.ExpiresAt) }},
 			{Title: func() string { return "Algorithm" }, View: func(r recordT) string { return r.publicKey.Algorithm }},
 			{Title: func() string { return "Links (active/total)" }, View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkCount, r.totalLinkCount)

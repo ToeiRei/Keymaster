@@ -173,7 +173,7 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 
 		tablecontroll.New(tablecontroll.Columns[recordT]{
 			{Title: func() string { return "Public Key" }, View: func(r recordT) string { return publicKeyToString(r.publicKey) }},
-			{Title: func() string { return "Expires At" }, View: func(r recordT) string { return util.StringifyTime(r.link.ExpiresAt) }},
+			{Title: func() string { return "Expires At" }, View: func(r recordT) string { return util.RenderExpiry(r.link.ExpiresAt) }},
 			{Title: func() string { return "Account" }, View: func(r recordT) string { return account.String() }},
 		}).RenderBubblesTable,
 		func(record recordT) recordUpdateT {

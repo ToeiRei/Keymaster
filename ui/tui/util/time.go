@@ -6,6 +6,8 @@ package util
 import (
 	"strings"
 	"time"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 const (
@@ -44,4 +46,13 @@ func StringifyTime(value time.Time) string {
 		return ""
 	}
 	return value.Format(timeLayout1)
+}
+
+// RenderExpiry renders an expiry time for display in tables: an unset (zero)
+// expiry shows a greyed-out, italic "never" instead of a blank cell.
+func RenderExpiry(value time.Time) string {
+	if value.IsZero() {
+		return lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("240")).Render("never")
+	}
+	return StringifyTime(value)
 }
