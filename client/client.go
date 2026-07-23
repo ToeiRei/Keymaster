@@ -77,6 +77,8 @@ type Client interface {
 
 	ListAuditLogs(ctx context.Context, limit int) ([]AuditLog, error) // TODO doesn't account for filtering and pagination
 
+	ListConnectorKeys(ctx context.Context) ([]string, error)
+
 	OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan OnboardHostProgress, error)
 
 	DecommisionAccount(ctx context.Context, id AccountId) (chan DecommisionAccountProgress, error)

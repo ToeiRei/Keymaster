@@ -5,12 +5,23 @@ package connector
 
 import (
 	"fmt"
+	"slices"
 )
 
 var connectors = make(map[string]Connector)
 
 func Register(key string, connector Connector) {
 	connectors[key] = connector
+}
+
+// Keys returns the registered connector keys, sorted for stable ordering.
+func Keys() []string {
+	keys := make([]string, 0, len(connectors))
+	for k := range connectors {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
 }
 
 func Resolve(key string) (Connector, error) {

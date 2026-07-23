@@ -911,6 +911,10 @@ func (c *Client) ListAuditLogs(ctx context.Context, limit int) ([]client.AuditLo
 	}), nil
 }
 
+func (c *Client) ListConnectorKeys(ctx context.Context) ([]string, error) {
+	return connector.Keys(), nil
+}
+
 func (c *Client) OnboardHost(ctx context.Context, host string, port int, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {
 	panic("not planned")
 }

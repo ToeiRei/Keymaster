@@ -15,6 +15,8 @@ import (
 
 	"github.com/jinzhu/copier"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/connector"
+	_ "github.com/toeirei/keymaster/connector/ssh" // activate the ssh connector so ListConnectorKeys reports it
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
@@ -634,6 +636,10 @@ func (c *Client) ListAuditLogs(ctx context.Context, limit int) ([]client.AuditLo
 	}
 
 	return append([]client.AuditLog(nil), logs...), nil
+}
+
+func (c *Client) ListConnectorKeys(ctx context.Context) ([]string, error) {
+	return connector.Keys(), nil
 }
 
 func (c *Client) OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {

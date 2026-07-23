@@ -57,6 +57,7 @@ type ClientOverwrites struct {
 
 	// --- Other ---
 	ListAuditLogs      func(ctx context.Context, limit int) ([]client.AuditLog, error)
+	ListConnectorKeys  func(ctx context.Context) ([]string, error)
 	OnboardHost        func(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error)
 	DecommisionAccount func(ctx context.Context, id client.AccountId) (chan client.DecommisionAccountProgress, error)
 }
@@ -555,6 +556,21 @@ func (m *Client) ListAuditLogs(ctx context.Context, limit int) ([]client.AuditLo
 		return m.BaseClient.ListAuditLogs(ctx, limit)
 	}
 	panic("Client.ListAuditLogs not implemented")
+}
+
+func (m *Client) ListConnectorKeys(ctx context.Context) ([]string, error) {
+	if m.Pre != nil {
+		err := m.Pre("ListConnectorKeys", map[string]any{"ctx": ctx})
+		if err != nil {
+			return nil, nil
+		}
+	}
+	if m.Overwrites.ListConnectorKeys != nil {
+		return m.Overwrites.ListConnectorKeys(ctx)
+	} else if m.BaseClient != nil {
+		return m.BaseClient.ListConnectorKeys(ctx)
+	}
+	panic("Client.ListConnectorKeys not implemented")
 }
 
 func (m *Client) OnboardHost(ctx context.Context, host string, port int, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {
