@@ -645,17 +645,21 @@ func (c *Client) accountDeployData(ctx context.Context, account client.Account) 
 	now := time.Now()
 
 	var linkModels []db.LinkModel
-	err := c.bun.NewSelect().
+	query := c.bun.NewSelect().
 		Model(&linkModels).
 		Relation("PublicKey").
 		// WHERE links
-		Where("links.account_id = ?", int(account.Id)).
-		Where("(links.expires_at IS NULL OR links.expires_at > ?)", now).
+		Where("link_model.account_id = ?", int(account.Id)).
+		Where("(link_model.expires_at IS NULL OR link_model.expires_at > ?)", now).
 		// WHERE public_keys
-		Where("public_keys.id IS NOT NULL"). // converts relation to inner join
-		Where("(public_keys.expires_at IS NULL OR public_keys.expires_at > ?)", now).
-		Where("public_keys.is_global = ?", false).
-		Scan(ctx)
+		Where("public_key.id IS NOT NULL"). // converts relation to inner join
+		Where("(public_key.expires_at IS NULL OR public_key.expires_at > ?)", now).
+		Where("public_key.is_global = ?", false)
+
+	queryStr := query.String()
+	_ = queryStr
+
+	err := query.Scan(ctx)
 	if err != nil {
 		return connector.DeployData{}, err
 	}
