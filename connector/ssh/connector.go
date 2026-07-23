@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/toeirei/keymaster/connector"
-	"github.com/toeirei/keymaster/util/slicest"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -73,7 +72,10 @@ func (c *Connector) makeAuthorizedKeys(internalPublicKey string, records []conne
 		sshInternalKeyOptions+" "+internalPublicKey+" "+sshInternalKeyComment,
 	)
 
-	userKeyLines := slicest.Map(records, func(r connector.DeployRecord) string {
+	userKeyLines := make([]string, 0)
+	userKeyLinesGlobal := make([]string, 0)
+
+	for _, r := range records {
 		parts := make([]string, 0, 5)
 
 		// options
@@ -94,8 +96,22 @@ func (c *Connector) makeAuthorizedKeys(internalPublicKey string, records []conne
 		}
 
 		// [options] algo data [comment]
-		return strings.Join(parts, " ")
-	})
+		line := strings.Join(parts, " ")
+
+		if r.IsGlobal {
+			userKeyLinesGlobal = append(userKeyLinesGlobal, line)
+		} else {
+			userKeyLines = append(userKeyLines, line)
+		}
+	}
+
+	if len(userKeyLinesGlobal) > 0 {
+		// Sort for a deterministic ordering independent of the input order.
+		slices.Sort(userKeyLinesGlobal)
+
+		lines = append(lines, "", "# Global User Keys")
+		lines = append(lines, userKeyLinesGlobal...)
+	}
 
 	if len(userKeyLines) > 0 {
 		// Sort for a deterministic ordering independent of the input order.
@@ -103,8 +119,9 @@ func (c *Connector) makeAuthorizedKeys(internalPublicKey string, records []conne
 
 		lines = append(lines, "", "# User Keys")
 		lines = append(lines, userKeyLines...)
-		lines = append(lines, "")
 	}
+
+	lines = append(lines, "")
 
 	return strings.Join(lines, "\n")
 }
