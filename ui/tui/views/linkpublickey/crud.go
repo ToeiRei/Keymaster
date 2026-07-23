@@ -88,14 +88,14 @@ func createFormRows(c client.Client) func() []form.FormOpt[recordCreateT] {
 				},
 				accountToString,
 			)),
-			form.WithRowItem[recordCreateT]("expires_at", formelement.NewText("Expires At", "date on witch this link will expire and its public key will loose access")),
+			form.WithRowItem[recordCreateT]("expires_at", formelement.NewText("Expires At", "date on witch this link will expire and its public key will loose access (optional)")),
 		}
 	}
 }
 
 func updateFormRows() []form.FormOpt[recordUpdateT] {
 	return []form.FormOpt[recordUpdateT]{
-		form.WithRowItem[recordUpdateT]("expires_at", formelement.NewText("Expires At", "date on witch this link will expire and its public key will loose access")),
+		form.WithRowItem[recordUpdateT]("expires_at", formelement.NewText("Expires At", "date on witch this link will expire and its public key will loose access (optional)")),
 	}
 }
 

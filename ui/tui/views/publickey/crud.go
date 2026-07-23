@@ -235,14 +235,14 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 				form.WithRowItem[recordCreateT]("algorithm", formelement.NewText("Algorithm", "public key algorithm")),
 				form.WithRowItem[recordCreateT]("data", formelement.NewText("Data", "public key content")),
 				form.WithRowItem[recordCreateT]("is_global", formelement.NewCheckbox("Global")),
-				form.WithRowItem[recordCreateT]("expires_at", formelement.NewText("Expires At", "date on which this key will expire and loose access")),
+				form.WithRowItem[recordCreateT]("expires_at", formelement.NewText("Expires At", "date on which this key will expire and loose access (optional)")),
 			}
 		},
 		func() []form.FormOpt[recordUpdateT] {
 			return []form.FormOpt[recordUpdateT]{
 				form.WithRowItem[recordUpdateT]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
 				form.WithRowItem[recordUpdateT]("is_global", formelement.NewCheckbox("Global")),
-				form.WithRowItem[recordUpdateT]("expires_at", formelement.NewText("Expires At", "date on which this key will expire and loose access")),
+				form.WithRowItem[recordUpdateT]("expires_at", formelement.NewText("Expires At", "date on which this key will expire and loose access (optional)")),
 			}
 		},
 
