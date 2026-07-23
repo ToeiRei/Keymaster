@@ -41,10 +41,12 @@ type Connector struct{}
 var _ connector.Connector = (*Connector)(nil)
 
 func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData) (chan connector.Progress, error) {
+	// TODO implement
 	panic("unimplemented")
 }
 
 func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData) (chan connector.Progress, error) {
+	// TODO implement
 	panic("unimplemented")
 }
 
@@ -76,27 +78,27 @@ func (c *Connector) makeAuthorizedKeys(internalPublicKey string, records []conne
 	userKeyLinesGlobal := make([]string, 0)
 
 	for _, r := range records {
-		parts := make([]string, 0, 5)
+		segments := make([]string, 0, 5)
 
 		// options
 		if !r.ExpiresAt.IsZero() {
-			parts = append(parts, `expiry-time="`+r.ExpiresAt.UTC().Format(expiryTimeLayout)+`Z"`)
+			segments = append(segments, `expiry-time="`+r.ExpiresAt.UTC().Format(expiryTimeLayout)+`Z"`)
 		}
 
 		// algo & data
-		parts = append(parts, r.Algorithm, r.Data)
+		segments = append(segments, r.Algorithm, r.Data)
 
 		// comments
 		if r.IsGlobal {
-			parts = append(parts, globalKeyCommentPrefix)
+			segments = append(segments, globalKeyCommentPrefix)
 		}
 		recordComment := strings.TrimSpace(r.Comment)
 		if recordComment != "" {
-			parts = append(parts, recordComment)
+			segments = append(segments, recordComment)
 		}
 
 		// [options] algo data [comment]
-		line := strings.Join(parts, " ")
+		line := strings.Join(segments, " ")
 
 		if r.IsGlobal {
 			userKeyLinesGlobal = append(userKeyLinesGlobal, line)
