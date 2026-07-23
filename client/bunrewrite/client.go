@@ -642,23 +642,80 @@ func (c *Client) DeleteLink(ctx context.Context, accountId client.AccountId, pub
 // --- Deploy & Verify ---
 
 func (c *Client) accountDeployData(ctx context.Context, account client.Account) (connector.DeployData, error) {
-	publicKeys, err := c.ListPublicKeysLinkedToAccount(ctx, account.Id, false)
+
+	now := time.Now()
+
+	var linkModels []db.LinkModel
+	err := c.bun.NewSelect().
+		Model(&linkModels).
+		Relation("PublicKey").
+		// WHERE links
+		Where("links.account_id = ?", int(account.Id)).
+		Where("(links.expires_at IS NULL OR links.expires_at > ?)", now).
+		// WHERE public_keys
+		Where("public_keys.id IS NOT NULL"). // converts relation to inner join
+		Where("(public_keys.expires_at IS NULL OR public_keys.expires_at > ?)", now).
+		Where("public_keys.is_global = ?", false).
+		Scan(ctx)
 	if err != nil {
 		return connector.DeployData{}, err
 	}
 
-	return connector.DeployData{
-		Records: slicest.Map(publicKeys, func(publicKey client.PublicKey) connector.DeployRecord {
-			return connector.DeployRecord{
-				Algorithm: publicKey.Algorithm,
-				Data:      publicKey.Data,
-				Comment:   publicKey.Comment,
-				IsGlobal:  publicKey.IsGlobal,
-				ExpiresAt: publicKey.ExpiresAt,
+	var globalPublicKeyModels []db.PublicKeyModel
+	err = c.bun.NewSelect().
+		Model(&globalPublicKeyModels).
+		Where("(expires_at IS NULL OR expires_at > ?)", now).
+		Where("is_global = ?", true).
+		Scan(ctx)
+	if err != nil {
+		return connector.DeployData{}, err
+	}
+
+	globalRecords := slicest.Map(globalPublicKeyModels, func(publicKeyModel db.PublicKeyModel) connector.DeployRecord {
+		var expiresAt time.Time
+		if publicKeyModel.ExpiresAt.Valid {
+			expiresAt = publicKeyModel.ExpiresAt.Time
+		}
+		return connector.DeployRecord{
+			publicKeyModel.Algorithm,
+			publicKeyModel.Data,
+			publicKeyModel.Comment,
+			publicKeyModel.IsGlobal,
+			expiresAt,
+		}
+	})
+
+	localRecords := slicest.Map(linkModels, func(linkModel db.LinkModel) connector.DeployRecord {
+		var expiresAt time.Time
+		// if linkModel.ExpiresAt.Valid && linkModel.PublicKey.ExpiresAt.Valid {
+		// 	if linkModel.ExpiresAt.Time.Before(linkModel.PublicKey.ExpiresAt.Time) {
+		// 		expiresAt = linkModel.ExpiresAt.Time
+		// 	} else {
+		// 		expiresAt = linkModel.PublicKey.ExpiresAt.Time
+		// 	}
+		// } else if linkModel.ExpiresAt.Valid {
+		// 	expiresAt = linkModel.ExpiresAt.Time
+		// } else if linkModel.PublicKey.ExpiresAt.Valid {
+		// 	expiresAt = linkModel.PublicKey.ExpiresAt.Time
+		// }
+		for _, t := range []sql.NullTime{linkModel.ExpiresAt, linkModel.PublicKey.ExpiresAt} {
+			if t.Valid && t.Time.Before(expiresAt) {
+				expiresAt = t.Time
 			}
-		}),
-		Secret: account.DeploySecret,
-		Cache:  account.DeployCache,
+		}
+		return connector.DeployRecord{
+			linkModel.PublicKey.Algorithm,
+			linkModel.PublicKey.Data,
+			linkModel.PublicKey.Comment,
+			linkModel.PublicKey.IsGlobal,
+			expiresAt,
+		}
+	})
+
+	return connector.DeployData{
+		append(globalRecords, localRecords...),
+		account.DeploySecret,
+		account.DeployCache,
 	}, nil
 }
 
