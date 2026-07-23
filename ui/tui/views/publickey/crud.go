@@ -100,7 +100,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 
 		func(record recordT) recordIdT { return record.publicKey.Id },
 		func(ctx context.Context, filter filterT) ([]recordT, error) {
-			publicKeys, err := c.ListPublicKeys(ctx, "")
+			publicKeys, err := c.ListPublicKeys(ctx)
 			if err != nil {
 				return nil, err
 			}

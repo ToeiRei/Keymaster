@@ -30,7 +30,7 @@ import (
 	"github.com/spf13/viper"
 
 	log "github.com/charmbracelet/log"
-	"github.com/toeirei/keymaster/client/bun"
+	bun "github.com/toeirei/keymaster/client/bunrewrite"
 	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/core"
 	"github.com/toeirei/keymaster/core/deploy"
