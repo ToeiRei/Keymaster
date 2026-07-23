@@ -10,7 +10,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
-	"github.com/toeirei/keymaster/client/bun"
+	bun "github.com/toeirei/keymaster/client/bunrewrite"
 	"github.com/toeirei/keymaster/ui/tui/views/root"
 )
 
