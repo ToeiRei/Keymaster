@@ -698,7 +698,7 @@ func (c *Client) accountDeployData(ctx context.Context, account client.Account) 
 		// 	expiresAt = linkModel.PublicKey.ExpiresAt.Time
 		// }
 		for _, t := range []sql.NullTime{linkModel.ExpiresAt, linkModel.PublicKey.ExpiresAt} {
-			if t.Valid && t.Time.Before(expiresAt) {
+			if t.Valid && (expiresAt.IsZero() || t.Time.Before(expiresAt)) {
 				expiresAt = t.Time
 			}
 		}
