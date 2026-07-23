@@ -88,9 +88,9 @@ func (c *Checkbox) Update(msg tea.Msg) (tea.Cmd, form.Action) {
 		case !c.Disabled && key.Matches(msg, c.KeyMap.Toggle):
 			c.checked = !c.checked
 			return nil, form.ActionNone
-		case key.Matches(msg, keys.DownArrow()):
+		case key.Matches(msg, keys.DownArrow(), keys.RightArrow()):
 			return nil, form.ActionNext
-		case key.Matches(msg, keys.UpArrow()):
+		case key.Matches(msg, keys.UpArrow(), keys.LeftArrow()):
 			return nil, form.ActionPrev
 		}
 	}
