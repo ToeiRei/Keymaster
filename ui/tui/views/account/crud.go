@@ -6,6 +6,7 @@ package account
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -17,6 +18,7 @@ import (
 	formelement "github.com/toeirei/keymaster/ui/tui/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/helpers/tablecontroll"
 	"github.com/toeirei/keymaster/ui/tui/popups/messagepopup"
+	"github.com/toeirei/keymaster/ui/tui/popups/selectpopup"
 	"github.com/toeirei/keymaster/ui/tui/views/linkaccount"
 	"github.com/toeirei/keymaster/util/slicest"
 )
@@ -80,12 +82,24 @@ func accountToRecord(ctx context.Context, c client.Client, account client.Accoun
 	}, nil
 }
 
-func formRows[T comparable]() []form.FormOpt[T] {
+func formRows[T comparable](c client.Client) []form.FormOpt[T] {
 	return []form.FormOpt[T]{
 		form.WithRowItem[T]("username", formelement.NewText("Username", "eg. user/root/...")),
 		form.WithRowItem[T]("host", formelement.NewText("Host", "ip/domain to connect to")),
 		form.WithRowItem[T]("port", formelement.NewText("Port", "eg. 22")),
-		form.WithRowItem[T]("deploy_method", formelement.NewText("Deploy Method", "ssh/cisco/...")),
+		form.WithRowItem[T]("deploy_method", formelement.NewPopup("Deploy Method",
+			func(returnValue func(value string) tea.Cmd) tea.Cmd {
+				return selectpopup.Open(
+					"Select Deploy Method",
+					func(ctx context.Context) ([]string, error) { return c.ListConnectorKeys(ctx) },
+					func(r string) tea.Cmd { return returnValue(r) },
+					tablecontroll.New(tablecontroll.Columns[string]{
+						{Title: func() string { return "Connector" }, View: func(r string) string { return r }},
+					}),
+				)
+			},
+			func(v string) string { return v },
+		)),
 		form.WithRowItem[T]("deploy_secret", formelement.NewTextarea("Deploy Secret", "", 3, 5)),
 	}
 }
@@ -194,10 +208,19 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			}
 		},
 
-		formRows[recordCreateT],
-		formRows[recordUpdateT],
+		func() []form.FormOpt[recordCreateT] { return formRows[recordCreateT](c) },
+		func() []form.FormOpt[recordUpdateT] { return formRows[recordUpdateT](c) },
 
 		rc,
+
+		crud.WithCreateRecordPreset[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](
+			func() recordCreateT {
+				connectorKeys, err := c.ListConnectorKeys(context.Background())
+				if err != nil || !slices.Contains(connectorKeys, "ssh") {
+					return recordCreateT{}
+				}
+				return recordCreateT{DeployMethod: "ssh"}
+			}),
 
 		crud.WithListDuplicateAction[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](func(record recordT) recordCreateT {
 			return recordCreateT{
