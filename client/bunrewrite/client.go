@@ -642,7 +642,6 @@ func (c *Client) DeleteLink(ctx context.Context, accountId client.AccountId, pub
 // --- Deploy & Verify ---
 
 func (c *Client) accountDeployData(ctx context.Context, account client.Account) (connector.DeployData, error) {
-
 	now := time.Now()
 
 	var linkModels []db.LinkModel
