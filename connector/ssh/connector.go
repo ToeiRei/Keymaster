@@ -65,7 +65,7 @@ func (c *Connector) VerifyOffline(ctx context.Context, deployData connector.Depl
 // so the resulting content — and therefore its fingerprint — is stable across
 // runs and platforms.
 func (c *Connector) makeAuthorizedKeys(internalPublicKey string, records []connector.DeployRecord) string {
-	lines := make([]string, 0, 5+len(records))
+	lines := make([]string, 0, 7+len(records))
 
 	lines = append(lines,
 		"# Keymaster Managed Keys",
