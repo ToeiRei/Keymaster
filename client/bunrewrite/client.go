@@ -730,18 +730,18 @@ func accountConnectionData(account client.Account) connector.ConnectionData {
 	}
 }
 
-type connectorOperation func(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData) (chan connector.Progress, error)
+type connectorOperation func(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester) (chan connector.Progress, error)
 
 type accountProgressUpdate struct {
 	accountId client.AccountId
-	progress  client.DeployProgressAccount
+	progress  client.ProgressAccount
 }
 
 // runAccounts resolves each account's connector, runs the given operation
 // (deploy or verify) sequentially, and forwards every connector progress update
 // into a shared aggregate snapshot sent on the returned channel. The channel is
 // closed once all accounts have been processed.
-func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connector) connectorOperation, concurrent int, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error) {
+func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connector) connectorOperation, userRequester connector.UserRequester, concurrent int, accountIds ...client.AccountId) (chan client.ProgressAccounts, error) {
 	accounts, err := c.GetAccounts(ctx, accountIds...)
 	if err != nil {
 		return nil, err
@@ -752,11 +752,11 @@ func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connec
 	}
 	semaphore := make(chan struct{}, concurrent)
 
-	progressMap := slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.DeployProgressAccount) {
-		return account.Id, &client.DeployProgressAccount{Progress: 0, Status: "not started", Err: nil}
+	progressMap := slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.ProgressAccount) {
+		return account.Id, &client.ProgressAccount{Progress: 0, Status: "not started", Err: nil}
 	})
 
-	progressChan := make(chan client.DeployProgressAccounts)
+	progressChan := make(chan client.ProgressAccounts)
 	accountProgressChan := make(chan accountProgressUpdate, concurrent)
 
 	go func() {
@@ -772,7 +772,7 @@ func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connec
 				defer wg.Done()
 				defer func() { <-semaphore }()
 
-				c.runAccount(ctx, account, selectOp, accountProgressChan)
+				c.runAccount(ctx, account, selectOp, accountProgressChan, userRequester)
 			}(account)
 		}
 
@@ -793,16 +793,16 @@ func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connec
 // runAccount performs the connector operation for a single account, streaming
 // its progress into the shared aggregate. Any failure to reach the connector is
 // reported as an error status on that account rather than aborting the batch.
-func (c *Client) runAccount(ctx context.Context, account client.Account, selectOp func(connector.Connector) connectorOperation, progressChanAccount chan accountProgressUpdate) {
-	sendProgress := func(progress float64, status string, err error) {
+func (c *Client) runAccount(ctx context.Context, account client.Account, selectOp func(connector.Connector) connectorOperation, progressChanAccount chan accountProgressUpdate, userRequester connector.UserRequester) {
+	sendProgress := func(progress client.ProgressAccount) {
 		progressChanAccount <- accountProgressUpdate{
 			account.Id,
-			client.DeployProgressAccount{progress, status, err},
+			progress,
 		}
 	}
 
 	fail := func(err error) {
-		sendProgress(1, "error", err)
+		sendProgress(client.ProgressAccount{1, "error", err})
 	}
 
 	con, err := connector.Resolve(account.DeployMethod)
@@ -817,25 +817,25 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 		return
 	}
 
-	connectorProgress, err := selectOp(con)(ctx, deployData, accountConnectionData(account))
+	connectorProgress, err := selectOp(con)(ctx, deployData, accountConnectionData(account), userRequester)
 	if err != nil {
 		fail(err)
 		return
 	}
 
 	for cp := range connectorProgress {
-		sendProgress(cp.Progress, cp.Status, cp.Err)
+		sendProgress(cp)
 	}
 }
 
-func (c *Client) DeployAccount(ctx context.Context, accountId client.AccountId) (chan client.DeployProgressAccount, error) {
-	dpc, err := c.DeployAccounts(ctx, accountId)
+func (c *Client) DeployAccount(ctx context.Context, userRequester client.UserRequester, accountId client.AccountId) (chan client.ProgressAccount, error) {
+	dpc, err := c.DeployAccounts(ctx, userRequester, accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	// convert channel to only report the single accounts progress
-	dbac := make(chan client.DeployProgressAccount)
+	dbac := make(chan client.ProgressAccount)
 	go func() {
 		defer close(dbac)
 
@@ -847,14 +847,14 @@ func (c *Client) DeployAccount(ctx context.Context, accountId client.AccountId) 
 	return dbac, nil
 }
 
-func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error) {
+func (c *Client) DeployAccounts(ctx context.Context, userRequester client.UserRequester, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error) {
 	return c.runAccounts(ctx, func(con connector.Connector) connectorOperation {
 		return con.Deploy
-	}, runtime.GOMAXPROCS(0), accountIds...)
+	}, userRequester, runtime.GOMAXPROCS(0), accountIds...)
 }
 
-func (c *Client) VerifyAccount(ctx context.Context, accountId client.AccountId) (chan client.VerifyProgressAccount, error) {
-	dpc, err := c.VerifyAccounts(ctx, accountId)
+func (c *Client) VerifyAccount(ctx context.Context, userRequester client.UserRequester, accountId client.AccountId) (chan client.VerifyProgressAccount, error) {
+	dpc, err := c.VerifyAccounts(ctx, userRequester, accountId)
 	if err != nil {
 		return nil, err
 	}
@@ -872,10 +872,10 @@ func (c *Client) VerifyAccount(ctx context.Context, accountId client.AccountId) 
 	return dbac, nil
 }
 
-func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.AccountId) (chan client.VerifyProgressAccounts, error) {
+func (c *Client) VerifyAccounts(ctx context.Context, userRequester client.UserRequester, accountIds ...client.AccountId) (chan client.VerifyProgressAccounts, error) {
 	return c.runAccounts(ctx, func(con connector.Connector) connectorOperation {
 		return con.Verify
-	}, runtime.GOMAXPROCS(0), accountIds...)
+	}, userRequester, runtime.GOMAXPROCS(0), accountIds...)
 }
 
 // --- Other Operations ---

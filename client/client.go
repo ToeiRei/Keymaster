@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/toeirei/keymaster/connector"
 )
 
 type Client interface {
@@ -65,13 +67,13 @@ type Client interface {
 
 	// --- Deploy & Verify ---
 
-	DeployAccount(ctx context.Context, accountId AccountId) (chan DeployProgressAccount, error)
+	DeployAccount(ctx context.Context, userRequester UserRequester, accountId AccountId) (chan DeployProgressAccount, error)
 
-	DeployAccounts(ctx context.Context, accountIds ...AccountId) (chan DeployProgressAccounts, error)
+	DeployAccounts(ctx context.Context, userRequester UserRequester, accountIds ...AccountId) (chan DeployProgressAccounts, error)
 
-	VerifyAccount(ctx context.Context, accountId AccountId) (chan VerifyProgressAccount, error)
+	VerifyAccount(ctx context.Context, userRequester UserRequester, accountId AccountId) (chan VerifyProgressAccount, error)
 
-	VerifyAccounts(ctx context.Context, accountIds ...AccountId) (chan VerifyProgressAccounts, error)
+	VerifyAccounts(ctx context.Context, userRequester UserRequester, accountIds ...AccountId) (chan VerifyProgressAccounts, error)
 
 	// --- Other ---
 
@@ -167,17 +169,20 @@ func (a AuditLogMetadata) String() string {
 	return fmt.Sprintf("%s %s@%s", a.Referer, a.Hostuser, a.Hostname)
 }
 
-type DeployProgressAccount struct {
-	Progress float64
-	Status   string
-	Err      error
+type (
+	ProgressAccount        = connector.Progress
+	DeployProgressAccount  = ProgressAccount
+	VerifyProgressAccount  = ProgressAccount
+	DeployProgressAccounts = ProgressAccounts
+	VerifyProgressAccounts = ProgressAccounts
+	UserRequester          = connector.UserRequester
+)
+
+type ProgressAccounts struct {
+	Accounts map[AccountId]*ProgressAccount
 }
 
-type DeployProgressAccounts struct {
-	Accounts map[AccountId]*DeployProgressAccount
-}
-
-func (dp DeployProgressAccounts) Progress() float64 {
+func (dp ProgressAccounts) Progress() float64 {
 	var total float64
 	for _, dap := range dp.Accounts {
 		total += dap.Progress
@@ -185,9 +190,6 @@ func (dp DeployProgressAccounts) Progress() float64 {
 
 	return total / float64(len(dp.Accounts))
 }
-
-type VerifyProgressAccount = DeployProgressAccount
-type VerifyProgressAccounts = DeployProgressAccounts
 
 // OnboardHostProgress reports progress during host onboarding.
 type OnboardHostProgress struct {

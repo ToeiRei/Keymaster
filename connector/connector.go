@@ -9,8 +9,8 @@ import (
 )
 
 type Connector interface {
-	Deploy(ctx context.Context, deployData DeployData, connectionData ConnectionData) (chan Progress, error)
-	Verify(ctx context.Context, deployData DeployData, connectionData ConnectionData) (chan Progress, error)
+	Deploy(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester) (chan Progress, error)
+	Verify(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester) (chan Progress, error)
 	VerifyOffline(ctx context.Context, deployData DeployData) (bool, error)
 }
 
@@ -38,4 +38,9 @@ type Progress struct {
 	Progress float64
 	Status   string
 	Err      error
+}
+
+type UserRequester interface {
+	RequestText(promt string) string
+	RequestChoice(promts []string) int
 }

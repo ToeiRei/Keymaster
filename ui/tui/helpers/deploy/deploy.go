@@ -44,11 +44,15 @@ func Deploy(ctx context.Context, c client.Client, accounts ...client.Account) te
 	accountNamesWidth := slicest.Reduce(slicest.MapValues(accountNamesMap), func(accountName string, width int) int { return max(width, len(accountName)) })
 	accountNameRenderer := lipgloss.NewStyle().Width(accountNamesWidth)
 
+	requester := newUserRequester()
+
 	return progresspopup.Open(
 		progresspopup.Bar,
 		"Deploying Accounts",
 		func(ctx context.Context, pc progresspopup.ProgressChan) tea.Cmd {
-			dpc, err := c.DeployAccounts(ctx, ids...)
+			defer requester.Close()
+
+			dpc, err := c.DeployAccounts(ctx, requester, ids...)
 			if err != nil {
 				return messagepopup.Open(messagepopup.Error, err.Error(), nil)
 			}
