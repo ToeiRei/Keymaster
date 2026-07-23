@@ -8,7 +8,9 @@
   "go.formatTool": "gofmt",
   "go.lintTool": "golangci-lint",
   "gopls": {
-    "ui.diagnostics.staticcheck": false
+    "ui.diagnostic.analyses": {
+      "composites": false
+    },
   },
   "[go]": {
     "editor.formatOnSave": true,
