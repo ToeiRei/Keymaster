@@ -11,7 +11,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
-	"github.com/toeirei/keymaster/tags"
 	"github.com/toeirei/keymaster/ui/tui/components/router"
 	"github.com/toeirei/keymaster/ui/tui/helpers/crud"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
@@ -38,12 +37,14 @@ type recordCreateT = struct {
 	Algorithm string `form:"algorithm"`
 	Data      string `form:"data"`
 	Comment   string `form:"comment"`
-	Tags      string `form:"tags"`
+	IsGlobal  bool   `form:"is_global"`
+	ExpiresAt string `form:"expires_at"`
 }
 
 type recordUpdateT struct {
-	Comment string `form:"comment"`
-	Tags    string `form:"tags"`
+	Comment   string `form:"comment"`
+	IsGlobal  bool   `form:"is_global"`
+	ExpiresAt string `form:"expires_at"`
 }
 
 type recordIdT = client.PublicKeyId
@@ -118,12 +119,18 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		},
 		func(ctx context.Context, recordCreate recordCreateT) (recordT, error) {
 			var record recordT
-			err := c.WithTransaction(ctx, func(c client.Client) error {
+			err := c.WithTransaction(ctx, func(ctx context.Context, c client.Client) error {
+				expiresAt, err := util.ParseTime(recordCreate.ExpiresAt)
+				if err != nil {
+					return err
+				}
+
 				publicKey, err := c.CreatePublicKey(
 					ctx,
 					recordCreate.Algorithm+" "+recordCreate.Data,
 					recordCreate.Comment,
-					tags.Parse(recordCreate.Tags),
+					recordCreate.IsGlobal,
+					expiresAt,
 				)
 				if err != nil {
 					return err
@@ -136,12 +143,18 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		},
 		func(ctx context.Context, id recordIdT, recordCreate recordUpdateT) (recordT, error) {
 			var record recordT
-			err := c.WithTransaction(ctx, func(c client.Client) error {
+			err := c.WithTransaction(ctx, func(ctx context.Context, c client.Client) error {
+				expiresAt, err := util.ParseTime(recordCreate.ExpiresAt)
+				if err != nil {
+					return err
+				}
+
 				publicKey, err := c.UpdatePublicKey(
 					ctx,
 					id,
 					recordCreate.Comment,
-					tags.Parse(recordCreate.Tags),
+					recordCreate.IsGlobal,
+					expiresAt,
 				)
 				if err != nil {
 					return err
@@ -158,7 +171,13 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 
 		tablecontroll.New(tablecontroll.Columns[recordT]{
 			{Title: func() string { return "Comment" }, View: func(r recordT) string { return r.publicKey.Comment }},
-			{Title: func() string { return "Tags" }, View: func(r recordT) string { return r.publicKey.Tags.String() }, MaxWidth: 0.5},
+			{Title: func() string { return "Global" }, View: func(r recordT) string {
+				if r.publicKey.IsGlobal {
+					return "✓"
+				}
+				return ""
+			}},
+			{Title: func() string { return "Expires At" }, View: func(r recordT) string { return util.StringifyTime(r.publicKey.ExpiresAt) }},
 			{Title: func() string { return "Algorithm" }, View: func(r recordT) string { return r.publicKey.Algorithm }},
 			{Title: func() string { return "Links (active/total)" }, View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkCount, r.totalLinkCount)
@@ -170,7 +189,8 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{
 				record.publicKey.Comment,
-				record.publicKey.Tags.String(),
+				record.publicKey.IsGlobal,
+				util.StringifyTime(record.publicKey.ExpiresAt),
 			}
 		},
 
@@ -214,13 +234,15 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 				form.WithRowItem[recordCreateT]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
 				form.WithRowItem[recordCreateT]("algorithm", formelement.NewText("Algorithm", "public key algorithm")),
 				form.WithRowItem[recordCreateT]("data", formelement.NewText("Data", "public key content")),
-				form.WithRowItem[recordCreateT]("tags", formelement.NewText("Tags", "comma seperated list of tags")),
+				form.WithRowItem[recordCreateT]("is_global", formelement.NewCheckbox("Global")),
+				form.WithRowItem[recordCreateT]("expires_at", formelement.NewText("Expires At", "date on which this key will expire and loose access")),
 			}
 		},
 		func() []form.FormOpt[recordUpdateT] {
 			return []form.FormOpt[recordUpdateT]{
 				form.WithRowItem[recordUpdateT]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
-				form.WithRowItem[recordUpdateT]("tags", formelement.NewText("Tags", "comma seperated list of tags")),
+				form.WithRowItem[recordUpdateT]("is_global", formelement.NewCheckbox("Global")),
+				form.WithRowItem[recordUpdateT]("expires_at", formelement.NewText("Expires At", "date on which this key will expire and loose access")),
 			}
 		},
 
@@ -231,7 +253,8 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 				record.publicKey.Algorithm,
 				record.publicKey.Data,
 				record.publicKey.Comment,
-				record.publicKey.Tags.String(),
+				record.publicKey.IsGlobal,
+				util.StringifyTime(record.publicKey.ExpiresAt),
 			}
 		}),
 		crud.WithListAction(
