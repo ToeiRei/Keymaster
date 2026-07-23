@@ -51,6 +51,10 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 }
 
 func (c *Connector) VerifyOffline(ctx context.Context, deployData connector.DeployData) (bool, error) {
+	if deployData.Cache == "" {
+		return false, nil
+	}
+
 	internalPublicKey, err := c.publicKeyFromSecret(deployData.Secret)
 	if err != nil {
 		return false, err
