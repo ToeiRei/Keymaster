@@ -3,7 +3,10 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package util
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 const (
 	timeLayout1 string = "2006.01.02 15:04:05"
@@ -14,7 +17,14 @@ const (
 	timeLayout6 string = "02.01.2006"
 )
 
+// ParseTime parses a date string. An empty (or whitespace-only) input is
+// treated as "no time" and returns the zero value without error, so optional
+// time fields can be left blank. A non-empty but unparseable value errors.
 func ParseTime(timeStr string) (time.Time, error) {
+	if strings.TrimSpace(timeStr) == "" {
+		return time.Time{}, nil
+	}
+
 	var result time.Time
 	var err error
 	for _, layout := range []string{timeLayout1, timeLayout2, timeLayout3, timeLayout4, timeLayout5, timeLayout6} {
@@ -27,6 +37,11 @@ func ParseTime(timeStr string) (time.Time, error) {
 	return result, err
 }
 
+// StringifyTime renders a time, mirroring [ParseTime]: the zero value renders
+// as an empty string so optional/absent times display and round-trip as blank.
 func StringifyTime(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
 	return value.Format(timeLayout1)
 }
