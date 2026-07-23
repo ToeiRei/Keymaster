@@ -118,7 +118,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		},
 		func(ctx context.Context, recordCreate recordCreateT) (recordT, error) {
 			var record recordT
-			err := c.WithTransaction(ctx, func(c client.Client) error {
+			err := c.WithTransaction(ctx, func(ctx context.Context, c client.Client) error {
 				port, err := strconv.Atoi(recordCreate.Port)
 				if err != nil {
 					return err
@@ -143,7 +143,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		},
 		func(ctx context.Context, id recordIdT, recordUpdate recordUpdateT) (recordT, error) {
 			var record recordT
-			err := c.WithTransaction(ctx, func(c client.Client) error {
+			err := c.WithTransaction(ctx, func(ctx context.Context, c client.Client) error {
 				port, err := strconv.Atoi(recordUpdate.Port)
 				if err != nil {
 					return err

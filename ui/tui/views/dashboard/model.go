@@ -186,7 +186,7 @@ func recentActivityTableRows(logs []AuditLogEntry) []recentActivityRow {
 		return recentActivityRow{
 			Timestamp: al.Timestamp.Format("Jan 02 15:04"),
 			Action:    titleFromUnderscore(strings.TrimSpace(al.Action)),
-			Details:   strings.TrimSpace(strings.ReplaceAll(al.Details, "\n", " ")),
+			Details:   strings.TrimSpace(strings.ReplaceAll(al.Details.String(), "\n", " ")),
 		}
 	})
 	slices.Reverse(rows)
@@ -262,7 +262,7 @@ func (m *Model) reload() tea.Cmd {
 			return msgReloadResult{err: err}
 		}
 
-		publicKeys, err := m.client.ListPublicKeys(ctx, "")
+		publicKeys, err := m.client.ListPublicKeys(ctx)
 		if err != nil {
 			return msgReloadResult{err: err}
 		}
