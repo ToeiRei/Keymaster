@@ -6,47 +6,95 @@ package linkaccount
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/client"
-	"github.com/toeirei/keymaster/tags"
 	"github.com/toeirei/keymaster/ui/tui/components/router"
 	"github.com/toeirei/keymaster/ui/tui/helpers/crud"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/helpers/tablecontroll"
+	"github.com/toeirei/keymaster/ui/tui/popups/selectpopup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
 type recordT = struct {
-	link                 client.Link
-	linkedPublicKeyCount int
+	link      client.Link
+	publicKey client.PublicKey
 }
 
 type recordCreateT = struct {
-	TagMatcher string `form:"tag_matcher"`
-	ExpiresAt  string `form:"expires_at"`
+	PublicKey client.PublicKey `form:"public_key"`
+	ExpiresAt string           `form:"expires_at"`
 }
 
-type recordUpdateT = recordCreateT
+// Only the expiry is editable: a link is identified by its (account, public
+// key) pair, so changing the key means creating a different link.
+type recordUpdateT = struct {
+	ExpiresAt string `form:"expires_at"`
+}
 
-type recordIdT = client.LinkId
+// recordIdT is the composite key that now identifies a link.
+type recordIdT = struct {
+	AccountId   client.AccountId
+	PublicKeyId client.PublicKeyId
+}
 
 type filterT = struct{}
 
+func publicKeyToString(publicKey client.PublicKey) string {
+	if publicKey == util.NewZero[client.PublicKey]() {
+		return lipgloss.NewStyle().Italic(true).Render("none")
+	}
+	if publicKey.Comment != "" {
+		return fmt.Sprintf("%s (%s)", publicKey.Comment, publicKey.Algorithm)
+	}
+	return publicKey.Algorithm
+}
+
 func linkToRecord(ctx context.Context, c client.Client, link client.Link) (recordT, error) {
-	publicKeys, err := c.ListPublicKeys(ctx, link.TagMatcher)
+	publicKey, err := c.GetPublicKey(ctx, link.PublicKeyId)
 	if err != nil {
 		return recordT{}, err
 	}
 
-	return recordT{link, len(publicKeys)}, nil
+	return recordT{link, publicKey}, nil
 }
 
-func formRows[T comparable]() []form.FormOpt[T] {
-	return []form.FormOpt[T]{
-		form.WithRowItem[T]("tag_matcher", formelement.NewText("Tag Matcher", "text to match tags of public keys")),
-		form.WithRowItem[T]("expires_at", formelement.NewText("Expires At", "date on witch this link will expire and its public keys will loose access")),
+func createFormRows(c client.Client) func() []form.FormOpt[recordCreateT] {
+	return func() []form.FormOpt[recordCreateT] {
+		return []form.FormOpt[recordCreateT]{
+			form.WithRowItem[recordCreateT]("public_key", formelement.NewPopup("Public Key",
+				func(returnValue func(value client.PublicKey) tea.Cmd) tea.Cmd {
+					return selectpopup.Open(
+						"Select Public Key",
+						func(ctx context.Context) ([]client.PublicKey, error) { return c.ListPublicKeys(ctx) },
+						func(r client.PublicKey) tea.Cmd { return returnValue(r) },
+						tablecontroll.New(tablecontroll.Columns[client.PublicKey]{
+							{Title: func() string { return "Comment" }, View: func(r client.PublicKey) string { return r.Comment }},
+							{Title: func() string { return "Algorithm" }, View: func(r client.PublicKey) string { return r.Algorithm }},
+						}),
+						selectpopup.WithFilter(func(filter string, records []client.PublicKey) []client.PublicKey {
+							return slicest.Filter(records, func(record client.PublicKey) bool {
+								return strings.Contains(record.Comment, filter) ||
+									strings.Contains(record.Algorithm, filter)
+							})
+						}),
+					)
+				},
+				publicKeyToString,
+			)),
+			form.WithRowItem[recordCreateT]("expires_at", formelement.NewText("Expires At", "date on witch this link will expire and its public key will loose access")),
+		}
+	}
+}
+
+func updateFormRows() []form.FormOpt[recordUpdateT] {
+	return []form.FormOpt[recordUpdateT]{
+		form.WithRowItem[recordUpdateT]("expires_at", formelement.NewText("Expires At", "date on witch this link will expire and its public key will loose access")),
 	}
 }
 
@@ -57,7 +105,9 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 			EntityNameMultiple: func() string { return "Links" },
 		},
 
-		func(record recordT) recordIdT { return record.link.Id },
+		func(record recordT) recordIdT {
+			return recordIdT{record.link.AccountId, record.link.PublicKeyId}
+		},
 		func(ctx context.Context, filter filterT) ([]recordT, error) {
 			links, err := c.ListLinksForAccount(ctx, account.Id, true)
 			if err != nil {
@@ -69,7 +119,7 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 			})
 		},
 		func(ctx context.Context, id recordIdT) (recordT, error) {
-			link, err := c.GetLink(ctx, id)
+			link, err := c.GetLink(ctx, id.AccountId, id.PublicKeyId)
 			if err != nil {
 				return recordT{}, err
 			}
@@ -78,12 +128,7 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 		},
 		func(ctx context.Context, recordCreate recordCreateT) (recordT, error) {
 			var record recordT
-			err := c.WithTransaction(ctx, func(c client.Client) error {
-				expr, err := tags.ParseMatcher(recordCreate.TagMatcher)
-				if err != nil {
-					return err
-				}
-
+			err := c.WithTransaction(ctx, func(ctx context.Context, c client.Client) error {
 				expiresAt, err := util.ParseTime(recordCreate.ExpiresAt)
 				if err != nil {
 					return err
@@ -92,7 +137,7 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 				link, err := c.CreateLink(
 					ctx,
 					account.Id,
-					expr.String(),
+					recordCreate.PublicKey.Id,
 					expiresAt,
 				)
 				if err != nil {
@@ -106,18 +151,13 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 		},
 		func(ctx context.Context, id recordIdT, recordUpdate recordUpdateT) (recordT, error) {
 			var record recordT
-			err := c.WithTransaction(ctx, func(c client.Client) error {
-				expr, err := tags.ParseMatcher(recordUpdate.TagMatcher)
-				if err != nil {
-					return err
-				}
-
+			err := c.WithTransaction(ctx, func(ctx context.Context, c client.Client) error {
 				expiresAt, err := util.ParseTime(recordUpdate.ExpiresAt)
 				if err != nil {
 					return err
 				}
 
-				link, err := c.UpdateLink(ctx, id, account.Id, expr.String(), expiresAt)
+				link, err := c.UpdateLink(ctx, id.AccountId, id.PublicKeyId, expiresAt)
 				if err != nil {
 					return err
 				}
@@ -128,30 +168,28 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 			return record, err
 		},
 		func(ctx context.Context, id recordIdT) error {
-			return c.DeleteLinks(ctx, id)
+			return c.DeleteLink(ctx, id.AccountId, id.PublicKeyId)
 		},
 
 		tablecontroll.New(tablecontroll.Columns[recordT]{
-			{Title: func() string { return "Tag Matcher" }, View: func(r recordT) string { return r.link.TagMatcher }},
+			{Title: func() string { return "Public Key" }, View: func(r recordT) string { return publicKeyToString(r.publicKey) }},
 			{Title: func() string { return "Expires At" }, View: func(r recordT) string { return util.StringifyTime(r.link.ExpiresAt) }},
 			{Title: func() string { return "Account" }, View: func(r recordT) string { return account.String() }},
-			{Title: func() string { return "Public Keys" }, View: func(r recordT) string { return fmt.Sprint(r.linkedPublicKeyCount) }},
 		}).RenderBubblesTable,
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{
-				record.link.TagMatcher,
 				util.StringifyTime(record.link.ExpiresAt),
 			}
 		},
 
-		formRows[recordCreateT],
-		formRows[recordUpdateT],
+		createFormRows(c),
+		updateFormRows,
 
 		rc,
 
 		crud.WithListDuplicateAction[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](func(record recordT) recordCreateT {
 			return recordCreateT{
-				record.link.TagMatcher,
+				record.publicKey,
 				util.StringifyTime(record.link.ExpiresAt),
 			}
 		}),
