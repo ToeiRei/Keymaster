@@ -71,7 +71,7 @@ func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData,
 			return
 		}
 
-		authorizedKeys := c.makeAuthorizedKeys(internalPublicKey, deployData.Records)
+		authorizedKeys := c.makeAuthorizedKeys(deployData.SystemKeySerial, internalPublicKey, deployData.Records)
 		progress <- connector.Progress{Progress: 0.25, Status: "connecting to remote host"}
 
 		addr := canonicalSSHAddress(connectionData.Host, connectionData.Port)
@@ -111,7 +111,7 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 			return
 		}
 
-		expected := c.makeAuthorizedKeys(internalPublicKey, deployData.Records)
+		expected := c.makeAuthorizedKeys(deployData.SystemKeySerial, internalPublicKey, deployData.Records)
 		progress <- connector.Progress{Progress: 0.3, Status: "connecting to remote host"}
 
 		addr := canonicalSSHAddress(connectionData.Host, connectionData.Port)
@@ -151,7 +151,7 @@ func (c *Connector) VerifyOffline(ctx context.Context, deployData connector.Depl
 	if err != nil {
 		return false, err
 	}
-	authorizedKeys := c.makeAuthorizedKeys(internalPublicKey, deployData.Records)
+	authorizedKeys := c.makeAuthorizedKeys(deployData.SystemKeySerial, internalPublicKey, deployData.Records)
 	localHash := c.hashAuthorizedKeys(authorizedKeys)
 
 	return localHash == deployData.Cache, nil
@@ -169,13 +169,31 @@ func canonicalSSHAddress(host string, port int) string {
 // followed by the deduplicated, non-expired user keys sorted deterministically
 // so the resulting content — and therefore its fingerprint — is stable across
 // runs and platforms.
-func (c *Connector) makeAuthorizedKeys(internalPublicKey string, records []connector.DeployRecord) string {
-	lines := make([]string, 0, 7+len(records))
+func (c *Connector) makeAuthorizedKeys(serial int, internalPublicKey string, records []connector.DeployRecord) string {
+	lines := make([]string, 0, 10+len(records))
+	managedKeyFingerprint := c.managedKeyFingerprint(internalPublicKey)
+	keyPayload := c.userKeyPayload(records)
+	payloadHash := c.hashAuthorizedKeys(keyPayload)
 
 	lines = append(lines,
-		"# Keymaster Managed Keys",
+		fmt.Sprintf("# Keymaster Managed Keys (Serial: %d)", serial),
+		fmt.Sprintf("# Managed Key Fingerprint: %s", managedKeyFingerprint),
+		fmt.Sprintf("# Payload Hash: sha256:%s", payloadHash),
+		"# Verify: sha256sum ~/.ssh/authorized_keys | awk '{print $1}'",
 		sshInternalKeyOptions+" "+internalPublicKey+" "+sshInternalKeyComment,
 	)
+
+	if keyPayload != "" {
+		lines = append(lines, "", keyPayload)
+	}
+
+	lines = append(lines, "")
+
+	return strings.Join(lines, "\n")
+}
+
+func (c *Connector) userKeyPayload(records []connector.DeployRecord) string {
+	lines := make([]string, 0, 7+len(records))
 
 	userKeyLines := make([]string, 0)
 	userKeyLinesGlobal := make([]string, 0)
@@ -226,9 +244,15 @@ func (c *Connector) makeAuthorizedKeys(internalPublicKey string, records []conne
 		lines = append(lines, userKeyLines...)
 	}
 
-	lines = append(lines, "")
-
 	return strings.Join(lines, "\n")
+}
+
+func (c *Connector) managedKeyFingerprint(internalPublicKey string) string {
+	key, _, _, _, err := ssh.ParseAuthorizedKey([]byte(internalPublicKey))
+	if err != nil {
+		return ""
+	}
+	return ssh.FingerprintSHA256(key)
 }
 
 // hashAuthorizedKeys returns the SHA256 hex fingerprint of the given

@@ -71,7 +71,8 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 			Data:      "AAAAC3NzaC1lZDI1NTE5AAAAIexample",
 			Comment:   "alice@example",
 		}},
-		Secret: secret,
+		Secret:           secret,
+		SystemKeySerial:  7,
 	}, connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, nil)
 	if err != nil {
 		t.Fatalf("Deploy returned error: %v", err)
@@ -94,7 +95,7 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 	if err != nil {
 		t.Fatalf("publicKeyFromSecret: %v", err)
 	}
-	want := c.makeAuthorizedKeys(key, []connector.DeployRecord{{
+	want := c.makeAuthorizedKeys(7, key, []connector.DeployRecord{{
 		Algorithm: "ssh-ed25519",
 		Data:      "AAAAC3NzaC1lZDI1NTE5AAAAIexample",
 		Comment:   "alice@example",
