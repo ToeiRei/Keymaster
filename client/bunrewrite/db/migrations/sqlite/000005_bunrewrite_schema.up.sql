@@ -31,14 +31,15 @@ CREATE TABLE accounts_new (
     username TEXT NOT NULL,
     host TEXT NOT NULL DEFAULT '',
     port TEXT NOT NULL DEFAULT '',
+    serial INTEGER NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT 1,
     is_dirty BOOLEAN NOT NULL DEFAULT 1,
     deploy_method TEXT NOT NULL DEFAULT '',
     deploy_secret TEXT NOT NULL DEFAULT '',
     UNIQUE(username, host)
 );
-INSERT INTO accounts_new (id, username, host, port, is_active, is_dirty)
-    SELECT id, username, hostname, '', is_active, is_dirty FROM accounts;
+INSERT INTO accounts_new (id, username, host, port, serial, is_active, is_dirty)
+    SELECT id, username, hostname, '', serial, is_active, is_dirty FROM accounts;
 DROP TABLE accounts;
 ALTER TABLE accounts_new RENAME TO accounts;
 

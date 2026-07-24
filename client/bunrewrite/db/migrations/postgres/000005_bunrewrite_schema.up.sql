@@ -14,7 +14,6 @@ ALTER TABLE accounts ADD COLUMN deploy_method TEXT NOT NULL DEFAULT '';
 ALTER TABLE accounts ADD COLUMN deploy_secret TEXT NOT NULL DEFAULT '';
 ALTER TABLE accounts DROP COLUMN IF EXISTS label;
 ALTER TABLE accounts DROP COLUMN IF EXISTS tags;
-ALTER TABLE accounts DROP COLUMN IF EXISTS serial;
 ALTER TABLE accounts DROP COLUMN IF EXISTS key_hash;
 
 -- links: direct account <-> public_key relation, backfilled from account_keys

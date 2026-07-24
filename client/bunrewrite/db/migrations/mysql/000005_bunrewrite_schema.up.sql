@@ -16,7 +16,6 @@ ALTER TABLE accounts ADD COLUMN deploy_secret TEXT;
 UPDATE accounts SET deploy_secret = '' WHERE deploy_secret IS NULL;
 ALTER TABLE accounts DROP COLUMN label;
 ALTER TABLE accounts DROP COLUMN tags;
-ALTER TABLE accounts DROP COLUMN serial;
 ALTER TABLE accounts DROP COLUMN key_hash;
 
 -- links: direct account <-> public_key relation, backfilled from account_keys
