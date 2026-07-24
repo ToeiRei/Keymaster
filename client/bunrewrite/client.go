@@ -24,6 +24,7 @@ import (
 	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/connector"
 	"github.com/toeirei/keymaster/core/sshkey"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/util/slicest"
 	"github.com/uptrace/bun"
 
@@ -234,7 +235,7 @@ func (c *Client) GetPublicKey(ctx context.Context, id client.PublicKeyId) (clien
 		WherePK().
 		Scan(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
-		return client.PublicKey{}, fmt.Errorf("public key not found: %d", id)
+		return client.PublicKey{}, i18n.NewError("errors.client.public_key_not_found", id)
 	}
 	if err != nil {
 		return client.PublicKey{}, err
@@ -262,7 +263,7 @@ func (c *Client) GetPublicKeys(ctx context.Context, ids ...client.PublicKeyId) (
 		missingIds := slices.Map(slices.Filter(ids, func(id client.PublicKeyId) bool {
 			return !slices.Contains(publicKeyIds, id)
 		}), func(id client.PublicKeyId) string { return fmt.Sprint(id) })
-		return nil, fmt.Errorf("public keys with ids could not be found: %s", strings.Join(missingIds, ", "))
+		return nil, i18n.NewError("errors.client.public_keys_not_found", strings.Join(missingIds, ", "))
 	}
 
 	return publicKeys, nil
@@ -350,7 +351,7 @@ func (c *Client) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, com
 			return err
 		}
 		if rowsAffected == 0 {
-			return fmt.Errorf("public key not found: %d", id)
+			return i18n.NewError("errors.client.public_key_not_found", id)
 		}
 
 		// re-read within the transaction to return the full, current row
@@ -394,7 +395,7 @@ func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 
 		unaffectedRows := int64(len(ids)) - rowsAffected
 		if unaffectedRows > 0 {
-			return fmt.Errorf("%d public key ids could not be found", unaffectedRows)
+			return i18n.NewError("errors.client.public_keys_delete_missing", unaffectedRows)
 		}
 
 		return c.writeAuditLog(ctx, tx, "public_key.delete", client.AuditLogDetails{
@@ -459,7 +460,7 @@ func (c *Client) GetAccount(ctx context.Context, id client.AccountId) (client.Ac
 		WherePK().
 		Scan(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
-		return client.Account{}, fmt.Errorf("account not found: %d", id)
+		return client.Account{}, i18n.NewError("errors.client.account_not_found", id)
 	}
 	if err != nil {
 		return client.Account{}, err
@@ -487,7 +488,7 @@ func (c *Client) GetAccounts(ctx context.Context, ids ...client.AccountId) ([]cl
 		missingIds := slices.Map(slices.Filter(ids, func(id client.AccountId) bool {
 			return !slices.Contains(accountIds, id)
 		}), func(id client.AccountId) string { return fmt.Sprint(id) })
-		return nil, fmt.Errorf("accounts with ids could not be found: %s", strings.Join(missingIds, ", "))
+		return nil, i18n.NewError("errors.client.accounts_not_found", strings.Join(missingIds, ", "))
 	}
 
 	return accounts, nil
@@ -627,7 +628,7 @@ func (c *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) er
 
 		unaffectedRows := int64(len(ids)) - rowsAffected
 		if unaffectedRows > 0 {
-			return fmt.Errorf("%d account ids could not be found", unaffectedRows)
+			return i18n.NewError("errors.client.accounts_delete_missing", unaffectedRows)
 		}
 
 		return c.writeAuditLog(ctx, tx, "account.delete", client.AuditLogDetails{
@@ -701,7 +702,7 @@ func (c *Client) GetLink(ctx context.Context, accountId client.AccountId, public
 		WherePK().
 		Scan(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
-		return client.Link{}, fmt.Errorf("link not found: account %d, public key %d", accountId, publicKeyId)
+		return client.Link{}, i18n.NewError("errors.client.link_not_found", accountId, publicKeyId)
 	}
 	if err != nil {
 		return client.Link{}, err
@@ -775,7 +776,7 @@ func (c *Client) UpdateLink(ctx context.Context, accountId client.AccountId, pub
 			return err
 		}
 		if rowsAffected == 0 {
-			return fmt.Errorf("link not found: account %d, public key %d", accountId, publicKeyId)
+			return i18n.NewError("errors.client.link_not_found", accountId, publicKeyId)
 		}
 
 		return c.writeAuditLog(ctx, tx, "link.update", client.AuditLogDetails{
@@ -807,7 +808,7 @@ func (c *Client) DeleteLink(ctx context.Context, accountId client.AccountId, pub
 			return err
 		}
 		if rowsAffected == 0 {
-			return fmt.Errorf("link not found: account %d, public key %d", accountId, publicKeyId)
+			return i18n.NewError("errors.client.link_not_found", accountId, publicKeyId)
 		}
 
 		return c.writeAuditLog(ctx, tx, "link.delete", client.AuditLogDetails{
@@ -938,7 +939,7 @@ func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connec
 	if err := c.writeAuditLog(ctx, c.bun, action+".requested", client.AuditLogDetails{
 		{"accountIds", auditIds(accountIds)},
 	}); err != nil {
-		return fmt.Errorf("audit log write failed: %w", err)
+		return i18n.WrapError(err, "errors.client.audit_write_failed")
 	}
 
 	if concurrent <= 0 {
@@ -1043,7 +1044,7 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 
 		if !ok {
 			// A verify mismatch is a per-account failure, not a connector error.
-			err := errors.New("remote authorized_keys out of sync")
+			err := i18n.NewError("errors.client.out_of_sync")
 			fail(err)
 			return len(deployData.Records), err
 		}
@@ -1056,7 +1057,7 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 	if auditErr := c.writeAuditLog(ctx, c.bun, action, accountOpAuditDetails(account, keyCount, opErr)); auditErr != nil {
 		sendProgress(client.ProgressAccountWithError{
 			client.ProgressAccount{Progress: 1, Status: "error"},
-			errors.Join(opErr, fmt.Errorf("audit log write failed: %w", auditErr)),
+			errors.Join(opErr, i18n.WrapError(auditErr, "errors.client.audit_write_failed")),
 		})
 	}
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/toeirei/keymaster/connector"
 	"github.com/toeirei/keymaster/core/deploy"
 	"github.com/toeirei/keymaster/core/security"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -62,7 +63,7 @@ func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData,
 	progress <- connector.Progress{Progress: 0.1, Status: "rendering authorized_keys"}
 	internalPublicKey, err := c.publicKeyFromSecret(deployData.Secret)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse deploy secret: %w", err)
+		return "", i18n.WrapError(err, "errors.connector.parse_secret")
 	}
 
 	authorizedKeys := c.makeAuthorizedKeys(deployData.SystemKeySerial, internalPublicKey, deployData.Records)
@@ -71,13 +72,13 @@ func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData,
 	addr := canonicalSSHAddress(connectionData.Host, connectionData.Port)
 	client, err := newDeployer(addr, connectionData.Username, security.FromString(deployData.Secret), nil, deploy.DefaultConnectionConfig(), false)
 	if err != nil {
-		return "", fmt.Errorf("failed to connect to %s@%s: %w", connectionData.Username, addr, err)
+		return "", i18n.WrapError(err, "errors.connector.connect", connectionData.Username, addr)
 	}
 	defer client.Close()
 
 	progress <- connector.Progress{Progress: 0.6, Status: "uploading authorized_keys"}
 	if err := client.DeployAuthorizedKeys(authorizedKeys); err != nil {
-		return "", fmt.Errorf("failed to deploy authorized_keys: %w", err)
+		return "", i18n.WrapError(err, "errors.connector.deploy_keys")
 	}
 
 	progress <- connector.Progress{Progress: 1, Status: "done"}
@@ -92,7 +93,7 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 	progress <- connector.Progress{Progress: 0.1, Status: "rendering authorized_keys"}
 	internalPublicKey, err := c.publicKeyFromSecret(deployData.Secret)
 	if err != nil {
-		return false, "", fmt.Errorf("failed to parse deploy secret: %w", err)
+		return false, "", i18n.WrapError(err, "errors.connector.parse_secret")
 	}
 
 	expected := c.makeAuthorizedKeys(deployData.SystemKeySerial, internalPublicKey, deployData.Records)
@@ -101,14 +102,14 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 	addr := canonicalSSHAddress(connectionData.Host, connectionData.Port)
 	client, err := newDeployer(addr, connectionData.Username, security.FromString(deployData.Secret), nil, deploy.DefaultConnectionConfig(), false)
 	if err != nil {
-		return false, "", fmt.Errorf("failed to connect to %s@%s: %w", connectionData.Username, addr, err)
+		return false, "", i18n.WrapError(err, "errors.connector.connect", connectionData.Username, addr)
 	}
 	defer client.Close()
 
 	progress <- connector.Progress{Progress: 0.6, Status: "reading remote authorized_keys"}
 	remoteBytes, err := client.GetAuthorizedKeys()
 	if err != nil {
-		return false, "", fmt.Errorf("failed to read authorized_keys: %w", err)
+		return false, "", i18n.WrapError(err, "errors.connector.read_keys")
 	}
 
 	remoteHash := c.hashAuthorizedKeys(string(remoteBytes))
@@ -257,7 +258,7 @@ func (c *Connector) hashAuthorizedKeys(str string) string {
 func (c *Connector) publicKeyFromSecret(secret string) (string, error) {
 	signer, err := ssh.ParsePrivateKey([]byte(secret))
 	if err != nil {
-		return "", fmt.Errorf("failed to parse private key from secret: %w", err)
+		return "", i18n.WrapError(err, "errors.connector.parse_private_key")
 	}
 	// MarshalAuthorizedKey appends a single trailing newline; strip just that
 	// so the key can be embedded on a line of its own.

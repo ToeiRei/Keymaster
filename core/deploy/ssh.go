@@ -25,12 +25,22 @@ import (
 	"github.com/toeirei/keymaster/core/db"
 	"github.com/toeirei/keymaster/core/logging"
 	"github.com/toeirei/keymaster/core/security"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"golang.org/x/crypto/ssh"
 )
 
 // ErrPassphraseRequired is a sentinel error returned when an encrypted key is
 // encountered but no passphrase was provided, signaling that the caller should prompt for one.
-var ErrPassphraseRequired = errors.New("passphrase required for encrypted system key")
+var ErrPassphraseRequired error = i18n.NewError("errors.ssh.passphrase_required")
+
+// Host-key classification sentinels. They carry no user-facing text of their
+// own; the displayed message is a localized wrapper (see the host key callback).
+// IsHostKeyError matches against these via errors.Is so classification survives
+// localization of the wrapper message.
+var (
+	errUnknownHostKey  = errors.New("unknown host key")
+	errHostKeyMismatch = errors.New("host key mismatch")
+)
 
 // StripIPv6Brackets removes surrounding '[' and ']' from an IPv6 literal
 // if present. For non-bracketed hosts the input is returned unchanged.
@@ -360,13 +370,13 @@ func newDeployerInternal(host, user string, privateKey security.Secret, passphra
 					}
 				}
 				if knownKey == "" {
-					return fmt.Errorf("unknown host key for %s. run 'keymaster trust-host' to add it", canonical)
+					return i18n.WrapError(errUnknownHostKey, "errors.ssh.unknown_hostkey", canonical)
 				}
 			}
 
 			// If the key exists, it must match exactly.
 			if knownKey != presentedKey {
-				return fmt.Errorf("!!! HOST KEY MISMATCH FOR %s !!!\nRemote key presented: %s\nThis could be a man-in-the-middle attack", canonical, presentedKey)
+				return i18n.WrapError(errHostKeyMismatch, "errors.ssh.hostkey_mismatch", canonical, presentedKey)
 			}
 
 			return nil // Host key is trusted.
@@ -419,7 +429,7 @@ func newDeployerInternal(host, user string, privateKey security.Secret, passphra
 				sftpClient, sftpErr := newSftpClient(client)
 				if sftpErr != nil {
 					_ = closeSSHClient(client)
-					return nil, fmt.Errorf("failed to create sftp client: %w", sftpErr)
+					return nil, i18n.WrapError(sftpErr, "errors.ssh.sftp_client")
 				}
 				return &Deployer{client: client, sftp: &sftpClientAdapter{client: sftpClient}, config: config}, nil
 			} else {
@@ -434,7 +444,7 @@ func newDeployerInternal(host, user string, privateKey security.Secret, passphra
 	// This is used for bootstrapping/importing keys.
 	agentClient := sshAgentGetter()
 	if agentClient == nil {
-		return nil, fmt.Errorf("no authentication method available (system key failed and no ssh agent found)")
+		return nil, i18n.NewError("errors.ssh.no_auth_method")
 	}
 
 	sshConfig := &ssh.ClientConfig{
@@ -447,7 +457,7 @@ func newDeployerInternal(host, user string, privateKey security.Secret, passphra
 	client, err := sshDial("tcp", addr, sshConfig)
 	if err != nil {
 		err = ClassifyConnectionError(host, err)
-		return nil, fmt.Errorf("connection with ssh agent failed: %w", err)
+		return nil, i18n.WrapError(err, "errors.ssh.agent_connect_failed")
 	}
 
 	// Success with agent.
@@ -455,7 +465,7 @@ func newDeployerInternal(host, user string, privateKey security.Secret, passphra
 	sftpClient, err := newSftpClient(client)
 	if err != nil {
 		_ = closeSSHClient(client)
-		return nil, fmt.Errorf("failed to create sftp client: %w", err)
+		return nil, i18n.WrapError(err, "errors.ssh.sftp_client")
 	}
 
 	return &Deployer{
@@ -471,7 +481,7 @@ func newDeployerWithExpectedHostKey(host, user string, privateKey security.Secre
 	hostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 		presentedKey := string(ssh.MarshalAuthorizedKey(key))
 		if strings.TrimSpace(presentedKey) != strings.TrimSpace(expectedHostKey) {
-			return fmt.Errorf("host key mismatch: server presented different key than expected")
+			return i18n.WrapError(errHostKeyMismatch, "errors.ssh.hostkey_mismatch_expected")
 		}
 
 		// Strip port if present for database storage
@@ -498,7 +508,7 @@ func newDeployerWithExpectedHostKey(host, user string, privateKey security.Secre
 		signer, e = ssh.ParsePrivateKey(b)
 		return e
 	}); err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %w", err)
+		return nil, i18n.WrapError(err, "errors.ssh.parse_private_key")
 	}
 
 	// Create SSH client configuration
@@ -520,7 +530,7 @@ func newDeployerWithExpectedHostKey(host, user string, privateKey security.Secre
 	sftpClient, err := newSftpClient(client)
 	if err != nil {
 		_ = closeSSHClient(client)
-		return nil, fmt.Errorf("failed to create sftp client: %w", err)
+		return nil, i18n.WrapError(err, "errors.ssh.sftp_client")
 	}
 
 	return &Deployer{
@@ -666,6 +676,12 @@ func IsHostKeyError(err error) bool {
 		return false
 	}
 
+	// Prefer structural matching so classification survives localization of the
+	// wrapper message; fall back to the English substrings for raw library
+	// errors and pre-localization callers.
+	if errors.Is(err, errUnknownHostKey) || errors.Is(err, errHostKeyMismatch) {
+		return true
+	}
 	errStr := err.Error()
 	return strings.Contains(errStr, "HOST KEY MISMATCH") ||
 		strings.Contains(errStr, "unknown host key") ||
@@ -680,15 +696,15 @@ func ClassifyConnectionError(host string, err error) error {
 
 	switch {
 	case IsConnectionTimeoutError(err):
-		return fmt.Errorf("connection to %s timed out (host may be unreachable or firewall blocking connection): %w", host, err)
+		return i18n.WrapError(err, "errors.ssh.connect_timeout", host)
 	case IsConnectionRefusedError(err):
-		return fmt.Errorf("connection to %s refused (SSH daemon may not be running or wrong port): %w", host, err)
+		return i18n.WrapError(err, "errors.ssh.connect_refused", host)
 	case IsAuthenticationError(err):
-		return fmt.Errorf("authentication failed for %s (check SSH keys or credentials): %w", host, err)
+		return i18n.WrapError(err, "errors.ssh.auth_failed", host)
 	case IsHostKeyError(err):
-		return fmt.Errorf("host key verification failed for %s (run 'keymaster trust-host %s' to accept): %w", host, host, err)
+		return i18n.WrapError(err, "errors.ssh.hostkey_verification_failed", host, host)
 	default:
-		return fmt.Errorf("failed to connect to %s: %w", host, err)
+		return i18n.WrapError(err, "errors.ssh.connect_failed", host)
 	}
 }
 
