@@ -8,10 +8,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/toeirei/keymaster/connector"
+	"github.com/toeirei/keymaster/core/deploy"
+	"github.com/toeirei/keymaster/core/security"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -37,17 +41,105 @@ const expiryTimeLayout = "20060102150405"
 
 type Connector struct{}
 
+type deployerClient interface {
+	DeployAuthorizedKeys(content string) error
+	GetAuthorizedKeys() ([]byte, error)
+	Close()
+}
+
+var newDeployer = func(host, user string, privateKey security.Secret, passphrase []byte, config *deploy.ConnectionConfig, isBootstrap bool) (deployerClient, error) {
+	return deploy.NewDeployerWithConfig(host, user, privateKey, passphrase, config, isBootstrap)
+}
+
 // *[Connector] implements [connector.Connector]
 var _ connector.Connector = (*Connector)(nil)
 
 func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester) (chan connector.Progress, error) {
-	// TODO implement
-	panic("unimplemented")
+	progress := make(chan connector.Progress)
+	go func() {
+		defer close(progress)
+
+		if ctx.Err() != nil {
+			progress <- connector.Progress{Progress: 1, Status: "canceled", Err: ctx.Err()}
+			return
+		}
+
+		progress <- connector.Progress{Progress: 0.1, Status: "rendering authorized_keys"}
+		internalPublicKey, err := c.publicKeyFromSecret(deployData.Secret)
+		if err != nil {
+			progress <- connector.Progress{Progress: 1, Status: "error", Err: fmt.Errorf("failed to parse deploy secret: %w", err)}
+			return
+		}
+
+		authorizedKeys := c.makeAuthorizedKeys(internalPublicKey, deployData.Records)
+		progress <- connector.Progress{Progress: 0.25, Status: "connecting to remote host"}
+
+		addr := canonicalSSHAddress(connectionData.Host, connectionData.Port)
+		client, err := newDeployer(addr, connectionData.Username, security.FromString(deployData.Secret), nil, deploy.DefaultConnectionConfig(), false)
+		if err != nil {
+			progress <- connector.Progress{Progress: 1, Status: "error", Err: fmt.Errorf("failed to connect to %s@%s: %w", connectionData.Username, addr, err)}
+			return
+		}
+		defer client.Close()
+
+		progress <- connector.Progress{Progress: 0.6, Status: "uploading authorized_keys"}
+		if err := client.DeployAuthorizedKeys(authorizedKeys); err != nil {
+			progress <- connector.Progress{Progress: 1, Status: "error", Err: fmt.Errorf("failed to deploy authorized_keys: %w", err)}
+			return
+		}
+
+		progress <- connector.Progress{Progress: 1, Status: "done"}
+	}()
+
+	return progress, nil
 }
 
 func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester) (chan connector.Progress, error) {
-	// TODO implement
-	panic("unimplemented")
+	progress := make(chan connector.Progress)
+	go func() {
+		defer close(progress)
+
+		if ctx.Err() != nil {
+			progress <- connector.Progress{Progress: 1, Status: "canceled", Err: ctx.Err()}
+			return
+		}
+
+		progress <- connector.Progress{Progress: 0.1, Status: "rendering authorized_keys"}
+		internalPublicKey, err := c.publicKeyFromSecret(deployData.Secret)
+		if err != nil {
+			progress <- connector.Progress{Progress: 1, Status: "error", Err: fmt.Errorf("failed to parse deploy secret: %w", err)}
+			return
+		}
+
+		expected := c.makeAuthorizedKeys(internalPublicKey, deployData.Records)
+		progress <- connector.Progress{Progress: 0.3, Status: "connecting to remote host"}
+
+		addr := canonicalSSHAddress(connectionData.Host, connectionData.Port)
+		client, err := newDeployer(addr, connectionData.Username, security.FromString(deployData.Secret), nil, deploy.DefaultConnectionConfig(), false)
+		if err != nil {
+			progress <- connector.Progress{Progress: 1, Status: "error", Err: fmt.Errorf("failed to connect to %s@%s: %w", connectionData.Username, addr, err)}
+			return
+		}
+		defer client.Close()
+
+		progress <- connector.Progress{Progress: 0.6, Status: "reading remote authorized_keys"}
+		remoteBytes, err := client.GetAuthorizedKeys()
+		if err != nil {
+			progress <- connector.Progress{Progress: 1, Status: "error", Err: fmt.Errorf("failed to read authorized_keys: %w", err)}
+			return
+		}
+
+		remoteHash := c.hashAuthorizedKeys(string(remoteBytes))
+		expectedHash := c.hashAuthorizedKeys(expected)
+		if remoteHash != expectedHash {
+			progress <- connector.Progress{Progress: 1, Status: "error", Err: fmt.Errorf("remote authorized_keys drift detected")}
+			return
+		}
+
+		progress <- connector.Progress{Progress: 1, Status: "verified"}
+	}()
+
+	return progress, nil
 }
 
 func (c *Connector) VerifyOffline(ctx context.Context, deployData connector.DeployData) (bool, error) {
@@ -63,6 +155,13 @@ func (c *Connector) VerifyOffline(ctx context.Context, deployData connector.Depl
 	localHash := c.hashAuthorizedKeys(authorizedKeys)
 
 	return localHash == deployData.Cache, nil
+}
+
+func canonicalSSHAddress(host string, port int) string {
+	if port <= 0 {
+		port = 22
+	}
+	return net.JoinHostPort(strings.TrimSpace(host), strconv.Itoa(port))
 }
 
 // makeAuthorizedKeys renders the authorized_keys content for an account. The
