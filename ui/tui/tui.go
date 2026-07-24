@@ -16,7 +16,7 @@ import (
 
 func Run() error {
 	logger := log.New(os.Stdout, "[tui] ", log.LstdFlags)
-	cm, err := bun.NewDefaultBunClient(logger)
+	cm, err := bun.NewDefaultBunClient(logger, "keymaster tui")
 	if err != nil {
 		return err
 	}

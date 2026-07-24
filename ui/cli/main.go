@@ -270,7 +270,7 @@ Running without a subcommand will launch the interactive TUI.`,
 			// i18n is also initialized, so create a TUI client from the configured DB.
 			_ = uiadapters.NewStoreAdapter()
 			logger := stdlog.New(os.Stdout, "[tui] ", stdlog.LstdFlags)
-			client, err := bun.NewBunClient(appConfig, logger)
+			client, err := bun.NewBunClient(appConfig, logger, "keymaster cli")
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "failed to initialize TUI client: %v\n", err)
 				os.Exit(1)

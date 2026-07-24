@@ -15,7 +15,7 @@ import (
 // database created by the vendored migrations.
 func TestSmokeCRUD(t *testing.T) {
 	ctx := context.Background()
-	c, err := NewDefaultBunClient(log.Default())
+	c, err := NewDefaultBunClient(log.Default(), "test.keymaster.smoke_test")
 	if err != nil {
 		t.Fatalf("NewDefaultBunClient: %v", err)
 	}

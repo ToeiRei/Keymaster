@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"os/user"
 	"runtime"
 	"strconv"
 	"strings"
@@ -33,22 +35,25 @@ type Client struct {
 	config config.Config
 	log    *log.Logger
 	bun    bun.IDB
+	// referer names the frontend implementation;
+	// it is stamped onto every audit log entry this client writes.
+	referer string
 }
 
 // *[Client] implements [client.Client]
 var _ client.Client = (*Client)(nil)
 
-func NewBunClient(config config.Config, logger *log.Logger) (*Client, error) {
+func NewBunClient(config config.Config, logger *log.Logger, referer string) (*Client, error) {
 	dbBun, err := db.Open(config.Database.Type, config.Database.Dsn)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Client{config, logger, dbBun}, nil
+	return &Client{config, logger, dbBun, referer}, nil
 }
 
-func NewDefaultBunClient(logger *log.Logger) (*Client, error) {
-	return NewBunClient(client.NewDefaultConfig(), logger)
+func NewDefaultBunClient(logger *log.Logger, referer string) (*Client, error) {
+	return NewBunClient(client.NewDefaultConfig(), logger, referer)
 }
 
 func (c *Client) Close(ctx context.Context) error {
@@ -61,7 +66,7 @@ func (c *Client) Close(ctx context.Context) error {
 
 func (c *Client) WithTransaction(ctx context.Context, fn func(ctx context.Context, c client.Client) error) error {
 	return c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
-		return fn(ctx, &Client{c.config, c.log, tx})
+		return fn(ctx, &Client{c.config, c.log, tx, c.referer})
 	})
 }
 
@@ -71,6 +76,88 @@ func (c *Client) WithTransaction(ctx context.Context, fn func(ctx context.Contex
 // NULL (i.e. "never expires").
 func nullTime(t time.Time) sql.NullTime {
 	return sql.NullTime{Time: t, Valid: !t.IsZero()}
+}
+
+// nullString converts a string into a sql.NullString, treating the empty string
+// as NULL.
+func nullString(s string) sql.NullString {
+	return sql.NullString{String: s, Valid: s != ""}
+}
+
+// --- Audit logging ---
+
+// auditTime renders an expiry for audit details, mapping the zero value (never
+// expires) to "never" instead of a noisy zero timestamp.
+func auditTime(t time.Time) string {
+	if t.IsZero() {
+		return "never"
+	}
+	return t.Format(time.RFC3339)
+}
+
+// auditSecret redacts a deploy secret for audit details: it records only whether
+// a secret was provided, never the value itself (mirroring Account.String()).
+func auditSecret(secret string) string {
+	if secret == "" {
+		return ""
+	}
+	return "<redacted>"
+}
+
+// auditIds renders a list of numeric ids as a comma-separated string.
+func auditIds[T ~int](ids []T) string {
+	strs := make([]string, len(ids))
+	for i, id := range ids {
+		strs[i] = strconv.Itoa(int(id))
+	}
+	return strings.Join(strs, ", ")
+}
+
+// accountOpAuditDetails builds the audit details describing the outcome of a
+// deploy/verify operation against a single account. opErr is nil on success.
+func accountOpAuditDetails(account client.Account, keyCount int, opErr error) client.AuditLogDetails {
+	details := client.AuditLogDetails{
+		{"accountId", strconv.Itoa(int(account.Id))},
+		{"connection", fmt.Sprintf("%s@%s:%d", account.Username, account.Host, account.Port)},
+		{"deployMethod", account.DeployMethod},
+		{"keyCount", strconv.Itoa(keyCount)},
+	}
+	if opErr != nil {
+		return append(details,
+			client.AuditLogDetail{Key: "result", Value: "error"},
+			client.AuditLogDetail{Key: "error", Value: opErr.Error()},
+		)
+	}
+	return append(details, client.AuditLogDetail{Key: "result", Value: "success"})
+}
+
+// writeAuditLog records a single audit log entry through the given handle.
+// Callers pass the transaction (tx) from their surrounding RunInTx so the audit
+// entry is committed — or rolled back — atomically with the change it documents.
+func (c *Client) writeAuditLog(ctx context.Context, idb bun.IDB, action string, details client.AuditLogDetails) error {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+
+	osUser, err := user.Current()
+	if err != nil {
+		return err
+	}
+
+	auditLogModel := db.AuditLogModel{
+		Timestamp: time.Now(),
+		Username:  osUser.Username,
+		Hostname:  nullString(hostname),
+		Referrer:  nullString(c.referer),
+		Action:    action,
+		Details:   details,
+	}
+
+	_, err = idb.NewInsert().
+		Model(&auditLogModel).
+		Exec(ctx)
+	return err
 }
 
 // isExpired reports whether an expiry is still active at time now. A NULL/zero
@@ -110,9 +197,21 @@ func (c *Client) CreatePublicKey(ctx context.Context, key string, comment string
 		ExpiresAt: nullTime(expiresAt),
 	}
 
-	_, err = c.bun.NewInsert().
-		Model(&publicKeyModel).
-		Exec(ctx)
+	err = c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.NewInsert().
+			Model(&publicKeyModel).
+			Exec(ctx); err != nil {
+			return err
+		}
+		return c.writeAuditLog(ctx, tx, "public_key.create", client.AuditLogDetails{
+			{"id", strconv.Itoa(publicKeyModel.ID)},
+			{"algorithm", alg},
+			{"data", data},
+			{"comment", comment},
+			{"isGlobal", strconv.FormatBool(isGlobal)},
+			{"expiresAt", auditTime(expiresAt)},
+		})
+	})
 	if err != nil {
 		return client.PublicKey{}, err
 	}
@@ -227,25 +326,47 @@ func (c *Client) UpdatePublicKey(ctx context.Context, id client.PublicKeyId, com
 		ExpiresAt: nullTime(expiresAt),
 	}
 
-	res, err := c.bun.NewUpdate().
-		Model(&publicKeyModel).
-		Column("comment", "is_global", "expires_at").
-		WherePK().
-		Exec(ctx)
+	var updated client.PublicKey
+	err := c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		res, err := tx.NewUpdate().
+			Model(&publicKeyModel).
+			Column("comment", "is_global", "expires_at").
+			WherePK().
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
+
+		rowsAffected, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAffected == 0 {
+			return fmt.Errorf("public key not found: %d", id)
+		}
+
+		// re-read within the transaction to return the full, current row
+		updatedModel := db.PublicKeyModel{ID: int(id)}
+		if err := tx.NewSelect().
+			Model(&updatedModel).
+			WherePK().
+			Scan(ctx); err != nil {
+			return err
+		}
+		updated = modelToClientPublicKey(updatedModel)
+
+		return c.writeAuditLog(ctx, tx, "public_key.update", client.AuditLogDetails{
+			{"id", strconv.Itoa(int(id))},
+			{"comment", comment},
+			{"isGlobal", strconv.FormatBool(isGlobal)},
+			{"expiresAt", auditTime(expiresAt)},
+		})
+	})
 	if err != nil {
 		return client.PublicKey{}, err
 	}
 
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return client.PublicKey{}, err
-	}
-	if rowsAffected == 0 {
-		return client.PublicKey{}, fmt.Errorf("public key not found: %d", id)
-	}
-
-	// re-read to return the full, current row
-	return c.GetPublicKey(ctx, id)
+	return updated, nil
 }
 
 func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId) error {
@@ -268,7 +389,9 @@ func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 			return fmt.Errorf("%d public key ids could not be found", unaffectedRows)
 		}
 
-		return nil
+		return c.writeAuditLog(ctx, tx, "public_key.delete", client.AuditLogDetails{
+			{"ids", auditIds(ids)},
+		})
 	})
 }
 
@@ -298,9 +421,21 @@ func (c *Client) CreateAccount(ctx context.Context, username string, host string
 		DeploySecret: deploymentSecret,
 	}
 
-	_, err := c.bun.NewInsert().
-		Model(&accountModel).
-		Exec(ctx)
+	err := c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.NewInsert().
+			Model(&accountModel).
+			Exec(ctx); err != nil {
+			return err
+		}
+		return c.writeAuditLog(ctx, tx, "account.create", client.AuditLogDetails{
+			{"id", strconv.Itoa(accountModel.ID)},
+			{"username", username},
+			{"host", host},
+			{"port", strconv.Itoa(port)},
+			{"deployMethod", deploymentMethod},
+			{"deploySecret", auditSecret(deploymentSecret)},
+		})
+	})
 	if err != nil {
 		return client.Account{}, err
 	}
@@ -450,7 +585,14 @@ func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, usernam
 			return err
 		}
 
-		return nil
+		return c.writeAuditLog(ctx, tx, "account.update", client.AuditLogDetails{
+			{"id", strconv.Itoa(int(id))},
+			{"username", username},
+			{"host", host},
+			{"port", strconv.Itoa(port)},
+			{"deployMethod", deploymentMethod},
+			{"deploySecret", auditSecret(deploymentSecret)},
+		})
 	})
 	if err != nil {
 		return client.Account{}, err
@@ -479,7 +621,9 @@ func (c *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) er
 			return fmt.Errorf("%d account ids could not be found", unaffectedRows)
 		}
 
-		return nil
+		return c.writeAuditLog(ctx, tx, "account.delete", client.AuditLogDetails{
+			{"ids", auditIds(ids)},
+		})
 	})
 }
 
@@ -522,9 +666,18 @@ func (c *Client) CreateLink(ctx context.Context, accountId client.AccountId, pub
 		ExpiresAt:   nullTime(expiresAt),
 	}
 
-	_, err := c.bun.NewInsert().
-		Model(&linkModel).
-		Exec(ctx)
+	err := c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.NewInsert().
+			Model(&linkModel).
+			Exec(ctx); err != nil {
+			return err
+		}
+		return c.writeAuditLog(ctx, tx, "link.create", client.AuditLogDetails{
+			{"accountId", strconv.Itoa(int(accountId))},
+			{"publicKeyId", strconv.Itoa(int(publicKeyId))},
+			{"expiresAt", auditTime(expiresAt)},
+		})
+	})
 	if err != nil {
 		return client.Link{}, err
 	}
@@ -597,46 +750,62 @@ func (c *Client) UpdateLink(ctx context.Context, accountId client.AccountId, pub
 		ExpiresAt:   nullTime(expiresAt),
 	}
 
-	// account_id and public_key_id form the primary key, so only expiry is mutable.
-	res, err := c.bun.NewUpdate().
-		Model(&linkModel).
-		Column("expires_at").
-		WherePK().
-		Exec(ctx)
-	if err != nil {
-		return client.Link{}, err
-	}
+	err := c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		// account_id and public_key_id form the primary key, so only expiry is mutable.
+		res, err := tx.NewUpdate().
+			Model(&linkModel).
+			Column("expires_at").
+			WherePK().
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
 
-	rowsAffected, err := res.RowsAffected()
+		rowsAffected, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAffected == 0 {
+			return fmt.Errorf("link not found: account %d, public key %d", accountId, publicKeyId)
+		}
+
+		return c.writeAuditLog(ctx, tx, "link.update", client.AuditLogDetails{
+			{"accountId", strconv.Itoa(int(accountId))},
+			{"publicKeyId", strconv.Itoa(int(publicKeyId))},
+			{"expiresAt", auditTime(expiresAt)},
+		})
+	})
 	if err != nil {
 		return client.Link{}, err
-	}
-	if rowsAffected == 0 {
-		return client.Link{}, fmt.Errorf("link not found: account %d, public key %d", accountId, publicKeyId)
 	}
 
 	return modelToClientLink(linkModel), nil
 }
 
 func (c *Client) DeleteLink(ctx context.Context, accountId client.AccountId, publicKeyId client.PublicKeyId) error {
-	res, err := c.bun.NewDelete().
-		Model((*db.LinkModel)(nil)).
-		Where("account_id = ?", int(accountId)).
-		Where("public_key_id = ?", int(publicKeyId)).
-		Exec(ctx)
-	if err != nil {
-		return err
-	}
+	return c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		res, err := tx.NewDelete().
+			Model((*db.LinkModel)(nil)).
+			Where("account_id = ?", int(accountId)).
+			Where("public_key_id = ?", int(publicKeyId)).
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
 
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rowsAffected == 0 {
-		return fmt.Errorf("link not found: account %d, public key %d", accountId, publicKeyId)
-	}
+		rowsAffected, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAffected == 0 {
+			return fmt.Errorf("link not found: account %d, public key %d", accountId, publicKeyId)
+		}
 
-	return nil
+		return c.writeAuditLog(ctx, tx, "link.delete", client.AuditLogDetails{
+			{"accountId", strconv.Itoa(int(accountId))},
+			{"publicKeyId", strconv.Itoa(int(publicKeyId))},
+		})
+	})
 }
 
 // --- Deploy & Verify ---
@@ -740,11 +909,24 @@ type accountProgressUpdate struct {
 // runAccounts resolves each account's connector, runs the given operation
 // (deploy or verify) sequentially, and forwards every connector progress update
 // into a shared aggregate snapshot sent on the returned channel. The channel is
-// closed once all accounts have been processed.
-func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connector) connectorOperation, userRequester connector.UserRequester, concurrent int, accountIds ...client.AccountId) (chan client.ProgressAccounts, error) {
+// closed once all accounts have been processed. action is the audit action base
+// (e.g. "account.deploy") recorded for the request and each account's outcome.
+//
+// The per-account operations run concurrently and each writes its own audit
+// entry through c.bun, so this must be called on a pooled *bun.DB client, never
+// on a transaction-bound one (a bun.Tx is not safe for concurrent use).
+func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connector) connectorOperation, action string, userRequester connector.UserRequester, concurrent int, accountIds ...client.AccountId) (chan client.ProgressAccounts, error) {
 	accounts, err := c.GetAccounts(ctx, accountIds...)
 	if err != nil {
 		return nil, err
+	}
+
+	// Record the request up front. If we cannot even record that the operation
+	// was requested, refuse to run it — nothing has happened remotely yet.
+	if err := c.writeAuditLog(ctx, c.bun, action+".requested", client.AuditLogDetails{
+		{"accountIds", auditIds(accountIds)},
+	}); err != nil {
+		return nil, fmt.Errorf("audit log write failed: %w", err)
 	}
 
 	if concurrent <= 0 {
@@ -772,7 +954,7 @@ func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connec
 				defer wg.Done()
 				defer func() { <-semaphore }()
 
-				c.runAccount(ctx, account, selectOp, accountProgressChan, userRequester)
+				c.runAccount(ctx, account, selectOp, action, accountProgressChan, userRequester)
 			}(account)
 		}
 
@@ -793,7 +975,10 @@ func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connec
 // runAccount performs the connector operation for a single account, streaming
 // its progress into the shared aggregate. Any failure to reach the connector is
 // reported as an error status on that account rather than aborting the batch.
-func (c *Client) runAccount(ctx context.Context, account client.Account, selectOp func(connector.Connector) connectorOperation, progressChanAccount chan accountProgressUpdate, userRequester connector.UserRequester) {
+// Once the operation resolves, its outcome is recorded under action. The remote
+// side effect has already happened by then, so a failed audit write cannot be
+// rolled back — it is surfaced as an error on this account's progress instead.
+func (c *Client) runAccount(ctx context.Context, account client.Account, selectOp func(connector.Connector) connectorOperation, action string, progressChanAccount chan accountProgressUpdate, userRequester connector.UserRequester) {
 	sendProgress := func(progress client.ProgressAccount) {
 		progressChanAccount <- accountProgressUpdate{
 			account.Id,
@@ -805,26 +990,43 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 		sendProgress(client.ProgressAccount{1, "error", err})
 	}
 
-	con, err := connector.Resolve(account.DeployMethod)
-	if err != nil {
-		fail(err)
-		return
+	// runOp funnels every terminal path (connector unreachable, deploy-data
+	// failure, or normal completion) into a single return so the outcome is
+	// audited exactly once. It returns the number of keys involved and the
+	// operation error, if any.
+	runOp := func() (int, error) {
+		con, err := connector.Resolve(account.DeployMethod)
+		if err != nil {
+			fail(err)
+			return 0, err
+		}
+
+		deployData, err := c.accountDeployData(ctx, account)
+		if err != nil {
+			fail(err)
+			return 0, err
+		}
+
+		connectorProgress, err := selectOp(con)(ctx, deployData, accountConnectionData(account), userRequester)
+		if err != nil {
+			fail(err)
+			return len(deployData.Records), err
+		}
+
+		var opErr error
+		for cp := range connectorProgress {
+			sendProgress(cp)
+			if cp.Err != nil {
+				opErr = cp.Err
+			}
+		}
+		return len(deployData.Records), opErr
 	}
 
-	deployData, err := c.accountDeployData(ctx, account)
-	if err != nil {
-		fail(err)
-		return
-	}
+	keyCount, opErr := runOp()
 
-	connectorProgress, err := selectOp(con)(ctx, deployData, accountConnectionData(account), userRequester)
-	if err != nil {
-		fail(err)
-		return
-	}
-
-	for cp := range connectorProgress {
-		sendProgress(cp)
+	if auditErr := c.writeAuditLog(ctx, c.bun, action, accountOpAuditDetails(account, keyCount, opErr)); auditErr != nil {
+		sendProgress(client.ProgressAccount{1, "error", errors.Join(opErr, fmt.Errorf("audit log write failed: %w", auditErr))})
 	}
 }
 
@@ -850,7 +1052,7 @@ func (c *Client) DeployAccount(ctx context.Context, userRequester client.UserReq
 func (c *Client) DeployAccounts(ctx context.Context, userRequester client.UserRequester, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error) {
 	return c.runAccounts(ctx, func(con connector.Connector) connectorOperation {
 		return con.Deploy
-	}, userRequester, runtime.GOMAXPROCS(0), accountIds...)
+	}, "account.deploy", userRequester, runtime.GOMAXPROCS(0), accountIds...)
 }
 
 func (c *Client) VerifyAccount(ctx context.Context, userRequester client.UserRequester, accountId client.AccountId) (chan client.VerifyProgressAccount, error) {
@@ -875,7 +1077,7 @@ func (c *Client) VerifyAccount(ctx context.Context, userRequester client.UserReq
 func (c *Client) VerifyAccounts(ctx context.Context, userRequester client.UserRequester, accountIds ...client.AccountId) (chan client.VerifyProgressAccounts, error) {
 	return c.runAccounts(ctx, func(con connector.Connector) connectorOperation {
 		return con.Verify
-	}, userRequester, runtime.GOMAXPROCS(0), accountIds...)
+	}, "account.verify", userRequester, runtime.GOMAXPROCS(0), accountIds...)
 }
 
 // --- Other Operations ---
