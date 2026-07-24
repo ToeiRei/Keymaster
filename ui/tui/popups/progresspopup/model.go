@@ -66,6 +66,14 @@ func WithContext(ctx context.Context) ProgressOption {
 	return func(m *Model) { m.ctx, m.ctxCancel = ctx, nil }
 }
 
+// WithCancelFunc wires the popup's Cancel button to a caller-owned cancel
+// function without deriving a new context (unlike [WithCancel]). Use it
+// together with [WithContext] so that a caller which owns the operation's
+// context can share the same cancel across reopened progress popups.
+func WithCancelFunc(cancel context.CancelFunc) ProgressOption {
+	return func(m *Model) { m.ctxCancel = cancel }
+}
+
 func Open(mode progressMode, title string, fn func(ctx context.Context, pc ProgressChan) tea.Cmd, opts ...ProgressOption) tea.Cmd {
 	id := progressId(progressIdCounter.Add(1))
 	progressChan := make(ProgressChan)
