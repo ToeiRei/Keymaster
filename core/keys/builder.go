@@ -4,12 +4,15 @@
 package keys
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/toeirei/keymaster/core/model"
+	"golang.org/x/crypto/ssh"
 )
 
 // BuildAuthorizedKeysContent constructs the authorized_keys content given the
@@ -17,16 +20,35 @@ import (
 // function is pure and deterministic; callers must provide keys fetched from
 // their data stores.
 func BuildAuthorizedKeysContent(systemKey *model.SystemKey, globalKeys, accountKeys []model.PublicKey) (string, error) {
-	var sb strings.Builder
-
 	if systemKey == nil {
 		return "", fmt.Errorf("no active system key provided")
 	}
 
-	// Header and restricted system key
+	managedKeyFingerprint := managedKeyFingerprint(systemKey.PublicKey)
+	payload, err := buildAuthorizedKeysPayload(systemKey, globalKeys, accountKeys)
+	if err != nil {
+		return "", err
+	}
+	payloadHash := hashAuthorizedKeysPayload(payload)
+
+	var sb strings.Builder
 	fmt.Fprintf(&sb, "# Keymaster Managed Keys (Serial: %d)\n", systemKey.Serial)
-	restrictedSystemKey := fmt.Sprintf("%s %s", "command=\"internal-sftp\",no-port-forwarding,no-x11-forwarding,no-agent-forwarding,no-pty", systemKey.PublicKey)
-	sb.WriteString(restrictedSystemKey)
+	if managedKeyFingerprint != "" {
+		fmt.Fprintf(&sb, "# Managed Key Fingerprint: %s\n", managedKeyFingerprint)
+	}
+	fmt.Fprintf(&sb, "# Payload Hash: sha256:%s\n", payloadHash)
+	fmt.Fprintf(&sb, "# Verify: sha256sum ~/.ssh/authorized_keys | awk '{print $1}'\n")
+	fmt.Fprintf(&sb, "%s %s\n", "command=\"internal-sftp\",no-port-forwarding,no-x11-forwarding,no-agent-forwarding,no-pty", systemKey.PublicKey)
+	if payload != "" {
+		sb.WriteString(payload)
+	}
+	return sb.String(), nil
+}
+
+func buildAuthorizedKeysPayload(systemKey *model.SystemKey, globalKeys, accountKeys []model.PublicKey) (string, error) {
+	if systemKey == nil {
+		return "", fmt.Errorf("no active system key provided")
+	}
 
 	// Helper to filter expired keys
 	filterExpired := func(keys []model.PublicKey) []model.PublicKey {
@@ -71,6 +93,7 @@ func BuildAuthorizedKeysContent(systemKey *model.SystemKey, globalKeys, accountK
 	}
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].comment < sorted[j].comment })
 
+	var sb strings.Builder
 	if len(sorted) > 0 {
 		sb.WriteString("\n\n# User Keys\n")
 		for i, ki := range sorted {
@@ -80,11 +103,27 @@ func BuildAuthorizedKeysContent(systemKey *model.SystemKey, globalKeys, accountK
 			sb.WriteString(ki.line)
 		}
 		sb.WriteString("\n")
-	} else {
-		sb.WriteString("\n")
 	}
 
 	return sb.String(), nil
+}
+
+func managedKeyFingerprint(publicKey string) string {
+	key, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKey))
+	if err != nil {
+		return ""
+	}
+	return ssh.FingerprintSHA256(key)
+}
+
+func hashAuthorizedKeysPayload(payload string) string {
+	payload = strings.ReplaceAll(payload, "\r\n", "\n")
+	lines := strings.Split(payload, "\n")
+	for i := range lines {
+		lines[i] = strings.TrimRight(lines[i], " \t")
+	}
+	sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))
+	return hex.EncodeToString(sum[:])
 }
 
 // SSHKeyTypeToVerifyCommand maps an SSH public key type to a sensible

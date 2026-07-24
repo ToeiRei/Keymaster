@@ -21,9 +21,10 @@ type ConnectionData struct {
 }
 
 type DeployData struct {
-	Records []DeployRecord
-	Secret  string
-	Cache   string
+	Records    []DeployRecord
+	Secret     string
+	Cache      string
+	SystemKeySerial int
 }
 
 type DeployRecord struct {
