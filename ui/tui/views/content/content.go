@@ -6,12 +6,15 @@ package content
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/viper"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/config"
 	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/components/menu"
 	"github.com/toeirei/keymaster/ui/tui/components/router"
@@ -29,6 +32,8 @@ import (
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
+type langOption struct{ Code, Name string }
+
 type Model struct {
 	stack          *stack.Model
 	router         *util.Model
@@ -45,21 +50,24 @@ func New(c client.Client) *Model {
 	// }
 
 	menuPtr := util.ModelPointer(menu.New(
-		menu.WithItem("dashboard.show", i18n.T("menu.dashboard")),
-		menu.WithItem("publickey.list", "Public Keys"),
-		menu.WithItem("account.list", "Accounts"),
-		menu.WithItem("auditlog.list", i18n.T("menu.auditlog")),
-		menu.WithItem("", "Deploy",
-			menu.WithItem("deploy.dirty", "Deploy dirty"),
-			menu.WithItem("deploy.all", "Deploy all"),
-			menu.WithItem("deploy.verify", "Verify all"),
+		menu.WithItem("dashboard.show", i18n.Text("menu.dashboard")),
+		menu.WithItem("publickey.list", i18n.Text("Public Keys")),
+		menu.WithItem("account.list", i18n.Text("Accounts")),
+		menu.WithItem("auditlog.list", i18n.Text("menu.auditlog")),
+		menu.WithItem("", i18n.Text("Deploy"),
+			menu.WithItem("deploy.dirty", i18n.Text("Deploy dirty")),
+			menu.WithItem("deploy.all", i18n.Text("Deploy all")),
+			menu.WithItem("deploy.verify", i18n.Text("Verify all")),
 		),
-		menu.WithItem("", "Test",
-			menu.WithItem("", "Popup",
-				menu.WithItem("test.popup.select", "Select"),
-				menu.WithItem("test.popup.select_with_filter", "Select with Filter"),
-				menu.WithItem("test.popup.progress.spinner", "Progress Spinner"),
-				menu.WithItem("test.popup.progress.bar", "Progress Bar"),
+		menu.WithItem("", i18n.Text("menu.settings"),
+			menu.WithItem("settings.language", i18n.Text("menu.language")),
+		),
+		menu.WithItem("", i18n.Text("Test"),
+			menu.WithItem("", i18n.Text("Popup"),
+				menu.WithItem("test.popup.select", i18n.Text("Select")),
+				menu.WithItem("test.popup.select_with_filter", i18n.Text("Select with Filter")),
+				menu.WithItem("test.popup.progress.spinner", i18n.Text("Progress Spinner")),
+				menu.WithItem("test.popup.progress.bar", i18n.Text("Progress Bar")),
 			),
 		),
 	))
@@ -109,6 +117,31 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 
 		case "deploy.verify":
 			return deploy.VerifyAll(context.Background(), m.client)
+
+		case "settings.language":
+			return selectpopup.Open(
+				i18n.T("language.select"),
+				func(_ context.Context) ([]langOption, error) {
+					locales := i18n.GetAvailableLocales()
+					opts := make([]langOption, 0, len(locales))
+					for code, name := range locales {
+						opts = append(opts, langOption{Code: code, Name: name})
+					}
+					sort.Slice(opts, func(i, j int) bool { return opts[i].Code < opts[j].Code })
+					return opts, nil
+				},
+				func(o langOption) tea.Cmd {
+					i18n.SetLang(o.Code)
+					viper.Set("language", o.Code)
+					if err := config.Save(); err != nil {
+						return messagepopup.Open(messagepopup.Error, err.Error(), nil)
+					}
+					return nil
+				},
+				tablecontroll.New(tablecontroll.Columns[langOption]{
+					{Title: func() string { return i18n.T("menu.language") }, View: func(o langOption) string { return o.Name }},
+				}),
+			)
 
 		case "test.popup.select":
 			return selectpopup.Open(

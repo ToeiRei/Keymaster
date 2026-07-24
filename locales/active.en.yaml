@@ -17,6 +17,7 @@ menu.view_accounts_by_host: "View Accounts by Host"
 menu.view_keys_deployment: "View Keys Deployment"
 menu.navigation: "Navigation"
 menu.language: "Language"
+menu.settings: "Settings"
 menu.dashboard: "Dashboard"
 
 # Dashboard page translations

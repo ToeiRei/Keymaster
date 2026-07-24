@@ -18,6 +18,7 @@ menu.view_accounts_by_host: "Konten nach Host anzeigen"
 menu.view_keys_deployment: "Schlüssel-Bereitstellung anzeigen"
 menu.navigation: "Navigation"
 menu.language: "Sprache"
+menu.settings: "Einstellungen"
 menu.dashboard: "Übersicht"
 
 # Dashboard page translations

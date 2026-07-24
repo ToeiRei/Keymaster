@@ -6,12 +6,14 @@
 package menu
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
-func WithItem(id string, name string, sub_items ...Item) Item {
+func WithItem(id string, name fmt.Stringer, sub_items ...Item) Item {
 	return Item{
 		Id:       id,
 		Name:     name,
@@ -21,13 +23,16 @@ func WithItem(id string, name string, sub_items ...Item) Item {
 
 type Item struct {
 	Id       string
-	Name     string
+	Name     fmt.Stringer
 	SubItems []Item
 	Cmd      tea.Cmd
 }
 
 func (i Item) View(is_active bool, active_stack []int) string {
-	content := i.Name
+	var content string
+	if i.Name != nil {
+		content = i.Name.String()
+	}
 
 	item_style := lipgloss.NewStyle()
 	if len(i.SubItems) > 0 {

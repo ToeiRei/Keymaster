@@ -96,6 +96,14 @@ func GetAvailableLocales() map[string]string {
 	return availableLocales
 }
 
+// Text is a translatable string identified by its message ID. Its String
+// resolves through T in the current language at call time, so a label stored
+// under one language follows a later runtime language switch.
+type Text string
+
+// String implements fmt.Stringer, resolving the message in the current language.
+func (m Text) String() string { return T(string(m)) }
+
 // T is the main translation function. It retrieves a translated string by its ID.
 // It supports pluralization and template variables.
 func T(messageID string, templateData ...interface{}) string {
