@@ -108,6 +108,7 @@ type Account struct {
 	Username     string
 	Host         string
 	Port         int
+	Serial       int
 	DeployMethod string // ssh, cisco, ...
 	DeploySecret string
 	DeployCache  string

@@ -410,6 +410,7 @@ func modelToClientAccount(accountModel db.AccountModel) client.Account {
 		Username:     accountModel.Username,
 		Host:         accountModel.Host,
 		Port:         port,
+		Serial:       accountModel.Serial,
 		DeployMethod: accountModel.DeployMethod,
 		DeploySecret: accountModel.DeploySecret,
 		DeployCache:  "",
@@ -891,9 +892,10 @@ func (c *Client) accountDeployData(ctx context.Context, account client.Account) 
 	})
 
 	return connector.DeployData{
-		append(globalRecords, localRecords...),
-		account.DeploySecret,
-		account.DeployCache,
+		Records:         append(globalRecords, localRecords...),
+		Secret:          account.DeploySecret,
+		Cache:           account.DeployCache,
+		SystemKeySerial: account.Serial,
 	}, nil
 }
 

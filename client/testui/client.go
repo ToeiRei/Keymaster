@@ -388,8 +388,8 @@ func (c *Client) DeleteLink(ctx context.Context, accountId client.AccountId, pub
 
 // --- Deploy & Verify ---
 
-func (c *Client) DeployAccount(ctx context.Context, accountId client.AccountId) (chan client.DeployProgressAccount, error) {
-	dpc, err := c.DeployAccounts(ctx, accountId)
+func (c *Client) DeployAccount(ctx context.Context, userRequester client.UserRequester, accountId client.AccountId) (chan client.DeployProgressAccount, error) {
+	dpc, err := c.DeployAccounts(ctx, userRequester, accountId)
 	if err != nil {
 		return nil, err
 	}
@@ -407,7 +407,7 @@ func (c *Client) DeployAccount(ctx context.Context, accountId client.AccountId) 
 	return dbac, nil
 }
 
-func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error) {
+func (c *Client) DeployAccounts(ctx context.Context, userRequester client.UserRequester, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error) {
 	accounts, err := c.GetAccounts(ctx, accountIds...)
 	if err != nil {
 		return nil, err
@@ -504,8 +504,8 @@ func (c *Client) DeployAccounts(ctx context.Context, accountIds ...client.Accoun
 	return deployProgressChan, nil
 }
 
-func (c *Client) VerifyAccount(ctx context.Context, accountId client.AccountId) (chan client.VerifyProgressAccount, error) {
-	dpc, err := c.VerifyAccounts(ctx, accountId)
+func (c *Client) VerifyAccount(ctx context.Context, userRequester client.UserRequester, accountId client.AccountId) (chan client.VerifyProgressAccount, error) {
+	dpc, err := c.VerifyAccounts(ctx, userRequester, accountId)
 	if err != nil {
 		return nil, err
 	}
@@ -523,7 +523,7 @@ func (c *Client) VerifyAccount(ctx context.Context, accountId client.AccountId) 
 	return dbac, nil
 }
 
-func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.AccountId) (chan client.VerifyProgressAccounts, error) {
+func (c *Client) VerifyAccounts(ctx context.Context, userRequester client.UserRequester, accountIds ...client.AccountId) (chan client.VerifyProgressAccounts, error) {
 	accounts, err := c.GetAccounts(ctx, accountIds...)
 	if err != nil {
 		return nil, err
