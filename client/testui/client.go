@@ -627,12 +627,24 @@ func (c *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 
 // --- Other ---
 
-func (c *Client) ListAuditLogs(ctx context.Context, limit int) ([]client.AuditLog, error) {
-	var logs []client.AuditLog
-	if limit <= 0 {
-		logs = c.auditLogs
-	} else {
-		logs = c.auditLogs[len(c.auditLogs)-min(len(c.auditLogs), limit):]
+func (c *Client) ListAuditLogs(ctx context.Context, offset int, limit int) ([]client.AuditLog, error) {
+	// newest-first, mirroring the bunrewrite impl (ORDER BY timestamp DESC)
+	logs := make([]client.AuditLog, len(c.auditLogs))
+	for i, log := range c.auditLogs {
+		logs[len(c.auditLogs)-1-i] = log
+	}
+
+	// skip offset entries from the front (newest), guarding bounds
+	if offset > 0 {
+		if offset >= len(logs) {
+			return []client.AuditLog{}, nil
+		}
+		logs = logs[offset:]
+	}
+
+	// cap to limit
+	if limit > 0 && limit < len(logs) {
+		logs = logs[:limit]
 	}
 
 	return append([]client.AuditLog(nil), logs...), nil

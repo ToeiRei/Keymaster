@@ -1096,11 +1096,14 @@ func modelToClientAuditLog(auditLogModel db.AuditLogModel) client.AuditLog {
 	}
 }
 
-func (c *Client) ListAuditLogs(ctx context.Context, limit int) ([]client.AuditLog, error) {
+func (c *Client) ListAuditLogs(ctx context.Context, offset int, limit int) ([]client.AuditLog, error) {
 	var auditLogModels []*db.AuditLogModel
 	query := c.bun.NewSelect().
 		Model(&auditLogModels).
 		OrderExpr("timestamp DESC")
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
 	if limit > 0 {
 		query = query.Limit(limit)
 	}

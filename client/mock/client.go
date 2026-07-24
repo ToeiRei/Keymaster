@@ -56,7 +56,7 @@ type ClientOverwrites struct {
 	VerifyAccounts func(ctx context.Context, accountIds ...client.AccountId) (chan client.VerifyProgressAccounts, error)
 
 	// --- Other ---
-	ListAuditLogs      func(ctx context.Context, limit int) ([]client.AuditLog, error)
+	ListAuditLogs      func(ctx context.Context, offset int, limit int) ([]client.AuditLog, error)
 	ListConnectorKeys  func(ctx context.Context) ([]string, error)
 	OnboardHost        func(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error)
 	DecommisionAccount func(ctx context.Context, id client.AccountId) (chan client.DecommisionAccountProgress, error)
@@ -543,17 +543,17 @@ func (m *Client) VerifyAccounts(ctx context.Context, accountIds ...client.Accoun
 
 // --- Other ---
 
-func (m *Client) ListAuditLogs(ctx context.Context, limit int) ([]client.AuditLog, error) {
+func (m *Client) ListAuditLogs(ctx context.Context, offset int, limit int) ([]client.AuditLog, error) {
 	if m.Pre != nil {
-		err := m.Pre("ListAuditLogs", map[string]any{"ctx": ctx, "limit": limit})
+		err := m.Pre("ListAuditLogs", map[string]any{"ctx": ctx, "offset": offset, "limit": limit})
 		if err != nil {
 			return nil, nil
 		}
 	}
 	if m.Overwrites.ListAuditLogs != nil {
-		return m.Overwrites.ListAuditLogs(ctx, limit)
+		return m.Overwrites.ListAuditLogs(ctx, offset, limit)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.ListAuditLogs(ctx, limit)
+		return m.BaseClient.ListAuditLogs(ctx, offset, limit)
 	}
 	panic("Client.ListAuditLogs not implemented")
 }

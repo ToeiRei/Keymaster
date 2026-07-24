@@ -77,7 +77,7 @@ type Client interface {
 
 	// --- Other ---
 
-	ListAuditLogs(ctx context.Context, limit int) ([]AuditLog, error) // TODO doesn't account for filtering and pagination
+	ListAuditLogs(ctx context.Context, offset int, limit int) ([]AuditLog, error)
 
 	ListConnectorKeys(ctx context.Context) ([]string, error)
 

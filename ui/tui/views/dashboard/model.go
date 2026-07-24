@@ -272,7 +272,7 @@ func (m *Model) reload() tea.Cmd {
 			return msgReloadResult{err: err}
 		}
 
-		auditLogs, err := m.client.ListAuditLogs(ctx, 25)
+		auditLogs, err := m.client.ListAuditLogs(ctx, 0, 25)
 		if err != nil {
 			return msgReloadResult{err: err}
 		}
