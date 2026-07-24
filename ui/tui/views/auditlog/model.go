@@ -76,7 +76,7 @@ func New(c client.Client, routerControll router.Controll) *Model {
 		controll: tablecontroll.New(tablecontroll.Columns[auditRow]{
 			{Title: func() string { return i18n.T("auditlog.col_time") }, View: func(r auditRow) string { return r.Time }},
 			{Title: func() string { return i18n.T("auditlog.col_user") }, View: func(r auditRow) string { return r.User }},
-			{Title: func() string { return i18n.T("auditlog.col_action") }, View: func(r auditRow) string { return r.Action }},
+			{Title: func() string { return i18n.T("auditlog.col_action") }, View: func(r auditRow) string { return i18n.TAuditAction(r.Action) }},
 			{Title: func() string { return i18n.T("auditlog.col_details") }, View: func(r auditRow) string { return r.Detail }, EvictionOrder: -1},
 		}),
 	}
@@ -351,20 +351,9 @@ func toRow(entry client.AuditLog) auditRow {
 	}
 
 	return auditRow{
-		Time:   util.StringifyTime(entry.Timestamp),
-		User:   user + " @ " + host,
-		Action: formatAction(entry.Action),
-		Detail: strings.TrimSpace(strings.ReplaceAll(entry.Details.String(), "\n", " ")),
+		util.StringifyTime(entry.Timestamp),
+		user + " @ " + host,
+		entry.Action,
+		strings.TrimSpace(strings.ReplaceAll(entry.Details.String(), "\n", " ")),
 	}
-}
-
-// formatAction turns "account_create" into "Account Create".
-func formatAction(action string) string {
-	action = strings.TrimSpace(action)
-	if action == "" {
-		return "-"
-	}
-
-	// TODO consider translating via i18n
-	return action
 }
