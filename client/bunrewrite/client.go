@@ -145,9 +145,15 @@ func (c *Client) writeAuditLog(ctx context.Context, idb bun.IDB, action string, 
 		return err
 	}
 
+	username := osUser.Username
+	if runtime.GOOS == "windows" {
+		usernameParts := strings.Split(username, "\\")
+		username = usernameParts[len(usernameParts)-1]
+	}
+
 	auditLogModel := db.AuditLogModel{
 		Timestamp: time.Now(),
-		Username:  osUser.Username,
+		Username:  username,
 		Hostname:  nullString(hostname),
 		Referrer:  nullString(c.referer),
 		Action:    action,
