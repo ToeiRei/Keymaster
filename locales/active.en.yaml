@@ -19,6 +19,13 @@ menu.navigation: "Navigation"
 menu.language: "Language"
 menu.settings: "Settings"
 menu.dashboard: "Dashboard"
+menu.window_title: "Menu"
+menu.public_keys: "Public Keys"
+menu.accounts: "Accounts"
+menu.deploy: "Deploy"
+menu.deploy_dirty: "Deploy dirty"
+menu.deploy_all: "Deploy all"
+menu.verify_all: "Verify all"
 
 # Dashboard page translations
 dashboard.title: "Keymaster"

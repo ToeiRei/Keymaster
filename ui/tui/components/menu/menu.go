@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/i18n"
 	windowtitle "github.com/toeirei/keymaster/ui/tui/helpers/title"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/util/slicest"
@@ -86,7 +87,7 @@ func (m Model) View() string {
 func (m *Model) Focus(parentKeyMap help.KeyMap) tea.Cmd {
 	m.focused = true
 	return tea.Batch(
-		windowtitle.Announce("Menu"),
+		windowtitle.Announce(i18n.T("menu.window_title")),
 		util.AnnounceKeyMapCmd(parentKeyMap, DefaultKeyMap),
 	)
 }

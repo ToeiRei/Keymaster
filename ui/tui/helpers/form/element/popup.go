@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
@@ -106,7 +107,7 @@ func (p *Popup[T]) View(width int, eager bool) string {
 		style = p.BlurredStyle
 	}
 
-	label := ansi.Truncate(p.Label, width, "…")
+	label := ansi.Truncate(i18n.T(p.Label), width, "…")
 	content := ansi.Truncate(p.fnToString(p.value), width-4, "…")
 
 	return lipgloss.JoinVertical(lipgloss.Left, style.Render(label), "[ "+content+" ]")

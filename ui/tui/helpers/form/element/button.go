@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
@@ -34,11 +35,18 @@ type Button struct {
 
 type ButtonKeyMap struct {
 	Click key.Binding
+	// label is the button's message ID (or literal), used to rebuild the click
+	// hint's help text in the current language at render time.
+	label string
 }
 
-func (k ButtonKeyMap) ShortHelp() []key.Binding { return []key.Binding{k.Click} }
+func (k ButtonKeyMap) clickBinding() key.Binding {
+	return key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", strings.ToLower(i18n.T(k.label))))
+}
 
-func (k ButtonKeyMap) FullHelp() [][]key.Binding { return [][]key.Binding{{k.Click}} }
+func (k ButtonKeyMap) ShortHelp() []key.Binding { return []key.Binding{k.clickBinding()} }
+
+func (k ButtonKeyMap) FullHelp() [][]key.Binding { return [][]key.Binding{{k.clickBinding()}} }
 
 type ButtonOpt = func(button *Button)
 
@@ -70,10 +78,8 @@ func NewButton(label string, opts ...ButtonOpt) form.FormElement {
 	button := &Button{
 		Label: label,
 		KeyMap: ButtonKeyMap{
-			Click: key.NewBinding(
-				key.WithKeys("enter"),
-				key.WithHelp("enter", strings.ToLower(label)),
-			),
+			Click: key.NewBinding(key.WithKeys("enter")),
+			label: label,
 		},
 		DisabledStyle: lipgloss.NewStyle().
 			Padding(0, 2).
@@ -136,10 +142,11 @@ func (b *Button) View(width int, eager bool) string {
 	}
 
 	style = style.MaxWidth(width)
-	content := b.Label
+	label := i18n.T(b.Label)
+	content := label
 	if eager {
 		style = style.Width(width - 2)
-		content = lipgloss.PlaceHorizontal(width-6, lipgloss.Center, b.Label)
+		content = lipgloss.PlaceHorizontal(width-6, lipgloss.Center, label)
 	}
 
 	return style.Render(content)

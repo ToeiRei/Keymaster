@@ -20,6 +20,13 @@ menu.navigation: "Sīðfæt"
 menu.language: "Sprǣċ"
 menu.settings: "Ġesetnessa"
 menu.dashboard: "Dōmbord"
+menu.window_title: "Ċȳre"
+menu.public_keys: "Opene Cǣgan"
+menu.accounts: "Rǣdmenn"
+menu.deploy: "Sendan"
+menu.deploy_dirty: "Unrihtfæste sendan"
+menu.deploy_all: "Ealle sendan"
+menu.verify_all: "Ealle fæstnian"
 
 # Dashboard page translations
 dashboard.title: "Cǣġhealdend"

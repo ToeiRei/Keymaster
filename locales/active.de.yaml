@@ -20,6 +20,13 @@ menu.navigation: "Navigation"
 menu.language: "Sprache"
 menu.settings: "Einstellungen"
 menu.dashboard: "Übersicht"
+menu.window_title: "Menü"
+menu.public_keys: "Öffentliche Schlüssel"
+menu.accounts: "Konten"
+menu.deploy: "Ausrollen"
+menu.deploy_dirty: "Unsynchronisierte ausrollen"
+menu.deploy_all: "Alle ausrollen"
+menu.verify_all: "Alle verifizieren"
 
 # Dashboard page translations
 dashboard.title: "Keymaster"

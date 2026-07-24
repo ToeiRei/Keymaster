@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
@@ -45,7 +46,7 @@ func (m Model) View() string {
 		Render(logoTitle) + "\n" +
 		lipgloss.NewStyle().
 			Foreground(lipgloss.Color("8")).
-			Render(logoTagline)
+			Render(i18n.T("dashboard.subtitle"))
 
 	return lipgloss.
 		NewStyle().

@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
@@ -29,9 +30,15 @@ type CheckboxKeyMap struct {
 	Toggle key.Binding
 }
 
-func (k CheckboxKeyMap) ShortHelp() []key.Binding { return []key.Binding{k.Toggle} }
+// toggleBinding rebuilds the toggle binding so its help text resolves in the
+// current language at render time. The stored KeyMap.Toggle drives matching.
+func toggleBinding() key.Binding {
+	return key.NewBinding(key.WithKeys(" ", "enter"), key.WithHelp("space", i18n.T("keys.toggle")))
+}
 
-func (k CheckboxKeyMap) FullHelp() [][]key.Binding { return [][]key.Binding{{k.Toggle}} }
+func (k CheckboxKeyMap) ShortHelp() []key.Binding { return []key.Binding{toggleBinding()} }
+
+func (k CheckboxKeyMap) FullHelp() [][]key.Binding { return [][]key.Binding{{toggleBinding()}} }
 
 type CheckboxOption func(*Checkbox)
 
@@ -116,8 +123,8 @@ func (c *Checkbox) View(width int, eager bool) string {
 	}
 
 	content := box
-	if c.Label != "" {
-		content = box + " " + c.Label
+	if label := i18n.T(c.Label); label != "" {
+		content = box + " " + label
 	}
 
 	return style.Render(content)

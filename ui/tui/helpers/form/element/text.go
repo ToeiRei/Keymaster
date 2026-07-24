@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
@@ -93,10 +94,15 @@ func (t *Text) Update(msg tea.Msg) (tea.Cmd, form.Action) {
 }
 
 func (t *Text) View(width int, eager bool) string {
+	// Resolve the label/placeholder once, in the current language, and use the
+	// resolved values for both width math and rendering.
+	label := i18n.T(t.Label)
+	placeholder := i18n.T(t.Placeholder)
+
 	views := make([]string, 0, 2)
 
 	// render label
-	if t.Label != "" {
+	if label != "" {
 		labelStyle := lipgloss.NewStyle().MaxWidth(width).Foreground(lipgloss.Color("240"))
 		if eager {
 			labelStyle = labelStyle.Width(width)
@@ -104,19 +110,19 @@ func (t *Text) View(width int, eager bool) string {
 		if t.focused {
 			labelStyle = labelStyle.Foreground(lipgloss.Color("205")).Bold(true)
 		}
-		views = append(views, labelStyle.Render(t.Label))
+		views = append(views, labelStyle.Render(label))
 	}
 
 	// render input
 	t.input.Width = width - 2 - 1 // -1 because bubbles doesn't think a cursor takes up any space
 	if !eager {
 		t.input.Width = min(t.input.Width, max(
-			len(t.Placeholder),
-			len(t.Label),
+			len(placeholder),
+			len(label),
 			len(t.input.Value()),
 		))
 	}
-	t.input.Placeholder = t.Placeholder
+	t.input.Placeholder = placeholder
 	views = append(views, t.input.View())
 
 	return lipgloss.JoinVertical(lipgloss.Left, views...)
