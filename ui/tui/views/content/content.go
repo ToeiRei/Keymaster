@@ -23,6 +23,7 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/popups/selectpopup"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/views/account"
+	"github.com/toeirei/keymaster/ui/tui/views/auditlog"
 	"github.com/toeirei/keymaster/ui/tui/views/dashboard"
 	"github.com/toeirei/keymaster/ui/tui/views/publickey"
 	"github.com/toeirei/keymaster/util/slicest"
@@ -47,6 +48,7 @@ func New(c client.Client) *Model {
 		menu.WithItem("dashboard.show", i18n.T("menu.dashboard")),
 		menu.WithItem("publickey.list", "Public Keys"),
 		menu.WithItem("account.list", "Accounts"),
+		menu.WithItem("auditlog.list", i18n.T("menu.auditlog")),
 		menu.WithItem("", "Deploy",
 			menu.WithItem("deploy.dirty", "Deploy dirty"),
 			menu.WithItem("deploy.all", "Deploy all"),
@@ -95,6 +97,9 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 
 		case "account.list":
 			return account.NewCrud(m.client, m.routerControll).OpenList()
+
+		case "auditlog.list":
+			return m.routerControll.Push(util.ModelPointer(auditlog.New(m.client, m.routerControll)))
 
 		case "deploy.dirty":
 			return deploy.DeployDirty(context.Background(), m.client)

@@ -54,6 +54,19 @@ dashboard.log_col_details: "Ymbe"
 dashboard.unknown_action: "Uncūþ"
 dashboard.no_timestamp: "--:--"
 
+# Audit log view
+menu.auditlog: "Gewritrǣding"
+auditlog.title: "Gewritrǣding"
+auditlog.col_time: "Tīd"
+auditlog.col_user: "Brūcend"
+auditlog.col_action: "Dǣd"
+auditlog.col_details: "Ymbe"
+auditlog.empty: "Nān gewritrǣding."
+auditlog.error_title: "Gewritrǣding Gedƿola"
+auditlog.end_marker: "(ende)"
+auditlog.page_info: "Tramet %d · ingongas %d-%d"
+auditlog.page_info_total: "Tramet %d/%d · %d-%d of %d"
+
 # Language selection view
 language.select: "Ċēos sprǣċe:"
 language.help: "ūp/niþer: faran   enter: ċēosan   q/esc: eftfaran"

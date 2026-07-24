@@ -55,6 +55,19 @@ dashboard.log_col_details: "Details"
 dashboard.unknown_action: "Unbekannt"
 dashboard.no_timestamp: "--:--"
 
+# Audit log view
+menu.auditlog: "Audit-Log"
+auditlog.title: "Audit-Log"
+auditlog.col_time: "Zeit"
+auditlog.col_user: "Benutzer"
+auditlog.col_action: "Aktion"
+auditlog.col_details: "Details"
+auditlog.empty: "Keine Audit-Einträge."
+auditlog.error_title: "Audit-Log-Fehler"
+auditlog.end_marker: "(Ende)"
+auditlog.page_info: "Seite %d · Einträge %d-%d"
+auditlog.page_info_total: "Seite %d/%d · %d-%d von %d"
+
 # Language selection view
 language.select: "Sprache auswählen:"
 language.help: "up/down: navigieren   enter: auswählen  q/esc: zurück"
