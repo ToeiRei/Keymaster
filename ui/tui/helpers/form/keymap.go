@@ -15,11 +15,11 @@ type KeyMap struct {
 }
 
 func (km KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Next, km.Prev}
+	return []key.Binding{keys.Next(), keys.Prev()}
 }
 
 func (km KeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{km.Next, km.Prev}}
+	return [][]key.Binding{{keys.Next(), keys.Prev()}}
 }
 
 // *[KeyMap] implements [help.KeyMap]

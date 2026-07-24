@@ -25,14 +25,17 @@ type ListKeyMap struct {
 	Exit         key.Binding
 }
 
+// ShortHelp / FullHelp rebuild their bindings from the keys.* builders so the
+// help descriptions resolve in the current language at render time. The stored
+// fields (and ListBaseKeyMap) remain the source of truth for key.Matches.
 func (km ListKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.LineUp, km.LineDown, km.Create, km.Edit, km.Duplicate, km.Delete, km.Exit}
+	return []key.Binding{keys.LineUp(), keys.LineDown(), keys.Create(), keys.Edit(), keys.Duplicate(), keys.Delete(), keys.Exit()}
 }
 
 func (km ListKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.LineUp, km.LineDown, km.PageUp, km.PageDown, km.HalfPageUp, km.HalfPageDown, km.GotoTop, km.GotoBottom},
-		{km.Create, km.Edit, km.Duplicate, km.Delete, km.Exit},
+		{keys.LineUp(), keys.LineDown(), keys.PageUp(), keys.PageDown(), keys.HalfPageUp(), keys.HalfPageDown(), keys.GotoTop(), keys.GotoBottom()},
+		{keys.Create(), keys.Edit(), keys.Duplicate(), keys.Delete(), keys.Exit()},
 	}
 }
 

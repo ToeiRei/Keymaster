@@ -17,13 +17,13 @@ type SelectKeyMap struct {
 }
 
 func (km SelectKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Up, km.Down, km.Select, km.Cancel}
+	return []key.Binding{keys.UpArrow(), keys.DownArrow(), keys.Select(), keys.Cancel()}
 }
 
 func (km SelectKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Up, km.Down},
-		{km.Select, km.Cancel},
+		{keys.UpArrow(), keys.DownArrow()},
+		{keys.Select(), keys.Cancel()},
 	}
 }
 

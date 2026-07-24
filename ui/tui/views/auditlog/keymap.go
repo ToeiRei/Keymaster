@@ -6,8 +6,19 @@ package auditlog
 import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
+
+// prevPage / nextPage are the audit log's arrow-based paging bindings. They live
+// here (not in the shared keys package) because their labels are page-specific;
+// like the keys.* builders they resolve their help text via i18n.T at call time.
+func prevPage() key.Binding {
+	return key.NewBinding(key.WithKeys("left"), key.WithHelp("←", i18n.T("keys.prev_page")))
+}
+func nextPage() key.Binding {
+	return key.NewBinding(key.WithKeys("right"), key.WithHelp("→", i18n.T("keys.next_page")))
+}
 
 // KeyMap describes the audit-log page's key bindings for the help footer.
 type KeyMap struct {
@@ -19,13 +30,13 @@ type KeyMap struct {
 }
 
 func (km KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Up, km.Down, km.PrevPage, km.NextPage, km.Exit}
+	return []key.Binding{keys.Up(), keys.Down(), prevPage(), nextPage(), keys.Exit()}
 }
 
 func (km KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Up, km.Down},
-		{km.PrevPage, km.NextPage, km.Exit},
+		{keys.Up(), keys.Down()},
+		{prevPage(), nextPage(), keys.Exit()},
 	}
 }
 
@@ -35,7 +46,7 @@ var _ help.KeyMap = (*KeyMap)(nil)
 var BaseKeyMap = KeyMap{
 	Up:       keys.Up(),
 	Down:     keys.Down(),
-	PrevPage: key.NewBinding(key.WithKeys("left"), key.WithHelp("←", "prev page")),
-	NextPage: key.NewBinding(key.WithKeys("right"), key.WithHelp("→", "next page")),
+	PrevPage: prevPage(),
+	NextPage: nextPage(),
 	Exit:     keys.Exit(),
 }
