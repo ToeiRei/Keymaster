@@ -5,9 +5,11 @@ package crud
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/helpers/form/element"
 	windowtitle "github.com/toeirei/keymaster/ui/tui/helpers/title"
@@ -56,14 +58,14 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 		// buttons
 		form.WithRow(
 			form.WithAlign[TRecordCreate](form.Strech),
-			form.WithItem[TRecordCreate]("_reset", formelement.NewButton("Reset",
+			form.WithItem[TRecordCreate]("_reset", formelement.NewButton("crud.btn_reset",
 				formelement.WithButtonActionReset(),
 			)),
-			form.WithItem[TRecordCreate]("_cancel", formelement.NewButton("Cancel",
+			form.WithItem[TRecordCreate]("_cancel", formelement.NewButton("crud.btn_cancel",
 				formelement.WithButtonActionCancel(),
 				formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
 			)),
-			form.WithItem[TRecordCreate]("_create", formelement.NewButton("Create",
+			form.WithItem[TRecordCreate]("_create", formelement.NewButton("crud.btn_create",
 				formelement.WithButtonActionSubmit(),
 				formelement.WithButtonGlobalKeyBindings(keys.SaveCreate()),
 			)),
@@ -72,7 +74,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 		form.WithOnSubmit(func(result TRecordCreate, err error) (tea.Cmd, bool) {
 			return progresspopup.Open(
 				progresspopup.Spinner,
-				"Creating "+m.crud.Texts.EntityNameSingular(),
+				fmt.Sprintf(i18n.T("crud.creating"), m.crud.Texts.EntityNameSingular()),
 				func(ctx context.Context, _ progresspopup.ProgressChan) tea.Cmd {
 					record, err := m.crud.createRecord(ctx, result)
 					return util.TeaMsgToCmd(createMsgCreateResult[TRecord]{record, err})
@@ -112,7 +114,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 	switch msg := msg.(type) {
 	case createMsgCreateResult[TRecord]:
 		if msg.err != nil {
-			return messagepopup.Open(messagepopup.Error, "Error creating "+m.crud.Texts.EntityNameSingular()+":\n"+msg.err.Error(), nil)
+			return messagepopup.Open(messagepopup.Error, fmt.Sprintf(i18n.T("crud.error_creating"), m.crud.Texts.EntityNameSingular(), msg.err.Error()), nil)
 		}
 		return tea.Sequence(m.crud.routerControll.Pop(1), util.TeaMsgToCmd(CreateMsgCreated[TRecord]{msg.record}))
 	}

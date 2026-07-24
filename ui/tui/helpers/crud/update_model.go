@@ -5,9 +5,11 @@ package crud
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/helpers/form/element"
 	windowtitle "github.com/toeirei/keymaster/ui/tui/helpers/title"
@@ -55,14 +57,14 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 	formOpts := append(m.crud.updateFormRows(),
 		// buttons
 		form.WithRow(
-			form.WithItem[TRecordUpdate]("_reset", formelement.NewButton("Reset",
+			form.WithItem[TRecordUpdate]("_reset", formelement.NewButton("crud.btn_reset",
 				formelement.WithButtonActionReset(),
 			)),
-			form.WithItem[TRecordUpdate]("_cancel", formelement.NewButton("Cancel",
+			form.WithItem[TRecordUpdate]("_cancel", formelement.NewButton("crud.btn_cancel",
 				formelement.WithButtonActionCancel(),
 				formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
 			)),
-			form.WithItem[TRecordUpdate]("_save", formelement.NewButton("Save",
+			form.WithItem[TRecordUpdate]("_save", formelement.NewButton("crud.btn_save",
 				formelement.WithButtonActionSubmit(),
 				formelement.WithButtonGlobalKeyBindings(keys.Save()),
 			)),
@@ -71,7 +73,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 		form.WithOnSubmit(func(result TRecordUpdate, err error) (tea.Cmd, bool) {
 			return progresspopup.Open(
 				progresspopup.Spinner,
-				"Updating "+m.crud.Texts.EntityNameSingular(),
+				fmt.Sprintf(i18n.T("crud.updating"), m.crud.Texts.EntityNameSingular()),
 				func(ctx context.Context, _ progresspopup.ProgressChan) tea.Cmd {
 					record, err := m.crud.updateRecord(ctx, m.crud.getRecordId(m.record), result)
 					return util.TeaMsgToCmd(updateMsgUpdateResult[TRecord]{record, err})
@@ -116,7 +118,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 	case updateMsgUpdateResult[TRecord]:
 		if msg.err != nil {
 			if msg.err != nil {
-				return messagepopup.Open(messagepopup.Error, "Error updating "+m.crud.Texts.EntityNameSingular()+":\n"+msg.err.Error(), nil)
+				return messagepopup.Open(messagepopup.Error, fmt.Sprintf(i18n.T("crud.error_updating"), m.crud.Texts.EntityNameSingular(), msg.err.Error()), nil)
 			}
 			return nil
 		}

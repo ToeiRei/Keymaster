@@ -14,7 +14,7 @@ import (
 // managedPrefixes are the namespaces this test enforces full parity on across
 // every locale. Legacy keys predate the parity guarantee and are not checked
 // (the three files intentionally differ in their legacy key sets).
-var managedPrefixes = []string{"errors.", "audit.action.", "keys."}
+var managedPrefixes = []string{"errors.", "audit.action.", "keys.", "crud."}
 
 func loadLocale(t *testing.T, name string) map[string]string {
 	t.Helper()

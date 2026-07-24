@@ -5,12 +5,14 @@ package crud
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bobg/go-generics/v4/slices"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/ui/i18n"
 	windowtitle "github.com/toeirei/keymaster/ui/tui/helpers/title"
 	"github.com/toeirei/keymaster/ui/tui/popups/choicepopup"
 	"github.com/toeirei/keymaster/ui/tui/popups/messagepopup"
@@ -85,9 +87,9 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 		m.records = msg.records
 		m.refreshTable()
 		if msg.err != nil {
-			return choicepopup.Open("Error loading "+m.crud.Texts.EntityNameMultiple()+":\n"+msg.err.Error(), choicepopup.Choices{
-				choicepopup.Choice{Name: "Close", Cmd: m.crud.routerControll.Pop(1), KeyBindings: keys.KeyBindingList{keys.Close()}},
-				choicepopup.Choice{Name: "Reload", Cmd: m.reload(), KeyBindings: nil},
+			return choicepopup.Open(fmt.Sprintf(i18n.T("crud.error_loading"), m.crud.Texts.EntityNameMultiple(), msg.err.Error()), choicepopup.Choices{
+				choicepopup.Choice{Name: i18n.T("crud.close"), Cmd: m.crud.routerControll.Pop(1), KeyBindings: keys.KeyBindingList{keys.Close()}},
+				choicepopup.Choice{Name: i18n.T("crud.reload"), Cmd: m.reload(), KeyBindings: nil},
 			})
 		}
 		return nil
@@ -115,7 +117,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 
 	case listMsgDeleteResult[TRecord]:
 		if msg.err != nil {
-			return messagepopup.Open(messagepopup.Error, "Error deleting "+m.crud.Texts.EntityNameSingular()+":\n"+msg.err.Error(), nil)
+			return messagepopup.Open(messagepopup.Error, fmt.Sprintf(i18n.T("crud.error_deleting"), m.crud.Texts.EntityNameSingular(), msg.err.Error()), nil)
 		}
 		// full reload
 		if m.crud.listReloadAfterChange {
@@ -137,7 +139,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 		case key.Matches(msg, ListBaseKeyMap.Edit):
 			selectedRecord := m.selectedRecord()
 			if selectedRecord == nil {
-				return messagepopup.Open(messagepopup.Info, "Please select a "+m.crud.Texts.EntityNameSingular()+" to edit.", nil)
+				return messagepopup.Open(messagepopup.Info, fmt.Sprintf(i18n.T("crud.select_to_edit"), m.crud.Texts.EntityNameSingular()), nil)
 			}
 			return m.crud.routerControll.Push(util.ModelPointer(NewUpdate(
 				m.crud,
@@ -147,15 +149,15 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 		case key.Matches(msg, ListBaseKeyMap.Delete):
 			selectedRecord := m.selectedRecord()
 			if selectedRecord == nil {
-				return messagepopup.Open(messagepopup.Info, "Please select a "+m.crud.Texts.EntityNameSingular()+" to delete.", nil)
+				return messagepopup.Open(messagepopup.Info, fmt.Sprintf(i18n.T("crud.select_to_delete"), m.crud.Texts.EntityNameSingular()), nil)
 			}
 			return choicepopup.Open(
-				"Do you realy want to delete this "+m.crud.Texts.EntityNameSingular()+"?",
+				fmt.Sprintf(i18n.T("crud.confirm_delete"), m.crud.Texts.EntityNameSingular()),
 				choicepopup.Choices{
-					{Name: "Cancel", Cmd: nil, KeyBindings: keys.KeyBindingList{keys.Cancel()}},
-					{Name: "Delete", Cmd: progresspopup.Open(
+					{Name: i18n.T("crud.btn_cancel"), Cmd: nil, KeyBindings: keys.KeyBindingList{keys.Cancel()}},
+					{Name: i18n.T("crud.delete"), Cmd: progresspopup.Open(
 						progresspopup.Spinner,
-						"Deleting "+m.crud.Texts.EntityNameSingular(),
+						fmt.Sprintf(i18n.T("crud.deleting"), m.crud.Texts.EntityNameSingular()),
 						func(ctx context.Context, _ progresspopup.ProgressChan) tea.Cmd {
 							err := m.crud.deleteRecord(ctx, m.crud.getRecordId(*selectedRecord))
 							return func() tea.Msg {
@@ -221,7 +223,7 @@ var _ util.Model = (*ListModel[any, any, any, any, any])(nil)
 func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) reload() tea.Cmd {
 	return progresspopup.Open(
 		progresspopup.Spinner,
-		"Loading "+m.crud.Texts.EntityNameMultiple(), func(ctx context.Context, pc progresspopup.ProgressChan) tea.Cmd {
+		fmt.Sprintf(i18n.T("crud.loading"), m.crud.Texts.EntityNameMultiple()), func(ctx context.Context, pc progresspopup.ProgressChan) tea.Cmd {
 			records, err := m.crud.getRecords(ctx, util.NewZero[TFilter]())
 			return util.TeaMsgToCmd(listMsgReloaded[TRecord]{records, err})
 		},
