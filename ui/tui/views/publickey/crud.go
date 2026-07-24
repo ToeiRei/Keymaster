@@ -190,7 +190,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			return recordUpdateT{
 				record.publicKey.Comment,
 				record.publicKey.IsGlobal,
-				util.StringifyTime(record.publicKey.ExpiresAt),
+				util.StringifyTimeZero(record.publicKey.ExpiresAt),
 			}
 		},
 
@@ -254,7 +254,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 				record.publicKey.Data,
 				record.publicKey.Comment,
 				record.publicKey.IsGlobal,
-				util.StringifyTime(record.publicKey.ExpiresAt),
+				util.StringifyTimeZero(record.publicKey.ExpiresAt),
 			}
 		}),
 		crud.WithListAction(

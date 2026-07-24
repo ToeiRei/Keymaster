@@ -173,7 +173,7 @@ func NewCrud(c client.Client, rc router.Controll, publicKey client.PublicKey) *c
 		}).RenderBubblesTable,
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{
-				util.StringifyTime(record.link.ExpiresAt),
+				util.StringifyTimeZero(record.link.ExpiresAt),
 			}
 		},
 
@@ -185,7 +185,7 @@ func NewCrud(c client.Client, rc router.Controll, publicKey client.PublicKey) *c
 		crud.WithListDuplicateAction[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](func(record recordT) recordCreateT {
 			return recordCreateT{
 				record.account,
-				util.StringifyTime(record.link.ExpiresAt),
+				util.StringifyTimeZero(record.link.ExpiresAt),
 			}
 		}),
 		crud.WithListReloadAfterChange[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](true),

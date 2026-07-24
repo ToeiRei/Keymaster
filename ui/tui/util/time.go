@@ -39,12 +39,16 @@ func ParseTime(timeStr string) (time.Time, error) {
 	return result, err
 }
 
-// StringifyTime renders a time, mirroring [ParseTime]: the zero value renders
+// StringifyTimeZero renders a time, mirroring [ParseTime]: the zero value renders
 // as an empty string so optional/absent times display and round-trip as blank.
-func StringifyTime(value time.Time) string {
+func StringifyTimeZero(value time.Time) string {
 	if value.IsZero() {
 		return ""
 	}
+	return value.Format(timeLayout1)
+}
+
+func StringifyTime(value time.Time) string {
 	return value.Format(timeLayout1)
 }
 
@@ -54,5 +58,5 @@ func RenderExpiry(value time.Time) string {
 	if value.IsZero() {
 		return lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("240")).Render("never")
 	}
-	return StringifyTime(value)
+	return StringifyTimeZero(value)
 }
