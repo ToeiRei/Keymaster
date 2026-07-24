@@ -388,42 +388,28 @@ func (c *Client) DeleteLink(ctx context.Context, accountId client.AccountId, pub
 
 // --- Deploy & Verify ---
 
-func (c *Client) DeployAccount(ctx context.Context, userRequester client.UserRequester, accountId client.AccountId) (chan client.DeployProgressAccount, error) {
-	dpc, err := c.DeployAccounts(ctx, userRequester, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	// convert channel to only report the single accounts progress
-	dbac := make(chan client.DeployProgressAccount)
-	go func() {
-		defer close(dbac)
-
-		for dp := range dpc {
-			dbac <- *dp.Accounts[accountId]
-		}
-	}()
-
-	return dbac, nil
+func (c *Client) DeployAccount(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccount, accountId client.AccountId) error {
+	return projectSingleAccount(accountId, progress, func(p chan<- client.ProgressAccounts) error {
+		return c.DeployAccounts(ctx, userRequester, p, accountId)
+	})
 }
 
-func (c *Client) DeployAccounts(ctx context.Context, userRequester client.UserRequester, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error) {
+func (c *Client) DeployAccounts(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccounts, accountIds ...client.AccountId) error {
 	accounts, err := c.GetAccounts(ctx, accountIds...)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	deployDatas, err := slicest.MapX(accounts, func(a client.Account) (string, error) {
 		return c.accountDeployData(ctx, a)
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	deployProgressChan := make(chan client.DeployProgressAccounts)
 	deployProgress := client.DeployProgressAccounts{
-		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.DeployProgressAccount) {
-			return account.Id, &client.DeployProgressAccount{Progress: 0, Status: "not started", Err: nil}
+		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.ProgressAccountWithError) {
+			return account.Id, &client.ProgressAccountWithError{ProgressAccount: client.ProgressAccount{Progress: 0, Status: "not started"}}
 		}),
 	}
 
@@ -442,187 +428,187 @@ func (c *Client) DeployAccounts(ctx context.Context, userRequester client.UserRe
 		return false
 	}
 
-	go func() {
-		defer close(deployProgressChan)
+accountLoop:
+	for i, account := range accounts {
+		if checkContextCanceled(account.Id, deployProgress) {
+			continue accountLoop
+		}
 
-	accountLoop:
-		for i, account := range accounts {
+		deployProgress.Accounts[account.Id].Status = "deploying"
+		progress <- deployProgress
+
+		// simulate deplay
+		for _i := range 5 {
+			time.Sleep(time.Millisecond * 100)
 			if checkContextCanceled(account.Id, deployProgress) {
 				continue accountLoop
 			}
+			deployProgress.Accounts[account.Id].Progress = float64(_i+1) / 10
+			progress <- deployProgress
+		}
 
-			deployProgress.Accounts[account.Id].Status = "deploying"
-			deployProgressChan <- deployProgress
+		// potential error i guess
+		ok := true
+		if !ok {
+			deployProgress.Accounts[account.Id].Status = "error"
+			deployProgress.Accounts[account.Id].Progress = 1
+			deployProgress.Accounts[account.Id].Err = fmt.Errorf("some weird error on account with id %v", account.Id)
+			progress <- deployProgress
+			continue
+		}
 
-			// simulate deplay
-			for _i := range 5 {
-				time.Sleep(time.Millisecond * 100)
-				if checkContextCanceled(account.Id, deployProgress) {
-					continue accountLoop
-				}
-				deployProgress.Accounts[account.Id].Progress = float64(_i+1) / 10
-				deployProgressChan <- deployProgress
+		// simulate deplay
+		for _i := range 5 {
+			time.Sleep(time.Millisecond * 100)
+			if checkContextCanceled(account.Id, deployProgress) {
+				continue accountLoop
 			}
+			deployProgress.Accounts[account.Id].Progress = float64(_i+6) / 10
+			progress <- deployProgress
+		}
 
-			// potential error i guess
-			ok := true
-			if !ok {
-				deployProgress.Accounts[account.Id].Status = "error"
-				deployProgress.Accounts[account.Id].Progress = 1
-				deployProgress.Accounts[account.Id].Err = fmt.Errorf("some weird error on account with id %v", account.Id)
-				deployProgressChan <- deployProgress
-				continue
+		// simulate deploying data to remote
+		c.remoteStates[account.Id] = c.accountDeployCache(account, deployDatas[i])
+
+		_ = c.writeAuditLog("account.deploy", client.AuditLogDetails{{"account", fmt.Sprintf("%#v", account)}})
+
+		// update accounts deploy cache
+		_account := c.accounts[account.Id]
+		_account.DeployCache = c.remoteStates[account.Id]
+		c.accounts[account.Id] = _account
+
+		deployProgress.Accounts[account.Id].Status = "finished"
+		deployProgress.Accounts[account.Id].Progress = 1
+		progress <- deployProgress
+	}
+	progress <- deployProgress
+
+	return nil
+}
+
+func (c *Client) VerifyAccount(ctx context.Context, userRequester client.UserRequester, progress chan<- client.VerifyProgressAccount, accountId client.AccountId) error {
+	return projectSingleAccount(accountId, progress, func(p chan<- client.ProgressAccounts) error {
+		return c.VerifyAccounts(ctx, userRequester, p, accountId)
+	})
+}
+
+func (c *Client) VerifyAccounts(ctx context.Context, userRequester client.UserRequester, progress chan<- client.VerifyProgressAccounts, accountIds ...client.AccountId) error {
+	accounts, err := c.GetAccounts(ctx, accountIds...)
+	if err != nil {
+		return err
+	}
+
+	deployDatas, err := slicest.MapX(accounts, func(a client.Account) (string, error) {
+		return c.accountDeployData(ctx, a)
+	})
+	if err != nil {
+		return err
+	}
+
+	verifyProgress := client.VerifyProgressAccounts{
+		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.ProgressAccountWithError) {
+			return account.Id, &client.ProgressAccountWithError{ProgressAccount: client.ProgressAccount{Progress: 0, Status: "not started"}}
+		}),
+	}
+
+	checkContextCanceled := func(accountId client.AccountId, deployProgress client.DeployProgressAccounts) bool {
+		if ctx.Err() != nil {
+			deployProgress.Accounts[accountId].Progress = 1
+			if errors.Is(ctx.Err(), context.Canceled) {
+				deployProgress.Accounts[accountId].Status = "canceled"
+				deployProgress.Accounts[accountId].Err = errors.New("canceled")
+			} else {
+				deployProgress.Accounts[accountId].Status = "error"
+				deployProgress.Accounts[accountId].Err = ctx.Err()
 			}
+			return true
+		}
+		return false
+	}
 
-			// simulate deplay
-			for _i := range 5 {
-				time.Sleep(time.Millisecond * 100)
-				if checkContextCanceled(account.Id, deployProgress) {
-					continue accountLoop
-				}
-				deployProgress.Accounts[account.Id].Progress = float64(_i+6) / 10
-				deployProgressChan <- deployProgress
+accountLoop:
+	for i, account := range accounts {
+		if checkContextCanceled(account.Id, verifyProgress) {
+			continue accountLoop
+		}
+
+		verifyProgress.Accounts[account.Id].Status = "verifing"
+		progress <- verifyProgress
+
+		// simulate deplay
+		for _i := range 5 {
+			time.Sleep(time.Millisecond * 100)
+			if checkContextCanceled(account.Id, verifyProgress) {
+				continue accountLoop
 			}
+			verifyProgress.Accounts[account.Id].Progress = float64(_i+1) / 10
+			progress <- verifyProgress
+		}
 
-			// simulate deploying data to remote
-			c.remoteStates[account.Id] = c.accountDeployCache(account, deployDatas[i])
+		ok := true
+		if !ok {
+			verifyProgress.Accounts[account.Id].Status = "error"
+			verifyProgress.Accounts[account.Id].Progress = 1
+			verifyProgress.Accounts[account.Id].Err = fmt.Errorf("some weird error on account with id %v", account.Id)
+			progress <- verifyProgress
+			continue
+		}
 
-			_ = c.writeAuditLog("account.deploy", client.AuditLogDetails{{"account", fmt.Sprintf("%#v", account)}})
+		// simulate deplay
+		for _i := range 5 {
+			time.Sleep(time.Millisecond * 100)
+			if checkContextCanceled(account.Id, verifyProgress) {
+				continue accountLoop
+			}
+			verifyProgress.Accounts[account.Id].Progress = float64(_i+6) / 10
+			progress <- verifyProgress
+		}
 
-			// update accounts deploy cache
+		// simulate getting remoteState from remote
+		remoteState, hasState := c.remoteStates[account.Id]
+
+		if !hasState || c.accountDeployCache(account, deployDatas[i]) != remoteState {
+			// update accounts deploy cache to reflect remotes state
 			_account := c.accounts[account.Id]
 			_account.DeployCache = c.remoteStates[account.Id]
 			c.accounts[account.Id] = _account
 
-			deployProgress.Accounts[account.Id].Status = "finished"
-			deployProgress.Accounts[account.Id].Progress = 1
-			deployProgressChan <- deployProgress
+			verifyProgress.Accounts[account.Id].Status = "error"
+			verifyProgress.Accounts[account.Id].Err = errors.New("account is out of sync")
+		} else {
+			verifyProgress.Accounts[account.Id].Status = "finished"
 		}
-		deployProgressChan <- deployProgress
-	}()
 
-	return deployProgressChan, nil
+		_ = c.writeAuditLog("account.verify", client.AuditLogDetails{{"account", fmt.Sprintf("%#v", account)}})
+
+		verifyProgress.Accounts[account.Id].Progress = 1
+		progress <- verifyProgress
+	}
+	progress <- verifyProgress
+
+	return nil
 }
 
-func (c *Client) VerifyAccount(ctx context.Context, userRequester client.UserRequester, accountId client.AccountId) (chan client.VerifyProgressAccount, error) {
-	dpc, err := c.VerifyAccounts(ctx, userRequester, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	// convert channel to only report the single accounts progress
-	dbac := make(chan client.VerifyProgressAccount)
+// projectSingleAccount runs a batch operation for one account and projects the
+// aggregate progress down onto that account's single-account channel, returning
+// its terminal error joined with any operation-level error. The caller owns progress.
+func projectSingleAccount(accountId client.AccountId, progress chan<- client.ProgressAccount, run func(chan<- client.ProgressAccounts) error) error {
+	accountsProgress := make(chan client.ProgressAccounts)
+	var opErr error
 	go func() {
-		defer close(dbac)
-
-		for dp := range dpc {
-			dbac <- *dp.Accounts[accountId]
-		}
+		defer close(accountsProgress)
+		opErr = run(accountsProgress)
 	}()
 
-	return dbac, nil
-}
-
-func (c *Client) VerifyAccounts(ctx context.Context, userRequester client.UserRequester, accountIds ...client.AccountId) (chan client.VerifyProgressAccounts, error) {
-	accounts, err := c.GetAccounts(ctx, accountIds...)
-	if err != nil {
-		return nil, err
-	}
-
-	deployDatas, err := slicest.MapX(accounts, func(a client.Account) (string, error) {
-		return c.accountDeployData(ctx, a)
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	verifyProgressChan := make(chan client.VerifyProgressAccounts)
-	verifyProgress := client.VerifyProgressAccounts{
-		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.VerifyProgressAccount) {
-			return account.Id, &client.VerifyProgressAccount{Progress: 0, Status: "not started", Err: nil}
-		}),
-	}
-
-	checkContextCanceled := func(accountId client.AccountId, deployProgress client.DeployProgressAccounts) bool {
-		if ctx.Err() != nil {
-			deployProgress.Accounts[accountId].Progress = 1
-			if errors.Is(ctx.Err(), context.Canceled) {
-				deployProgress.Accounts[accountId].Status = "canceled"
-				deployProgress.Accounts[accountId].Err = errors.New("canceled")
-			} else {
-				deployProgress.Accounts[accountId].Status = "error"
-				deployProgress.Accounts[accountId].Err = ctx.Err()
-			}
-			return true
+	var accountErr error
+	for dp := range accountsProgress {
+		if pa := dp.Accounts[accountId]; pa != nil {
+			accountErr = pa.Err
+			progress <- pa.ProgressAccount
 		}
-		return false
 	}
 
-	go func() {
-		defer close(verifyProgressChan)
-
-	accountLoop:
-		for i, account := range accounts {
-			if checkContextCanceled(account.Id, verifyProgress) {
-				continue accountLoop
-			}
-
-			verifyProgress.Accounts[account.Id].Status = "verifing"
-			verifyProgressChan <- verifyProgress
-
-			// simulate deplay
-			for _i := range 5 {
-				time.Sleep(time.Millisecond * 100)
-				if checkContextCanceled(account.Id, verifyProgress) {
-					continue accountLoop
-				}
-				verifyProgress.Accounts[account.Id].Progress = float64(_i+1) / 10
-				verifyProgressChan <- verifyProgress
-			}
-
-			ok := true
-			if !ok {
-				verifyProgress.Accounts[account.Id].Status = "error"
-				verifyProgress.Accounts[account.Id].Progress = 1
-				verifyProgress.Accounts[account.Id].Err = fmt.Errorf("some weird error on account with id %v", account.Id)
-				verifyProgressChan <- verifyProgress
-				continue
-			}
-
-			// simulate deplay
-			for _i := range 5 {
-				time.Sleep(time.Millisecond * 100)
-				if checkContextCanceled(account.Id, verifyProgress) {
-					continue accountLoop
-				}
-				verifyProgress.Accounts[account.Id].Progress = float64(_i+6) / 10
-				verifyProgressChan <- verifyProgress
-			}
-
-			// simulate getting remoteState from remote
-			remoteState, hasState := c.remoteStates[account.Id]
-
-			if !hasState || c.accountDeployCache(account, deployDatas[i]) != remoteState {
-				// update accounts deploy cache to reflect remotes state
-				_account := c.accounts[account.Id]
-				_account.DeployCache = c.remoteStates[account.Id]
-				c.accounts[account.Id] = _account
-
-				verifyProgress.Accounts[account.Id].Status = "error"
-				verifyProgress.Accounts[account.Id].Err = errors.New("account is out of sync")
-			} else {
-				verifyProgress.Accounts[account.Id].Status = "finished"
-			}
-
-			_ = c.writeAuditLog("account.verify", client.AuditLogDetails{{"account", fmt.Sprintf("%#v", account)}})
-
-			verifyProgress.Accounts[account.Id].Progress = 1
-			verifyProgressChan <- verifyProgress
-		}
-		verifyProgressChan <- verifyProgress
-	}()
-
-	return verifyProgressChan, nil
+	return errors.Join(opErr, accountErr)
 }
 
 // --- Other ---

@@ -50,10 +50,10 @@ type ClientOverwrites struct {
 	DeleteLink            func(ctx context.Context, accountId client.AccountId, publicKeyId client.PublicKeyId) error
 
 	// --- Deploy & Verify ---
-	DeployAccount  func(ctx context.Context, userRequester client.UserRequester, accountId client.AccountId) (chan client.DeployProgressAccount, error)
-	DeployAccounts func(ctx context.Context, userRequester client.UserRequester, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error)
-	VerifyAccount  func(ctx context.Context, userRequester client.UserRequester, accountId client.AccountId) (chan client.VerifyProgressAccount, error)
-	VerifyAccounts func(ctx context.Context, userRequester client.UserRequester, accountIds ...client.AccountId) (chan client.VerifyProgressAccounts, error)
+	DeployAccount  func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccount, accountId client.AccountId) error
+	DeployAccounts func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccounts, accountIds ...client.AccountId) error
+	VerifyAccount  func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.VerifyProgressAccount, accountId client.AccountId) error
+	VerifyAccounts func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.VerifyProgressAccounts, accountIds ...client.AccountId) error
 
 	// --- Other ---
 	ListAuditLogs      func(ctx context.Context, offset int, limit int) ([]client.AuditLog, error)
@@ -481,62 +481,62 @@ func (m *Client) DeleteLink(ctx context.Context, accountId client.AccountId, pub
 
 // --- Deploy & Verify ---
 
-func (m *Client) DeployAccount(ctx context.Context, userRequester client.UserRequester, accountId client.AccountId) (chan client.DeployProgressAccount, error) {
+func (m *Client) DeployAccount(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccount, accountId client.AccountId) error {
 	if m.Pre != nil {
 		err := m.Pre("DeployAccount", map[string]any{"ctx": ctx, "userRequester": userRequester, "accountId": accountId})
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	if m.Overwrites.DeployAccount != nil {
-		return m.Overwrites.DeployAccount(ctx, userRequester, accountId)
+		return m.Overwrites.DeployAccount(ctx, userRequester, progress, accountId)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.DeployAccount(ctx, userRequester, accountId)
+		return m.BaseClient.DeployAccount(ctx, userRequester, progress, accountId)
 	}
 	panic("Client.DeployAccount not implemented")
 }
 
-func (m *Client) DeployAccounts(ctx context.Context, userRequester client.UserRequester, accountIds ...client.AccountId) (chan client.DeployProgressAccounts, error) {
+func (m *Client) DeployAccounts(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccounts, accountIds ...client.AccountId) error {
 	if m.Pre != nil {
 		err := m.Pre("DeployAccounts", map[string]any{"ctx": ctx, "userRequester": userRequester, "accountIds": accountIds})
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	if m.Overwrites.DeployAccounts != nil {
-		return m.Overwrites.DeployAccounts(ctx, userRequester, accountIds...)
+		return m.Overwrites.DeployAccounts(ctx, userRequester, progress, accountIds...)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.DeployAccounts(ctx, userRequester, accountIds...)
+		return m.BaseClient.DeployAccounts(ctx, userRequester, progress, accountIds...)
 	}
 	panic("Client.DeployAccounts not implemented")
 }
 
-func (m *Client) VerifyAccount(ctx context.Context, userRequester client.UserRequester, accountId client.AccountId) (chan client.VerifyProgressAccount, error) {
+func (m *Client) VerifyAccount(ctx context.Context, userRequester client.UserRequester, progress chan<- client.VerifyProgressAccount, accountId client.AccountId) error {
 	if m.Pre != nil {
 		err := m.Pre("VerifyAccount", map[string]any{"ctx": ctx, "userRequester": userRequester, "accountId": accountId})
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	if m.Overwrites.VerifyAccount != nil {
-		return m.Overwrites.VerifyAccount(ctx, userRequester, accountId)
+		return m.Overwrites.VerifyAccount(ctx, userRequester, progress, accountId)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.VerifyAccount(ctx, userRequester, accountId)
+		return m.BaseClient.VerifyAccount(ctx, userRequester, progress, accountId)
 	}
 	panic("Client.VerifyAccount not implemented")
 }
 
-func (m *Client) VerifyAccounts(ctx context.Context, userRequester client.UserRequester, accountIds ...client.AccountId) (chan client.VerifyProgressAccounts, error) {
+func (m *Client) VerifyAccounts(ctx context.Context, userRequester client.UserRequester, progress chan<- client.VerifyProgressAccounts, accountIds ...client.AccountId) error {
 	if m.Pre != nil {
 		err := m.Pre("VerifyAccounts", map[string]any{"ctx": ctx, "userRequester": userRequester, "accountIds": accountIds})
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	if m.Overwrites.VerifyAccounts != nil {
-		return m.Overwrites.VerifyAccounts(ctx, userRequester, accountIds...)
+		return m.Overwrites.VerifyAccounts(ctx, userRequester, progress, accountIds...)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.VerifyAccounts(ctx, userRequester, accountIds...)
+		return m.BaseClient.VerifyAccounts(ctx, userRequester, progress, accountIds...)
 	}
 	panic("Client.VerifyAccounts not implemented")
 }

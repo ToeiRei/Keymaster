@@ -67,13 +67,13 @@ type Client interface {
 
 	// --- Deploy & Verify ---
 
-	DeployAccount(ctx context.Context, userRequester UserRequester, accountId AccountId) (chan DeployProgressAccount, error)
+	DeployAccount(ctx context.Context, userRequester UserRequester, progress chan<- DeployProgressAccount, accountId AccountId) error
 
-	DeployAccounts(ctx context.Context, userRequester UserRequester, accountIds ...AccountId) (chan DeployProgressAccounts, error)
+	DeployAccounts(ctx context.Context, userRequester UserRequester, progress chan<- DeployProgressAccounts, accountIds ...AccountId) error
 
-	VerifyAccount(ctx context.Context, userRequester UserRequester, accountId AccountId) (chan VerifyProgressAccount, error)
+	VerifyAccount(ctx context.Context, userRequester UserRequester, progress chan<- VerifyProgressAccount, accountId AccountId) error
 
-	VerifyAccounts(ctx context.Context, userRequester UserRequester, accountIds ...AccountId) (chan VerifyProgressAccounts, error)
+	VerifyAccounts(ctx context.Context, userRequester UserRequester, progress chan<- VerifyProgressAccounts, accountIds ...AccountId) error
 
 	// --- Other ---
 
@@ -179,8 +179,13 @@ type (
 	UserRequester          = connector.UserRequester
 )
 
+type ProgressAccountWithError struct {
+	ProgressAccount
+	Err error
+}
+
 type ProgressAccounts struct {
-	Accounts map[AccountId]*ProgressAccount
+	Accounts map[AccountId]*ProgressAccountWithError
 }
 
 func (dp ProgressAccounts) Progress() float64 {
