@@ -18,15 +18,17 @@ import (
 type AccountModel struct {
 	bun.BaseModel `bun:"table:accounts"`
 
-	ID           int    `bun:"id,pk,autoincrement"`
-	Username     string `bun:"username"`
-	Host         string `bun:"host"`
-	Port         string `bun:"port"`
-	Serial       int    `bun:"serial"`
-	IsActive     bool   `bun:"is_active"`
-	IsDirty      bool   `bun:"is_dirty"`
-	DeployMethod string `bun:"deploy_method"`
-	DeploySecret string `bun:"deploy_secret"`
+	ID                   int            `bun:"id,pk,autoincrement"`
+	Username             string         `bun:"username"`
+	Host                 string         `bun:"host"`
+	Port                 string         `bun:"port"`
+	Serial               int            `bun:"serial"`
+	IsActive             bool           `bun:"is_active"`
+	IsDirty              bool           `bun:"is_dirty"`
+	DeployMethod         string         `bun:"deploy_method"`
+	DeploySecret         string         `bun:"deploy_secret"`
+	DeploySecretRollback sql.NullString `bun:"deploy_secret_rollback"`
+	DeployCache          string         `bun:"deploy_cache"`
 
 	Links []LinkModel `bun:"rel:has-many,join:id=account_id"`
 }

@@ -54,15 +54,16 @@ var newDeployer = func(host, user string, privateKey security.Secret, passphrase
 // *[Connector] implements [connector.Connector]
 var _ connector.Connector = (*Connector)(nil)
 
-func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester) (chan connector.Progress, error) {
+func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester) (chan connector.Progress, *string, error) {
 	progress := make(chan connector.Progress)
+	newCache := ""
+
+	if ctx.Err() != nil {
+		return nil, nil, ctx.Err()
+	}
+
 	go func() {
 		defer close(progress)
-
-		if ctx.Err() != nil {
-			progress <- connector.Progress{Progress: 1, Status: "canceled", Err: ctx.Err()}
-			return
-		}
 
 		progress <- connector.Progress{Progress: 0.1, Status: "rendering authorized_keys"}
 		internalPublicKey, err := c.publicKeyFromSecret(deployData.Secret)
@@ -88,21 +89,23 @@ func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData,
 			return
 		}
 
+		newCache = c.hashAuthorizedKeys(authorizedKeys)
 		progress <- connector.Progress{Progress: 1, Status: "done"}
 	}()
 
-	return progress, nil
+	return progress, &newCache, nil
 }
 
-func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester) (chan connector.Progress, error) {
+func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester) (chan connector.Progress, *string, error) {
 	progress := make(chan connector.Progress)
+	newCache := ""
+
+	if ctx.Err() != nil {
+		return nil, nil, ctx.Err()
+	}
+
 	go func() {
 		defer close(progress)
-
-		if ctx.Err() != nil {
-			progress <- connector.Progress{Progress: 1, Status: "canceled", Err: ctx.Err()}
-			return
-		}
 
 		progress <- connector.Progress{Progress: 0.1, Status: "rendering authorized_keys"}
 		internalPublicKey, err := c.publicKeyFromSecret(deployData.Secret)
@@ -131,6 +134,7 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 
 		remoteHash := c.hashAuthorizedKeys(string(remoteBytes))
 		expectedHash := c.hashAuthorizedKeys(expected)
+		newCache = remoteHash
 		if remoteHash != expectedHash {
 			progress <- connector.Progress{Progress: 1, Status: "error", Err: fmt.Errorf("remote authorized_keys drift detected")}
 			return
@@ -139,7 +143,7 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 		progress <- connector.Progress{Progress: 1, Status: "verified"}
 	}()
 
-	return progress, nil
+	return progress, &newCache, nil
 }
 
 func (c *Connector) VerifyOffline(ctx context.Context, deployData connector.DeployData) (bool, error) {

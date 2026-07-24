@@ -120,15 +120,17 @@ func accountOpAuditDetails(account client.Account, keyCount int, opErr error) cl
 		{"accountId", strconv.Itoa(int(account.Id))},
 		{"connection", fmt.Sprintf("%s@%s:%d", account.Username, account.Host, account.Port)},
 		{"deployMethod", account.DeployMethod},
-		{"keyCount", strconv.Itoa(keyCount)},
 	}
 	if opErr != nil {
 		return append(details,
-			client.AuditLogDetail{Key: "result", Value: "error"},
-			client.AuditLogDetail{Key: "error", Value: opErr.Error()},
+			client.AuditLogDetail{"result", "error"},
+			client.AuditLogDetail{"error", opErr.Error()},
 		)
 	}
-	return append(details, client.AuditLogDetail{Key: "result", Value: "success"})
+	return append(details,
+		client.AuditLogDetail{"result", "success"},
+		client.AuditLogDetail{"keyCount", strconv.Itoa(keyCount)},
+	)
 }
 
 // writeAuditLog records a single audit log entry through the given handle.
@@ -245,7 +247,7 @@ func (c *Client) GetPublicKeys(ctx context.Context, ids ...client.PublicKeyId) (
 	var publicKeysModel []*db.PublicKeyModel
 	err := c.bun.NewSelect().
 		Model(&publicKeysModel).
-		Where("id IN (?)", bun.In(ids)).
+		Where("id IN (?)", bun.List(ids)).
 		Scan(ctx)
 	if err != nil {
 		return nil, err
@@ -379,7 +381,7 @@ func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 	return c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		res, err := tx.NewDelete().
 			Model((*db.PublicKeyModel)(nil)).
-			Where("id IN (?)", bun.In(ids)).
+			Where("id IN (?)", bun.List(ids)).
 			Exec(ctx)
 		if err != nil {
 			return err
@@ -413,7 +415,7 @@ func modelToClientAccount(accountModel db.AccountModel) client.Account {
 		Serial:       accountModel.Serial,
 		DeployMethod: accountModel.DeployMethod,
 		DeploySecret: accountModel.DeploySecret,
-		DeployCache:  "",
+		DeployCache:  accountModel.DeployCache,
 	}
 }
 
@@ -470,7 +472,7 @@ func (c *Client) GetAccounts(ctx context.Context, ids ...client.AccountId) ([]cl
 	var accountModels []*db.AccountModel
 	err := c.bun.NewSelect().
 		Model(&accountModels).
-		Where("id IN (?)", bun.In(ids)).
+		Where("id IN (?)", bun.List(ids)).
 		Scan(ctx)
 	if err != nil {
 		return nil, err
@@ -612,7 +614,7 @@ func (c *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) er
 	return c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		res, err := tx.NewDelete().
 			Model((*db.AccountModel)(nil)).
-			Where("id IN (?)", bun.In(ids)).
+			Where("id IN (?)", bun.List(ids)).
 			Exec(ctx)
 		if err != nil {
 			return err
@@ -907,7 +909,7 @@ func accountConnectionData(account client.Account) connector.ConnectionData {
 	}
 }
 
-type connectorOperation func(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester) (chan connector.Progress, error)
+type connectorOperation func(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester) (chan connector.Progress, *string, error)
 
 type accountProgressUpdate struct {
 	accountId client.AccountId
@@ -1015,20 +1017,41 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 			return 0, err
 		}
 
-		connectorProgress, err := selectOp(con)(ctx, deployData, accountConnectionData(account), userRequester)
+		connectorProgress, cache, err := selectOp(con)(ctx, deployData, accountConnectionData(account), userRequester)
 		if err != nil {
 			fail(err)
-			return len(deployData.Records), err
+			return 0, err
 		}
 
-		var opErr error
+		var progressErr error
 		for cp := range connectorProgress {
 			sendProgress(cp)
 			if cp.Err != nil {
-				opErr = cp.Err
+				progressErr = cp.Err
 			}
 		}
-		return len(deployData.Records), opErr
+		if progressErr != nil {
+			fail(progressErr)
+			return 0, progressErr
+		}
+
+		if cache == nil {
+			err = errors.New("connector didn't return new cache after succesfull operation")
+			fail(err)
+			return 0, err
+		}
+
+		_, err = c.bun.NewUpdate().
+			Model(&db.AccountModel{ID: int(account.Id), DeployCache: *cache}).
+			Column("deploy_cache").
+			WherePK().
+			Exec(ctx)
+		if err != nil {
+			fail(err)
+			return 0, err
+		}
+
+		return len(deployData.Records), nil
 	}
 
 	keyCount, opErr := runOp()

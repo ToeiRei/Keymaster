@@ -36,6 +36,8 @@ CREATE TABLE accounts_new (
     is_dirty BOOLEAN NOT NULL DEFAULT 1,
     deploy_method TEXT NOT NULL DEFAULT '',
     deploy_secret TEXT NOT NULL DEFAULT '',
+    deploy_secret_rollback TEXT,
+    deploy_cache TEXT NOT NULL DEFAULT '',
     UNIQUE(username, host)
 );
 INSERT INTO accounts_new (id, username, host, port, serial, is_active, is_dirty)

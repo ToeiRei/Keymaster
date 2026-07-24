@@ -12,6 +12,8 @@ ALTER TABLE accounts RENAME COLUMN hostname TO host;
 ALTER TABLE accounts ADD COLUMN port TEXT NOT NULL DEFAULT '';
 ALTER TABLE accounts ADD COLUMN deploy_method TEXT NOT NULL DEFAULT '';
 ALTER TABLE accounts ADD COLUMN deploy_secret TEXT NOT NULL DEFAULT '';
+ALTER TABLE accounts ADD COLUMN deploy_secret_rollback TEXT;
+ALTER TABLE accounts ADD COLUMN deploy_cache TEXT NOT NULL DEFAULT '';
 ALTER TABLE accounts DROP COLUMN IF EXISTS label;
 ALTER TABLE accounts DROP COLUMN IF EXISTS tags;
 ALTER TABLE accounts DROP COLUMN IF EXISTS key_hash;

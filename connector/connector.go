@@ -9,8 +9,8 @@ import (
 )
 
 type Connector interface {
-	Deploy(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester) (chan Progress, error)
-	Verify(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester) (chan Progress, error)
+	Deploy(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester) (progress chan Progress, newCache *string, err error)
+	Verify(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester) (progress chan Progress, newCache *string, err error)
 	VerifyOffline(ctx context.Context, deployData DeployData) (bool, error)
 }
 

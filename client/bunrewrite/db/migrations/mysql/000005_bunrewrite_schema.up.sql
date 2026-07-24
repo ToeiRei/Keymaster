@@ -14,6 +14,11 @@ ALTER TABLE accounts ADD COLUMN deploy_method VARCHAR(255) NOT NULL DEFAULT '';
 -- TEXT columns cannot take a literal DEFAULT on older MySQL; add nullable then backfill.
 ALTER TABLE accounts ADD COLUMN deploy_secret TEXT;
 UPDATE accounts SET deploy_secret = '' WHERE deploy_secret IS NULL;
+-- deploy_secret_rollback stays nullable (NULL = no rollback value recorded).
+ALTER TABLE accounts ADD COLUMN deploy_secret_rollback TEXT;
+-- TEXT columns cannot take a literal DEFAULT on older MySQL; add nullable then backfill.
+ALTER TABLE accounts ADD COLUMN deploy_cache TEXT;
+UPDATE accounts SET deploy_cache = '' WHERE deploy_cache IS NULL;
 ALTER TABLE accounts DROP COLUMN label;
 ALTER TABLE accounts DROP COLUMN tags;
 ALTER TABLE accounts DROP COLUMN key_hash;
