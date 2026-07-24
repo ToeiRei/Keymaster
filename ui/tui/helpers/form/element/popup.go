@@ -4,12 +4,13 @@
 package formelement
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
@@ -21,7 +22,7 @@ var _ form.FormElement = (*Popup[any])(nil)
 type popupReturnValueMsg[T any] struct{ value T }
 
 type Popup[T any] struct {
-	Label       string
+	Label       fmt.Stringer
 	fnOpenPopup func(returnValue func(value T) tea.Cmd) tea.Cmd
 	fnToString  func(value T) string
 
@@ -35,7 +36,7 @@ type Popup[T any] struct {
 }
 
 func NewPopup[T any](
-	label string,
+	label fmt.Stringer,
 	fnOpenPopup func(returnValue func(value T) tea.Cmd) tea.Cmd,
 	fnToString func(value T) string,
 ) form.FormElement {
@@ -107,7 +108,7 @@ func (p *Popup[T]) View(width int, eager bool) string {
 		style = p.BlurredStyle
 	}
 
-	label := ansi.Truncate(i18n.T(p.Label), width, "…")
+	label := ansi.Truncate(p.Label.String(), width, "…")
 	content := ansi.Truncate(p.fnToString(p.value), width-4, "…")
 
 	return lipgloss.JoinVertical(lipgloss.Left, style.Render(label), "[ "+content+" ]")

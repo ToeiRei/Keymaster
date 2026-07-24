@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/components/router"
 	"github.com/toeirei/keymaster/ui/tui/helpers/crud"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
@@ -47,7 +48,7 @@ type filterT = struct{}
 
 func publicKeyToString(publicKey client.PublicKey) string {
 	if publicKey == util.NewZero[client.PublicKey]() {
-		return lipgloss.NewStyle().Italic(true).Render("none")
+		return lipgloss.NewStyle().Italic(true).Render(i18n.T("link.none"))
 	}
 	if publicKey.Comment != "" {
 		return fmt.Sprintf("%s (%s)", publicKey.Comment, publicKey.Algorithm)
@@ -67,15 +68,15 @@ func linkToRecord(ctx context.Context, c client.Client, link client.Link) (recor
 func createFormRows(c client.Client) func() []form.FormOpt[recordCreateT] {
 	return func() []form.FormOpt[recordCreateT] {
 		return []form.FormOpt[recordCreateT]{
-			form.WithRowItem[recordCreateT]("public_key", formelement.NewPopup("Public Key",
+			form.WithRowItem[recordCreateT]("public_key", formelement.NewPopup(i18n.Text("link.form.public_key_label"),
 				func(returnValue func(value client.PublicKey) tea.Cmd) tea.Cmd {
 					return selectpopup.Open(
-						"Select Public Key",
+						i18n.T("link.select_public_key"),
 						func(ctx context.Context) ([]client.PublicKey, error) { return c.ListPublicKeys(ctx) },
 						func(r client.PublicKey) tea.Cmd { return returnValue(r) },
 						tablecontroll.New(tablecontroll.Columns[client.PublicKey]{
-							{Title: func() string { return "Comment" }, View: func(r client.PublicKey) string { return r.Comment }},
-							{Title: func() string { return "Algorithm" }, View: func(r client.PublicKey) string { return r.Algorithm }},
+							{Title: func() string { return i18n.T("public_key.col_comment") }, View: func(r client.PublicKey) string { return r.Comment }},
+							{Title: func() string { return i18n.T("public_key.col_algorithm") }, View: func(r client.PublicKey) string { return r.Algorithm }},
 						}),
 						selectpopup.WithFilter(func(filter string, records []client.PublicKey) []client.PublicKey {
 							return slicest.Filter(records, func(record client.PublicKey) bool {
@@ -87,22 +88,22 @@ func createFormRows(c client.Client) func() []form.FormOpt[recordCreateT] {
 				},
 				publicKeyToString,
 			)),
-			form.WithRowItem[recordCreateT]("expires_at", formelement.NewText("Expires At", "date on witch this link will expire and its public key will loose access (optional)")),
+			form.WithRowItem[recordCreateT]("expires_at", formelement.NewText(i18n.Text("link.form.expires_at_label"), i18n.Text("link.form.expires_at_placeholder"))),
 		}
 	}
 }
 
 func updateFormRows() []form.FormOpt[recordUpdateT] {
 	return []form.FormOpt[recordUpdateT]{
-		form.WithRowItem[recordUpdateT]("expires_at", formelement.NewText("Expires At", "date on witch this link will expire and its public key will loose access (optional)")),
+		form.WithRowItem[recordUpdateT]("expires_at", formelement.NewText(i18n.Text("link.form.expires_at_label"), i18n.Text("link.form.expires_at_placeholder"))),
 	}
 }
 
 func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
 		crud.Texts{
-			EntityNameSingular: func() string { return "Link" },
-			EntityNameMultiple: func() string { return "Links" },
+			EntityNameSingular: func() string { return i18n.T("link.entity_singular") },
+			EntityNameMultiple: func() string { return i18n.T("link.entity_plural") },
 		},
 
 		func(record recordT) recordIdT {
@@ -172,9 +173,9 @@ func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.
 		},
 
 		tablecontroll.New(tablecontroll.Columns[recordT]{
-			{Title: func() string { return "Public Key" }, View: func(r recordT) string { return publicKeyToString(r.publicKey) }},
-			{Title: func() string { return "Expires At" }, View: func(r recordT) string { return util.RenderExpiry(r.link.ExpiresAt) }},
-			{Title: func() string { return "Account" }, View: func(r recordT) string { return account.String() }},
+			{Title: func() string { return i18n.T("link.col_public_key") }, View: func(r recordT) string { return publicKeyToString(r.publicKey) }},
+			{Title: func() string { return i18n.T("link.col_expires_at") }, View: func(r recordT) string { return util.RenderExpiry(r.link.ExpiresAt) }},
+			{Title: func() string { return i18n.T("link.col_account") }, View: func(r recordT) string { return account.String() }},
 		}).RenderBubblesTable,
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{

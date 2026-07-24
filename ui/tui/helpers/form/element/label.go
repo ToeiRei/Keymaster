@@ -4,6 +4,8 @@
 package formelement
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -11,14 +13,17 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
+// Form elements take their labels/placeholders as fmt.Stringer (typically an
+// i18n.Text) so the text resolves in the current language at render time.
+
 // *[Label] implements [form.FormElement]
 var _ form.FormElement = (*Label)(nil)
 
 type Label struct {
-	Text string
+	Text fmt.Stringer
 }
 
-func NewLabel(text string) form.FormElement {
+func NewLabel(text fmt.Stringer) form.FormElement {
 	return &Label{text}
 }
 
@@ -27,7 +32,7 @@ func (l *Label) View(width int, eager bool) string {
 	if eager {
 		style = style.Width(width)
 	}
-	return style.Render(l.Text)
+	return style.Render(l.Text.String())
 }
 
 func (l *Label) Focusable() bool {

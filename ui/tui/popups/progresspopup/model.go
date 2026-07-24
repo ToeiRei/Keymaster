@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/helpers/popup"
@@ -114,7 +115,7 @@ func (m *Model) Init() tea.Cmd {
 
 	var formOpts []form.FormOpt[struct{}]
 	if m.ctxCancel != nil {
-		formOpts = append(formOpts, form.WithRowItem[struct{}]("_cancel", formelement.NewButton("Cancel",
+		formOpts = append(formOpts, form.WithRowItem[struct{}]("_cancel", formelement.NewButton(i18n.Text("crud.btn_cancel"),
 			formelement.WithButtonActionCancel(),
 			formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
 		)))

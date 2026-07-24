@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/components/router"
 	"github.com/toeirei/keymaster/ui/tui/helpers/crud"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
@@ -47,7 +48,7 @@ type filterT = struct{}
 
 func accountToString(account client.Account) string {
 	if account == util.NewZero[client.Account]() {
-		return lipgloss.NewStyle().Italic(true).Render("none")
+		return lipgloss.NewStyle().Italic(true).Render(i18n.T("link.none"))
 	}
 	return account.String()
 }
@@ -64,17 +65,17 @@ func linkToRecord(ctx context.Context, c client.Client, link client.Link) (recor
 func createFormRows(c client.Client) func() []form.FormOpt[recordCreateT] {
 	return func() []form.FormOpt[recordCreateT] {
 		return []form.FormOpt[recordCreateT]{
-			form.WithRowItem[recordCreateT]("account", formelement.NewPopup("Account",
+			form.WithRowItem[recordCreateT]("account", formelement.NewPopup(i18n.Text("link.form.account_label"),
 				func(returnValue func(value client.Account) tea.Cmd) tea.Cmd {
 					return selectpopup.Open(
-						"Select Account",
+						i18n.T("link.select_account"),
 						func(ctx context.Context) ([]client.Account, error) { return c.ListAccounts(ctx) },
 						func(r client.Account) tea.Cmd { return returnValue(r) },
 						tablecontroll.New(tablecontroll.Columns[client.Account]{
-							{Title: func() string { return "Username" }, View: func(r client.Account) string { return r.Username }},
-							{Title: func() string { return "Host" }, View: func(r client.Account) string { return r.Host }},
-							{Title: func() string { return "Port" }, View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
-							{Title: func() string { return "Deploy Method" }, View: func(r client.Account) string { return r.DeployMethod }},
+							{Title: func() string { return i18n.T("account.col_username") }, View: func(r client.Account) string { return r.Username }},
+							{Title: func() string { return i18n.T("account.col_host") }, View: func(r client.Account) string { return r.Host }},
+							{Title: func() string { return i18n.T("account.col_port") }, View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
+							{Title: func() string { return i18n.T("account.col_deploy_method") }, View: func(r client.Account) string { return r.DeployMethod }},
 						}),
 						selectpopup.WithFilter(func(filter string, records []client.Account) []client.Account {
 							return slicest.Filter(records, func(record client.Account) bool {
@@ -88,22 +89,22 @@ func createFormRows(c client.Client) func() []form.FormOpt[recordCreateT] {
 				},
 				accountToString,
 			)),
-			form.WithRowItem[recordCreateT]("expires_at", formelement.NewText("Expires At", "date on witch this link will expire and its public key will loose access (optional)")),
+			form.WithRowItem[recordCreateT]("expires_at", formelement.NewText(i18n.Text("link.form.expires_at_label"), i18n.Text("link.form.expires_at_placeholder"))),
 		}
 	}
 }
 
 func updateFormRows() []form.FormOpt[recordUpdateT] {
 	return []form.FormOpt[recordUpdateT]{
-		form.WithRowItem[recordUpdateT]("expires_at", formelement.NewText("Expires At", "date on witch this link will expire and its public key will loose access (optional)")),
+		form.WithRowItem[recordUpdateT]("expires_at", formelement.NewText(i18n.Text("link.form.expires_at_label"), i18n.Text("link.form.expires_at_placeholder"))),
 	}
 }
 
 func NewCrud(c client.Client, rc router.Controll, publicKey client.PublicKey) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
 		crud.Texts{
-			EntityNameSingular: func() string { return "Link" },
-			EntityNameMultiple: func() string { return "Links" },
+			EntityNameSingular: func() string { return i18n.T("link.entity_singular") },
+			EntityNameMultiple: func() string { return i18n.T("link.entity_plural") },
 		},
 
 		func(record recordT) recordIdT {
@@ -168,8 +169,8 @@ func NewCrud(c client.Client, rc router.Controll, publicKey client.PublicKey) *c
 		},
 
 		tablecontroll.New(tablecontroll.Columns[recordT]{
-			{Title: func() string { return "Account" }, View: func(r recordT) string { return accountToString(r.account) }},
-			{Title: func() string { return "Expires At" }, View: func(r recordT) string { return util.RenderExpiry(r.link.ExpiresAt) }},
+			{Title: func() string { return i18n.T("link.col_account") }, View: func(r recordT) string { return accountToString(r.account) }},
+			{Title: func() string { return i18n.T("link.col_expires_at") }, View: func(r recordT) string { return util.RenderExpiry(r.link.ExpiresAt) }},
 		}).RenderBubblesTable,
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{

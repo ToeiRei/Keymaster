@@ -4,6 +4,8 @@
 package formelement
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -18,7 +20,7 @@ import (
 var _ form.FormElement = (*Checkbox)(nil)
 
 type Checkbox struct {
-	Label    string
+	Label    fmt.Stringer
 	Disabled bool
 	KeyMap   CheckboxKeyMap
 
@@ -46,7 +48,7 @@ func WithCheckboxDisable() CheckboxOption {
 	return func(c *Checkbox) { c.Disabled = true }
 }
 
-func NewCheckbox(label string, opts ...CheckboxOption) form.FormElement {
+func NewCheckbox(label fmt.Stringer, opts ...CheckboxOption) form.FormElement {
 	checkbox := &Checkbox{
 		Label: label,
 		KeyMap: CheckboxKeyMap{
@@ -123,7 +125,7 @@ func (c *Checkbox) View(width int, eager bool) string {
 	}
 
 	content := box
-	if label := i18n.T(c.Label); label != "" {
+	if label := c.Label.String(); label != "" {
 		content = box + " " + label
 	}
 

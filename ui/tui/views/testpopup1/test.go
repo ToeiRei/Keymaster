@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/helpers/popup"
@@ -25,11 +26,11 @@ type Model struct {
 func New() *Model {
 	return &Model{
 		form: form.New(
-			form.WithRowItem[formData]("firstname", formelement.NewText("Vorname", "Max")),
-			form.WithRowItem[formData]("lastname", formelement.NewText("Nachname", "Mustermann")),
+			form.WithRowItem[formData]("firstname", formelement.NewText(i18n.Text("Vorname"), i18n.Text("Max"))),
+			form.WithRowItem[formData]("lastname", formelement.NewText(i18n.Text("Nachname"), i18n.Text("Mustermann"))),
 			form.WithRow(
-				form.WithItem[formData]("_cancel", formelement.NewButton("Cancel", formelement.WithButtonActionCancel())),
-				form.WithItem[formData]("_submit", formelement.NewButton("Submit", formelement.WithButtonActionSubmit())),
+				form.WithItem[formData]("_cancel", formelement.NewButton(i18n.Text("crud.btn_cancel"), formelement.WithButtonActionCancel())),
+				form.WithItem[formData]("_submit", formelement.NewButton(i18n.Text("deploy.op_submit"), formelement.WithButtonActionSubmit())),
 			),
 			form.WithOnSubmit(func(result formData, err error) (tea.Cmd, bool) {
 				return tea.Sequence(

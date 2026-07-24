@@ -5,6 +5,7 @@ package messagepopup
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/helpers/popup"
@@ -34,18 +35,18 @@ func New(
 	var title string
 	switch severity {
 	case Success:
-		title = "SUCCESS"
+		title = "popup.severity_success"
 	case Info:
-		title = "INFO"
+		title = "popup.severity_info"
 	case Warning:
-		title = "WARNING"
+		title = "popup.severity_warning"
 	case Error:
-		title = "ERROR"
+		title = "popup.severity_error"
 	}
 	return formpopup.New(form.New(
-		form.WithRowItem[struct{}]("_title", formelement.NewLabel(title)),
-		form.WithRowItem[struct{}]("_message", formelement.NewLabel(message)),
-		form.WithRowItem[struct{}]("_ok", formelement.NewButton("Ok", formelement.WithButtonActionSubmit(), formelement.WithButtonGlobalKeyBindings(keys.Close()))),
+		form.WithRowItem[struct{}]("_title", formelement.NewLabel(i18n.Text(title))),
+		form.WithRowItem[struct{}]("_message", formelement.NewLabel(i18n.Text(message))),
+		form.WithRowItem[struct{}]("_ok", formelement.NewButton(i18n.Text("popup.ok"), formelement.WithButtonActionSubmit(), formelement.WithButtonGlobalKeyBindings(keys.Close()))),
 		form.WithOnSubmit(func(_ struct{}, _ error) (tea.Cmd, bool) { return tea.Sequence(popup.Close(), cmd), true }),
 		form.WithDefaultRowAlign[struct{}](form.Center),
 	))

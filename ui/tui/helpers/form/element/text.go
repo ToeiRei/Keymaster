@@ -4,12 +4,13 @@
 package formelement
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
@@ -19,8 +20,8 @@ import (
 var _ form.FormElement = (*Text)(nil)
 
 type Text struct {
-	Label       string
-	Placeholder string
+	Label       fmt.Stringer
+	Placeholder fmt.Stringer
 	Disabled    bool
 
 	input   textinput.Model
@@ -33,7 +34,7 @@ func WithTextDisable() TextOption {
 	return func(t *Text) { t.Disabled = true }
 }
 
-func NewText(label, placeholder string, opts ...TextOption) form.FormElement {
+func NewText(label, placeholder fmt.Stringer, opts ...TextOption) form.FormElement {
 	text := &Text{
 		Label:       label,
 		Placeholder: placeholder,
@@ -96,8 +97,8 @@ func (t *Text) Update(msg tea.Msg) (tea.Cmd, form.Action) {
 func (t *Text) View(width int, eager bool) string {
 	// Resolve the label/placeholder once, in the current language, and use the
 	// resolved values for both width math and rendering.
-	label := i18n.T(t.Label)
-	placeholder := i18n.T(t.Placeholder)
+	label := t.Label.String()
+	placeholder := t.Placeholder.String()
 
 	views := make([]string, 0, 2)
 

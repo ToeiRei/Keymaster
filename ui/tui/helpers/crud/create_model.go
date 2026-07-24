@@ -58,14 +58,14 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 		// buttons
 		form.WithRow(
 			form.WithAlign[TRecordCreate](form.Strech),
-			form.WithItem[TRecordCreate]("_reset", formelement.NewButton("crud.btn_reset",
+			form.WithItem[TRecordCreate]("_reset", formelement.NewButton(i18n.Text("crud.btn_reset"),
 				formelement.WithButtonActionReset(),
 			)),
-			form.WithItem[TRecordCreate]("_cancel", formelement.NewButton("crud.btn_cancel",
+			form.WithItem[TRecordCreate]("_cancel", formelement.NewButton(i18n.Text("crud.btn_cancel"),
 				formelement.WithButtonActionCancel(),
 				formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
 			)),
-			form.WithItem[TRecordCreate]("_create", formelement.NewButton("crud.btn_create",
+			form.WithItem[TRecordCreate]("_create", formelement.NewButton(i18n.Text("crud.btn_create"),
 				formelement.WithButtonActionSubmit(),
 				formelement.WithButtonGlobalKeyBindings(keys.SaveCreate()),
 			)),

@@ -57,14 +57,14 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 	formOpts := append(m.crud.updateFormRows(),
 		// buttons
 		form.WithRow(
-			form.WithItem[TRecordUpdate]("_reset", formelement.NewButton("crud.btn_reset",
+			form.WithItem[TRecordUpdate]("_reset", formelement.NewButton(i18n.Text("crud.btn_reset"),
 				formelement.WithButtonActionReset(),
 			)),
-			form.WithItem[TRecordUpdate]("_cancel", formelement.NewButton("crud.btn_cancel",
+			form.WithItem[TRecordUpdate]("_cancel", formelement.NewButton(i18n.Text("crud.btn_cancel"),
 				formelement.WithButtonActionCancel(),
 				formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
 			)),
-			form.WithItem[TRecordUpdate]("_save", formelement.NewButton("crud.btn_save",
+			form.WithItem[TRecordUpdate]("_save", formelement.NewButton(i18n.Text("crud.btn_save"),
 				formelement.WithButtonActionSubmit(),
 				formelement.WithButtonGlobalKeyBindings(keys.Save()),
 			)),

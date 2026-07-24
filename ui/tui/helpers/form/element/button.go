@@ -4,13 +4,13 @@
 package formelement
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/util"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
@@ -20,7 +20,7 @@ import (
 var _ form.FormElement = (*Button)(nil)
 
 type Button struct {
-	Label    string
+	Label    fmt.Stringer
 	Disabled bool
 	KeyMap   ButtonKeyMap
 	Action   func() (tea.Cmd, form.Action)
@@ -35,13 +35,13 @@ type Button struct {
 
 type ButtonKeyMap struct {
 	Click key.Binding
-	// label is the button's message ID (or literal), used to rebuild the click
-	// hint's help text in the current language at render time.
-	label string
+	// label is the button's text, used to rebuild the click hint's help text in
+	// the current language at render time.
+	label fmt.Stringer
 }
 
 func (k ButtonKeyMap) clickBinding() key.Binding {
-	return key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", strings.ToLower(i18n.T(k.label))))
+	return key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", strings.ToLower(k.label.String())))
 }
 
 func (k ButtonKeyMap) ShortHelp() []key.Binding { return []key.Binding{k.clickBinding()} }
@@ -74,7 +74,7 @@ func WithButtonGlobalKeyBindings(bindings ...key.Binding) ButtonOpt {
 	return func(button *Button) { button.globalKeyBindings = append(button.globalKeyBindings, bindings...) }
 }
 
-func NewButton(label string, opts ...ButtonOpt) form.FormElement {
+func NewButton(label fmt.Stringer, opts ...ButtonOpt) form.FormElement {
 	button := &Button{
 		Label: label,
 		KeyMap: ButtonKeyMap{
@@ -142,7 +142,7 @@ func (b *Button) View(width int, eager bool) string {
 	}
 
 	style = style.MaxWidth(width)
-	label := i18n.T(b.Label)
+	label := b.Label.String()
 	content := label
 	if eager {
 		style = style.Width(width - 2)

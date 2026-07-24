@@ -30,5 +30,5 @@ func VerifyDirty(ctx context.Context, c client.Client) tea.Cmd {
 }
 
 func Verify(ctx context.Context, c client.Client, accounts ...client.Account) tea.Cmd {
-	return runInteractive(ctx, "Verifying Accounts", "verify", c.VerifyAccounts, accounts...)
+	return runInteractive(ctx, "deploy.op_title_verify", "deploy.op_noun_verify", c.VerifyAccounts, accounts...)
 }

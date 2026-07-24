@@ -4,6 +4,8 @@
 package formelement
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,8 +19,8 @@ import (
 var _ form.FormElement = (*TextArea)(nil)
 
 type TextArea struct {
-	Label       string
-	Placeholder string
+	Label       fmt.Stringer
+	Placeholder fmt.Stringer
 	Disabled    bool
 
 	textarea textarea.Model
@@ -28,7 +30,7 @@ type TextArea struct {
 	maxHeight int
 }
 
-func NewTextarea(label, placeholder string, minHeight, maxHeight int) form.FormElement {
+func NewTextarea(label, placeholder fmt.Stringer, minHeight, maxHeight int) form.FormElement {
 	ta := textarea.New()
 	ta.ShowLineNumbers = false
 	ta.MaxWidth = 0
@@ -79,10 +81,12 @@ func (t *TextArea) Update(msg tea.Msg) (tea.Cmd, form.Action) {
 }
 
 func (t *TextArea) View(width int, eager bool) string {
+	label := t.Label.String()
+
 	views := make([]string, 0, 2)
 
 	// render label
-	if t.Label != "" {
+	if label != "" {
 		labelStyle := lipgloss.NewStyle().MaxWidth(width).Foreground(lipgloss.Color("240"))
 		if eager {
 			labelStyle = labelStyle.Width(width)
@@ -90,7 +94,7 @@ func (t *TextArea) View(width int, eager bool) string {
 		if t.focused {
 			labelStyle = labelStyle.Foreground(lipgloss.Color("205")).Bold(true)
 		}
-		views = append(views, labelStyle.Render(t.Label))
+		views = append(views, labelStyle.Render(label))
 	}
 
 	// render input
@@ -107,7 +111,7 @@ func (t *TextArea) View(width int, eager bool) string {
 	// 		len(t.textarea.Value()),
 	// 	))
 	// }
-	t.textarea.Placeholder = t.Placeholder
+	t.textarea.Placeholder = t.Placeholder.String()
 	views = append(views, t.textarea.View())
 
 	return lipgloss.JoinVertical(lipgloss.Left, views...)

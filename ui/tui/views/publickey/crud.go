@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/components/router"
 	"github.com/toeirei/keymaster/ui/tui/helpers/crud"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
@@ -94,8 +95,8 @@ func publicKeyToRecord(ctx context.Context, c client.Client, publicKey client.Pu
 func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
 		crud.Texts{
-			EntityNameSingular: func() string { return "Public Key" },
-			EntityNameMultiple: func() string { return "Public Keys" },
+			EntityNameSingular: func() string { return i18n.T("public_key.entity_singular") },
+			EntityNameMultiple: func() string { return i18n.T("public_key.entity_plural") },
 		},
 
 		func(record recordT) recordIdT { return record.publicKey.Id },
@@ -170,19 +171,19 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		},
 
 		tablecontroll.New(tablecontroll.Columns[recordT]{
-			{Title: func() string { return "Comment" }, View: func(r recordT) string { return r.publicKey.Comment }},
-			{Title: func() string { return "Global" }, View: func(r recordT) string {
+			{Title: func() string { return i18n.T("public_key.col_comment") }, View: func(r recordT) string { return r.publicKey.Comment }},
+			{Title: func() string { return i18n.T("public_key.col_global") }, View: func(r recordT) string {
 				if r.publicKey.IsGlobal {
 					return "✓"
 				}
 				return ""
 			}},
-			{Title: func() string { return "Expires At" }, View: func(r recordT) string { return util.RenderExpiry(r.publicKey.ExpiresAt) }},
-			{Title: func() string { return "Algorithm" }, View: func(r recordT) string { return r.publicKey.Algorithm }},
-			{Title: func() string { return "Links (active/total)" }, View: func(r recordT) string {
+			{Title: func() string { return i18n.T("public_key.col_expires_at") }, View: func(r recordT) string { return util.RenderExpiry(r.publicKey.ExpiresAt) }},
+			{Title: func() string { return i18n.T("public_key.col_algorithm") }, View: func(r recordT) string { return r.publicKey.Algorithm }},
+			{Title: func() string { return i18n.T("public_key.col_links") }, View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkCount, r.totalLinkCount)
 			}},
-			{Title: func() string { return "Accounts (active/total)" }, View: func(r recordT) string {
+			{Title: func() string { return i18n.T("public_key.col_accounts") }, View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkedAccountCount, r.totalLinkedAccountCount)
 			}},
 		}).RenderBubblesTable,
@@ -196,15 +197,15 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 
 		func() []form.FormOpt[recordCreateT] {
 			return []form.FormOpt[recordCreateT]{
-				form.WithRowItem[recordCreateT]("_import", formelement.NewButton("Import", formelement.WithButtonAction(func() (tea.Cmd, form.Action) {
+				form.WithRowItem[recordCreateT]("_import", formelement.NewButton(i18n.Text("public_key.import"), formelement.WithButtonAction(func() (tea.Cmd, form.Action) {
 					return formpopup.Open(form.New(
-						form.WithRowItem[importForm]("key", formelement.NewText("", "")),
+						form.WithRowItem[importForm]("key", formelement.NewText(i18n.Text(""), i18n.Text(""))),
 						form.WithRow(
-							form.WithItem[importForm]("_cancel", formelement.NewButton("Cancel",
+							form.WithItem[importForm]("_cancel", formelement.NewButton(i18n.Text("crud.btn_cancel"),
 								formelement.WithButtonActionCancel(),
 								formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
 							)),
-							form.WithItem[importForm]("_import", formelement.NewButton("Import", formelement.WithButtonActionSubmit())),
+							form.WithItem[importForm]("_import", formelement.NewButton(i18n.Text("public_key.import"), formelement.WithButtonActionSubmit())),
 						),
 						form.WithOnCancel[importForm](func() tea.Cmd { return popup.Close() }),
 						form.WithOnSubmit(func(result importForm, err error) (tea.Cmd, bool) {
@@ -218,7 +219,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 								parts := strings.Split(result.Key, " ")
 
 								if len(parts) < 2 || len(parts) > 3 {
-									return messagepopup.Open(messagepopup.Error, "unable to parse public key", nil), false
+									return messagepopup.Open(messagepopup.Error, i18n.T("public_key.parse_error"), nil), false
 								}
 
 								algorithm, data = parts[0], parts[1]
@@ -231,18 +232,18 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 						}),
 					)), form.ActionNone
 				}))),
-				form.WithRowItem[recordCreateT]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
-				form.WithRowItem[recordCreateT]("algorithm", formelement.NewText("Algorithm", "public key algorithm")),
-				form.WithRowItem[recordCreateT]("data", formelement.NewText("Data", "public key content")),
-				form.WithRowItem[recordCreateT]("is_global", formelement.NewCheckbox("Global")),
-				form.WithRowItem[recordCreateT]("expires_at", formelement.NewText("Expires At", "date on which this key will expire and loose access (optional)")),
+				form.WithRowItem[recordCreateT]("comment", formelement.NewText(i18n.Text("public_key.form.comment_label"), i18n.Text("public_key.form.comment_placeholder"))),
+				form.WithRowItem[recordCreateT]("algorithm", formelement.NewText(i18n.Text("public_key.form.algorithm_label"), i18n.Text("public_key.form.algorithm_placeholder"))),
+				form.WithRowItem[recordCreateT]("data", formelement.NewText(i18n.Text("public_key.form.data_label"), i18n.Text("public_key.form.data_placeholder"))),
+				form.WithRowItem[recordCreateT]("is_global", formelement.NewCheckbox(i18n.Text("public_key.form.global_label"))),
+				form.WithRowItem[recordCreateT]("expires_at", formelement.NewText(i18n.Text("public_key.form.expires_at_label"), i18n.Text("public_key.form.expires_at_placeholder"))),
 			}
 		},
 		func() []form.FormOpt[recordUpdateT] {
 			return []form.FormOpt[recordUpdateT]{
-				form.WithRowItem[recordUpdateT]("comment", formelement.NewText("Comment", "comment that will also be deployed to authorized_keys file")),
-				form.WithRowItem[recordUpdateT]("is_global", formelement.NewCheckbox("Global")),
-				form.WithRowItem[recordUpdateT]("expires_at", formelement.NewText("Expires At", "date on which this key will expire and loose access (optional)")),
+				form.WithRowItem[recordUpdateT]("comment", formelement.NewText(i18n.Text("public_key.form.comment_label"), i18n.Text("public_key.form.comment_placeholder"))),
+				form.WithRowItem[recordUpdateT]("is_global", formelement.NewCheckbox(i18n.Text("public_key.form.global_label"))),
+				form.WithRowItem[recordUpdateT]("expires_at", formelement.NewText(i18n.Text("public_key.form.expires_at_label"), i18n.Text("public_key.form.expires_at_placeholder"))),
 			}
 		},
 
@@ -260,7 +261,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		crud.WithListAction(
 			func(ctx crud.ListMsgInterceptorCtx[recordT, recordCreateT, recordUpdateT, recordIdT, filterT]) tea.Cmd {
 				if ctx.SelectedRecord == nil {
-					return messagepopup.Open(messagepopup.Error, "Please select a "+ctx.Crud.Texts.EntityNameSingular()+".", nil)
+					return messagepopup.Open(messagepopup.Error, fmt.Sprintf(i18n.T("crud.select_generic"), ctx.Crud.Texts.EntityNameSingular()), nil)
 				}
 
 				ctx.Crud.ReloadOnNextFocus = true
@@ -268,7 +269,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			},
 			key.NewBinding(
 				key.WithKeys("l"),
-				key.WithHelp("l", "links"),
+				key.WithHelp("l", i18n.T("keys.links")),
 			),
 		),
 		crud.WithCreateMsgInterceptor(func(msg tea.Msg, ctx crud.CreateMsgInterceptorCtx[recordT, recordCreateT, recordUpdateT, recordIdT, filterT]) (tea.Cmd, bool) {

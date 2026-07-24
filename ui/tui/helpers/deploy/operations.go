@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/helpers/popup"
@@ -33,7 +34,7 @@ type accountOperation = func(context.Context, client.UserRequester, chan<- clien
 // cancellation aborts the whole operation.
 func runInteractive(parent context.Context, title, noun string, start accountOperation, accounts ...client.Account) tea.Cmd {
 	if len(accounts) == 0 {
-		return messagepopup.Open(messagepopup.Info, "No Accounts found for "+noun+".", nil)
+		return messagepopup.Open(messagepopup.Info, fmt.Sprintf(i18n.T("deploy.op_no_accounts"), i18n.T(noun)), nil)
 	}
 
 	ids := slicest.Map(accounts, func(account client.Account) client.AccountId { return account.Id })
@@ -69,7 +70,7 @@ func runInteractive(parent context.Context, title, noun string, start accountOpe
 		if dp.Accounts == nil {
 			// The operation ended before any progress was reported (e.g. it was
 			// cancelled immediately).
-			return messagepopup.Open(messagepopup.Warning, "Cancelled before any progress was reported.", nil)
+			return messagepopup.Open(messagepopup.Warning, i18n.T("deploy.op_cancelled"), nil)
 		}
 
 		severity := messagepopup.Success
@@ -85,9 +86,9 @@ func runInteractive(parent context.Context, title, noun string, start accountOpe
 			strings.Join(
 				slicest.Map(ids, func(id client.AccountId) string {
 					if dp.Accounts[id].Err != nil {
-						return fmt.Sprintf("%s Error: %s", accountNameRenderer.Render(accountNamesMap[id]), dp.Accounts[id].Err.Error())
+						return fmt.Sprintf(i18n.T("deploy.op_account_error"), accountNameRenderer.Render(accountNamesMap[id]), dp.Accounts[id].Err.Error())
 					}
-					return fmt.Sprintf("%s Success", accountNameRenderer.Render(accountNamesMap[id]))
+					return fmt.Sprintf(i18n.T("deploy.op_account_success"), accountNameRenderer.Render(accountNamesMap[id]))
 				}),
 				"\n",
 			),
@@ -105,7 +106,7 @@ func runInteractive(parent context.Context, title, noun string, start accountOpe
 	reopen = func() tea.Cmd {
 		return progresspopup.Open(
 			progresspopup.Bar,
-			title,
+			i18n.T(title),
 			leg,
 			progresspopup.WithContext(ctx),
 			progresspopup.WithCancelFunc(cancel),
@@ -158,11 +159,11 @@ type textAnswer struct {
 // replies with the entered value; on cancel it aborts the whole operation.
 func textRequestForm(prompt string, requester *userRequester, cancel context.CancelFunc, reopen func() tea.Cmd) tea.Cmd {
 	return formpopup.Open(form.New(
-		form.WithRowItem[textAnswer]("_prompt", formelement.NewLabel(prompt)),
-		form.WithRowItem[textAnswer]("answer", formelement.NewText("", "")),
+		form.WithRowItem[textAnswer]("_prompt", formelement.NewLabel(i18n.Text(prompt))),
+		form.WithRowItem[textAnswer]("answer", formelement.NewText(i18n.Text(""), i18n.Text(""))),
 		form.WithRow(
-			form.WithItem[textAnswer]("_submit", formelement.NewButton("Submit", formelement.WithButtonActionSubmit())),
-			form.WithItem[textAnswer]("_cancel", formelement.NewButton("Cancel",
+			form.WithItem[textAnswer]("_submit", formelement.NewButton(i18n.Text("deploy.op_submit"), formelement.WithButtonActionSubmit())),
+			form.WithItem[textAnswer]("_cancel", formelement.NewButton(i18n.Text("crud.btn_cancel"),
 				formelement.WithButtonActionCancel(),
 				formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
 			)),
@@ -189,11 +190,11 @@ func choiceRequestForm(choices []string, requester *userRequester, cancel contex
 		}
 	})
 	popupChoices = append(popupChoices, choicepopup.Choice{
-		Name:        "Cancel",
+		Name:        i18n.T("crud.btn_cancel"),
 		Cmd:         tea.Sequence(cancelCmd(cancel), reopen()),
 		KeyBindings: keys.KeyBindingList{keys.Cancel()},
 	})
-	return choicepopup.Open("Connector requests a choice:", popupChoices)
+	return choicepopup.Open(i18n.T("deploy.op_connector_choice"), popupChoices)
 }
 
 // cancelCmd cancels the operation's context from within a [tea.Cmd].

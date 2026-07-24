@@ -30,5 +30,5 @@ func DeployDirty(ctx context.Context, c client.Client) tea.Cmd {
 }
 
 func Deploy(ctx context.Context, c client.Client, accounts ...client.Account) tea.Cmd {
-	return runInteractive(ctx, "Deploying Accounts", "deployment", c.DeployAccounts, accounts...)
+	return runInteractive(ctx, "deploy.op_title_deploy", "deploy.op_noun_deploy", c.DeployAccounts, accounts...)
 }
