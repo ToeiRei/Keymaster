@@ -438,11 +438,11 @@ audit.error_get_serial_key: "Systemschlüssel %d konnte nicht aus DB gelesen wer
 audit.error_no_serial_key: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer
   %d gefunden"
 audit.error_connection_failed: "Verbindung mit Schlüssel-Seriennummer %d fehlgeschlagen:
-  %w"
+  %v"
 audit.error_read_remote_file: "authorized_keys auf dem Host konnte nicht gelesen werden:
-  %w"
+  %v"
 audit.error_generate_expected: "Erwarteter authorized_keys-Inhalt konnte nicht generiert
-  werden: %w"
+  werden: %v"
 audit.error_drift_detected: "Konfigurationsdrift erkannt. Remote-Datei stimmt nicht
   mit der erwarteten Konfiguration überein"
 
@@ -562,12 +562,12 @@ bootstrap.error_help: "(links/rechts zum Navigieren, Enter zum Bestätigen, Esc 
   Abbrechen)"
 
 # Config
-config.error_init_db: "Fehler beim Initialisieren der Datenbank: %w"
+config.error_init_db: "Fehler beim Initialisieren der Datenbank: %v"
 
 # Deploy CLI command
 deploy.cli_account_not_found: "Konto '%s' nicht gefunden oder nicht aktiv."
 deploy.error_get_bootstrap_key: "Fehler beim Abrufen des aktiven Systemschlüssels
-  für Bootstrap: %w"
+  für Bootstrap: %v"
 deploy.error_no_bootstrap_key: "Kein aktiver Systemschlüssel für Bootstrap gefunden"
 deploy.error_get_serial_key: "Fehler beim Abrufen des Systemschlüssels mit Seriennummer
   %d: %w"
@@ -575,15 +575,15 @@ deploy.error_no_serial_key: "DB-Inkonsistenz: kein Systemschlüssel für Serienn
   %d gefunden"
 deploy.error_get_active_key_for_serial: "Aktiver Systemschlüssel für Seriennummer-Update
   konnte nicht abgerufen werden"
-deploy.error_connection_failed: "Verbindung fehlgeschlagen: %w"
+deploy.error_connection_failed: "Verbindung fehlgeschlagen: %v"
 deploy.error_no_bootstrap_key_tui: "Kein aktiver Systemschlüssel für Bootstrap gefunden.
   Bitte einen erzeugen"
 deploy.error_no_serial_key_tui: "DB-Inkonsistenz: kein Systemschlüssel für Seriennummer
   %d auf Konto %s gefunden"
-deploy.error_connection_failed_tui: "Verbindung zu %s fehlgeschlagen: %w"
+deploy.error_connection_failed_tui: "Verbindung zu %s fehlgeschlagen: %v"
 deploy.error_get_serial_for_status: "Deployment erfolgreich, aber neue Seriennummer
   konnte für Statusmeldung nicht gelesen werden: %w"
-deploy.error_deployment_failed: "Deployment fehlgeschlagen: %w"
+deploy.error_deployment_failed: "Deployment fehlgeschlagen: %v"
 
 # Trust Host CLI command
 trust_host.retrieving_key: "Versuche, Host-Schlüssel von %s abzurufen…"

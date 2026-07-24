@@ -5,7 +5,6 @@ package deploy
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/toeirei/keymaster/core/db"
@@ -20,16 +19,16 @@ import (
 func AuditAccountStrict(account model.Account) error {
 	// 1. An account with serial 0 has never been deployed. This is a known state, not a drift.
 	if account.Serial == 0 {
-		return errors.New(i18n.T("audit.error_not_deployed"))
+		return i18n.NewError("audit.error_not_deployed")
 	}
 
 	// 2. Get the system key the database thinks is on the host.
 	connectKey, err := db.GetSystemKeyBySerial(account.Serial)
 	if err != nil {
-		return errors.New(i18n.T("audit.error_get_serial_key", account.Serial, err))
+		return i18n.WrapError(err, "audit.error_get_serial_key", account.Serial)
 	}
 	if connectKey == nil {
-		return errors.New(i18n.T("audit.error_no_serial_key", account.Serial))
+		return i18n.NewError("audit.error_no_serial_key", account.Serial)
 	}
 
 	// Get passphrase from cache and ensure it's wiped after use.
@@ -46,7 +45,7 @@ func AuditAccountStrict(account model.Account) error {
 		if errors.Is(err, ErrPassphraseRequired) {
 			return err // Pass the specific error up to the caller (TUI)
 		}
-		return fmt.Errorf(i18n.T("audit.error_connection_failed"), account.Serial, err)
+		return i18n.WrapError(err, "audit.error_connection_failed", account.Serial)
 	}
 	defer deployer.Close()
 	// Once the deployer is successfully created, the passphrase has been used.
@@ -57,13 +56,13 @@ func AuditAccountStrict(account model.Account) error {
 	// 4. Read the content of the remote authorized_keys file.
 	remoteContentBytes, err := deployer.GetAuthorizedKeys()
 	if err != nil {
-		return errors.New(i18n.T("audit.error_read_remote_file", err))
+		return i18n.WrapError(err, "audit.error_read_remote_file")
 	}
 
 	// 5. Generate the expected content for this account.
 	expectedContent, err := GenerateKeysContent(account.ID)
 	if err != nil {
-		return errors.New(i18n.T("audit.error_generate_expected", err))
+		return i18n.WrapError(err, "audit.error_generate_expected")
 	}
 
 	// 6. Normalize both for canonical comparison.
@@ -73,7 +72,7 @@ func AuditAccountStrict(account model.Account) error {
 		return s
 	}
 	if normalize(string(remoteContentBytes)) != normalize(expectedContent) {
-		return errors.New(i18n.T("audit.error_drift_detected"))
+		return i18n.NewError("audit.error_drift_detected")
 	}
 	return nil
 }
@@ -83,15 +82,15 @@ func AuditAccountStrict(account model.Account) error {
 // deployed serial recorded in the database.
 func AuditAccountSerial(account model.Account) error {
 	if account.Serial == 0 {
-		return errors.New(i18n.T("audit.error_not_deployed"))
+		return i18n.NewError("audit.error_not_deployed")
 	}
 
 	connectKey, err := db.GetSystemKeyBySerial(account.Serial)
 	if err != nil {
-		return errors.New(i18n.T("audit.error_get_serial_key", account.Serial, err))
+		return i18n.WrapError(err, "audit.error_get_serial_key", account.Serial)
 	}
 	if connectKey == nil {
-		return errors.New(i18n.T("audit.error_no_serial_key", account.Serial))
+		return i18n.NewError("audit.error_no_serial_key", account.Serial)
 	}
 
 	// Get passphrase from cache and ensure it's wiped after use.
@@ -107,7 +106,7 @@ func AuditAccountSerial(account model.Account) error {
 		if errors.Is(err, ErrPassphraseRequired) {
 			return err // Pass the specific error up to the caller (TUI)
 		}
-		return fmt.Errorf(i18n.T("audit.error_connection_failed"), account.Serial, err)
+		return i18n.WrapError(err, "audit.error_connection_failed", account.Serial)
 	}
 	defer deployer.Close()
 	// Once the deployer is successfully created, the passphrase has been used.
@@ -117,13 +116,13 @@ func AuditAccountSerial(account model.Account) error {
 
 	remoteContentBytes, err := deployer.GetAuthorizedKeys()
 	if err != nil {
-		return errors.New(i18n.T("audit.error_read_remote_file", err))
+		return i18n.WrapError(err, "audit.error_read_remote_file")
 	}
 
 	// Parse first non-empty header line and extract serial.
 	lines := strings.Split(strings.ReplaceAll(string(remoteContentBytes), "\r\n", "\n"), "\n")
 	if len(lines) == 0 {
-		return errors.New(i18n.T("audit.error_drift_detected"))
+		return i18n.NewError("audit.error_drift_detected")
 	}
 	var header string
 	for _, ln := range lines {
@@ -135,11 +134,11 @@ func AuditAccountSerial(account model.Account) error {
 		break
 	}
 	if header == "" {
-		return errors.New(i18n.T("audit.error_drift_detected"))
+		return i18n.NewError("audit.error_drift_detected")
 	}
 	serial, err := sshkey.ParseSerial(header)
 	if err != nil || serial != account.Serial {
-		return errors.New(i18n.T("audit.error_drift_detected"))
+		return i18n.NewError("audit.error_drift_detected")
 	}
 	return nil
 }

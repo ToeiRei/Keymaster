@@ -4,8 +4,6 @@
 package deploy
 
 import (
-	"errors"
-	"fmt"
 	"math/rand"
 	"strings"
 	"time"
@@ -28,24 +26,24 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 	if account.Serial == 0 {
 		connectKey, err = db.GetActiveSystemKey()
 		if err != nil {
-			return fmt.Errorf(i18n.T("deploy.error_get_bootstrap_key"), err)
+			return i18n.WrapError(err, "deploy.error_get_bootstrap_key")
 		}
 		if connectKey == nil {
 			if isTUI {
-				return errors.New(i18n.T("deploy.error_no_bootstrap_key_tui"))
+				return i18n.NewError("deploy.error_no_bootstrap_key_tui")
 			}
-			return errors.New(i18n.T("deploy.error_no_bootstrap_key"))
+			return i18n.NewError("deploy.error_no_bootstrap_key")
 		}
 	} else {
 		connectKey, err = db.GetSystemKeyBySerial(account.Serial)
 		if err != nil {
-			return fmt.Errorf(i18n.T("deploy.error_get_serial_key"), account.Serial, err)
+			return i18n.WrapError(err, "deploy.error_get_serial_key", account.Serial)
 		}
 		if connectKey == nil {
 			if isTUI {
-				return fmt.Errorf(i18n.T("deploy.error_no_serial_key_tui"), account.Serial, account.String())
+				return i18n.NewError("deploy.error_no_serial_key_tui", account.Serial, account.String())
 			}
-			return fmt.Errorf(i18n.T("deploy.error_no_serial_key"), account.Serial)
+			return i18n.NewError("deploy.error_no_serial_key", account.Serial)
 		}
 	}
 
@@ -55,7 +53,7 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 	}
 	activeKey, err := db.GetActiveSystemKey()
 	if err != nil || activeKey == nil {
-		return errors.New(i18n.T("deploy.error_get_active_key_for_serial"))
+		return i18n.NewError("deploy.error_get_active_key_for_serial")
 	}
 
 	// Get passphrase from the in-memory cache.
@@ -74,9 +72,9 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 	deployer, err := NewDeployerFunc(account.Hostname, account.Username, db.SecretFromModelSystemKey(connectKey), passphrase)
 	if err != nil {
 		if isTUI {
-			return fmt.Errorf(i18n.T("deploy.error_connection_failed_tui"), account.String(), err)
+			return i18n.WrapError(err, "deploy.error_connection_failed_tui", account.String())
 		}
-		return fmt.Errorf(i18n.T("deploy.error_connection_failed"), err) // For CLI
+		return i18n.WrapError(err, "deploy.error_connection_failed") // For CLI
 	}
 	defer deployer.Close()
 	// Once the deployer is successfully created, the passphrase has been used.
@@ -85,7 +83,7 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 	state.PasswordCache.Clear()
 
 	if err := deployer.DeployAuthorizedKeys(content); err != nil {
-		return fmt.Errorf(i18n.T("deploy.error_deployment_failed"), err)
+		return i18n.WrapError(err, "deploy.error_deployment_failed")
 	}
 
 	for i := 0; i < 5; i++ { // Retry up to 5 times

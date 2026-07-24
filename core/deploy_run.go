@@ -4,8 +4,6 @@
 package core
 
 import (
-	"errors"
-	"fmt"
 	"math/rand"
 	"strings"
 	"time"
@@ -22,29 +20,29 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 
 	kr := DefaultKeyReader()
 	if kr == nil {
-		return errors.New(i18n.T("deploy.error_no_bootstrap_key"))
+		return i18n.NewError("deploy.error_no_bootstrap_key")
 	}
 	if account.Serial == 0 {
 		connectKey, err = kr.GetActiveSystemKey()
 		if err != nil {
-			return fmt.Errorf(i18n.T("deploy.error_get_bootstrap_key"), err)
+			return i18n.WrapError(err, "deploy.error_get_bootstrap_key")
 		}
 		if connectKey == nil {
 			if isTUI {
-				return errors.New(i18n.T("deploy.error_no_bootstrap_key_tui"))
+				return i18n.NewError("deploy.error_no_bootstrap_key_tui")
 			}
-			return errors.New(i18n.T("deploy.error_no_bootstrap_key"))
+			return i18n.NewError("deploy.error_no_bootstrap_key")
 		}
 	} else {
 		connectKey, err = kr.GetSystemKeyBySerial(account.Serial)
 		if err != nil {
-			return fmt.Errorf(i18n.T("deploy.error_get_serial_key"), account.Serial, err)
+			return i18n.WrapError(err, "deploy.error_get_serial_key", account.Serial)
 		}
 		if connectKey == nil {
 			if isTUI {
-				return fmt.Errorf(i18n.T("deploy.error_no_serial_key_tui"), account.Serial, account.String())
+				return i18n.NewError("deploy.error_no_serial_key_tui", account.Serial, account.String())
 			}
-			return fmt.Errorf(i18n.T("deploy.error_no_serial_key"), account.Serial)
+			return i18n.NewError("deploy.error_no_serial_key", account.Serial)
 		}
 	}
 
@@ -54,7 +52,7 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 	}
 	activeKey, err := kr.GetActiveSystemKey()
 	if err != nil || activeKey == nil {
-		return errors.New(i18n.T("deploy.error_get_active_key_for_serial"))
+		return i18n.NewError("deploy.error_get_active_key_for_serial")
 	}
 
 	passphrase := state.PasswordCache.Get()
@@ -66,20 +64,20 @@ func RunDeploymentForAccount(account model.Account, isTUI bool) error {
 	deployer, err := NewDeployerFactory(account.Hostname, account.Username, SystemKeyToSecret(connectKey), passphrase)
 	if err != nil {
 		if isTUI {
-			return fmt.Errorf(i18n.T("deploy.error_connection_failed_tui"), account.String(), err)
+			return i18n.WrapError(err, "deploy.error_connection_failed_tui", account.String())
 		}
-		return fmt.Errorf(i18n.T("deploy.error_connection_failed"), err)
+		return i18n.WrapError(err, "deploy.error_connection_failed")
 	}
 	defer deployer.Close()
 	state.PasswordCache.Clear()
 
 	if err := deployer.DeployAuthorizedKeys(content); err != nil {
-		return fmt.Errorf(i18n.T("deploy.error_deployment_failed"), err)
+		return i18n.WrapError(err, "deploy.error_deployment_failed")
 	}
 
 	updater := DefaultAccountSerialUpdater()
 	if updater == nil {
-		return errors.New(i18n.T("deploy.error_get_active_key_for_serial"))
+		return i18n.NewError("deploy.error_get_active_key_for_serial")
 	}
 	for i := 0; i < 5; i++ {
 		if err = updater.UpdateAccountSerial(account.ID, activeKey.Serial); err == nil || !strings.Contains(err.Error(), "database is locked") {

@@ -396,9 +396,9 @@ audit.cli_error_get_accounts: "Error getting accounts: %v"
 audit.error_not_deployed: "host has not been deployed to yet (serial is 0)"
 audit.error_get_serial_key: "could not get system key %d from db: %v"
 audit.error_no_serial_key: "db inconsistency: no system key found for serial %d"
-audit.error_connection_failed: "connection failed using key serial %d: %w"
-audit.error_read_remote_file: "could not read remote authorized_keys: %w"
-audit.error_generate_expected: "could not generate expected keys content for comparison: %w"
+audit.error_connection_failed: "connection failed using key serial %d: %v"
+audit.error_read_remote_file: "could not read remote authorized_keys: %v"
+audit.error_generate_expected: "could not generate expected keys content for comparison: %v"
 audit.error_drift_detected: "content drift detected. Remote file does not match the expected configuration"
 
 # Rotate Key CLI command
@@ -475,21 +475,21 @@ bootstrap.error_cancel: "Cancel Bootstrap"
 bootstrap.error_help: "(left/right to navigate, enter to confirm, esc to cancel)"
 
 # Config
-config.error_init_db: "error initializing database: %w"
+config.error_init_db: "error initializing database: %v"
 
 # Deploy CLI command
 deploy.cli_account_not_found: "Account '%s' not found or is not active."
-deploy.error_get_bootstrap_key: "failed to get active system key for bootstrap: %w"
+deploy.error_get_bootstrap_key: "failed to get active system key for bootstrap: %v"
 deploy.error_no_bootstrap_key: "no active system key found for bootstrap"
 deploy.error_get_serial_key: "failed to get system key with serial %d: %v"
 deploy.error_no_serial_key: "db inconsistency: no system key found for serial %d"
 deploy.error_get_active_key_for_serial: "could not retrieve active system key for serial update"
-deploy.error_connection_failed: "connection failed: %w"
+deploy.error_connection_failed: "connection failed: %v"
 deploy.error_no_bootstrap_key_tui: "no active system key found for bootstrap. Please generate one"
 deploy.error_no_serial_key_tui: "database inconsistency: no system key found for serial %d on account %s"
-deploy.error_connection_failed_tui: "failed to connect to %s: %w"
+deploy.error_connection_failed_tui: "failed to connect to %s: %v"
 deploy.error_get_serial_for_status: "deployment succeeded, but could not get new serial for status message: %w"
-deploy.error_deployment_failed: "deployment failed: %w"
+deploy.error_deployment_failed: "deployment failed: %v"
 
 # Trust Host CLI command
 trust_host.retrieving_key: "Attempting to retrieve host key from %s…"

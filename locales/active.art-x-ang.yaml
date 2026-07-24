@@ -404,10 +404,10 @@ audit.error_not_deployed: "ƿeard næfþ ġiet bēon ġesended tō (endebyrdnes 
 audit.error_get_serial_key: "ne mihte fōn systemcǣġ %d fram dætafate: %v"
 audit.error_no_serial_key: "dætafates unġeliċnes: nān systemcǣġ ġefunden for endebyrdnes
   %d"
-audit.error_connection_failed: "ġebindung mislāmp brūcende cǣġendebyrdnes %d: %w"
-audit.error_read_remote_file: "ne mihte rǣdan feorran authorized_keys: %w"
+audit.error_connection_failed: "ġebindung mislāmp brūcende cǣġendebyrdnes %d: %v"
+audit.error_read_remote_file: "ne mihte rǣdan feorran authorized_keys: %v"
 audit.error_generate_expected: "ne mihte ċeafiġan ġeƿenedne cǣgan innung for ġeliċnunge:
-  %w"
+  %v"
 audit.error_drift_detected: "innunges drīf ġefunden. Feorran truma ne ġefēreþ þǣre
   ġeƿenedan ġescēadƿīsnesse"
 
@@ -489,27 +489,27 @@ bootstrap.error_help: "(ƿinstra/sƿīðra tō farenne, enter tō ġetrēoƿiġe
   ācierrenne)"
 
 # Config
-config.error_init_db: "gedƿola onġinnende dætafate: %w"
+config.error_init_db: "gedƿola onġinnende dætafate: %v"
 
 # Deploy CLI command
 deploy.cli_account_not_found: "Rǣdmann '%s' nā ġefunden oþþe nis dǣdlīċ."
 deploy.error_get_bootstrap_key: "mislāmp tō fōnne dǣdlīċan systemcǣġ for grundlecginge:
-  %w"
+  %v"
 deploy.error_no_bootstrap_key: "nān dǣdlīċ systemcǣġ ġefunden for grundlecginge"
 deploy.error_get_serial_key: "mislāmp tō fōnne systemcǣġ mid endebyrdnesse %d: %v"
 deploy.error_no_serial_key: "dætafates unġeliċnes: nān systemcǣġ ġefunden for endebyrdnes
   %d"
 deploy.error_get_active_key_for_serial: "ne mihte ġefōn dǣdlīċne systemcǣġ for endebyrdnes
   niƿunge"
-deploy.error_connection_failed: "ġebindung mislāmp: %w"
+deploy.error_connection_failed: "ġebindung mislāmp: %v"
 deploy.error_no_bootstrap_key_tui: "nān dǣdlīċ systemcǣġ ġefunden for grundlecginge.
   Ċeafa ānne"
 deploy.error_no_serial_key_tui: "dætafates unġeliċnes: nān systemcǣġ ġefunden for
   endebyrdnes %d on rǣdmenn %s"
-deploy.error_connection_failed_tui: "mislāmp tō ġebindenne tō %s: %w"
+deploy.error_connection_failed_tui: "mislāmp tō ġebindenne tō %s: %v"
 deploy.error_get_serial_for_status: "sendung ġelāmp, ac ne mihte fōn nīƿe endebyrdnes
   for stede ærendungan: %w"
-deploy.error_deployment_failed: "sendung mislāmp: %w"
+deploy.error_deployment_failed: "sendung mislāmp: %v"
 
 # Trust Host CLI command
 trust_host.retrieving_key: "Fandian tō ġefeccenne ƿeardcǣġ fram %s…"
