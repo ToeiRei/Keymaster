@@ -22,10 +22,10 @@ import (
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
-// accountOperation starts a deploy or verify over the given accounts, returning
-// a channel of aggregate progress. It is satisfied directly by
+// accountOperation starts a deploy or verify over the given accounts, streaming
+// aggregate progress on the provided channel. It is satisfied directly by
 // [client.Client.DeployAccounts] and [client.Client.VerifyAccounts].
-type accountOperation = func(context.Context, client.UserRequester, ...client.AccountId) (chan client.ProgressAccounts, error)
+type accountOperation = func(context.Context, client.UserRequester, chan<- client.ProgressAccounts, ...client.AccountId) error
 
 // runInteractive owns the operation and its context outside of the progress
 // popup, so that a connector's user request can close the progress popup, show
@@ -46,11 +46,12 @@ func runInteractive(parent context.Context, title, noun string, start accountOpe
 	ctx, cancel := context.WithCancel(parent)
 	requester := newUserRequester(ctx)
 
-	dpc, err := start(ctx, requester, ids...)
-	if err != nil {
-		cancel()
-		return messagepopup.Open(messagepopup.Error, err.Error(), nil)
-	}
+	dpc := make(chan client.ProgressAccounts)
+	var opErr error
+	go func() {
+		defer close(dpc)
+		opErr = start(ctx, requester, dpc, ids...)
+	}()
 
 	statusText := func(dp client.ProgressAccounts) string {
 		return strings.Join(
@@ -62,6 +63,9 @@ func runInteractive(parent context.Context, title, noun string, start accountOpe
 	}
 
 	finalMessage := func(dp client.ProgressAccounts) tea.Cmd {
+		if opErr != nil {
+			return messagepopup.Open(messagepopup.Error, opErr.Error(), nil)
+		}
 		if dp.Accounts == nil {
 			// The operation ended before any progress was reported (e.g. it was
 			// cancelled immediately).
@@ -72,7 +76,7 @@ func runInteractive(parent context.Context, title, noun string, start accountOpe
 		switch {
 		case ctx.Err() != nil:
 			severity = messagepopup.Warning
-		case slicest.Contains(slicest.MapValues(dp.Accounts), func(dpa *client.ProgressAccount) bool { return dpa.Err != nil }):
+		case slicest.Contains(slicest.MapValues(dp.Accounts), func(dpa *client.ProgressAccountWithError) bool { return dpa.Err != nil }):
 			severity = messagepopup.Error
 		}
 
