@@ -9,8 +9,8 @@ import (
 )
 
 type Connector interface {
-	Deploy(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester) (progress chan Progress, newCache *string, err error)
-	Verify(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester) (progress chan Progress, newCache *string, err error)
+	Deploy(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester, progress chan<- Progress) (newCache string, err error)
+	Verify(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester, progress chan<- Progress) (ok bool, newCache string, err error)
 	VerifyOffline(ctx context.Context, deployData DeployData) (bool, error)
 }
 
@@ -21,9 +21,9 @@ type ConnectionData struct {
 }
 
 type DeployData struct {
-	Records    []DeployRecord
-	Secret     string
-	Cache      string
+	Records         []DeployRecord
+	Secret          string
+	Cache           string
 	SystemKeySerial int
 }
 
@@ -38,7 +38,6 @@ type DeployRecord struct {
 type Progress struct {
 	Progress float64
 	Status   string
-	Err      error
 }
 
 type UserRequester interface {

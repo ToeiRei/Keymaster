@@ -65,18 +65,24 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 	}
 
 	c := &Connector{}
-	progress, err := c.Deploy(context.Background(), connector.DeployData{
-		Records: []connector.DeployRecord{{
-			Algorithm: "ssh-ed25519",
-			Data:      "AAAAC3NzaC1lZDI1NTE5AAAAIexample",
-			Comment:   "alice@example",
-		}},
-		Secret:           secret,
-		SystemKeySerial:  7,
-	}, connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, nil)
-	if err != nil {
-		t.Fatalf("Deploy returned error: %v", err)
-	}
+	progress := make(chan connector.Progress)
+
+	var (
+		cache      string
+		deployErr  error
+	)
+	go func() {
+		defer close(progress)
+		cache, deployErr = c.Deploy(context.Background(), connector.DeployData{
+			Records: []connector.DeployRecord{{
+				Algorithm: "ssh-ed25519",
+				Data:      "AAAAC3NzaC1lZDI1NTE5AAAAIexample",
+				Comment:   "alice@example",
+			}},
+			Secret:          secret,
+			SystemKeySerial: 7,
+		}, connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, nil, progress)
+	}()
 
 	var sawDone bool
 	for progressUpdate := range progress {
@@ -84,8 +90,14 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 			sawDone = true
 		}
 	}
+	if deployErr != nil {
+		t.Fatalf("Deploy returned error: %v", deployErr)
+	}
 	if !sawDone {
 		t.Fatal("expected final progress update after deploy")
+	}
+	if cache == "" {
+		t.Fatal("expected Deploy to return a non-empty cache")
 	}
 	if deployer.closed == false {
 		t.Fatal("expected deployer to be closed")
