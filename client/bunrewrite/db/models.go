@@ -22,6 +22,7 @@ type AccountModel struct {
 	Username     string `bun:"username"`
 	Host         string `bun:"host"`
 	Port         string `bun:"port"`
+	Serial       int    `bun:"serial"`
 	IsActive     bool   `bun:"is_active"`
 	IsDirty      bool   `bun:"is_dirty"`
 	DeployMethod string `bun:"deploy_method"`
