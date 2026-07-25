@@ -8,13 +8,14 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/popups/messagepopup"
 )
 
 func VerifyAll(ctx context.Context, c client.Client) tea.Cmd {
 	accounts, err := c.ListAccounts(ctx)
 	if err != nil {
-		return messagepopup.Open(messagepopup.Error, err.Error(), nil)
+		return messagepopup.Open(messagepopup.Error, i18n.WrapError(err, "deploy.op_list_accounts_failed"), nil)
 	}
 
 	return Verify(ctx, c, accounts...)
@@ -23,12 +24,12 @@ func VerifyAll(ctx context.Context, c client.Client) tea.Cmd {
 func VerifyDirty(ctx context.Context, c client.Client) tea.Cmd {
 	accounts, err := c.ListAccountsDirty(ctx)
 	if err != nil {
-		return messagepopup.Open(messagepopup.Error, err.Error(), nil)
+		return messagepopup.Open(messagepopup.Error, i18n.WrapError(err, "deploy.op_list_accounts_failed"), nil)
 	}
 
 	return Verify(ctx, c, accounts...)
 }
 
 func Verify(ctx context.Context, c client.Client, accounts ...client.Account) tea.Cmd {
-	return runInteractive(ctx, "deploy.op_title_verify", "deploy.op_noun_verify", c.VerifyAccounts, accounts...)
+	return runInteractive(ctx, i18n.Text("deploy.op_title_verify"), i18n.Text("deploy.op_noun_verify"), c.VerifyAccounts, accounts...)
 }

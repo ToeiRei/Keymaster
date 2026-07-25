@@ -24,6 +24,9 @@ type LocalizedError struct {
 // Error implements the error interface, resolving the message in the current language.
 func (e *LocalizedError) Error() string { return T(e.messageID, e.args...) }
 
+// Error implements the fmt.Stringer interface, resolving the message in the current language.
+func (e *LocalizedError) String() string { return T(e.messageID, e.args...) }
+
 // Unwrap returns the wrapped error so errors.Is/As traverse the chain.
 func (e *LocalizedError) Unwrap() error { return e.wrapped }
 

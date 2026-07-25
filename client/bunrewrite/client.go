@@ -948,7 +948,7 @@ func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connec
 	semaphore := make(chan struct{}, concurrent)
 
 	progressMap := slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.ProgressAccountWithError) {
-		return account.Id, &client.ProgressAccountWithError{ProgressAccount: client.ProgressAccount{Progress: 0, Status: "not started"}}
+		return account.Id, &client.ProgressAccountWithError{ProgressAccount: client.ProgressAccount{Progress: 0, Status: i18n.Text("client.status.not_started")}}
 	})
 
 	accountProgressChan := make(chan accountProgressUpdate, concurrent)
@@ -995,7 +995,7 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 
 	fail := func(err error) {
 		sendProgress(client.ProgressAccountWithError{
-			client.ProgressAccount{Progress: 1, Status: "error"},
+			client.ProgressAccount{Progress: 1, Status: i18n.Text("client.status.error")},
 			err,
 		})
 	}
@@ -1056,7 +1056,7 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 
 	if auditErr := c.writeAuditLog(ctx, c.bun, action, accountOpAuditDetails(account, keyCount, opErr)); auditErr != nil {
 		sendProgress(client.ProgressAccountWithError{
-			client.ProgressAccount{Progress: 1, Status: "error"},
+			client.ProgressAccount{Progress: 1, Status: i18n.Text("client.status.error")},
 			errors.Join(opErr, i18n.WrapError(auditErr, "errors.client.audit_write_failed")),
 		})
 	}

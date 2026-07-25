@@ -120,7 +120,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 
 		case "settings.language":
 			return selectpopup.Open(
-				i18n.T("language.select"),
+				i18n.Text("settings.language.select"),
 				func(_ context.Context) ([]langOption, error) {
 					locales := i18n.GetAvailableLocales()
 					opts := make([]langOption, 0, len(locales))
@@ -134,46 +134,46 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 					i18n.SetLang(o.Code)
 					viper.Set("language", o.Code)
 					if err := config.Save(); err != nil {
-						return messagepopup.Open(messagepopup.Error, err.Error(), nil)
+						return messagepopup.Open(messagepopup.Error, i18n.WrapError(err, "settings.language.save_failed"), nil)
 					}
 					return nil
 				},
 				tablecontroll.New(tablecontroll.Columns[langOption]{
-					{Title: func() string { return i18n.T("menu.language") }, View: func(o langOption) string { return o.Name }},
+					{Title: i18n.Text("menu.language"), View: func(o langOption) string { return o.Name }},
 				}),
 			)
 
 		case "test.popup.select":
 			return selectpopup.Open(
-				"Choose Account",
+				i18n.RawText("Choose Account"),
 				func(ctx context.Context) ([]client.Account, error) {
 					return m.client.ListAccounts(ctx)
 				},
 				func(r client.Account) tea.Cmd {
-					return messagepopup.Open(messagepopup.Info, "You selected: "+r.String(), nil)
+					return messagepopup.Open(messagepopup.Info, i18n.RawText("You selected: "+r.String()), nil)
 				},
 				tablecontroll.New(tablecontroll.Columns[client.Account]{
-					{Title: func() string { return "Username" }, View: func(r client.Account) string { return r.Username }},
-					{Title: func() string { return "Host" }, View: func(r client.Account) string { return r.Host }},
-					{Title: func() string { return "Port" }, View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
-					{Title: func() string { return "Deploy Method" }, View: func(r client.Account) string { return r.DeployMethod }},
+					{Title: i18n.RawText("Username"), View: func(r client.Account) string { return r.Username }},
+					{Title: i18n.RawText("Host"), View: func(r client.Account) string { return r.Host }},
+					{Title: i18n.RawText("Port"), View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
+					{Title: i18n.RawText("Deploy Method"), View: func(r client.Account) string { return r.DeployMethod }},
 				}),
 			)
 
 		case "test.popup.select_with_filter":
 			return selectpopup.Open(
-				"Choose Account",
+				i18n.RawText("Choose Account"),
 				func(ctx context.Context) ([]client.Account, error) {
 					return m.client.ListAccounts(ctx)
 				},
 				func(r client.Account) tea.Cmd {
-					return messagepopup.Open(messagepopup.Info, "You selected: "+r.String(), nil)
+					return messagepopup.Open(messagepopup.Info, i18n.RawText("You selected: "+r.String()), nil)
 				},
 				tablecontroll.New(tablecontroll.Columns[client.Account]{
-					{Title: func() string { return "Username" }, View: func(r client.Account) string { return r.Username }},
-					{Title: func() string { return "Host" }, View: func(r client.Account) string { return r.Host }},
-					{Title: func() string { return "Port" }, View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
-					{Title: func() string { return "Deploy Method" }, View: func(r client.Account) string { return r.DeployMethod }},
+					{Title: i18n.RawText("Username"), View: func(r client.Account) string { return r.Username }},
+					{Title: i18n.RawText("Host"), View: func(r client.Account) string { return r.Host }},
+					{Title: i18n.RawText("Port"), View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
+					{Title: i18n.RawText("Deploy Method"), View: func(r client.Account) string { return r.DeployMethod }},
 				}),
 				selectpopup.WithFilter(func(filter string, records []client.Account) []client.Account {
 					return slicest.Filter(records, func(record client.Account) bool {
@@ -188,7 +188,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		case "test.popup.progress.spinner":
 			return progresspopup.Open(
 				progresspopup.Spinner,
-				"Test Progress Spinner",
+				i18n.RawText("Test Progress Spinner"),
 				func(_ context.Context, _ progresspopup.ProgressChan) tea.Cmd {
 					time.Sleep(time.Second * 2)
 					return nil
@@ -198,12 +198,12 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		case "test.popup.progress.bar":
 			return progresspopup.Open(
 				progresspopup.Bar,
-				"Test Progress Bar",
+				i18n.RawText("Test Progress Bar"),
 				func(_ context.Context, pc progresspopup.ProgressChan) tea.Cmd {
 					for i := range 100 {
 						pc <- progresspopup.Progress{
 							Progress: float64(i+1) / 100,
-							Status:   fmt.Sprintf("%d / 100", i+1),
+							Status:   i18n.RawText(fmt.Sprintf("%d / 100", i+1)),
 						}
 						time.Sleep(time.Second / 40)
 					}

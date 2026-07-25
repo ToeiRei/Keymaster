@@ -5,6 +5,7 @@ package connector
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -37,10 +38,10 @@ type DeployRecord struct {
 
 type Progress struct {
 	Progress float64
-	Status   string
+	Status   fmt.Stringer
 }
 
 type UserRequester interface {
-	RequestText(promt string) string
-	RequestChoice(promts []string) int
+	RequestText(promt fmt.Stringer) string
+	RequestChoice(promts []fmt.Stringer) int
 }

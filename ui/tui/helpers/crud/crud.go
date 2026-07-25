@@ -5,6 +5,7 @@ package crud
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,8 +16,8 @@ import (
 )
 
 type Texts struct {
-	EntityNameSingular func() string
-	EntityNameMultiple func() string
+	EntityNameSingular fmt.Stringer
+	EntityNameMultiple fmt.Stringer
 }
 
 type Crud[

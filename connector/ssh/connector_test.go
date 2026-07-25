@@ -14,6 +14,7 @@ import (
 	"github.com/toeirei/keymaster/connector"
 	"github.com/toeirei/keymaster/core/deploy"
 	"github.com/toeirei/keymaster/core/security"
+	"github.com/toeirei/keymaster/ui/i18n"
 )
 
 type fakeSSHDeployer struct {
@@ -86,7 +87,7 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 
 	var sawDone bool
 	for progressUpdate := range progress {
-		if progressUpdate.Status == "done" {
+		if progressUpdate.Status.String() == i18n.T("connector.status.done") {
 			sawDone = true
 		}
 	}

@@ -4,6 +4,8 @@
 package messagepopup
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
@@ -23,13 +25,13 @@ const (
 
 type MessageSeverity int
 
-func Open(severity MessageSeverity, message string, cmd tea.Cmd) tea.Cmd {
+func Open(severity MessageSeverity, message fmt.Stringer, cmd tea.Cmd) tea.Cmd {
 	return popup.Open(util.ModelPointer(New(severity, message, cmd)))
 }
 
 func New(
 	severity MessageSeverity,
-	message string,
+	message fmt.Stringer,
 	cmd tea.Cmd,
 ) *formpopup.Form[struct{}] {
 	var title string
@@ -45,7 +47,7 @@ func New(
 	}
 	return formpopup.New(form.New(
 		form.WithRowItem[struct{}]("_title", formelement.NewLabel(i18n.Text(title))),
-		form.WithRowItem[struct{}]("_message", formelement.NewLabel(i18n.Text(message))),
+		form.WithRowItem[struct{}]("_message", formelement.NewLabel(message)),
 		form.WithRowItem[struct{}]("_ok", formelement.NewButton(i18n.Text("popup.ok"), formelement.WithButtonActionSubmit(), formelement.WithButtonGlobalKeyBindings(keys.Close()))),
 		form.WithOnSubmit(func(_ struct{}, _ error) (tea.Cmd, bool) { return tea.Sequence(popup.Close(), cmd), true }),
 		form.WithDefaultRowAlign[struct{}](form.Center),

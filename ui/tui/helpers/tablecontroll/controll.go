@@ -4,6 +4,7 @@
 package tablecontroll
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -17,7 +18,7 @@ var _ BubblesTableRenderer[any] = Controll[any]{}.RenderBubblesTable
 
 type Column[T any] struct {
 	// column title
-	Title func() string
+	Title fmt.Stringer
 
 	// function to render content of column for each row
 	View func(v T) string
@@ -101,7 +102,7 @@ func (c Controll[T]) ColumnDimensions(rows [][]string, availableWidth int) ([]in
 	columnWidths := slicest.MapI(c.Columns, func(i int, column Column[T]) int {
 		// calculate max width of all cells and the header
 		columnWidth := max(
-			len(column.Title()),
+			len(column.Title.String()),
 			slicest.Reduce(rows, func(r []string, w int) int { return max(w, len(r[i])) }),
 		)
 		// apply column width modifiers
@@ -136,7 +137,7 @@ func (c Controll[T]) RenderBubblesTable(records []T, width int) ([]table.Column,
 			extraWidth := remainingWidth / (len(c.Columns) - i)
 			remainingWidth -= extraWidth
 			return table.Column{
-				Title: column.Title(),
+				Title: column.Title.String(),
 				Width: columnWidths[i] + extraWidth,
 			}
 		}), bubblesRows
@@ -178,7 +179,7 @@ func (c Controll[T]) RenderBubblesTable(records []T, width int) ([]table.Column,
 
 		return slicest.MapI(c.Columns, func(i int, column Column[T]) table.Column {
 			return table.Column{
-				Title: column.Title(),
+				Title: column.Title.String(),
 				Width: columnWidths[i],
 			}
 		}), bubblesRows

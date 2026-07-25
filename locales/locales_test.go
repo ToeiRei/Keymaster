@@ -16,7 +16,8 @@ import (
 // (the three files intentionally differ in their legacy key sets).
 var managedPrefixes = []string{
 	"errors.", "audit.action.", "keys.", "crud.",
-	"account.", "public_key.", "link.", "popup.", "deploy.op_",
+	"account.", "public_key.", "link.", "popup.", "deploy.op_", "settings.",
+	"client.status.", "connector.status.",
 }
 
 func loadLocale(t *testing.T, name string) map[string]string {

@@ -32,9 +32,9 @@ type accountOperation = func(context.Context, client.UserRequester, chan<- clien
 // popup, so that a connector's user request can close the progress popup, show
 // a form popup, and reopen the progress popup after the user replies. Context
 // cancellation aborts the whole operation.
-func runInteractive(parent context.Context, title, noun string, start accountOperation, accounts ...client.Account) tea.Cmd {
+func runInteractive(parent context.Context, title, noun fmt.Stringer, start accountOperation, accounts ...client.Account) tea.Cmd {
 	if len(accounts) == 0 {
-		return messagepopup.Open(messagepopup.Info, fmt.Sprintf(i18n.T("deploy.op_no_accounts"), i18n.T(noun)), nil)
+		return messagepopup.Open(messagepopup.Info, i18n.Text("deploy.op_no_accounts", noun), nil)
 	}
 
 	ids := slicest.Map(accounts, func(account client.Account) client.AccountId { return account.Id })
@@ -54,23 +54,23 @@ func runInteractive(parent context.Context, title, noun string, start accountOpe
 		opErr = start(ctx, requester, dpc, ids...)
 	}()
 
-	statusText := func(dp client.ProgressAccounts) string {
-		return strings.Join(
+	statusText := func(dp client.ProgressAccounts) fmt.Stringer {
+		return i18n.RawText(strings.Join(
 			slicest.Map(ids, func(id client.AccountId) string {
 				return fmt.Sprintf("%s [%s]", accountNameRenderer.Render(accountNamesMap[id]), dp.Accounts[id].Status)
 			}),
 			"\n",
-		)
+		))
 	}
 
 	finalMessage := func(dp client.ProgressAccounts) tea.Cmd {
 		if opErr != nil {
-			return messagepopup.Open(messagepopup.Error, opErr.Error(), nil)
+			return messagepopup.Open(messagepopup.Error, i18n.WrapError(opErr, "deploy.op_failed"), nil)
 		}
 		if dp.Accounts == nil {
 			// The operation ended before any progress was reported (e.g. it was
 			// cancelled immediately).
-			return messagepopup.Open(messagepopup.Warning, i18n.T("deploy.op_cancelled"), nil)
+			return messagepopup.Open(messagepopup.Warning, i18n.Text("deploy.op_cancelled"), nil)
 		}
 
 		severity := messagepopup.Success
@@ -83,15 +83,12 @@ func runInteractive(parent context.Context, title, noun string, start accountOpe
 
 		return messagepopup.Open(
 			severity,
-			strings.Join(
-				slicest.Map(ids, func(id client.AccountId) string {
-					if dp.Accounts[id].Err != nil {
-						return fmt.Sprintf(i18n.T("deploy.op_account_error"), accountNameRenderer.Render(accountNamesMap[id]), dp.Accounts[id].Err.Error())
-					}
-					return fmt.Sprintf(i18n.T("deploy.op_account_success"), accountNameRenderer.Render(accountNamesMap[id]))
-				}),
-				"\n",
-			),
+			i18n.Join("\n", slicest.Map(ids, func(id client.AccountId) fmt.Stringer {
+				if dp.Accounts[id].Err != nil {
+					return i18n.Text("deploy.op_account_error", accountNameRenderer.Render(accountNamesMap[id]), dp.Accounts[id].Err.Error())
+				}
+				return i18n.Text("deploy.op_account_success", accountNameRenderer.Render(accountNamesMap[id]))
+			})...),
 			nil,
 		)
 	}
@@ -106,7 +103,7 @@ func runInteractive(parent context.Context, title, noun string, start accountOpe
 	reopen = func() tea.Cmd {
 		return progresspopup.Open(
 			progresspopup.Bar,
-			i18n.T(title),
+			title,
 			leg,
 			progresspopup.WithContext(ctx),
 			progresspopup.WithCancelFunc(cancel),
@@ -140,10 +137,10 @@ func runInteractive(parent context.Context, title, noun string, start accountOpe
 func requestForm(req any, requester *userRequester, cancel context.CancelFunc, reopen func() tea.Cmd) tea.Cmd {
 	switch req := req.(type) {
 	case TextRequest:
-		return textRequestForm(string(req), requester, cancel, reopen)
+		return textRequestForm(req, requester, cancel, reopen)
 
 	case ChoiceRequest:
-		return choiceRequestForm([]string(req), requester, cancel, reopen)
+		return choiceRequestForm(req, requester, cancel, reopen)
 
 	default:
 		// Unexpected request value (e.g. request channel closed) -> just resume.
@@ -157,9 +154,9 @@ type textAnswer struct {
 
 // textRequestForm shows a text-input popup for a [TextRequest]. On submit it
 // replies with the entered value; on cancel it aborts the whole operation.
-func textRequestForm(prompt string, requester *userRequester, cancel context.CancelFunc, reopen func() tea.Cmd) tea.Cmd {
+func textRequestForm(prompt fmt.Stringer, requester *userRequester, cancel context.CancelFunc, reopen func() tea.Cmd) tea.Cmd {
 	return formpopup.Open(form.New(
-		form.WithRowItem[textAnswer]("_prompt", formelement.NewLabel(i18n.Text(prompt))),
+		form.WithRowItem[textAnswer]("_prompt", formelement.NewLabel(prompt)),
 		form.WithRowItem[textAnswer]("answer", formelement.NewText(i18n.Text(""), i18n.Text(""))),
 		form.WithRow(
 			form.WithItem[textAnswer]("_submit", formelement.NewButton(i18n.Text("deploy.op_submit"), formelement.WithButtonActionSubmit())),
@@ -182,19 +179,19 @@ func textRequestForm(prompt string, requester *userRequester, cancel context.Can
 // choiceRequestForm shows a choice popup for a [ChoiceRequest]. Selecting an
 // option replies with its index; a trailing Cancel choice aborts the whole
 // operation.
-func choiceRequestForm(choices []string, requester *userRequester, cancel context.CancelFunc, reopen func() tea.Cmd) tea.Cmd {
-	popupChoices := slicest.MapI(choices, func(i int, label string) choicepopup.Choice {
+func choiceRequestForm(choices []fmt.Stringer, requester *userRequester, cancel context.CancelFunc, reopen func() tea.Cmd) tea.Cmd {
+	popupChoices := slicest.MapI(choices, func(i int, label fmt.Stringer) choicepopup.Choice {
 		return choicepopup.Choice{
 			Name: label,
 			Cmd:  tea.Sequence(requester.replyChoiceCmd(i), reopen()),
 		}
 	})
 	popupChoices = append(popupChoices, choicepopup.Choice{
-		Name:        i18n.T("crud.btn_cancel"),
+		Name:        i18n.Text("crud.btn_cancel"),
 		Cmd:         tea.Sequence(cancelCmd(cancel), reopen()),
 		KeyBindings: keys.KeyBindingList{keys.Cancel()},
 	})
-	return choicepopup.Open(i18n.T("deploy.op_connector_choice"), popupChoices)
+	return choicepopup.Open(i18n.Text("deploy.op_connector_choice"), popupChoices)
 }
 
 // cancelCmd cancels the operation's context from within a [tea.Cmd].

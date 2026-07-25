@@ -5,6 +5,7 @@ package progresspopup
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -33,8 +34,8 @@ var progressIdCounter atomic.Uint32
 
 type Model struct {
 	id        progressId
-	title     string
-	status    string
+	title     fmt.Stringer
+	status    fmt.Stringer
 	mode      progressMode
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -50,7 +51,7 @@ type Model struct {
 
 type Progress struct {
 	Progress float64
-	Status   string
+	Status   fmt.Stringer
 }
 
 // This channel is for reporting progress to the Progress-Popup-Listener. Do not close the channel, as this will be done by the Progress Popup after returning!
@@ -75,7 +76,7 @@ func WithCancelFunc(cancel context.CancelFunc) ProgressOption {
 	return func(m *Model) { m.ctxCancel = cancel }
 }
 
-func Open(mode progressMode, title string, fn func(ctx context.Context, pc ProgressChan) tea.Cmd, opts ...ProgressOption) tea.Cmd {
+func Open(mode progressMode, title fmt.Stringer, fn func(ctx context.Context, pc ProgressChan) tea.Cmd, opts ...ProgressOption) tea.Cmd {
 	id := progressId(progressIdCounter.Add(1))
 	progressChan := make(ProgressChan)
 	model := &Model{
@@ -181,16 +182,16 @@ func (m Model) View() string {
 
 	switch m.mode {
 	case Spinner:
-		blocks = append(blocks, m.spinnerModel.View()+" "+lipgloss.NewStyle().Bold(true).Render(m.title))
+		blocks = append(blocks, m.spinnerModel.View()+" "+lipgloss.NewStyle().Bold(true).Render(m.title.String()))
 	case Bar:
-		if m.title != "" {
-			blocks = append(blocks, lipgloss.NewStyle().Bold(true).Render(m.title))
+		if m.title != nil {
+			blocks = append(blocks, lipgloss.NewStyle().Bold(true).Render(m.title.String()))
 		}
 		blocks = append(blocks, m.barModel.ViewAs(m.progress))
 	}
 
-	if m.status != "" {
-		blocks = append(blocks, lipgloss.NewStyle().Italic(true).Render(m.status))
+	if m.status != nil {
+		blocks = append(blocks, lipgloss.NewStyle().Italic(true).Render(m.status.String()))
 	}
 
 	formView := m.formModel.ViewLazy()

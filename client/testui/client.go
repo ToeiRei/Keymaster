@@ -17,6 +17,7 @@ import (
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/connector"
 	_ "github.com/toeirei/keymaster/connector/ssh" // activate the ssh connector so ListConnectorKeys reports it
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/util/slicest"
 )
 
@@ -409,7 +410,7 @@ func (c *Client) DeployAccounts(ctx context.Context, userRequester client.UserRe
 
 	deployProgress := client.DeployProgressAccounts{
 		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.ProgressAccountWithError) {
-			return account.Id, &client.ProgressAccountWithError{ProgressAccount: client.ProgressAccount{Progress: 0, Status: "not started"}}
+			return account.Id, &client.ProgressAccountWithError{ProgressAccount: client.ProgressAccount{Progress: 0, Status: i18n.Text("client.status.not_started")}}
 		}),
 	}
 
@@ -417,10 +418,10 @@ func (c *Client) DeployAccounts(ctx context.Context, userRequester client.UserRe
 		if ctx.Err() != nil {
 			deployProgress.Accounts[accountId].Progress = 1
 			if errors.Is(ctx.Err(), context.Canceled) {
-				deployProgress.Accounts[accountId].Status = "canceled"
+				deployProgress.Accounts[accountId].Status = i18n.Text("client.status.canceled")
 				deployProgress.Accounts[accountId].Err = errors.New("canceled")
 			} else {
-				deployProgress.Accounts[accountId].Status = "error"
+				deployProgress.Accounts[accountId].Status = i18n.Text("client.status.error")
 				deployProgress.Accounts[accountId].Err = ctx.Err()
 			}
 			return true
@@ -434,7 +435,7 @@ accountLoop:
 			continue accountLoop
 		}
 
-		deployProgress.Accounts[account.Id].Status = "deploying"
+		deployProgress.Accounts[account.Id].Status = i18n.Text("client.status.deploying")
 		progress <- deployProgress
 
 		// simulate deplay
@@ -450,7 +451,7 @@ accountLoop:
 		// potential error i guess
 		ok := true
 		if !ok {
-			deployProgress.Accounts[account.Id].Status = "error"
+			deployProgress.Accounts[account.Id].Status = i18n.Text("client.status.error")
 			deployProgress.Accounts[account.Id].Progress = 1
 			deployProgress.Accounts[account.Id].Err = fmt.Errorf("some weird error on account with id %v", account.Id)
 			progress <- deployProgress
@@ -477,7 +478,7 @@ accountLoop:
 		_account.DeployCache = c.remoteStates[account.Id]
 		c.accounts[account.Id] = _account
 
-		deployProgress.Accounts[account.Id].Status = "finished"
+		deployProgress.Accounts[account.Id].Status = i18n.Text("client.status.finished")
 		deployProgress.Accounts[account.Id].Progress = 1
 		progress <- deployProgress
 	}
@@ -507,7 +508,7 @@ func (c *Client) VerifyAccounts(ctx context.Context, userRequester client.UserRe
 
 	verifyProgress := client.VerifyProgressAccounts{
 		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.ProgressAccountWithError) {
-			return account.Id, &client.ProgressAccountWithError{ProgressAccount: client.ProgressAccount{Progress: 0, Status: "not started"}}
+			return account.Id, &client.ProgressAccountWithError{ProgressAccount: client.ProgressAccount{Progress: 0, Status: i18n.Text("client.status.not_started")}}
 		}),
 	}
 
@@ -515,10 +516,10 @@ func (c *Client) VerifyAccounts(ctx context.Context, userRequester client.UserRe
 		if ctx.Err() != nil {
 			deployProgress.Accounts[accountId].Progress = 1
 			if errors.Is(ctx.Err(), context.Canceled) {
-				deployProgress.Accounts[accountId].Status = "canceled"
+				deployProgress.Accounts[accountId].Status = i18n.Text("client.status.canceled")
 				deployProgress.Accounts[accountId].Err = errors.New("canceled")
 			} else {
-				deployProgress.Accounts[accountId].Status = "error"
+				deployProgress.Accounts[accountId].Status = i18n.Text("client.status.error")
 				deployProgress.Accounts[accountId].Err = ctx.Err()
 			}
 			return true
@@ -532,7 +533,7 @@ accountLoop:
 			continue accountLoop
 		}
 
-		verifyProgress.Accounts[account.Id].Status = "verifing"
+		verifyProgress.Accounts[account.Id].Status = i18n.Text("client.status.verifying")
 		progress <- verifyProgress
 
 		// simulate deplay
@@ -547,7 +548,7 @@ accountLoop:
 
 		ok := true
 		if !ok {
-			verifyProgress.Accounts[account.Id].Status = "error"
+			verifyProgress.Accounts[account.Id].Status = i18n.Text("client.status.error")
 			verifyProgress.Accounts[account.Id].Progress = 1
 			verifyProgress.Accounts[account.Id].Err = fmt.Errorf("some weird error on account with id %v", account.Id)
 			progress <- verifyProgress
@@ -573,10 +574,10 @@ accountLoop:
 			_account.DeployCache = c.remoteStates[account.Id]
 			c.accounts[account.Id] = _account
 
-			verifyProgress.Accounts[account.Id].Status = "error"
+			verifyProgress.Accounts[account.Id].Status = i18n.Text("client.status.error")
 			verifyProgress.Accounts[account.Id].Err = errors.New("account is out of sync")
 		} else {
-			verifyProgress.Accounts[account.Id].Status = "finished"
+			verifyProgress.Accounts[account.Id].Status = i18n.Text("client.status.finished")
 		}
 
 		_ = c.writeAuditLog("account.verify", client.AuditLogDetails{{"account", fmt.Sprintf("%#v", account)}})

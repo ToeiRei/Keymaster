@@ -76,9 +76,9 @@ auditlog.end_marker: "(Ende)"
 auditlog.page_info: "Seite %d · Einträge %d-%d"
 auditlog.page_info_total: "Seite %d/%d · %d-%d von %d"
 
-# Language selection view
-language.select: "Sprache auswählen:"
-language.help: "up/down: navigieren   enter: auswählen  q/esc: zurück"
+# Settings view
+settings.language.save_failed: "Spracheinstellung konnte nicht gespeichert werden: %v"
+settings.language.select: "Sprache auswählen:"
 
 # Account form translations
 account_form.username_label: "Benutzername:"
@@ -676,6 +676,21 @@ errors.client.link_not_found: "Zuweisung nicht gefunden: Konto %d, öffentlicher
 errors.client.out_of_sync: "authorized_keys auf dem Host ist nicht synchron"
 errors.client.audit_write_failed: "Schreiben ins Audit-Log fehlgeschlagen: %v"
 
+# Progress statuses (deploy/verify progress popup, per-account status word)
+client.status.not_started: "nicht gestartet"
+client.status.canceled: "abgebrochen"
+client.status.error: "Fehler"
+client.status.deploying: "wird ausgerollt"
+client.status.verifying: "wird verifiziert"
+client.status.finished: "abgeschlossen"
+connector.status.rendering_keys: "authorized_keys wird erstellt"
+connector.status.connecting: "verbinde mit Remote-Host"
+connector.status.uploading_keys: "lade authorized_keys hoch"
+connector.status.done: "fertig"
+connector.status.reading_keys: "lese entfernte authorized_keys"
+connector.status.verified: "verifiziert"
+connector.status.drift_detected: "Abweichung festgestellt"
+
 # --- Audit-Log-Aktionsbezeichnungen (nur Anzeige; gespeicherte Codes bleiben unverändert) ---
 audit.action.add_account: "Konto hinzufügen"
 audit.action.delete_account: "Konto löschen"
@@ -768,6 +783,9 @@ crud.select_to_edit: "Bitte ein %s zum Bearbeiten auswählen."
 crud.select_to_delete: "Bitte ein %s zum Löschen auswählen."
 crud.confirm_delete: "Möchten Sie dieses %s wirklich löschen?"
 crud.select_generic: "Bitte ein %s auswählen."
+crud.select_to_duplicate: "Bitte ein %s zum Duplizieren auswählen."
+crud.discard_guard_question: "Sie haben ungespeicherte Änderungen. Möchten Sie diese verwerfen?"
+crud.btn_discard: "Verwerfen"
 
 # --- Kontenansicht (neue komponentenbasierte TUI) ---
 account.entity_singular: "Konto"
@@ -810,6 +828,7 @@ public_key.form.expires_at_label: "Läuft ab"
 public_key.form.expires_at_placeholder: "Datum, an dem dieser Schlüssel abläuft und den Zugriff verliert (optional)"
 public_key.import: "Importieren"
 public_key.parse_error: "Öffentlicher Schlüssel konnte nicht verarbeitet werden"
+public_key.import_error: "Öffentlicher Schlüssel konnte nicht importiert werden: %v"
 
 # --- Verknüpfungsansichten (Konto<->öffentlicher Schlüssel) ---
 link.entity_singular: "Verknüpfung"
@@ -831,6 +850,9 @@ popup.severity_success: "ERFOLG"
 popup.severity_info: "INFO"
 popup.severity_warning: "WARNUNG"
 popup.severity_error: "FEHLER"
+popup.error_loading_records: "Fehler beim Laden der Einträge:\n%s"
+popup.select_record: "Bitte einen Eintrag auswählen."
+popup.loading_records: "Lade Einträge"
 
 # --- Interaktiver Deploy/Verify-Helfer (neue TUI) ---
 deploy.op_title_deploy: "Konten werden ausgerollt"
@@ -843,3 +865,5 @@ deploy.op_connector_choice: "Konnektor bittet um eine Auswahl:"
 deploy.op_account_error: "%s Fehler: %s"
 deploy.op_account_success: "%s Erfolg"
 deploy.op_submit: "Absenden"
+deploy.op_list_accounts_failed: "Konten konnten nicht aufgelistet werden: %v"
+deploy.op_failed: "Vorgang fehlgeschlagen: %v"

@@ -74,9 +74,9 @@ auditlog.end_marker: "(end)"
 auditlog.page_info: "Page %d · entries %d-%d"
 auditlog.page_info_total: "Page %d/%d · %d-%d of %d"
 
-# Language selection view
-language.select: "Select a language:"
-language.help: "up/down: navigate   enter: select   q/esc: back"
+# Settings view
+settings.language.save_failed: "Failed to save language setting: %v"
+settings.language.select: "Select a language:"
 
 
 # Account form translations
@@ -559,6 +559,21 @@ errors.client.link_not_found: "link not found: account %d, public key %d"
 errors.client.out_of_sync: "remote authorized_keys out of sync"
 errors.client.audit_write_failed: "audit log write failed: %v"
 
+# Progress statuses (deploy/verify progress popup, per-account status word)
+client.status.not_started: "not started"
+client.status.canceled: "canceled"
+client.status.error: "error"
+client.status.deploying: "deploying"
+client.status.verifying: "verifying"
+client.status.finished: "finished"
+connector.status.rendering_keys: "rendering authorized_keys"
+connector.status.connecting: "connecting to remote host"
+connector.status.uploading_keys: "uploading authorized_keys"
+connector.status.done: "done"
+connector.status.reading_keys: "reading remote authorized_keys"
+connector.status.verified: "verified"
+connector.status.drift_detected: "drift detected"
+
 # --- Audit log action labels (display-only; stored action codes are unchanged) ---
 audit.action.add_account: "Add Account"
 audit.action.delete_account: "Delete Account"
@@ -651,6 +666,9 @@ crud.select_to_edit: "Please select a %s to edit."
 crud.select_to_delete: "Please select a %s to delete."
 crud.confirm_delete: "Do you really want to delete this %s?"
 crud.select_generic: "Please select a %s."
+crud.select_to_duplicate: "Please select a %s to duplicate."
+crud.discard_guard_question: "You have unsaved changes. Do you want to discard them?"
+crud.btn_discard: "Discard"
 
 # --- Account view (new component-based TUI) ---
 account.entity_singular: "Account"
@@ -693,6 +711,7 @@ public_key.form.expires_at_label: "Expires At"
 public_key.form.expires_at_placeholder: "date on which this key will expire and loose access (optional)"
 public_key.import: "Import"
 public_key.parse_error: "unable to parse public key"
+public_key.import_error: "Failed to import public key: %v"
 
 # --- Link views (account<->public key) ---
 link.entity_singular: "Link"
@@ -714,6 +733,9 @@ popup.severity_success: "SUCCESS"
 popup.severity_info: "INFO"
 popup.severity_warning: "WARNING"
 popup.severity_error: "ERROR"
+popup.error_loading_records: "Error loading records:\n%s"
+popup.select_record: "Please select a record."
+popup.loading_records: "Loading records"
 
 # --- Deploy/verify interactive helper (new TUI) ---
 deploy.op_title_deploy: "Deploying Accounts"
@@ -726,3 +748,5 @@ deploy.op_connector_choice: "Connector requests a choice:"
 deploy.op_account_error: "%s Error: %s"
 deploy.op_account_success: "%s Success"
 deploy.op_submit: "Submit"
+deploy.op_list_accounts_failed: "Failed to list accounts: %v"
+deploy.op_failed: "Operation failed: %v"

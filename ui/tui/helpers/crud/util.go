@@ -5,16 +5,17 @@ package crud
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/popups/choicepopup"
 	"github.com/toeirei/keymaster/ui/tui/util/keys"
 )
 
 func discardGuard(confirmCmd tea.Cmd) tea.Cmd {
 	return choicepopup.Open(
-		"You have unsaved changes. Do you want to discard them?",
+		i18n.Text("crud.discard_guard_question"),
 		choicepopup.Choices{
-			{Name: "Cancel", Cmd: nil, KeyBindings: keys.KeyBindingList{keys.Cancel()}},
-			{Name: "Discard", Cmd: confirmCmd},
+			{Name: i18n.Text("crud.btn_cancel"), Cmd: nil, KeyBindings: keys.KeyBindingList{keys.Cancel()}},
+			{Name: i18n.Text("crud.btn_discard"), Cmd: confirmCmd},
 		},
 	)
 }

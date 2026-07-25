@@ -5,7 +5,6 @@ package crud
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
@@ -74,7 +73,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 		form.WithOnSubmit(func(result TRecordCreate, err error) (tea.Cmd, bool) {
 			return progresspopup.Open(
 				progresspopup.Spinner,
-				fmt.Sprintf(i18n.T("crud.creating"), m.crud.Texts.EntityNameSingular()),
+				i18n.Text("crud.creating", m.crud.Texts.EntityNameSingular),
 				func(ctx context.Context, _ progresspopup.ProgressChan) tea.Cmd {
 					record, err := m.crud.createRecord(ctx, result)
 					return util.TeaMsgToCmd(createMsgCreateResult[TRecord]{record, err})
@@ -114,7 +113,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 	switch msg := msg.(type) {
 	case createMsgCreateResult[TRecord]:
 		if msg.err != nil {
-			return messagepopup.Open(messagepopup.Error, fmt.Sprintf(i18n.T("crud.error_creating"), m.crud.Texts.EntityNameSingular(), msg.err.Error()), nil)
+			return messagepopup.Open(messagepopup.Error, i18n.Text("crud.error_creating", m.crud.Texts.EntityNameSingular, msg.err.Error()), nil)
 		}
 		return tea.Sequence(m.crud.routerControll.Pop(1), util.TeaMsgToCmd(CreateMsgCreated[TRecord]{msg.record}))
 	}
@@ -139,7 +138,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 	}
 	m.focussed = true
 	return tea.Batch(
-		windowtitle.Announce(m.crud.Texts.EntityNameMultiple()),
+		windowtitle.Announce(m.crud.Texts.EntityNameMultiple.String()),
 		m.form.Focus(parentKeyMap),
 	)
 }

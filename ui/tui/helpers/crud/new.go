@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/components/router"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	"github.com/toeirei/keymaster/ui/tui/popups/messagepopup"
@@ -167,7 +168,7 @@ func WithListDuplicateAction[
 ](recordToRecordCreate func(record TRecord) TRecordCreate) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return WithListAction(func(ctx ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) tea.Cmd {
 		if ctx.SelectedRecord == nil {
-			return messagepopup.Open(messagepopup.Error, "Please select a "+ctx.Crud.Texts.EntityNameSingular()+" to duplicate.", nil)
+			return messagepopup.Open(messagepopup.Error, i18n.Text("crud.select_to_duplicate", ctx.Crud.Texts.EntityNameSingular), nil)
 		}
 
 		return ctx.Crud.OpenCreate(recordToRecordCreate(*ctx.SelectedRecord))

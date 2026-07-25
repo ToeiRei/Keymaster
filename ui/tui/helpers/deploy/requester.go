@@ -5,6 +5,7 @@ package deploy
 
 import (
 	"context"
+	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
@@ -14,9 +15,9 @@ func newUserRequester(ctx context.Context) *userRequester {
 	return &userRequester{ctx, make(chan any), make(chan any)}
 }
 
-type TextRequest string
+type TextRequest fmt.Stringer
 type TextReply string
-type ChoiceRequest []string
+type ChoiceRequest []fmt.Stringer
 type ChoiceReply int
 
 type userRequester struct {
@@ -58,7 +59,7 @@ var _ client.UserRequester = (*userRequester)(nil)
 // parked connector goroutine, returning "" as an abort sentinel. It also
 // degrades to "" instead of panicking on a closed channel or unexpected
 // reply type.
-func (ur *userRequester) RequestText(promt string) string {
+func (ur *userRequester) RequestText(promt fmt.Stringer) string {
 	select {
 	case ur.request <- TextRequest(promt):
 	case <-ur.ctx.Done():
@@ -84,7 +85,7 @@ func (ur *userRequester) RequestText(promt string) string {
 // parked connector goroutine, returning -1 as an abort sentinel. It also
 // degrades to -1 instead of panicking on a closed channel or unexpected
 // reply type.
-func (ur *userRequester) RequestChoice(promts []string) int {
+func (ur *userRequester) RequestChoice(promts []fmt.Stringer) int {
 	select {
 	case ur.request <- ChoiceRequest(promts):
 	case <-ur.ctx.Done():
