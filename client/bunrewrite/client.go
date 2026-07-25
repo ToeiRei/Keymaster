@@ -29,6 +29,7 @@ import (
 	"github.com/uptrace/bun"
 
 	// for now, directly import/activate connectors here
+	_ "github.com/toeirei/keymaster/connector/mock"
 	_ "github.com/toeirei/keymaster/connector/ssh"
 )
 
