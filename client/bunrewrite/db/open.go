@@ -30,6 +30,23 @@ func Open(dbType, dsn string) (*bun.DB, error) {
 		return nil, err
 	}
 
+	if driver == "sqlite" && strings.Contains(dsn, ":memory:") {
+		// no-op: in-memory databases don't benefit from busy_timeout/WAL and
+		// are handled by the pool-pinning branch below.
+	} else if driver == "sqlite" && !strings.Contains(dsn, "_pragma=busy_timeout") {
+		// Without a busy_timeout, a writer that finds the database locked by
+		// another connection fails immediately with "database is locked"
+		// instead of waiting — exactly what happens when deploy/verify run
+		// several accounts concurrently (see runAccounts). WAL mode also lets
+		// readers proceed without blocking on a writer. Both are applied by
+		// the modernc.org/sqlite driver per-connection via _pragma params.
+		sep := "?"
+		if strings.Contains(dsn, "?") {
+			sep = "&"
+		}
+		dsn += sep + "_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
+	}
+
 	conn, err := sql.Open(driver, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
