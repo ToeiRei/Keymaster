@@ -2,7 +2,7 @@
 // Keymaster - SSH key management system
 // This source code is licensed under the MIT license found in the LICENSE file.
 
-package db
+package legacymigrate
 
 import (
 	"database/sql"
@@ -66,10 +66,12 @@ func applyLegacyMigrations(t *testing.T, conn *sql.DB) {
 	}
 }
 
-// TestLegacyUpgrade verifies that a legacy database (schema at 000004) upgrades
-// via 000005: columns are reshaped, data is preserved, and account_keys rows are
-// migrated into the new links table.
-func TestLegacyUpgrade(t *testing.T) {
+// TestLegacyRunner_ReachesFinalShape verifies that a legacy database (schema
+// at 000004) upgrades via 000005: columns are reshaped, data is preserved,
+// and account_keys rows are migrated into the new links table. This guards
+// that the frozen runner still behaves identically after its relocation into
+// this package.
+func TestLegacyRunner_ReachesFinalShape(t *testing.T) {
 	conn := openMemSQLite(t)
 	applyLegacyMigrations(t, conn)
 

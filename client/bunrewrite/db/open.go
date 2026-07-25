@@ -5,6 +5,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -59,14 +60,14 @@ func Open(dbType, dsn string) (*bun.DB, error) {
 		conn.SetMaxIdleConns(1)
 	}
 
-	if err := RunMigrations(conn, dbType); err != nil {
-		return nil, fmt.Errorf("failed to run migrations: %w", err)
-	}
-
 	bunDB := bun.NewDB(conn, dialect)
 
 	// register the links junction so account<->public_key m2m relations resolve
 	bunDB.RegisterModel((*LinkModel)(nil))
+
+	if err := runMigrations(context.Background(), conn, bunDB, dbType); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
 
 	return bunDB, nil
 }
