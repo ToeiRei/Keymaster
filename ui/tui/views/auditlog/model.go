@@ -74,10 +74,10 @@ func New(c client.Client, routerControll router.Controll) *Model {
 		total:          totalUnknown,
 		pageSize:       defaultPageSize,
 		controll: tablecontroll.New(tablecontroll.Columns[auditRow]{
-			{Title: func() string { return i18n.T("auditlog.col_time") }, View: func(r auditRow) string { return r.Time }},
-			{Title: func() string { return i18n.T("auditlog.col_user") }, View: func(r auditRow) string { return r.User }},
-			{Title: func() string { return i18n.T("auditlog.col_action") }, View: func(r auditRow) string { return i18n.TAuditAction(r.Action) }},
-			{Title: func() string { return i18n.T("auditlog.col_details") }, View: func(r auditRow) string { return r.Detail }, EvictionOrder: -1},
+			{Title: i18n.Text("auditlog.col_time"), View: func(r auditRow) string { return r.Time }},
+			{Title: i18n.Text("auditlog.col_user"), View: func(r auditRow) string { return r.User }},
+			{Title: i18n.Text("auditlog.col_action"), View: func(r auditRow) string { return i18n.TAuditAction(r.Action) }},
+			{Title: i18n.Text("auditlog.col_details"), View: func(r auditRow) string { return r.Detail }, EvictionOrder: -1},
 		}),
 	}
 }

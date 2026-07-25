@@ -651,6 +651,7 @@ crud.select_to_edit: "Please select a %s to edit."
 crud.select_to_delete: "Please select a %s to delete."
 crud.confirm_delete: "Do you really want to delete this %s?"
 crud.select_generic: "Please select a %s."
+crud.select_to_duplicate: "Please select a %s to duplicate."
 
 # --- Account view (new component-based TUI) ---
 account.entity_singular: "Account"
@@ -714,6 +715,9 @@ popup.severity_success: "SUCCESS"
 popup.severity_info: "INFO"
 popup.severity_warning: "WARNING"
 popup.severity_error: "ERROR"
+popup.error_loading_records: "Error loading records:\n%s"
+popup.select_record: "Please select a record."
+popup.loading_records: "Loading records"
 
 # --- Deploy/verify interactive helper (new TUI) ---
 deploy.op_title_deploy: "Deploying Accounts"

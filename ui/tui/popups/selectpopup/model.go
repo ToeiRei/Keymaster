@@ -5,6 +5,7 @@ package selectpopup
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -12,6 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/helpers/tablecontroll"
 	"github.com/toeirei/keymaster/ui/tui/popups/choicepopup"
@@ -29,7 +31,7 @@ type (
 )
 
 type Model[T any] struct {
-	title string
+	title fmt.Stringer
 
 	fnLoadRecords    FnLoadRecords[T]
 	fnOnRecordSelect FnOnRecordSelect[T]
@@ -56,7 +58,7 @@ func WithFilter[T any](fn FnFilterRecords[T]) Option[T] {
 }
 
 func Open[T any](
-	title string,
+	title fmt.Stringer,
 	fnLoadRecords FnLoadRecords[T],
 	fnOnRecordSelect FnOnRecordSelect[T],
 	tableControll tablecontroll.Controll[T],
@@ -72,7 +74,7 @@ func Open[T any](
 }
 
 func New[T any](
-	title string,
+	title fmt.Stringer,
 	fnLoadRecords FnLoadRecords[T],
 	fnOnRecordSelect FnOnRecordSelect[T],
 	tableControll tablecontroll.Controll[T],
@@ -108,9 +110,9 @@ func (m *Model[T]) Update(msg tea.Msg) tea.Cmd {
 		m.filterRecords()
 		m.refreshTable()
 		if msg.err != nil {
-			return choicepopup.Open("Error loading records:\n"+msg.err.Error(), choicepopup.Choices{
-				choicepopup.Choice{Name: "Close", Cmd: popup.Close(), KeyBindings: keys.KeyBindingList{keys.Close()}},
-				choicepopup.Choice{Name: "Reload", Cmd: m.reload(), KeyBindings: nil},
+			return choicepopup.Open(i18n.Text("popup.error_loading_records", msg.err.Error()), choicepopup.Choices{
+				choicepopup.Choice{Name: i18n.Text("crud.close"), Cmd: popup.Close(), KeyBindings: keys.KeyBindingList{keys.Close()}},
+				choicepopup.Choice{Name: i18n.Text("crud.reload"), Cmd: m.reload(), KeyBindings: nil},
 			})
 		}
 		return nil
@@ -123,7 +125,7 @@ func (m *Model[T]) Update(msg tea.Msg) tea.Cmd {
 			return popup.Close()
 		case key.Matches(msg, SelectBaseKeyMap.Select):
 			if m.tableModel.Cursor() == -1 {
-				return messagepopup.Open(messagepopup.Error, "Please select a record.", nil)
+				return messagepopup.Open(messagepopup.Error, i18n.Text("popup.select_record"), nil)
 			}
 			return tea.Sequence(
 				popup.Close(),
@@ -151,8 +153,8 @@ func (m *Model[T]) Update(msg tea.Msg) tea.Cmd {
 func (m Model[T]) View() string {
 	blocks := make([]string, 0, 3)
 
-	if m.title != "" {
-		blocks = append(blocks, lipgloss.PlaceHorizontal(m.titleWidth, lipgloss.Center, m.title))
+	if m.title != nil {
+		blocks = append(blocks, lipgloss.PlaceHorizontal(m.titleWidth, lipgloss.Center, m.title.String()))
 	}
 
 	if m.fnFilterRecords != nil {
@@ -183,7 +185,7 @@ func (m *Model[T]) Blur() {
 var _ util.Model = (*Model[any])(nil)
 
 func (m *Model[T]) reload() tea.Cmd {
-	return progresspopup.Open(progresspopup.Spinner, "Loading records", func(ctx context.Context, pc progresspopup.ProgressChan) tea.Cmd {
+	return progresspopup.Open(progresspopup.Spinner, i18n.Text("popup.loading_records"), func(ctx context.Context, pc progresspopup.ProgressChan) tea.Cmd {
 		records, err := m.fnLoadRecords(ctx)
 		return util.TeaMsgToCmd(selectMsgReloaded[T]{records, err})
 	}, progresspopup.WithCancel())
@@ -200,7 +202,7 @@ func (m *Model[T]) filterRecords() {
 func (m *Model[T]) refreshTable() {
 	// height
 	availableHeight := m.size.Height
-	if m.title != "" {
+	if m.title != nil {
 		availableHeight--
 	}
 	if m.fnFilterRecords != nil {

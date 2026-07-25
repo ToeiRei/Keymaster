@@ -32,9 +32,9 @@ type accountOperation = func(context.Context, client.UserRequester, chan<- clien
 // popup, so that a connector's user request can close the progress popup, show
 // a form popup, and reopen the progress popup after the user replies. Context
 // cancellation aborts the whole operation.
-func runInteractive(parent context.Context, title, noun string, start accountOperation, accounts ...client.Account) tea.Cmd {
+func runInteractive(parent context.Context, title, noun fmt.Stringer, start accountOperation, accounts ...client.Account) tea.Cmd {
 	if len(accounts) == 0 {
-		return messagepopup.Open(messagepopup.Info, fmt.Sprintf(i18n.T("deploy.op_no_accounts"), i18n.T(noun)), nil)
+		return messagepopup.Open(messagepopup.Info, i18n.Text("deploy.op_no_accounts", noun.String()), nil)
 	}
 
 	ids := slicest.Map(accounts, func(account client.Account) client.AccountId { return account.Id })
@@ -65,12 +65,12 @@ func runInteractive(parent context.Context, title, noun string, start accountOpe
 
 	finalMessage := func(dp client.ProgressAccounts) tea.Cmd {
 		if opErr != nil {
-			return messagepopup.Open(messagepopup.Error, opErr.Error(), nil)
+			return messagepopup.Open(messagepopup.Error, i18n.WrapError(opErr, "TODO"), nil) // TODO add translation id
 		}
 		if dp.Accounts == nil {
 			// The operation ended before any progress was reported (e.g. it was
 			// cancelled immediately).
-			return messagepopup.Open(messagepopup.Warning, i18n.T("deploy.op_cancelled"), nil)
+			return messagepopup.Open(messagepopup.Warning, i18n.Text("deploy.op_cancelled"), nil)
 		}
 
 		severity := messagepopup.Success
@@ -84,11 +84,11 @@ func runInteractive(parent context.Context, title, noun string, start accountOpe
 		return messagepopup.Open(
 			severity,
 			strings.Join(
-				slicest.Map(ids, func(id client.AccountId) string {
+				slicest.Map(ids, func(id client.AccountId) fmt.Stringer {
 					if dp.Accounts[id].Err != nil {
-						return fmt.Sprintf(i18n.T("deploy.op_account_error"), accountNameRenderer.Render(accountNamesMap[id]), dp.Accounts[id].Err.Error())
+						return i18n.Text("deploy.op_account_error", accountNameRenderer.Render(accountNamesMap[id]), dp.Accounts[id].Err.Error())
 					}
-					return fmt.Sprintf(i18n.T("deploy.op_account_success"), accountNameRenderer.Render(accountNamesMap[id]))
+					return i18n.Text("deploy.op_account_success", accountNameRenderer.Render(accountNamesMap[id]))
 				}),
 				"\n",
 			),
@@ -106,7 +106,7 @@ func runInteractive(parent context.Context, title, noun string, start accountOpe
 	reopen = func() tea.Cmd {
 		return progresspopup.Open(
 			progresspopup.Bar,
-			i18n.T(title),
+			title,
 			leg,
 			progresspopup.WithContext(ctx),
 			progresspopup.WithCancelFunc(cancel),
@@ -190,7 +190,7 @@ func choiceRequestForm(choices []string, requester *userRequester, cancel contex
 		}
 	})
 	popupChoices = append(popupChoices, choicepopup.Choice{
-		Name:        i18n.T("crud.btn_cancel"),
+		Name:        i18n.Text("crud.btn_cancel"),
 		Cmd:         tea.Sequence(cancelCmd(cancel), reopen()),
 		KeyBindings: keys.KeyBindingList{keys.Cancel()},
 	})

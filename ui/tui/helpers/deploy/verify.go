@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/popups/messagepopup"
 )
 
@@ -30,5 +31,5 @@ func VerifyDirty(ctx context.Context, c client.Client) tea.Cmd {
 }
 
 func Verify(ctx context.Context, c client.Client, accounts ...client.Account) tea.Cmd {
-	return runInteractive(ctx, "deploy.op_title_verify", "deploy.op_noun_verify", c.VerifyAccounts, accounts...)
+	return runInteractive(ctx, i18n.Text("deploy.op_title_verify"), i18n.Text("deploy.op_noun_verify"), c.VerifyAccounts, accounts...)
 }

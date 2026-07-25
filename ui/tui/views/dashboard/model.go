@@ -142,9 +142,9 @@ func (m Model) View() string {
 		// }
 
 		recentActivityControll := tablecontroll.New(tablecontroll.Columns[recentActivityRow]{
-			{Title: func() string { return i18n.T("dashboard.log_col_time") }, View: func(row recentActivityRow) string { return row.Timestamp }},
-			{Title: func() string { return i18n.T("dashboard.log_col_action") }, View: func(row recentActivityRow) string { return row.Action }},
-			{Title: func() string { return i18n.T("dashboard.log_col_details") }, View: func(row recentActivityRow) string { return row.Details }, EvictionOrder: -1},
+			{Title: i18n.Text("dashboard.log_col_time"), View: func(row recentActivityRow) string { return row.Timestamp }},
+			{Title: i18n.Text("dashboard.log_col_action"), View: func(row recentActivityRow) string { return row.Action }},
+			{Title: i18n.Text("dashboard.log_col_details"), View: func(row recentActivityRow) string { return row.Details }, EvictionOrder: -1},
 		})
 
 		// tableWidth := recentActivityControll.PreferredWidth(recentActivityRows, contentWidth)
