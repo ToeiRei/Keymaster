@@ -8,13 +8,14 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/popups/messagepopup"
 )
 
 func DeployAll(ctx context.Context, c client.Client) tea.Cmd {
 	accounts, err := c.ListAccounts(ctx)
 	if err != nil {
-		return messagepopup.Open(messagepopup.Error, err.Error(), nil)
+		return messagepopup.Open(messagepopup.Error, i18n.WrapError(err, "TODO"), nil) // TODO add translation key
 	}
 
 	return Deploy(ctx, c, accounts...)
@@ -23,12 +24,12 @@ func DeployAll(ctx context.Context, c client.Client) tea.Cmd {
 func DeployDirty(ctx context.Context, c client.Client) tea.Cmd {
 	accounts, err := c.ListAccountsDirty(ctx)
 	if err != nil {
-		return messagepopup.Open(messagepopup.Error, err.Error(), nil)
+		return messagepopup.Open(messagepopup.Error, i18n.WrapError(err, "TODO"), nil) // TODO add translation key
 	}
 
 	return Deploy(ctx, c, accounts...)
 }
 
 func Deploy(ctx context.Context, c client.Client, accounts ...client.Account) tea.Cmd {
-	return runInteractive(ctx, "deploy.op_title_deploy", "deploy.op_noun_deploy", c.DeployAccounts, accounts...)
+	return runInteractive(ctx, i18n.Text("deploy.op_title_deploy"), i18n.Text("deploy.op_noun_deploy"), c.DeployAccounts, accounts...)
 }

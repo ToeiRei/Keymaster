@@ -171,19 +171,19 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		},
 
 		tablecontroll.New(tablecontroll.Columns[recordT]{
-			{Title: func() string { return i18n.T("public_key.col_comment") }, View: func(r recordT) string { return r.publicKey.Comment }},
-			{Title: func() string { return i18n.T("public_key.col_global") }, View: func(r recordT) string {
+			{Title: i18n.Text("public_key.col_comment"), View: func(r recordT) string { return r.publicKey.Comment }},
+			{Title: i18n.Text("public_key.col_global"), View: func(r recordT) string {
 				if r.publicKey.IsGlobal {
 					return "✓"
 				}
 				return ""
 			}},
-			{Title: func() string { return i18n.T("public_key.col_expires_at") }, View: func(r recordT) string { return util.RenderExpiry(r.publicKey.ExpiresAt) }},
-			{Title: func() string { return i18n.T("public_key.col_algorithm") }, View: func(r recordT) string { return r.publicKey.Algorithm }},
-			{Title: func() string { return i18n.T("public_key.col_links") }, View: func(r recordT) string {
+			{Title: i18n.Text("public_key.col_expires_at"), View: func(r recordT) string { return util.RenderExpiry(r.publicKey.ExpiresAt) }},
+			{Title: i18n.Text("public_key.col_algorithm"), View: func(r recordT) string { return r.publicKey.Algorithm }},
+			{Title: i18n.Text("public_key.col_links"), View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkCount, r.totalLinkCount)
 			}},
-			{Title: func() string { return i18n.T("public_key.col_accounts") }, View: func(r recordT) string {
+			{Title: i18n.Text("public_key.col_accounts"), View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkedAccountCount, r.totalLinkedAccountCount)
 			}},
 		}).RenderBubblesTable,
@@ -210,7 +210,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 						form.WithOnCancel[importForm](func() tea.Cmd { return popup.Close() }),
 						form.WithOnSubmit(func(result importForm, err error) (tea.Cmd, bool) {
 							if err != nil {
-								return messagepopup.Open(messagepopup.Error, err.Error(), nil), false
+								return messagepopup.Open(messagepopup.Error, i18n.WrapError(err, "TODO"), nil), false // TODO add translation key
 							}
 
 							var data, algorithm, comment string
@@ -219,7 +219,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 								parts := strings.Split(result.Key, " ")
 
 								if len(parts) < 2 || len(parts) > 3 {
-									return messagepopup.Open(messagepopup.Error, i18n.T("public_key.parse_error"), nil), false
+									return messagepopup.Open(messagepopup.Error, i18n.Text("public_key.parse_error"), nil), false
 								}
 
 								algorithm, data = parts[0], parts[1]
@@ -261,7 +261,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		crud.WithListAction(
 			func(ctx crud.ListMsgInterceptorCtx[recordT, recordCreateT, recordUpdateT, recordIdT, filterT]) tea.Cmd {
 				if ctx.SelectedRecord == nil {
-					return messagepopup.Open(messagepopup.Error, fmt.Sprintf(i18n.T("crud.select_generic"), ctx.Crud.Texts.EntityNameSingular()), nil)
+					return messagepopup.Open(messagepopup.Error, i18n.Text("crud.select_generic", ctx.Crud.Texts.EntityNameSingular()), nil)
 				}
 
 				ctx.Crud.ReloadOnNextFocus = true

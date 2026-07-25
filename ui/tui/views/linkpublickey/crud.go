@@ -68,14 +68,14 @@ func createFormRows(c client.Client) func() []form.FormOpt[recordCreateT] {
 			form.WithRowItem[recordCreateT]("account", formelement.NewPopup(i18n.Text("link.form.account_label"),
 				func(returnValue func(value client.Account) tea.Cmd) tea.Cmd {
 					return selectpopup.Open(
-						i18n.T("link.select_account"),
+						i18n.Text("link.select_account"),
 						func(ctx context.Context) ([]client.Account, error) { return c.ListAccounts(ctx) },
 						func(r client.Account) tea.Cmd { return returnValue(r) },
 						tablecontroll.New(tablecontroll.Columns[client.Account]{
-							{Title: func() string { return i18n.T("account.col_username") }, View: func(r client.Account) string { return r.Username }},
-							{Title: func() string { return i18n.T("account.col_host") }, View: func(r client.Account) string { return r.Host }},
-							{Title: func() string { return i18n.T("account.col_port") }, View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
-							{Title: func() string { return i18n.T("account.col_deploy_method") }, View: func(r client.Account) string { return r.DeployMethod }},
+							{Title: i18n.Text("account.col_username"), View: func(r client.Account) string { return r.Username }},
+							{Title: i18n.Text("account.col_host"), View: func(r client.Account) string { return r.Host }},
+							{Title: i18n.Text("account.col_port"), View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
+							{Title: i18n.Text("account.col_deploy_method"), View: func(r client.Account) string { return r.DeployMethod }},
 						}),
 						selectpopup.WithFilter(func(filter string, records []client.Account) []client.Account {
 							return slicest.Filter(records, func(record client.Account) bool {
@@ -169,8 +169,8 @@ func NewCrud(c client.Client, rc router.Controll, publicKey client.PublicKey) *c
 		},
 
 		tablecontroll.New(tablecontroll.Columns[recordT]{
-			{Title: func() string { return i18n.T("link.col_account") }, View: func(r recordT) string { return accountToString(r.account) }},
-			{Title: func() string { return i18n.T("link.col_expires_at") }, View: func(r recordT) string { return util.RenderExpiry(r.link.ExpiresAt) }},
+			{Title: i18n.Text("link.col_account"), View: func(r recordT) string { return accountToString(r.account) }},
+			{Title: i18n.Text("link.col_expires_at"), View: func(r recordT) string { return util.RenderExpiry(r.link.ExpiresAt) }},
 		}).RenderBubblesTable,
 		func(record recordT) recordUpdateT {
 			return recordUpdateT{

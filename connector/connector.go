@@ -5,6 +5,7 @@ package connector
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -41,6 +42,6 @@ type Progress struct {
 }
 
 type UserRequester interface {
-	RequestText(promt string) string
-	RequestChoice(promts []string) int
+	RequestText(promt fmt.Stringer) string
+	RequestChoice(promts []fmt.Stringer) int
 }

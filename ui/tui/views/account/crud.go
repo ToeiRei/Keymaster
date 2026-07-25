@@ -91,11 +91,11 @@ func formRows[T comparable](c client.Client) []form.FormOpt[T] {
 		form.WithRowItem[T]("deploy_method", formelement.NewPopup(i18n.Text("account.form.deploy_method_label"),
 			func(returnValue func(value string) tea.Cmd) tea.Cmd {
 				return selectpopup.Open(
-					i18n.T("account.select_deploy_method"),
+					i18n.Text("account.select_deploy_method"),
 					func(ctx context.Context) ([]string, error) { return c.ListConnectorKeys(ctx) },
 					func(r string) tea.Cmd { return returnValue(r) },
 					tablecontroll.New(tablecontroll.Columns[string]{
-						{Title: func() string { return i18n.T("account.col_connector") }, View: func(r string) string { return r }},
+						{Title: i18n.Text("account.col_connector"), View: func(r string) string { return r }},
 					}),
 				)
 			},
@@ -187,15 +187,15 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		},
 
 		tablecontroll.New(tablecontroll.Columns[recordT]{
-			{Title: func() string { return i18n.T("account.col_username") }, View: func(r recordT) string { return r.account.Username }},
-			{Title: func() string { return i18n.T("account.col_host") }, View: func(r recordT) string { return r.account.Host }},
-			{Title: func() string { return i18n.T("account.col_port") }, View: func(r recordT) string { return fmt.Sprint(r.account.Port) }},
-			{Title: func() string { return i18n.T("account.col_deploy_method") }, View: func(r recordT) string { return r.account.DeployMethod }},
-			{Title: func() string { return i18n.T("account.col_dirty") }, View: func(r recordT) string { return fmt.Sprint(r.isDirty) }},
-			{Title: func() string { return i18n.T("account.col_links") }, View: func(r recordT) string {
+			{Title: i18n.Text("account.col_username"), View: func(r recordT) string { return r.account.Username }},
+			{Title: i18n.Text("account.col_host"), View: func(r recordT) string { return r.account.Host }},
+			{Title: i18n.Text("account.col_port"), View: func(r recordT) string { return fmt.Sprint(r.account.Port) }},
+			{Title: i18n.Text("account.col_deploy_method"), View: func(r recordT) string { return r.account.DeployMethod }},
+			{Title: i18n.Text("account.col_dirty"), View: func(r recordT) string { return fmt.Sprint(r.isDirty) }},
+			{Title: i18n.Text("account.col_links"), View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkCount, r.totalLinkCount)
 			}},
-			{Title: func() string { return i18n.T("account.col_public_keys") }, View: func(r recordT) string {
+			{Title: i18n.Text("account.col_public_keys"), View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkedPublicKeyCount, r.totalLinkedPublicKeyCount)
 			}},
 		}).RenderBubblesTable,
@@ -235,7 +235,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		crud.WithListAction(
 			func(ctx crud.ListMsgInterceptorCtx[recordT, recordCreateT, recordUpdateT, recordIdT, filterT]) tea.Cmd {
 				if ctx.SelectedRecord == nil {
-					return messagepopup.Open(messagepopup.Error, fmt.Sprintf(i18n.T("crud.select_generic"), ctx.Crud.Texts.EntityNameSingular()), nil)
+					return messagepopup.Open(messagepopup.Error, i18n.Text("crud.select_generic", ctx.Crud.Texts.EntityNameSingular()), nil)
 				}
 
 				ctx.Crud.ReloadOnNextFocus = true

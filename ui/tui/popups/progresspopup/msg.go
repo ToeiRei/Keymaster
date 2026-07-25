@@ -3,7 +3,11 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package progresspopup
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	"fmt"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 type progressMsg interface {
 	id() progressId
@@ -12,7 +16,7 @@ type progressMsg interface {
 type progressMsgProgress struct {
 	pid      progressId
 	progress float64
-	status   string
+	status   fmt.Stringer
 }
 type progressMsgDone struct {
 	pid progressId

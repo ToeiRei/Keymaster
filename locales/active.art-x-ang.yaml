@@ -712,6 +712,7 @@ crud.select_to_edit: "Ċēos ān %s tō ġebētenne."
 crud.select_to_delete: "Ċēos ān %s tō ādilgienne."
 crud.confirm_delete: "Ƿilt þū sōðlīċe ādilgian þis %s?"
 crud.select_generic: "Ċēos ān %s."
+crud.select_to_duplicate: "Ċēos ān %s tō twǣmenne."
 
 # --- Rǣdmanna scēaƿung (nīƿe TUI) ---
 account.entity_singular: "Rǣdmann"
@@ -775,6 +776,9 @@ popup.severity_success: "SPĒD"
 popup.severity_info: "CȲÞÞ"
 popup.severity_warning: "ƿEARNUNG"
 popup.severity_error: "ĠEDƿOLA"
+popup.error_loading_records: "Gedƿola hladende ingongas:\n%s"
+popup.select_record: "Ċēos ān ingong."
+popup.loading_records: "Hladende ingongas"
 
 # --- Sende/fæstnung dǣdlīċ helpend (nīƿe TUI) ---
 deploy.op_title_deploy: "Sendende Rǣdmenn"
