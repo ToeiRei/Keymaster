@@ -21,7 +21,7 @@ type AccountModel struct {
 	ID                   int            `bun:"id,pk,autoincrement"`
 	Username             string         `bun:"username"`
 	Host                 string         `bun:"host"`
-	Port                 string         `bun:"port"`
+	Port                 int            `bun:"port"`
 	Serial               int            `bun:"serial"`
 	IsActive             bool           `bun:"is_active"`
 	IsDirty              bool           `bun:"is_dirty"`

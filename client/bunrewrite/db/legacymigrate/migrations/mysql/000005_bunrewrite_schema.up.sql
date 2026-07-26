@@ -9,7 +9,7 @@ ALTER TABLE public_keys RENAME COLUMN key_data TO data;
 
 -- accounts: hostname -> host, add port/deploy_method/deploy_secret, drop obsolete columns
 ALTER TABLE accounts RENAME COLUMN hostname TO host;
-ALTER TABLE accounts ADD COLUMN port VARCHAR(255) NOT NULL DEFAULT '';
+ALTER TABLE accounts ADD COLUMN port INTEGER NOT NULL DEFAULT 22;
 ALTER TABLE accounts ADD COLUMN deploy_method VARCHAR(255) NOT NULL DEFAULT '';
 -- TEXT columns cannot take a literal DEFAULT on older MySQL; add nullable then backfill.
 ALTER TABLE accounts ADD COLUMN deploy_secret TEXT;

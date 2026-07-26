@@ -24,7 +24,7 @@ type baselineAccount struct {
 	ID                   int            `bun:"id,pk,autoincrement"`
 	Username             string         `bun:"username,notnull,unique:accounts_username_host"`
 	Host                 string         `bun:"host,notnull,default:'',unique:accounts_username_host"`
-	Port                 string         `bun:"port,notnull,default:''"`
+	Port                 int            `bun:"port,notnull,default:22"`
 	Serial               int            `bun:"serial,notnull,default:0"`
 	IsActive             bool           `bun:"is_active,notnull,default:true"`
 	IsDirty              bool           `bun:"is_dirty,notnull,default:true"`

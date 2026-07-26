@@ -412,12 +412,11 @@ func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 // --- Account Management ---
 
 func modelToClientAccount(accountModel db.AccountModel) client.Account {
-	port, _ := strconv.Atoi(accountModel.Port)
 	return client.Account{
 		Id:           client.AccountId(accountModel.ID),
 		Username:     accountModel.Username,
 		Host:         accountModel.Host,
-		Port:         port,
+		Port:         accountModel.Port,
 		Serial:       accountModel.Serial,
 		DeployMethod: accountModel.DeployMethod,
 		DeploySecret: accountModel.DeploySecret,
@@ -448,7 +447,7 @@ func (c *Client) CreateAccount(ctx context.Context, username string, host string
 	accountModel := db.AccountModel{
 		Username:     username,
 		Host:         host,
-		Port:         strconv.Itoa(port),
+		Port:         port,
 		IsActive:     true,
 		IsDirty:      true,
 		DeployMethod: deploymentMethod,
@@ -600,7 +599,7 @@ func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, usernam
 		ID:           int(id),
 		Username:     username,
 		Host:         host,
-		Port:         strconv.Itoa(port),
+		Port:         port,
 		DeployMethod: deploymentMethod,
 		DeploySecret: serializedSecret,
 	}
