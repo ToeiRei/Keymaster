@@ -102,8 +102,8 @@ func updateFormRows() []form.FormOpt[recordUpdateT] {
 func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
 		crud.Texts{
-			EntityNameSingular: i18n.Text("link.entity_singular"),
-			EntityNameMultiple: i18n.Text("link.entity_plural"),
+			i18n.Text("link.entity_singular"),
+			i18n.Text("link.entity_plural"),
 		},
 
 		func(record recordT) recordIdT {

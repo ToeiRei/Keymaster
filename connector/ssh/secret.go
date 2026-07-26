@@ -18,13 +18,20 @@ import (
 
 // Secret holds the SSH identity used to reach a target.
 type Secret struct {
-	PrivateKey string `json:"private_key"`
-	Passphrase string `json:"passphrase,omitempty"`
-	PublicKey  string `json:"public_key"`
+	PrivateKey     string `json:"private_key"`
+	Passphrase     string `json:"passphrase,omitempty"`
+	OmitPassphrase bool   `json:"omit_passphrase,omitempty"`
+	PublicKey      string `json:"public_key"` // calculated from [Secret.PrivateKey] and [Secret.Passphrase]
 }
 
 // *[Secret] implements [connector.Secret]
 var _ connector.Secret = (*Secret)(nil)
+
+// *[Secret] implements [fmt.Stringer] for redaction
+var _ fmt.Stringer = (*Secret)(nil)
+
+// *[Secret] implements [fmt.Formatter] for redaction
+var _ fmt.Formatter = (*Secret)(nil)
 
 func (s *Secret) Serialize() (string, error) {
 	raw, err := json.Marshal(s)
@@ -38,14 +45,12 @@ func (s *Secret) Fields() []connector.SecretField {
 	return []connector.SecretField{
 		{"private_key", i18n.Text("connector.ssh.secret.private_key"), s.PrivateKey, true, false},
 		{"passphrase", i18n.Text("connector.ssh.secret.passphrase"), s.Passphrase, false, true},
-		{"omit_passphrase", i18n.Text("connector.ssh.secret.omit_passphrase"), strconv.FormatBool(s.missingPassphrase()), false, false},
+		{"omit_passphrase", i18n.Text("connector.ssh.secret.omit_passphrase"), strconv.FormatBool(s.OmitPassphrase), false, false},
 	}
 }
 
-// String redacts the secret so it cannot leak through fmt.Print*.
 func (s *Secret) String() string { return "[SECRET]" }
 
-// Format implements fmt.Formatter so `%v`, `%#v` and friends stay redacted.
 func (s *Secret) Format(f fmt.State, c rune) {
 	if _, err := io.WriteString(f, "[SECRET]"); err != nil {
 		_ = err // intentionally ignore write error when formatting secrets for logs
@@ -101,11 +106,12 @@ func publicKeyFromPrivateKey(privateKey, passphrase string) (string, error) {
 	return strings.TrimSuffix(string(pubKey), "\n"), nil
 }
 
-func (c *Connector) NewSecret(raw string) (connector.Secret, error) {
+func (c *Connector) SecretFields() []connector.SecretField {
+	return (&Secret{}).Fields()
+}
+
+func (c *Connector) ParseSecret(raw string) (connector.Secret, error) {
 	secret := &Secret{}
-	if strings.TrimSpace(raw) == "" {
-		return secret, nil
-	}
 	if err := json.Unmarshal([]byte(raw), secret); err != nil {
 		return nil, i18n.WrapError(err, "errors.connector.parse_secret")
 	}
@@ -140,7 +146,7 @@ func (c *Connector) NewSecretFromValues(values map[string]string) (connector.Sec
 	if omitPassphrase {
 		passphrase = ""
 	}
-	return &Secret{privateKey, passphrase, publicKey}, nil
+	return &Secret{privateKey, passphrase, omitPassphrase, publicKey}, nil
 }
 
 // secretOf narrows the deploy data's secret to this connector's type.

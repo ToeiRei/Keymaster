@@ -12,34 +12,34 @@ type MsgInterceptor[TCtx any] = func(msg tea.Msg, ctx TCtx) (cmd tea.Cmd, done b
 
 type ListMsgInterceptor[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ] = MsgInterceptor[ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]]
 
 type CreateMsgInterceptor[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ] = MsgInterceptor[CreateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]]
 
 type UpdateMsgInterceptor[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ] = MsgInterceptor[UpdateMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]]
 
 type ListMsgInterceptorCtx[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ] struct {
 	Crud           *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 	SelectedRecord *TRecord
@@ -47,10 +47,10 @@ type ListMsgInterceptorCtx[
 
 type CreateMsgInterceptorCtx[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ] struct {
 	Crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 	Form *form.Form[TRecordCreate]
@@ -58,10 +58,10 @@ type CreateMsgInterceptorCtx[
 
 type UpdateMsgInterceptorCtx[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ] struct {
 	Crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
 	Form *form.Form[TRecordUpdate]

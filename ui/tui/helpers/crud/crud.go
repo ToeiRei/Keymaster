@@ -17,15 +17,15 @@ import (
 
 type Texts struct {
 	EntityNameSingular fmt.Stringer
-	EntityNameMultiple fmt.Stringer
+	EntityNamePlural   fmt.Stringer
 }
 
 type Crud[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ] struct {
 	Texts Texts
 

@@ -19,7 +19,11 @@ type Connector struct{}
 // *[Connector] implements [connector.Connector]
 var _ connector.Connector = (*Connector)(nil)
 
-func (c *Connector) NewSecret(raw string) (connector.Secret, error) {
+func (c *Connector) SecretFields() []connector.SecretField {
+	panic("unimplemented")
+}
+
+func (c *Connector) ParseSecret(raw string) (connector.Secret, error) {
 	panic("unimplemented")
 }
 

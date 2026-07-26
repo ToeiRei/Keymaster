@@ -40,7 +40,6 @@ type ClientOverwrites struct {
 	UpdateAccount                 func(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret map[string]string) (client.Account, error)
 	DeleteAccounts                func(ctx context.Context, ids ...client.AccountId) error
 	IsAccountDirty                func(ctx context.Context, account client.Account) (bool, error)
-	AccountSecretFields           func(ctx context.Context, account client.Account) ([]client.SecretField, error)
 
 	// --- Link Management ---
 	CreateLink            func(ctx context.Context, accountId client.AccountId, publicKeyId client.PublicKeyId, expiresAt time.Time) (client.Link, error)
@@ -59,7 +58,7 @@ type ClientOverwrites struct {
 	// --- Other ---
 	ListAuditLogs         func(ctx context.Context, offset int, limit int) ([]client.AuditLog, error)
 	ListConnectorKeys     func(ctx context.Context) ([]string, error)
-	ConnectorSecretFields func(ctx context.Context, connectorKey string) ([]client.SecretField, error)
+	ConnectorSecretFields func(connectorKey string) ([]client.SecretField, error)
 	OnboardHost           func(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error)
 	DecommisionAccount    func(ctx context.Context, id client.AccountId) (chan client.DecommisionAccountProgress, error)
 }
@@ -389,21 +388,6 @@ func (m *Client) IsAccountDirty(ctx context.Context, account client.Account) (bo
 	panic("Client.IsAccountDirty not implemented")
 }
 
-func (m *Client) AccountSecretFields(ctx context.Context, account client.Account) ([]client.SecretField, error) {
-	if m.Pre != nil {
-		err := m.Pre("AccountSecretFields", map[string]any{"ctx": ctx, "account": account})
-		if err != nil {
-			return nil, err
-		}
-	}
-	if m.Overwrites.AccountSecretFields != nil {
-		return m.Overwrites.AccountSecretFields(ctx, account)
-	} else if m.BaseClient != nil {
-		return m.BaseClient.AccountSecretFields(ctx, account)
-	}
-	panic("Client.AccountSecretFields not implemented")
-}
-
 // --- Link Management ---
 
 func (m *Client) CreateLink(ctx context.Context, accountId client.AccountId, publicKeyId client.PublicKeyId, expiresAt time.Time) (client.Link, error) {
@@ -590,17 +574,17 @@ func (m *Client) ListConnectorKeys(ctx context.Context) ([]string, error) {
 	panic("Client.ListConnectorKeys not implemented")
 }
 
-func (m *Client) ConnectorSecretFields(ctx context.Context, connectorKey string) ([]client.SecretField, error) {
+func (m *Client) ConnectorSecretFields(connectorKey string) ([]client.SecretField, error) {
 	if m.Pre != nil {
-		err := m.Pre("ConnectorSecretFields", map[string]any{"ctx": ctx, "connectorKey": connectorKey})
+		err := m.Pre("ConnectorSecretFields", map[string]any{"connectorKey": connectorKey})
 		if err != nil {
 			return nil, err
 		}
 	}
 	if m.Overwrites.ConnectorSecretFields != nil {
-		return m.Overwrites.ConnectorSecretFields(ctx, connectorKey)
+		return m.Overwrites.ConnectorSecretFields(connectorKey)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.ConnectorSecretFields(ctx, connectorKey)
+		return m.BaseClient.ConnectorSecretFields(connectorKey)
 	}
 	panic("Client.ConnectorSecretFields not implemented")
 }

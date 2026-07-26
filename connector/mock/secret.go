@@ -37,7 +37,11 @@ func (s *Secret) Fields() []connector.SecretField {
 
 func (s *Secret) String() string { return "[SECRET]" }
 
-func (c *Connector) NewSecret(raw string) (connector.Secret, error) {
+func (c *Connector) SecretFields() []connector.SecretField {
+	return (&Secret{}).Fields()
+}
+
+func (c *Connector) ParseSecret(raw string) (connector.Secret, error) {
 	secret := &Secret{}
 	if strings.TrimSpace(raw) == "" {
 		return secret, nil

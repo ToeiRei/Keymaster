@@ -52,10 +52,6 @@ type Client interface {
 
 	IsAccountDirty(ctx context.Context, account Account) (bool, error)
 
-	// AccountSecretFields describes the account's deploy secret, with the values
-	// it currently holds, so a UI can edit it field by field.
-	AccountSecretFields(ctx context.Context, account Account) ([]SecretField, error)
-
 	// --- Link Management ---
 
 	CreateLink(ctx context.Context, accountId AccountId, publicKeyId PublicKeyId, expiresAt time.Time) (Link, error)
@@ -87,7 +83,7 @@ type Client interface {
 
 	// ConnectorSecretFields describes the secret a connector expects, with empty
 	// values — the blank template for a new account.
-	ConnectorSecretFields(ctx context.Context, connectorKey string) ([]SecretField, error)
+	ConnectorSecretFields(connectorKey string) ([]SecretField, error)
 
 	OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan OnboardHostProgress, error)
 
@@ -106,7 +102,6 @@ type PublicKey struct {
 	Comment   string
 	IsGlobal  bool
 	ExpiresAt time.Time
-	// ...
 }
 
 // Account represents an account on a target host.
@@ -117,10 +112,9 @@ type Account struct {
 	Host         string
 	Port         int
 	Serial       int
-	DeployMethod string // ssh, cisco, ...
-	DeploySecret string
-	DeployCache  string
-	// ...
+	DeployMethod string           // ssh, cisco, ... // TODO rename to Connector
+	DeploySecret connector.Secret // TODO remove from client interface, only needed internally
+	DeployCache  string           // TODO remove from client interface, only needed internally
 }
 
 func (a Account) String() string {
@@ -131,7 +125,6 @@ type Link struct {
 	AccountId   AccountId
 	PublicKeyId PublicKeyId
 	ExpiresAt   time.Time
-	// ...
 }
 
 type AuditLogId id

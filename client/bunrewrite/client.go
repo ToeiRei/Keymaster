@@ -411,17 +411,27 @@ func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 
 // --- Account Management ---
 
-func modelToClientAccount(accountModel db.AccountModel) client.Account {
-	return client.Account{
-		Id:           client.AccountId(accountModel.ID),
-		Username:     accountModel.Username,
-		Host:         accountModel.Host,
-		Port:         accountModel.Port,
-		Serial:       accountModel.Serial,
-		DeployMethod: accountModel.DeployMethod,
-		DeploySecret: accountModel.DeploySecret,
-		DeployCache:  accountModel.DeployCache,
+func modelToClientAccount(accountModel db.AccountModel) (client.Account, error) {
+	conn, err := connector.Resolve(accountModel.DeployMethod)
+	if err != nil {
+		return client.Account{}, err
 	}
+
+	secret, err := conn.ParseSecret(accountModel.DeploySecret)
+	if err != nil {
+		return client.Account{}, err
+	}
+
+	return client.Account{
+		client.AccountId(accountModel.ID),
+		accountModel.Username,
+		accountModel.Host,
+		accountModel.Port,
+		accountModel.Serial,
+		accountModel.DeployMethod,
+		secret,
+		accountModel.DeployCache,
+	}, nil
 }
 
 // serializeSecret turns the per-field values a UI collected into the JSON the
@@ -473,7 +483,7 @@ func (c *Client) CreateAccount(ctx context.Context, username string, host string
 		return client.Account{}, err
 	}
 
-	return modelToClientAccount(accountModel), nil
+	return modelToClientAccount(accountModel)
 }
 
 func (c *Client) GetAccount(ctx context.Context, id client.AccountId) (client.Account, error) {
@@ -489,7 +499,7 @@ func (c *Client) GetAccount(ctx context.Context, id client.AccountId) (client.Ac
 		return client.Account{}, err
 	}
 
-	return modelToClientAccount(accountModel), nil
+	return modelToClientAccount(accountModel)
 }
 
 func (c *Client) GetAccounts(ctx context.Context, ids ...client.AccountId) ([]client.Account, error) {
@@ -502,9 +512,12 @@ func (c *Client) GetAccounts(ctx context.Context, ids ...client.AccountId) ([]cl
 		return nil, err
 	}
 
-	accounts := slices.Map(accountModels, func(accountModel *db.AccountModel) client.Account {
+	accounts, err := slicest.MapX(accountModels, func(accountModel *db.AccountModel) (client.Account, error) {
 		return modelToClientAccount(*accountModel)
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	if len(accounts) != len(ids) {
 		accountIds := slices.Map(accounts, func(account client.Account) client.AccountId { return account.Id })
@@ -526,9 +539,9 @@ func (c *Client) ListAccounts(ctx context.Context) ([]client.Account, error) {
 		return nil, err
 	}
 
-	return slices.Map(accountModels, func(accountModel *db.AccountModel) client.Account {
+	return slicest.MapX(accountModels, func(accountModel *db.AccountModel) (client.Account, error) {
 		return modelToClientAccount(*accountModel)
-	}), nil
+	})
 }
 
 func (c *Client) ListAccountsDirty(ctx context.Context) ([]client.Account, error) {
@@ -636,7 +649,7 @@ func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, usernam
 		return client.Account{}, err
 	}
 
-	return modelToClientAccount(accountModel), nil
+	return modelToClientAccount(accountModel)
 }
 
 func (c *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) error {
@@ -849,11 +862,6 @@ func (c *Client) DeleteLink(ctx context.Context, accountId client.AccountId, pub
 // --- Deploy & Verify ---
 
 func (c *Client) accountDeployData(ctx context.Context, con connector.Connector, account client.Account) (connector.DeployData, error) {
-	secret, err := con.NewSecret(account.DeploySecret)
-	if err != nil {
-		return connector.DeployData{}, err
-	}
-
 	cache, err := con.NewCache(account.DeployCache)
 	if err != nil {
 		return connector.DeployData{}, err
@@ -934,7 +942,7 @@ func (c *Client) accountDeployData(ctx context.Context, con connector.Connector,
 
 	return connector.DeployData{
 		append(globalRecords, localRecords...),
-		secret,
+		account.DeploySecret,
 		cache,
 		account.Serial,
 	}, nil
@@ -1195,29 +1203,13 @@ func (c *Client) ListConnectorKeys(ctx context.Context) ([]string, error) {
 	return connector.Keys(), nil
 }
 
-// secretFields resolves the connector and describes the secret held in raw. An
-// unregistered connector has no fields rather than being an error, so a UI can
-// ask about a not-yet-chosen deploy method.
-func secretFields(connectorKey string, raw string) ([]client.SecretField, error) {
+func (c *Client) ConnectorSecretFields(connectorKey string) ([]client.SecretField, error) {
 	con, err := connector.Resolve(connectorKey)
-	if err != nil {
-		return nil, nil
-	}
-
-	secret, err := con.NewSecret(raw)
 	if err != nil {
 		return nil, err
 	}
 
-	return secret.Fields(), nil
-}
-
-func (c *Client) ConnectorSecretFields(ctx context.Context, connectorKey string) ([]client.SecretField, error) {
-	return secretFields(connectorKey, "")
-}
-
-func (c *Client) AccountSecretFields(ctx context.Context, account client.Account) ([]client.SecretField, error) {
-	return secretFields(account.DeployMethod, account.DeploySecret)
+	return con.SecretFields(), nil
 }
 
 func (c *Client) OnboardHost(ctx context.Context, host string, port int, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {

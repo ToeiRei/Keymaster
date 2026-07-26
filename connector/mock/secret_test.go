@@ -8,9 +8,9 @@ import "testing"
 func TestNewSecret_RoundTrip(t *testing.T) {
 	c := &Connector{}
 
-	blank, err := c.NewSecret("")
+	blank, err := c.ParseSecret("")
 	if err != nil {
-		t.Fatalf("NewSecret(\"\"): %v", err)
+		t.Fatalf("ParseSecret(\"\"): %v", err)
 	}
 	if fields := blank.Fields(); len(fields) != 1 || fields[0].Value != "false" {
 		t.Fatalf("unexpected blank fields: %+v", fields)
@@ -25,9 +25,9 @@ func TestNewSecret_RoundTrip(t *testing.T) {
 		t.Fatalf("Serialize: %v", err)
 	}
 
-	parsed, err := c.NewSecret(raw)
+	parsed, err := c.ParseSecret(raw)
 	if err != nil {
-		t.Fatalf("NewSecret(%q): %v", raw, err)
+		t.Fatalf("ParseSecret(%q): %v", raw, err)
 	}
 	if !parsed.(*Secret).Succeed {
 		t.Fatalf("expected succeed to survive the round trip through %q", raw)

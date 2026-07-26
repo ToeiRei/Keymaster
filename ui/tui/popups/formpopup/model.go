@@ -11,19 +11,49 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/util"
 )
 
-type Form[T comparable] struct {
+type Form[T any] struct {
 	form form.Form[T]
 }
 
-func Open[T comparable](form form.Form[T]) tea.Cmd {
+func Open[T any](form form.Form[T]) tea.Cmd {
 	return popup.Open(util.ModelPointer(New(form)))
 }
 
-func New[T comparable](form form.Form[T]) *Form[T] {
-	return &Form[T]{form}
+// New hosts f in a popup. A hosted form has to dismiss the popup once it
+// resolves, so its OnSubmit and OnCancel are wrapped to close first — the
+// callbacks themselves only decide what to hand back, and need not close.
+// A submit the callback rejects as invalid leaves the popup open.
+//
+// Buttons carrying their own [form.WithButtonAction] are not covered: they
+// report [form.ActionNone], so the form never resolves and they still have to
+// close for themselves (see choicepopup).
+func New[T any](f form.Form[T]) *Form[T] {
+	onSubmit, onCancel := f.OnSubmit, f.OnCancel
+
+	f.OnSubmit = func(result T, err error) (tea.Cmd, bool) {
+		var cmd tea.Cmd
+		valid := true
+		if onSubmit != nil {
+			cmd, valid = onSubmit(result, err)
+		}
+		if !valid {
+			return cmd, false
+		}
+		return tea.Sequence(popup.Close(), cmd), true
+	}
+
+	f.OnCancel = func() tea.Cmd {
+		var cmd tea.Cmd
+		if onCancel != nil {
+			cmd = onCancel()
+		}
+		return tea.Sequence(popup.Close(), cmd)
+	}
+
+	return &Form[T]{f}
 }
 
-func (m Form[T]) Init() tea.Cmd { return m.form.Init() }
+func (m *Form[T]) Init() tea.Cmd { return m.form.Init() }
 
 func (m *Form[T]) Update(msg tea.Msg) tea.Cmd {
 	return m.form.Update(msg)

@@ -19,18 +19,18 @@ import (
 
 type Option[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ] func(*Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 
 func New[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ](
 	texts Texts,
 
@@ -80,10 +80,10 @@ func New[
 
 func WithListKeyBindings[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ](bindings ...key.Binding) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return func(c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) {
 		c.listGlobalKeyMap = append(c.listGlobalKeyMap, bindings...)
@@ -92,10 +92,10 @@ func WithListKeyBindings[
 
 func WithListMsgInterceptor[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ](mi ListMsgInterceptor[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return func(c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) {
 		c.listMsgInterceptors = append(c.listMsgInterceptors, mi)
@@ -104,10 +104,10 @@ func WithListMsgInterceptor[
 
 func WithCreateMsgInterceptor[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ](mi CreateMsgInterceptor[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return func(c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) {
 		c.createMsgInterceptors = append(c.createMsgInterceptors, mi)
@@ -116,10 +116,10 @@ func WithCreateMsgInterceptor[
 
 func WithUpdateMsgInterceptor[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ](mi UpdateMsgInterceptor[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return func(c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) {
 		c.updateMsgInterceptors = append(c.updateMsgInterceptors, mi)
@@ -128,10 +128,10 @@ func WithUpdateMsgInterceptor[
 
 func WithListReloadAfterChange[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ](reload bool) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return func(c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) {
 		c.listReloadAfterChange = reload
@@ -140,10 +140,10 @@ func WithListReloadAfterChange[
 
 func WithListAction[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ](action func(ctx ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) tea.Cmd, bindings ...key.Binding) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return func(c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) {
 		// add list key binding
@@ -161,10 +161,10 @@ func WithListAction[
 
 func WithListDuplicateAction[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ](recordToRecordCreate func(record TRecord) TRecordCreate) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return WithListAction(func(ctx ListMsgInterceptorCtx[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) tea.Cmd {
 		if ctx.SelectedRecord == nil {
@@ -177,10 +177,10 @@ func WithListDuplicateAction[
 
 func WithCreateRecordPreset[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ](createRecordPreset func() TRecordCreate) Option[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return func(c *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) {
 		c.createRecordPreset = createRecordPreset

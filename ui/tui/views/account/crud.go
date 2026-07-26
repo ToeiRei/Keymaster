@@ -6,7 +6,6 @@ package account
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strconv"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -18,11 +17,28 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/helpers/form/element"
 	"github.com/toeirei/keymaster/ui/tui/helpers/tablecontroll"
+	"github.com/toeirei/keymaster/ui/tui/popups/formpopup"
 	"github.com/toeirei/keymaster/ui/tui/popups/messagepopup"
 	"github.com/toeirei/keymaster/ui/tui/popups/selectpopup"
 	"github.com/toeirei/keymaster/ui/tui/views/linkaccount"
 	"github.com/toeirei/keymaster/util/slicest"
 )
+
+type connectorData struct {
+	Key string
+	// values keyed by [connector.SecretField.Key], as CreateAccount wants them
+	Secret map[string]string
+}
+
+func accountConnectorData(account client.Account) connectorData {
+	values := make(map[string]string)
+	if account.DeploySecret != nil {
+		for _, field := range account.DeploySecret.Fields() {
+			values[field.Key] = field.Value
+		}
+	}
+	return connectorData{account.DeployMethod, values}
+}
 
 type recordT = struct {
 	account                    client.Account
@@ -34,11 +50,10 @@ type recordT = struct {
 }
 
 type recordCreateT = struct {
-	Username     string `form:"username"`
-	Host         string `form:"host"`
-	Port         string `form:"port"`
-	DeployMethod string `form:"deploy_method"`
-	DeploySecret string `form:"deploy_secret"`
+	Username  string        `form:"username"`
+	Host      string        `form:"host"`
+	Port      string        `form:"port"`
+	Connector connectorData `form:"connector"`
 }
 
 type recordUpdateT = recordCreateT
@@ -83,33 +98,70 @@ func accountToRecord(ctx context.Context, c client.Client, account client.Accoun
 	}, nil
 }
 
-func formRows[T comparable](c client.Client) []form.FormOpt[T] {
+func formRows[T any](c client.Client) []form.FormOpt[T] {
 	return []form.FormOpt[T]{
 		form.WithRowItem[T]("username", formelement.NewText(i18n.Text("account.form.username_label"), i18n.Text("account.form.username_placeholder"))),
 		form.WithRowItem[T]("host", formelement.NewText(i18n.Text("account.form.host_label"), i18n.Text("account.form.host_placeholder"))),
 		form.WithRowItem[T]("port", formelement.NewText(i18n.Text("account.form.port_label"), i18n.Text("account.form.port_placeholder"))),
-		form.WithRowItem[T]("deploy_method", formelement.NewPopup(i18n.Text("account.form.deploy_method_label"),
-			func(returnValue func(value string) tea.Cmd) tea.Cmd {
+		form.WithRowItem[T]("connector", formelement.NewPopup(i18n.Text("account.form.deploy_method_label"),
+			func(returnValue func(value connectorData) tea.Cmd) tea.Cmd {
 				return selectpopup.Open(
 					i18n.Text("account.select_deploy_method"),
 					func(ctx context.Context) ([]string, error) { return c.ListConnectorKeys(ctx) },
-					func(r string) tea.Cmd { return returnValue(r) },
+					func(connectorKey string) tea.Cmd {
+						secretFields, err := c.ConnectorSecretFields(connectorKey)
+						if err != nil {
+							return messagepopup.Open(messagepopup.Error, i18n.WrapError(err, "TODO %v"), returnValue(connectorData{}))
+						}
+
+						// the secret fields are only known at runtime, so the form
+						// is modelled as a map keyed by SecretField.Key
+						formOpts := slicest.Map(secretFields, func(secretField client.SecretField) form.FormOpt[map[string]string] {
+							if secretField.Multiline {
+								return form.WithRowItem[map[string]string](secretField.Key, formelement.NewTextarea(secretField.Label, i18n.RawText(""), 3, 10))
+							}
+							return form.WithRowItem[map[string]string](secretField.Key, formelement.NewText(secretField.Label, i18n.RawText("")))
+						})
+
+						initialValues := make(map[string]string, len(secretFields))
+						for _, secretField := range secretFields {
+							initialValues[secretField.Key] = secretField.Value
+						}
+
+						formOpts = append(formOpts,
+							form.WithRow(
+								form.WithItem[map[string]string]("_cancel", formelement.NewButton(i18n.RawText("TODO cancel"), formelement.WithButtonActionCancel())),
+								form.WithItem[map[string]string]("_submit", formelement.NewButton(i18n.RawText("TODO confirm"), formelement.WithButtonActionSubmit())),
+							),
+							// No OnCancel: backing out just closes the popup, leaving
+							// the element's current value alone, so cancelling does
+							// not clear an already configured connector.
+							form.WithOnSubmit(func(result map[string]string, err error) (tea.Cmd, bool) {
+								if err != nil {
+									return messagepopup.Open(messagepopup.Error, i18n.WrapError(err, "TODO %v"), nil), false
+								}
+								return returnValue(connectorData{connectorKey, result}), true
+							}),
+							form.WithInitialData(initialValues),
+						)
+
+						return formpopup.Open(form.New(formOpts...))
+					},
 					tablecontroll.New(tablecontroll.Columns[string]{
 						{Title: i18n.Text("account.col_connector"), View: func(r string) string { return r }},
 					}),
 				)
 			},
-			func(v string) string { return v },
+			func(data connectorData) string { return data.Key },
 		)),
-		form.WithRowItem[T]("deploy_secret", formelement.NewTextarea(i18n.Text("account.form.deploy_secret_label"), i18n.Text(""), 3, 5)),
 	}
 }
 
 func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
 		crud.Texts{
-			EntityNameSingular: i18n.Text("account.entity_singular"),
-			EntityNameMultiple: i18n.Text("account.entity_plural"),
+			i18n.Text("account.entity_singular"),
+			i18n.Text("account.entity_plural"),
 		},
 
 		func(record recordT) recordIdT { return record.account.Id },
@@ -144,8 +196,8 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 					recordCreate.Username,
 					recordCreate.Host,
 					port,
-					recordCreate.DeployMethod,
-					recordCreate.DeploySecret,
+					recordCreate.Connector.Key,
+					recordCreate.Connector.Secret,
 				)
 				if err != nil {
 					return err
@@ -170,8 +222,8 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 					recordUpdate.Username,
 					recordUpdate.Host,
 					port,
-					recordUpdate.DeployMethod,
-					recordUpdate.DeploySecret,
+					recordUpdate.Connector.Key,
+					recordUpdate.Connector.Secret,
 				)
 				if err != nil {
 					return err
@@ -204,8 +256,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 				record.account.Username,
 				record.account.Host,
 				fmt.Sprint(record.account.Port),
-				record.account.DeployMethod,
-				record.account.DeploySecret,
+				accountConnectorData(record.account),
 			}
 		},
 
@@ -214,22 +265,21 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 
 		rc,
 
-		crud.WithCreateRecordPreset[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](
-			func() recordCreateT {
-				connectorKeys, err := c.ListConnectorKeys(context.Background())
-				if err != nil || !slices.Contains(connectorKeys, "ssh") {
-					return recordCreateT{}
-				}
-				return recordCreateT{DeployMethod: "ssh"}
-			}),
+		// crud.WithCreateRecordPreset[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](
+		// 	func() recordCreateT {
+		// 		connectorKeys, err := c.ListConnectorKeys(context.Background())
+		// 		if err != nil || !slices.Contains(connectorKeys, "ssh") {
+		// 			return recordCreateT{}
+		// 		}
+		// 		return recordCreateT{Connector: connectorData{Key: "ssh"}}
+		// 	}),
 
 		crud.WithListDuplicateAction[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](func(record recordT) recordCreateT {
 			return recordCreateT{
 				record.account.Username,
 				record.account.Host,
 				fmt.Sprint(record.account.Port),
-				record.account.DeployMethod,
-				record.account.DeploySecret,
+				accountConnectorData(record.account),
 			}
 		}),
 		crud.WithListAction(

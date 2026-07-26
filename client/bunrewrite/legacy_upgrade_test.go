@@ -90,10 +90,7 @@ func TestLegacyUpgrade_ReadableThroughClient(t *testing.T) {
 	}
 	// deploy_secret holds the ssh connector's JSON shape, so read the key back
 	// through the connector rather than comparing the raw column.
-	secretFields, err := c.AccountSecretFields(ctx, acc)
-	if err != nil {
-		t.Fatalf("AccountSecretFields: %v", err)
-	}
+	secretFields := acc.DeploySecret.Fields()
 	if len(secretFields) == 0 || secretFields[0].Key != "private_key" {
 		t.Fatalf("unexpected secret fields: %+v", secretFields)
 	}

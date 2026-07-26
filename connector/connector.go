@@ -10,9 +10,10 @@ import (
 )
 
 type Connector interface {
+	SecretFields() []SecretField
 	// NewSecret parses a stored secret. An empty raw yields a zero secret, whose
 	// Fields are the blank template a UI renders for a new account.
-	NewSecret(raw string) (Secret, error)
+	ParseSecret(raw string) (Secret, error)
 	// NewSecretFromValues builds a secret from values keyed by SecretField.Key.
 	// Missing keys are treated as empty; unknown keys are ignored.
 	NewSecretFromValues(values map[string]string) (Secret, error)

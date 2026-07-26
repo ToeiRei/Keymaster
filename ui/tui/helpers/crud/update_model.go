@@ -20,10 +20,10 @@ import (
 
 type UpdateModel[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ] struct {
 	// configuration
 	crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
@@ -41,10 +41,10 @@ type UpdateModel[
 
 func NewUpdate[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ](crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter], record TRecord) *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return &UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]{
 		crud:   crud,
@@ -84,7 +84,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 			return m.crud.routerControll.Pop(1)
 		}),
 		form.WithOnReset[TRecordUpdate](func() tea.Cmd {
-			_ = m.refreshForm()
+			m.refreshForm()
 			return nil
 		}),
 		form.WithOnDiscardGuard[TRecordUpdate](discardGuard),
@@ -144,7 +144,7 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 	}
 	m.focussed = true
 	return tea.Batch(
-		windowtitle.Announce(m.crud.Texts.EntityNameMultiple.String()),
+		windowtitle.Announce(m.crud.Texts.EntityNamePlural.String()),
 		m.form.Focus(parentKeyMap),
 	)
 }
@@ -157,8 +157,6 @@ func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 // *[UpdateModel] implements [util.Model]
 var _ util.Model = (*UpdateModel[any, any, any, any, any])(nil)
 
-func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) refreshForm() error {
-	data := m.crud.recordToRecordUpdate(m.record)
-	m.form.InitialData = data
-	return m.form.Set(data)
+func (m *UpdateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) refreshForm() {
+	m.form.SetInitialData(m.crud.recordToRecordUpdate(m.record))
 }

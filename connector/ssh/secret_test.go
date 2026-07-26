@@ -14,11 +14,13 @@ import (
 func TestNewSecret_RoundTrip(t *testing.T) {
 	c := &Connector{}
 
-	blank, err := c.NewSecret("")
-	if err != nil {
-		t.Fatalf("NewSecret(\"\"): %v", err)
+	// SecretFields is the blank template for a new account; ParseSecret is for
+	// stored JSON only and rejects an empty string.
+	if _, err := c.ParseSecret(""); err == nil {
+		t.Fatal("expected ParseSecret to reject an empty raw secret")
 	}
-	fields := blank.Fields()
+
+	fields := c.SecretFields()
 	if len(fields) != 3 {
 		t.Fatalf("expected 3 blank fields, got %d", len(fields))
 	}
@@ -59,9 +61,9 @@ func TestNewSecret_RoundTrip(t *testing.T) {
 		t.Fatalf("Serialize: %v", err)
 	}
 
-	parsed, err := c.NewSecret(raw)
+	parsed, err := c.ParseSecret(raw)
 	if err != nil {
-		t.Fatalf("NewSecret(%q): %v", raw, err)
+		t.Fatalf("ParseSecret(%q): %v", raw, err)
 	}
 	secret := parsed.(*Secret)
 	if secret.PrivateKey != privateKey {
@@ -201,7 +203,7 @@ func TestSecretPublicKey_FallsBackToPrivateKey(t *testing.T) {
 }
 
 func TestSecret_Redacts(t *testing.T) {
-	secret := &Secret{"-----BEGIN RSA PRIVATE KEY-----\nsupersecret\n", "hunter2", "ssh-rsa AAAApublic"}
+	secret := &Secret{"-----BEGIN RSA PRIVATE KEY-----\nsupersecret\n", "hunter2", false, "ssh-rsa AAAApublic"}
 
 	for _, formatted := range []string{
 		secret.String(),
@@ -219,7 +221,7 @@ func TestSecret_PassphraseBytesNilWhenUnset(t *testing.T) {
 	if got := (&Secret{PrivateKey: "pem"}).passphraseBytes(); got != nil {
 		t.Fatalf("expected nil passphrase bytes when unset, got %v", got)
 	}
-	if got := (&Secret{"pem", "hunter2", ""}).passphraseBytes(); string(got) != "hunter2" {
+	if got := (&Secret{"pem", "hunter2", false, ""}).passphraseBytes(); string(got) != "hunter2" {
 		t.Fatalf("unexpected passphrase bytes: %q", got)
 	}
 }

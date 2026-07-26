@@ -5,6 +5,7 @@ package form
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/bobg/go-generics/v4/slices"
@@ -56,7 +57,9 @@ type row struct {
 	align RowAlign
 }
 
-type Form[T comparable] struct {
+// T models the form data, either as a struct with "form"-tagged fields or as a
+// string keyed map. Keys/tags match the item ids the form was built with.
+type Form[T any] struct {
 	// runs on FormAction submit, returns a optional tea.Cmd and true if the data is valid aka. if the submit was a success
 	OnSubmit           func(result T, err error) (tea.Cmd, bool)
 	OnCancel           func() tea.Cmd
@@ -75,8 +78,8 @@ type Form[T comparable] struct {
 	size         util.Size
 }
 
-func (f Form[T]) Init() tea.Cmd {
-	_ = f.Set(f.InitialData)
+func (f *Form[T]) Init() tea.Cmd {
+	f.SetInitialData(f.InitialData)
 
 	return tea.Batch(slicest.MapI(f.items, func(i int, item Item) tea.Cmd {
 		var cmd tea.Cmd
@@ -318,10 +321,16 @@ func (f *Form[T]) Reset(force bool) tea.Cmd {
 }
 
 func (f *Form[T]) guardUnsavedChanges(action Action) tea.Cmd {
-	if data, _ := f.Get(); data != f.InitialData && f.DiscardGuard != nil {
-		return f.DiscardGuard(util.TeaMsgToCmd(confirmDiscardMsg{action}))
+	if f.DiscardGuard == nil {
+		return nil
 	}
-	return nil
+
+	// a mapping error means we cannot tell, so ask instead of discarding silently
+	if data, err := f.Get(); err == nil && reflect.DeepEqual(data, f.InitialData) {
+		return nil
+	}
+
+	return f.DiscardGuard(util.TeaMsgToCmd(confirmDiscardMsg{action}))
 }
 
 func (f *Form[T]) updateElement(index int, msg tea.Msg) tea.Cmd {
@@ -382,30 +391,39 @@ func (f *Form[T]) changeActiveIndex(index_delta int) tea.Cmd {
 }
 
 func (f *Form[T]) Get() (T, error) {
+	var data T
+	err := mapTo(f.getMap(), &data)
+	return data, err
+}
+
+// Set populates the elements from data. A struct clears every item it has a
+// tagged field for, a map only the items its keys name.
+func (f *Form[T]) Set(data T) error {
+	values, err := mapFrom(data)
+	if err != nil {
+		return err
+	}
+
+	f.setMap(values)
+	return nil
+}
+
+func (f *Form[T]) getMap() map[string]any {
 	values := make(map[string]any, len(f.items))
 
 	for _, item := range f.items {
 		values[item.Id] = item.Element.Get()
 	}
 
-	var data T
-	err := mapToStruct(values, &data)
-	return data, err
+	return values
 }
 
-func (f *Form[T]) Set(data T) error {
-	values, err := mapFromStruct(data)
-	if err != nil {
-		return err
-	}
-
+func (f *Form[T]) setMap(values map[string]any) {
 	for i := range f.items {
 		if value, ok := values[f.items[i].Id]; ok {
 			f.items[i].Element.Set(value)
 		}
 	}
-
-	return nil
 }
 
 func (f *Form[T]) SetItem(id string, value any) error {
@@ -418,7 +436,15 @@ func (f *Form[T]) SetItem(id string, value any) error {
 	return nil
 }
 
-func (f *Form[T]) SetInitialData(data T) { f.InitialData = data }
+// SetInitialData populates the elements and reads them back, so InitialData holds
+// a value for every item and [Form.guardUnsavedChanges] can compare it directly.
+func (f *Form[T]) SetInitialData(data T) {
+	_ = f.Set(data)
+	if normalized, err := f.Get(); err == nil {
+		data = normalized
+	}
+	f.InitialData = data
+}
 
 // func decode(input any, output any) error {
 // 	config := &mapstructure.DecoderConfig{

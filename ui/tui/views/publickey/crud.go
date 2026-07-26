@@ -16,7 +16,6 @@ import (
 	"github.com/toeirei/keymaster/ui/tui/helpers/crud"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/helpers/form/element"
-	"github.com/toeirei/keymaster/ui/tui/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/helpers/tablecontroll"
 	"github.com/toeirei/keymaster/ui/tui/popups/formpopup"
 	"github.com/toeirei/keymaster/ui/tui/popups/messagepopup"
@@ -95,8 +94,8 @@ func publicKeyToRecord(ctx context.Context, c client.Client, publicKey client.Pu
 func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
 		crud.Texts{
-			EntityNameSingular: i18n.Text("public_key.entity_singular"),
-			EntityNameMultiple: i18n.Text("public_key.entity_plural"),
+			i18n.Text("public_key.entity_singular"),
+			i18n.Text("public_key.entity_plural"),
 		},
 
 		func(record recordT) recordIdT { return record.publicKey.Id },
@@ -207,7 +206,6 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 							)),
 							form.WithItem[importForm]("_import", formelement.NewButton(i18n.Text("public_key.import"), formelement.WithButtonActionSubmit())),
 						),
-						form.WithOnCancel[importForm](func() tea.Cmd { return popup.Close() }),
 						form.WithOnSubmit(func(result importForm, err error) (tea.Cmd, bool) {
 							if err != nil {
 								return messagepopup.Open(messagepopup.Error, i18n.WrapError(err, "public_key.import_error"), nil), false
@@ -228,7 +226,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 								}
 							}
 
-							return tea.Sequence(popup.Close(), util.TeaMsgToCmd(importMsg{data, algorithm, comment})), true
+							return util.TeaMsgToCmd(importMsg{data, algorithm, comment}), true
 						}),
 					)), form.ActionNone
 				}))),

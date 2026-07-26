@@ -45,7 +45,7 @@ func New() *Model {
 	}
 }
 
-func (m Model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return m.form.Init()
 }
 

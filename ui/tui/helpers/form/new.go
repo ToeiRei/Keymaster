@@ -8,11 +8,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type FormOpt[T comparable] = func(form *Form[T])
+type FormOpt[T any] = func(form *Form[T])
 
-type RowOpt[T comparable] = func(form *Form[T], row *row)
+type RowOpt[T any] = func(form *Form[T], row *row)
 
-func New[T comparable](opts ...FormOpt[T]) Form[T] {
+func New[T any](opts ...FormOpt[T]) Form[T] {
 	form := Form[T]{
 		ResetToInitialData: true,
 		DefaultRowAlign:    Strech,
@@ -24,31 +24,31 @@ func New[T comparable](opts ...FormOpt[T]) Form[T] {
 	return form
 }
 
-func WithOnSubmit[T comparable](fn func(result T, err error) (tea.Cmd, bool)) FormOpt[T] {
+func WithOnSubmit[T any](fn func(result T, err error) (tea.Cmd, bool)) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.OnSubmit = fn
 	}
 }
 
-func WithOnCancel[T comparable](fn func() tea.Cmd) FormOpt[T] {
+func WithOnCancel[T any](fn func() tea.Cmd) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.OnCancel = fn
 	}
 }
 
-func WithOnReset[T comparable](fn func() tea.Cmd) FormOpt[T] {
+func WithOnReset[T any](fn func() tea.Cmd) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.OnReset = fn
 	}
 }
 
-func WithResetAfterSubmit[T comparable]() FormOpt[T] {
+func WithResetAfterSubmit[T any]() FormOpt[T] {
 	return func(form *Form[T]) {
 		form.ResetAfterSubmit = true
 	}
 }
 
-func WithInitialData[T comparable](data T) FormOpt[T] {
+func WithInitialData[T any](data T) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.SetInitialData(data)
 	}
@@ -56,25 +56,25 @@ func WithInitialData[T comparable](data T) FormOpt[T] {
 
 // If the guard returns the provided confirmCmd, the loss of data will be CONFIRMED.
 // Return nil to PREVENT data loss.
-func WithOnDiscardGuard[T comparable](guard func(confirmCmd tea.Cmd) tea.Cmd) FormOpt[T] {
+func WithOnDiscardGuard[T any](guard func(confirmCmd tea.Cmd) tea.Cmd) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.DiscardGuard = guard
 	}
 }
 
-func WithResetToInitialData[T comparable](b bool) FormOpt[T] {
+func WithResetToInitialData[T any](b bool) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.ResetToInitialData = b
 	}
 }
 
-func WithFocusI[T comparable](i int) FormOpt[T] {
+func WithFocusI[T any](i int) FormOpt[T] {
 	return func(form *Form[T]) {
 		form.activeIndex = i
 	}
 }
 
-func WithDefaultRowAlign[T comparable](align RowAlign) FormOpt[T] {
+func WithDefaultRowAlign[T any](align RowAlign) FormOpt[T] {
 	if align == Default {
 		panic("Default is an invalid value for form.DefaultRowAlign")
 	}
@@ -83,7 +83,7 @@ func WithDefaultRowAlign[T comparable](align RowAlign) FormOpt[T] {
 	}
 }
 
-func WithFocus[T comparable](id string) FormOpt[T] {
+func WithFocus[T any](id string) FormOpt[T] {
 	return func(form *Form[T]) {
 		i := slices.IndexFunc(form.items, func(item Item) bool { return item.Id == id })
 		if i >= 0 {
@@ -92,7 +92,7 @@ func WithFocus[T comparable](id string) FormOpt[T] {
 	}
 }
 
-func WithRowItem[T comparable](id string, element FormElement, opts ...RowOpt[T]) FormOpt[T] {
+func WithRowItem[T any](id string, element FormElement, opts ...RowOpt[T]) FormOpt[T] {
 	_opts := make([]RowOpt[T], 1, len(opts)+1)
 	_opts[0] = WithItem[T](id, element)
 	_opts = append(_opts, opts...)
@@ -100,7 +100,7 @@ func WithRowItem[T comparable](id string, element FormElement, opts ...RowOpt[T]
 	return WithRow(_opts...)
 }
 
-func WithRow[T comparable](opts ...RowOpt[T]) FormOpt[T] {
+func WithRow[T any](opts ...RowOpt[T]) FormOpt[T] {
 	return func(form *Form[T]) {
 		row := row{}
 		for _, opt := range opts {
@@ -111,11 +111,11 @@ func WithRow[T comparable](opts ...RowOpt[T]) FormOpt[T] {
 	}
 }
 
-func WithAlign[T comparable](align RowAlign) RowOpt[T] {
+func WithAlign[T any](align RowAlign) RowOpt[T] {
 	return func(form *Form[T], row *row) { row.align = align }
 }
 
-func WithItem[T comparable](id string, element FormElement) RowOpt[T] {
+func WithItem[T any](id string, element FormElement) RowOpt[T] {
 	return func(form *Form[T], row *row) {
 		row.items = append(row.items, len(form.items))
 		form.items = append(form.items, Item{id, element, nil})
