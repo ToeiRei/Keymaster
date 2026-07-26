@@ -123,8 +123,8 @@ func seedNewShapeData(t *testing.T, conn *sql.DB) {
 }
 
 // assertBridgedCorrectly holds for every stage: every migration is recorded,
-// account_keys is gone, and the seeded account/key/link survived (or was
-// reshaped and backfilled) correctly.
+// the legacy-only tables are gone, and the seeded account/key/link survived
+// (or was reshaped and backfilled) correctly.
 func assertBridgedCorrectly(t *testing.T, bunDB *bun.DB) {
 	t.Helper()
 
@@ -133,9 +133,14 @@ func assertBridgedCorrectly(t *testing.T, bunDB *bun.DB) {
 		t.Fatalf("unexpected applied migrations: %v", names)
 	}
 
-	var exists int
-	if err := bunDB.QueryRow("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'account_keys'").Scan(&exists); err != sql.ErrNoRows {
-		t.Fatalf("expected account_keys to be dropped, got err=%v", err)
+	for _, table := range []string{
+		"account_keys", "system_keys", "known_hosts", "bootstrap_sessions",
+	} {
+		var exists int
+		err := bunDB.QueryRow("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", table).Scan(&exists)
+		if err != sql.ErrNoRows {
+			t.Errorf("expected %s to be dropped, got err=%v", table, err)
+		}
 	}
 
 	var host, data, deployMethod, deploySecret string

@@ -127,8 +127,12 @@ func TestOpen_FreshDatabase(t *testing.T) {
 	if tableExistsSQLite(t, conn, "schema_migrations") {
 		t.Error("schema_migrations should never be created for a fresh install")
 	}
-	if tableExistsSQLite(t, conn, "account_keys") {
-		t.Error("account_keys should not exist on a fresh install")
+	for _, table := range []string{
+		"account_keys", "system_keys", "known_hosts", "bootstrap_sessions",
+	} {
+		if tableExistsSQLite(t, conn, table) {
+			t.Errorf("%s should not survive a fresh install", table)
+		}
 	}
 	names := appliedMigrationNames(t, bunDB)
 	if len(names) != migrationCount || names[0] != migrations.BaselineName {
@@ -186,8 +190,12 @@ func TestOpen_LegacyMidChain(t *testing.T) {
 		t.Fatalf("unexpected applied migrations: %v", names)
 	}
 
-	if tableExistsSQLite(t, conn, "account_keys") {
-		t.Error("account_keys should have been dropped")
+	for _, table := range []string{
+		"account_keys", "system_keys", "known_hosts", "bootstrap_sessions",
+	} {
+		if tableExistsSQLite(t, conn, table) {
+			t.Errorf("%s should have been dropped", table)
+		}
 	}
 
 	var host, deployMethod, deploySecret, port string

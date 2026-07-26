@@ -68,9 +68,16 @@ func migrateAll(t *testing.T, db *bun.DB) {
 	}
 }
 
-func TestBaseline_CreatesFullSchema(t *testing.T) {
+// TestBaseline_CreatesCutoverSchema pins the baseline to the schema as it stood
+// at the SQL -> Go cutover, including the tables later migrations drop again.
+// bridge.go marks this migration applied against legacy databases that do have
+// all seven, so it must keep creating all seven.
+func TestBaseline_CreatesCutoverSchema(t *testing.T) {
 	db := openMemBunDB(t)
-	migrateAll(t, db)
+
+	if err := baselineUp(context.Background(), db); err != nil {
+		t.Fatalf("baselineUp: %v", err)
+	}
 
 	for _, table := range []string{
 		"accounts", "public_keys", "links", "audit_log",
@@ -81,7 +88,25 @@ func TestBaseline_CreatesFullSchema(t *testing.T) {
 		}
 	}
 	if tableExists(t, db, "account_keys") {
-		t.Error("account_keys should not exist on a fresh install")
+		t.Error("account_keys should never be created by the baseline")
+	}
+}
+
+func TestMigrate_LeavesOnlyTheModelTables(t *testing.T) {
+	db := openMemBunDB(t)
+	migrateAll(t, db)
+
+	for _, table := range []string{"accounts", "public_keys", "links", "audit_log"} {
+		if !tableExists(t, db, table) {
+			t.Errorf("expected table %q to exist", table)
+		}
+	}
+	for _, table := range []string{
+		"account_keys", "system_keys", "known_hosts", "bootstrap_sessions",
+	} {
+		if tableExists(t, db, table) {
+			t.Errorf("expected table %q to be dropped", table)
+		}
 	}
 }
 
