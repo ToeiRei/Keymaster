@@ -610,6 +610,8 @@ errors.connector.connect: "mislāmp tō ġebindenne tō %s@%s: %v"
 errors.connector.deploy_keys: "mislāmp tō sendenne authorized_keys: %v"
 errors.connector.read_keys: "mislāmp tō rǣdenne authorized_keys: %v"
 errors.connector.parse_private_key: "mislāmp tō rǣdenne dīeglan cǣġ of dēagle: %v"
+errors.connector.missing_private_key: "dīegol cǣġ bēþearf"
+errors.connector.passphrase_required: "sē dīegla cǣġ is ġehǣled and fērword bēþearf"
 errors.connector.parse_cache: "mislāmp tō rǣdenne sende-ġemynd: %v"
 errors.connector.serialize_secret: "mislāmp tō ġewritenne sende-dēagol: %v"
 errors.connector.serialize_cache: "mislāmp tō ġewritenne sende-ġemynd: %v"
@@ -643,6 +645,7 @@ connector.status.drift_detected: "ungelīcnes onfunden"
 # --- Ġebinderes dēagol-feldas ---
 connector.ssh.secret.private_key: "Dīegol Cǣġ"
 connector.ssh.secret.passphrase: "Fērword"
+connector.ssh.secret.omit_passphrase: "Ne heald fērword (true/false)"
 connector.mock.secret.succeed: "Ġesǣlan (true/false)"
 
 # --- Ġewritrǣdinge-dǣda naman (ānlīċ æteoƿung; ġehealdene codas ne beoþ āƿende) ---

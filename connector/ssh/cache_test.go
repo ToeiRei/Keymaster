@@ -62,9 +62,9 @@ func TestVerifyOffline_IgnoresKnownHost(t *testing.T) {
 		t.Fatalf("expected VerifyOffline to be false with only a known host, got ok=%v err=%v", ok, err)
 	}
 
-	publicKey, err := c.publicKeyFromSecret(secret)
+	publicKey, err := publicKeyFromPrivateKey(secret, "")
 	if err != nil {
-		t.Fatalf("publicKeyFromSecret: %v", err)
+		t.Fatalf("publicKeyFromPrivateKey: %v", err)
 	}
 	hash := c.hashAuthorizedKeys(c.makeAuthorizedKeys(7, publicKey, records))
 

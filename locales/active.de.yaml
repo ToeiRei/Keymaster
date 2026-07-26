@@ -666,6 +666,8 @@ errors.connector.connect: "Verbindung zu %s@%s fehlgeschlagen: %v"
 errors.connector.deploy_keys: "authorized_keys konnte nicht ausgerollt werden: %v"
 errors.connector.read_keys: "authorized_keys konnte nicht gelesen werden: %v"
 errors.connector.parse_private_key: "Privater Schlüssel aus Secret konnte nicht gelesen werden: %v"
+errors.connector.missing_private_key: "Ein privater Schlüssel ist erforderlich"
+errors.connector.passphrase_required: "Der private Schlüssel ist verschlüsselt und benötigt eine Passphrase"
 errors.connector.parse_cache: "Deploy-Cache konnte nicht gelesen werden: %v"
 errors.connector.serialize_secret: "Deploy-Secret konnte nicht serialisiert werden: %v"
 errors.connector.serialize_cache: "Deploy-Cache konnte nicht serialisiert werden: %v"
@@ -699,6 +701,7 @@ connector.status.drift_detected: "Abweichung festgestellt"
 # --- Connector-Secret-Felder ---
 connector.ssh.secret.private_key: "Privater Schlüssel"
 connector.ssh.secret.passphrase: "Passphrase"
+connector.ssh.secret.omit_passphrase: "Passphrase nicht speichern (true/false)"
 connector.mock.secret.succeed: "Erfolg (true/false)"
 
 # --- Audit-Log-Aktionsbezeichnungen (nur Anzeige; gespeicherte Codes bleiben unverändert) ---

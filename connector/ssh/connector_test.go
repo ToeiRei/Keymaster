@@ -5,6 +5,7 @@ package ssh
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -15,6 +16,7 @@ import (
 	"github.com/toeirei/keymaster/core/deploy"
 	"github.com/toeirei/keymaster/core/security"
 	"github.com/toeirei/keymaster/ui/i18n"
+	"golang.org/x/crypto/ssh"
 )
 
 type fakeSSHDeployer struct {
@@ -108,9 +110,9 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 		t.Fatal("expected deployer to be closed")
 	}
 
-	key, err := c.publicKeyFromSecret(secret)
+	key, err := publicKeyFromPrivateKey(secret, "")
 	if err != nil {
-		t.Fatalf("publicKeyFromSecret: %v", err)
+		t.Fatalf("publicKeyFromPrivateKey: %v", err)
 	}
 	want := c.makeAuthorizedKeys(7, key, []connector.DeployRecord{{
 		Algorithm: "ssh-ed25519",
@@ -129,5 +131,17 @@ func generateTestPrivateKeyPEM() (string, error) {
 	}
 	der := x509.MarshalPKCS1PrivateKey(privateKey)
 	block := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: der}
+	return string(pem.EncodeToMemory(block)), nil
+}
+
+func generateEncryptedTestPrivateKeyPEM(passphrase string) (string, error) {
+	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return "", err
+	}
+	block, err := ssh.MarshalPrivateKeyWithPassphrase(privateKey, "", []byte(passphrase))
+	if err != nil {
+		return "", err
+	}
 	return string(pem.EncodeToMemory(block)), nil
 }

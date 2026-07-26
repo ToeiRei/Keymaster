@@ -70,9 +70,9 @@ func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData,
 	}
 
 	progress <- connector.Progress{Progress: 0.1, Status: i18n.Text("connector.status.rendering_keys")}
-	internalPublicKey, err := c.publicKeyFromSecret(secret.PrivateKey)
+	internalPublicKey, err := secret.publicKey()
 	if err != nil {
-		return nil, i18n.WrapError(err, "errors.connector.parse_secret")
+		return nil, err
 	}
 
 	authorizedKeys := c.makeAuthorizedKeys(deployData.SystemKeySerial, internalPublicKey, deployData.Records)
@@ -109,9 +109,9 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 	}
 
 	progress <- connector.Progress{Progress: 0.1, Status: i18n.Text("connector.status.rendering_keys")}
-	internalPublicKey, err := c.publicKeyFromSecret(secret.PrivateKey)
+	internalPublicKey, err := secret.publicKey()
 	if err != nil {
-		return false, nil, i18n.WrapError(err, "errors.connector.parse_secret")
+		return false, nil, err
 	}
 
 	expected := c.makeAuthorizedKeys(deployData.SystemKeySerial, internalPublicKey, deployData.Records)
@@ -158,7 +158,7 @@ func (c *Connector) VerifyOffline(ctx context.Context, deployData connector.Depl
 		return false, nil
 	}
 
-	internalPublicKey, err := c.publicKeyFromSecret(secret.PrivateKey)
+	internalPublicKey, err := secret.publicKey()
 	if err != nil {
 		return false, err
 	}
@@ -278,18 +278,4 @@ func (c *Connector) hashAuthorizedKeys(str string) string {
 	}
 	sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))
 	return hex.EncodeToString(sum[:])
-}
-
-// publicKeyFromSecret parses the PEM-encoded private key held in secret and
-// returns its public key in authorized_keys wire format (without a trailing
-// newline). It returns an error if the secret cannot be parsed as a private key.
-func (c *Connector) publicKeyFromSecret(secret string) (string, error) {
-	signer, err := ssh.ParsePrivateKey([]byte(secret))
-	if err != nil {
-		return "", i18n.WrapError(err, "errors.connector.parse_private_key")
-	}
-	// MarshalAuthorizedKey appends a single trailing newline; strip just that
-	// so the key can be embedded on a line of its own.
-	pubKey := ssh.MarshalAuthorizedKey(signer.PublicKey())
-	return strings.TrimSuffix(string(pubKey), "\n"), nil
 }
