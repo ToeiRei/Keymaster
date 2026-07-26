@@ -100,7 +100,7 @@ func newSecret(deploymentMethod string, values map[string]string) (connector.Sec
 		return nil, err
 	}
 
-	return con.NewSecretFromValues(values)
+	return con.ParseSecretFromValues(values)
 }
 
 // auditAccount renders an account for the audit log without its deploy secret.

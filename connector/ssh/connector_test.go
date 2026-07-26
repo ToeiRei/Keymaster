@@ -88,7 +88,7 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 			Secret:          &Secret{PrivateKey: secret},
 			Cache:           &Cache{KnownHost: marshalKnownHost(hostKey)},
 			SystemKeySerial: 7,
-		}, connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, nil, progress)
+		}, connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
 	}()
 
 	var sawDone bool
@@ -141,10 +141,10 @@ func TestConnectorHostKeyTrust(t *testing.T) {
 
 	operations := map[string]func(*Connector, connector.DeployData, connector.UserRequester, chan<- connector.Progress) (connector.Cache, error){
 		"deploy": func(c *Connector, deployData connector.DeployData, requester connector.UserRequester, progress chan<- connector.Progress) (connector.Cache, error) {
-			return c.Deploy(context.Background(), deployData, connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, requester, progress)
+			return c.Deploy(context.Background(), deployData, connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, requester, progress)
 		},
 		"verify": func(c *Connector, deployData connector.DeployData, requester connector.UserRequester, progress chan<- connector.Progress) (connector.Cache, error) {
-			_, cache, err := c.Verify(context.Background(), deployData, connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, requester, progress)
+			_, cache, err := c.Verify(context.Background(), deployData, connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, requester, progress)
 			return cache, err
 		},
 	}

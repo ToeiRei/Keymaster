@@ -52,7 +52,7 @@ func (c *Connector) ParseSecret(raw string) (connector.Secret, error) {
 	return secret, nil
 }
 
-func (c *Connector) NewSecretFromValues(values map[string]string) (connector.Secret, error) {
+func (c *Connector) ParseSecretFromValues(values map[string]string) (connector.Secret, error) {
 	// An empty field means "not configured", which for the mock is a failure.
 	raw := strings.TrimSpace(values["succeed"])
 	if raw == "" {

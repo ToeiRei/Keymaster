@@ -49,7 +49,7 @@ func TestNewSecret_RoundTrip(t *testing.T) {
 		t.Fatalf("generate test private key: %v", err)
 	}
 
-	fromValues, err := c.NewSecretFromValues(map[string]string{
+	fromValues, err := c.ParseSecretFromValues(map[string]string{
 		"private_key": privateKey,
 		"passphrase":  "hunter2",
 	})
@@ -101,7 +101,7 @@ func TestNewSecretFromValues_Validates(t *testing.T) {
 		"wrong passphrase":       {"private_key": encryptedKey, "passphrase": "hunter3"},
 		"unparsable omit option": {"private_key": privateKey, "omit_passphrase": "maybe"},
 	} {
-		if _, err := c.NewSecretFromValues(values); err == nil {
+		if _, err := c.ParseSecretFromValues(values); err == nil {
 			t.Fatalf("expected NewSecretFromValues to reject %s", name)
 		}
 	}
@@ -118,7 +118,7 @@ func TestNewSecretFromValues_DerivesPublicKeyFromEncryptedKey(t *testing.T) {
 		t.Fatalf("publicKeyFromPrivateKey: %v", err)
 	}
 
-	parsed, err := c.NewSecretFromValues(map[string]string{
+	parsed, err := c.ParseSecretFromValues(map[string]string{
 		"private_key": encryptedKey,
 		"passphrase":  "hunter2",
 	})
@@ -145,7 +145,7 @@ func TestNewSecretFromValues_OmitsPassphraseButKeepsPublicKey(t *testing.T) {
 		t.Fatalf("publicKeyFromPrivateKey: %v", err)
 	}
 
-	parsed, err := c.NewSecretFromValues(map[string]string{
+	parsed, err := c.ParseSecretFromValues(map[string]string{
 		"private_key":     encryptedKey,
 		"passphrase":      "hunter2",
 		"omit_passphrase": "true",

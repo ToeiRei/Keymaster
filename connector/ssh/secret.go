@@ -118,10 +118,10 @@ func (c *Connector) ParseSecret(raw string) (connector.Secret, error) {
 	return secret, nil
 }
 
-// NewSecretFromValues validates the submitted values, derives the public key
+// ParseSecretFromValues validates the submitted values, derives the public key
 // from the private key — using the passphrase when the key is encrypted — and
 // drops the passphrase again when the caller asked for it not to be stored.
-func (c *Connector) NewSecretFromValues(values map[string]string) (connector.Secret, error) {
+func (c *Connector) ParseSecretFromValues(values map[string]string) (connector.Secret, error) {
 	privateKey := values["private_key"]
 	passphrase := values["passphrase"]
 

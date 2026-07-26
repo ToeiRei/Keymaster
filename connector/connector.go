@@ -14,11 +14,11 @@ type Connector interface {
 	// NewSecret parses a stored secret. An empty raw yields a zero secret, whose
 	// Fields are the blank template a UI renders for a new account.
 	ParseSecret(raw string) (Secret, error)
-	// NewSecretFromValues builds a secret from values keyed by SecretField.Key.
+	// ParseSecretFromValues builds a secret from values keyed by SecretField.Key.
 	// Missing keys are treated as empty; unknown keys are ignored.
-	NewSecretFromValues(values map[string]string) (Secret, error)
-	// NewCache parses a stored cache. An empty raw yields a zero cache.
-	NewCache(raw string) (Cache, error)
+	ParseSecretFromValues(values map[string]string) (Secret, error)
+	// ParseCache parses a stored cache. An empty raw yields a zero cache.
+	ParseCache(raw string) (Cache, error)
 
 	Deploy(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester, progress chan<- Progress) (newCache Cache, err error)
 	Verify(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester, progress chan<- Progress) (ok bool, newCache Cache, err error)
@@ -26,9 +26,9 @@ type Connector interface {
 }
 
 type ConnectionData struct {
-	Username string
-	Host     string
-	Port     int
+	User string
+	Host string
+	Port int
 }
 
 type DeployData struct {

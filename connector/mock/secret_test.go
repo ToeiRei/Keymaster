@@ -16,7 +16,7 @@ func TestNewSecret_RoundTrip(t *testing.T) {
 		t.Fatalf("unexpected blank fields: %+v", fields)
 	}
 
-	fromValues, err := c.NewSecretFromValues(map[string]string{"succeed": "true"})
+	fromValues, err := c.ParseSecretFromValues(map[string]string{"succeed": "true"})
 	if err != nil {
 		t.Fatalf("NewSecretFromValues: %v", err)
 	}
@@ -33,7 +33,7 @@ func TestNewSecret_RoundTrip(t *testing.T) {
 		t.Fatalf("expected succeed to survive the round trip through %q", raw)
 	}
 
-	if _, err := c.NewSecretFromValues(map[string]string{"succeed": "maybe"}); err == nil {
+	if _, err := c.ParseSecretFromValues(map[string]string{"succeed": "maybe"}); err == nil {
 		t.Fatal("expected NewSecretFromValues to reject a non-boolean value")
 	}
 }

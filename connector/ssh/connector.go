@@ -87,9 +87,9 @@ func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData,
 	}
 
 	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.connecting")}
-	client, err := newDeployer(addr, connectionData.Username, security.FromString(secret.PrivateKey), secret.passphraseBytes(), config, false)
+	client, err := newDeployer(addr, connectionData.User, security.FromString(secret.PrivateKey), secret.passphraseBytes(), config, false)
 	if err != nil {
-		return nil, i18n.WrapError(err, "errors.connector.connect", connectionData.Username, addr)
+		return nil, i18n.WrapError(err, "errors.connector.connect", connectionData.User, addr)
 	}
 	defer client.Close()
 
@@ -134,9 +134,9 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 	}
 
 	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.connecting")}
-	client, err := newDeployer(addr, connectionData.Username, security.FromString(secret.PrivateKey), secret.passphraseBytes(), config, false)
+	client, err := newDeployer(addr, connectionData.User, security.FromString(secret.PrivateKey), secret.passphraseBytes(), config, false)
 	if err != nil {
-		return false, nil, i18n.WrapError(err, "errors.connector.connect", connectionData.Username, addr)
+		return false, nil, i18n.WrapError(err, "errors.connector.connect", connectionData.User, addr)
 	}
 	defer client.Close()
 

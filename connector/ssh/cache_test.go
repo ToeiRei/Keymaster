@@ -13,7 +13,7 @@ import (
 func TestNewCache_RoundTrip(t *testing.T) {
 	c := &Connector{}
 
-	blank, err := c.NewCache("")
+	blank, err := c.ParseCache("")
 	if err != nil {
 		t.Fatalf("NewCache(\"\"): %v", err)
 	}
@@ -25,7 +25,7 @@ func TestNewCache_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Serialize: %v", err)
 	}
-	parsed, err := c.NewCache(raw)
+	parsed, err := c.ParseCache(raw)
 	if err != nil {
 		t.Fatalf("NewCache(%q): %v", raw, err)
 	}
@@ -33,7 +33,7 @@ func TestNewCache_RoundTrip(t *testing.T) {
 		t.Fatalf("cache did not survive the round trip through %q: %+v", raw, cache)
 	}
 
-	if _, err := c.NewCache("not json"); err == nil {
+	if _, err := c.ParseCache("not json"); err == nil {
 		t.Fatal("expected NewCache to reject a non-JSON raw value")
 	}
 }

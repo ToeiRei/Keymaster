@@ -30,7 +30,7 @@ func (c *Cache) Serialize() (string, error) {
 	return string(raw), nil
 }
 
-func (c *Connector) NewCache(raw string) (connector.Cache, error) {
+func (c *Connector) ParseCache(raw string) (connector.Cache, error) {
 	cache := &Cache{}
 	if strings.TrimSpace(raw) == "" {
 		return cache, nil

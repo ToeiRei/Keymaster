@@ -441,7 +441,7 @@ func serializeSecret(deploymentMethod string, values map[string]string) (string,
 	if err != nil {
 		return "", err
 	}
-	secret, err := con.NewSecretFromValues(values)
+	secret, err := con.ParseSecretFromValues(values)
 	if err != nil {
 		return "", err
 	}
@@ -862,7 +862,7 @@ func (c *Client) DeleteLink(ctx context.Context, accountId client.AccountId, pub
 // --- Deploy & Verify ---
 
 func (c *Client) accountDeployData(ctx context.Context, con connector.Connector, account client.Account) (connector.DeployData, error) {
-	cache, err := con.NewCache(account.DeployCache)
+	cache, err := con.ParseCache(account.DeployCache)
 	if err != nil {
 		return connector.DeployData{}, err
 	}

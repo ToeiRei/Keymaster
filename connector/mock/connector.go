@@ -44,7 +44,7 @@ func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData,
 
 	progress <- connector.Progress{Progress: 0.25, Status: i18n.Text("connector.status.connecting")}
 	if !secret.Succeed {
-		return nil, i18n.WrapError(errSimulatedFailure, "errors.connector.connect", connectionData.Username, connectionData.Host)
+		return nil, i18n.WrapError(errSimulatedFailure, "errors.connector.connect", connectionData.User, connectionData.Host)
 	}
 
 	progress <- connector.Progress{Progress: 0.6, Status: i18n.Text("connector.status.uploading_keys")}
@@ -66,7 +66,7 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 
 	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.connecting")}
 	if !secret.Succeed {
-		return false, nil, i18n.WrapError(errSimulatedFailure, "errors.connector.connect", connectionData.Username, connectionData.Host)
+		return false, nil, i18n.WrapError(errSimulatedFailure, "errors.connector.connect", connectionData.User, connectionData.Host)
 	}
 
 	progress <- connector.Progress{Progress: 0.6, Status: i18n.Text("connector.status.reading_keys")}

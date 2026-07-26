@@ -30,7 +30,7 @@ func TestConnectorDeploy_SecretSucceed_Succeeds(t *testing.T) {
 	var err error
 	go func() {
 		defer close(progress)
-		cache, err = c.Deploy(context.Background(), testDeployData(true), connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, nil, progress)
+		cache, err = c.Deploy(context.Background(), testDeployData(true), connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
 	}()
 	for range progress {
 	}
@@ -53,7 +53,7 @@ func TestConnectorDeploy_SecretNotSucceed_Fails(t *testing.T) {
 	var err error
 	go func() {
 		defer close(progress)
-		_, err = c.Deploy(context.Background(), testDeployData(false), connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, nil, progress)
+		_, err = c.Deploy(context.Background(), testDeployData(false), connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
 	}()
 	for range progress {
 	}
@@ -72,7 +72,7 @@ func TestConnectorVerify_SecretSucceed_Succeeds(t *testing.T) {
 	var err error
 	go func() {
 		defer close(progress)
-		ok, cache, err = c.Verify(context.Background(), testDeployData(true), connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, nil, progress)
+		ok, cache, err = c.Verify(context.Background(), testDeployData(true), connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
 	}()
 	for range progress {
 	}
@@ -96,7 +96,7 @@ func TestConnectorVerify_SecretNotSucceed_Fails(t *testing.T) {
 	var err error
 	go func() {
 		defer close(progress)
-		ok, _, err = c.Verify(context.Background(), testDeployData(false), connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, nil, progress)
+		ok, _, err = c.Verify(context.Background(), testDeployData(false), connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
 	}()
 	for range progress {
 	}

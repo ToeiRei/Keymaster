@@ -27,11 +27,11 @@ func (c *Connector) ParseSecret(raw string) (connector.Secret, error) {
 	panic("unimplemented")
 }
 
-func (c *Connector) NewSecretFromValues(values map[string]string) (connector.Secret, error) {
+func (c *Connector) ParseSecretFromValues(values map[string]string) (connector.Secret, error) {
 	panic("unimplemented")
 }
 
-func (c *Connector) NewCache(raw string) (connector.Cache, error) {
+func (c *Connector) ParseCache(raw string) (connector.Cache, error) {
 	panic("unimplemented")
 }
 
