@@ -36,7 +36,7 @@ type Client interface {
 
 	// --- Account Management ---
 
-	CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret string) (Account, error)
+	CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret map[string]string) (Account, error)
 
 	GetAccount(ctx context.Context, id AccountId) (Account, error)
 
@@ -46,11 +46,15 @@ type Client interface {
 	ListAccountsDirty(ctx context.Context) ([]Account, error)
 	ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId PublicKeyId, expired bool) ([]Account, error)
 
-	UpdateAccount(ctx context.Context, id AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) (Account, error)
+	UpdateAccount(ctx context.Context, id AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret map[string]string) (Account, error)
 
 	DeleteAccounts(ctx context.Context, ids ...AccountId) error
 
 	IsAccountDirty(ctx context.Context, account Account) (bool, error)
+
+	// AccountSecretFields describes the account's deploy secret, with the values
+	// it currently holds, so a UI can edit it field by field.
+	AccountSecretFields(ctx context.Context, account Account) ([]SecretField, error)
 
 	// --- Link Management ---
 
@@ -80,6 +84,10 @@ type Client interface {
 	ListAuditLogs(ctx context.Context, offset int, limit int) ([]AuditLog, error)
 
 	ListConnectorKeys(ctx context.Context) ([]string, error)
+
+	// ConnectorSecretFields describes the secret a connector expects, with empty
+	// values — the blank template for a new account.
+	ConnectorSecretFields(ctx context.Context, connectorKey string) ([]SecretField, error)
 
 	OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan OnboardHostProgress, error)
 
@@ -177,6 +185,7 @@ type (
 	DeployProgressAccounts = ProgressAccounts
 	VerifyProgressAccounts = ProgressAccounts
 	UserRequester          = connector.UserRequester
+	SecretField            = connector.SecretField
 )
 
 type ProgressAccountWithError struct {
