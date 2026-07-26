@@ -92,6 +92,17 @@ func seedLegacyShapeData(t *testing.T, conn *sql.DB) {
 	if _, err := conn.Exec("INSERT INTO account_keys (account_id, key_id) VALUES (1, 1)"); err != nil {
 		t.Fatalf("seed account_keys: %v", err)
 	}
+	seedSystemKey(t, conn)
+}
+
+// seedSystemKey plants the shared legacy SSH identity that the backfill fans
+// out into accounts.deploy_secret. system_keys exists from 000001 onward, so
+// every stage can seed it.
+func seedSystemKey(t *testing.T, conn *sql.DB) {
+	t.Helper()
+	if _, err := conn.Exec("INSERT INTO system_keys (serial, public_key, private_key, is_active) VALUES (1, 'pub', 'PRIV-ACTIVE', 1)"); err != nil {
+		t.Fatalf("seed system_key: %v", err)
+	}
 }
 
 // seedNewShapeData seeds the same logical row directly in the post-000005
@@ -108,38 +119,41 @@ func seedNewShapeData(t *testing.T, conn *sql.DB) {
 	if _, err := conn.Exec("INSERT INTO links (account_id, public_key_id) VALUES (1, 1)"); err != nil {
 		t.Fatalf("seed link: %v", err)
 	}
+	seedSystemKey(t, conn)
 }
 
-// assertBridgedCorrectly holds for every stage: exactly the baseline and
-// drop-account-keys migrations are recorded, account_keys is gone, and the
-// seeded account/key/link survived (or was reshaped) correctly.
+// assertBridgedCorrectly holds for every stage: every migration is recorded,
+// account_keys is gone, and the seeded account/key/link survived (or was
+// reshaped and backfilled) correctly.
 func assertBridgedCorrectly(t *testing.T, bunDB *bun.DB) {
 	t.Helper()
 
 	names := appliedMigrationNames(t, bunDB)
-	if len(names) != 2 || names[0] != migrations.BaselineName {
+	if len(names) != migrationCount || names[0] != migrations.BaselineName {
 		t.Fatalf("unexpected applied migrations: %v", names)
 	}
 
 	var exists int
-	err := bunDB.QueryRow("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'account_keys'").Scan(&exists)
-	if err != sql.ErrNoRows {
+	if err := bunDB.QueryRow("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'account_keys'").Scan(&exists); err != sql.ErrNoRows {
 		t.Fatalf("expected account_keys to be dropped, got err=%v", err)
 	}
 
-	var host, data string
-	err = bunDB.QueryRow(`
-		SELECT a.host, pk.data
+	var host, data, deployMethod, deploySecret string
+	err := bunDB.QueryRow(`
+		SELECT a.host, a.deploy_method, a.deploy_secret, pk.data
 		FROM accounts a
 		JOIN links l ON l.account_id = a.id
 		JOIN public_keys pk ON pk.id = l.public_key_id
 		WHERE a.id = 1
-	`).Scan(&host, &data)
+	`).Scan(&host, &deployMethod, &deploySecret, &data)
 	if err != nil {
 		t.Fatalf("query reshaped/linked data: %v", err)
 	}
 	if host != "example.com" || data != "AAAAdata" {
 		t.Fatalf("unexpected data after bridging: host=%q data=%q", host, data)
+	}
+	if deployMethod != "ssh" || deploySecret != "PRIV-ACTIVE" {
+		t.Fatalf("account not backfilled: deploy_method=%q deploy_secret=%q", deployMethod, deploySecret)
 	}
 }
 

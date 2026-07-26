@@ -23,6 +23,11 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// migrationCount is how many migrations a fully-migrated database should have
+// recorded. Derived from the registry so adding one does not mean touching
+// every assertion below.
+var migrationCount = len(migrations.Migrations.Sorted())
+
 // openMemSQLite returns an in-memory SQLite DB pinned to a single connection
 // so the schema is shared across queries.
 func openMemSQLite(t *testing.T) *sql.DB {
@@ -126,7 +131,7 @@ func TestOpen_FreshDatabase(t *testing.T) {
 		t.Error("account_keys should not exist on a fresh install")
 	}
 	names := appliedMigrationNames(t, bunDB)
-	if len(names) != 2 || names[0] != migrations.BaselineName {
+	if len(names) != migrationCount || names[0] != migrations.BaselineName {
 		t.Fatalf("unexpected applied migrations: %v", names)
 	}
 
@@ -156,6 +161,12 @@ func TestOpen_LegacyMidChain(t *testing.T) {
 	if _, err := conn.Exec("INSERT INTO account_keys (account_id, key_id) VALUES (1, 1)"); err != nil {
 		t.Fatalf("seed account_keys: %v", err)
 	}
+	if _, err := conn.Exec("INSERT INTO system_keys (serial, public_key, private_key, is_active) VALUES (1, 'pub', 'PRIV-ACTIVE', 1)"); err != nil {
+		t.Fatalf("seed system_key: %v", err)
+	}
+	if _, err := conn.Exec("INSERT INTO audit_log (id, username, action, details) VALUES (1, 'root', 'ADD_ACCOUNT', 'account: root@example.com')"); err != nil {
+		t.Fatalf("seed audit_log: %v", err)
+	}
 
 	bunDB := newBunDB(conn)
 	if err := runMigrations(context.Background(), conn, bunDB, "sqlite"); err != nil {
@@ -168,10 +179,10 @@ func TestOpen_LegacyMidChain(t *testing.T) {
 		t.Fatalf("expected 000005 recorded in schema_migrations: %v", err)
 	}
 
-	// baseline + drop-account_keys recorded on the new system, without
-	// baseline's Up() ever running (it would fail: accounts already exists)
+	// every migration recorded on the new system, without baseline's Up() ever
+	// running (it would fail: accounts already exists)
 	names := appliedMigrationNames(t, bunDB)
-	if len(names) != 2 || names[0] != migrations.BaselineName {
+	if len(names) != migrationCount || names[0] != migrations.BaselineName {
 		t.Fatalf("unexpected applied migrations: %v", names)
 	}
 
@@ -179,12 +190,22 @@ func TestOpen_LegacyMidChain(t *testing.T) {
 		t.Error("account_keys should have been dropped")
 	}
 
-	var host, deployMethod string
-	if err := conn.QueryRow("SELECT host, deploy_method FROM accounts WHERE id = 1").Scan(&host, &deployMethod); err != nil {
+	var host, deployMethod, deploySecret, port string
+	if err := conn.QueryRow("SELECT host, deploy_method, deploy_secret, port FROM accounts WHERE id = 1").
+		Scan(&host, &deployMethod, &deploySecret, &port); err != nil {
 		t.Fatalf("query accounts: %v", err)
 	}
-	if host != "example.com" || deployMethod != "" {
-		t.Fatalf("account not reshaped: host=%q deploy_method=%q", host, deployMethod)
+	if host != "example.com" || deployMethod != "ssh" || deploySecret != "PRIV-ACTIVE" || port != "22" {
+		t.Fatalf("account not reshaped/backfilled: host=%q deploy_method=%q deploy_secret=%q port=%q",
+			host, deployMethod, deploySecret, port)
+	}
+
+	var details string
+	if err := conn.QueryRow("SELECT details FROM audit_log WHERE id = 1").Scan(&details); err != nil {
+		t.Fatalf("query audit_log: %v", err)
+	}
+	if details != `[{"key":"legacy","value":"account: root@example.com"}]` {
+		t.Fatalf("legacy audit details not converted: %q", details)
 	}
 
 	var accountID, publicKeyID int
@@ -212,7 +233,7 @@ func TestOpen_LegacyAtOldFinalShape(t *testing.T) {
 	}
 
 	names := appliedMigrationNames(t, bunDB)
-	if len(names) != 2 || names[0] != migrations.BaselineName {
+	if len(names) != migrationCount || names[0] != migrations.BaselineName {
 		t.Fatalf("unexpected applied migrations: %v", names)
 	}
 	if tableExistsSQLite(t, conn, "account_keys") {

@@ -1,0 +1,162 @@
+// Copyright (c) 2026 Keymaster Team
+// Keymaster - SSH key management system
+// This source code is licensed under the MIT license found in the LICENSE file.
+
+package migrations
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+
+	"github.com/uptrace/bun"
+)
+
+// legacyAuditRow is the audit_log row as this migration reads it: id plus the
+// raw details text, before it is rewritten into the JSON shape the live model
+// expects.
+type legacyAuditRow struct {
+	bun.BaseModel `bun:"table:audit_log"`
+
+	ID      int    `bun:"id"`
+	Details string `bun:"details"`
+}
+
+// auditDetail mirrors client.AuditLogDetail's JSON encoding. It is duplicated
+// here rather than imported so the migration keeps producing this exact shape
+// however the client type evolves.
+type auditDetail struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+func init() {
+	Migrations.MustRegister(backfillLegacyDataUp, backfillLegacyDataDown)
+}
+
+// backfillLegacyDataUp fills in the columns the bunrewrite model added but the
+// legacy reshape (legacymigrate's 000005) left at their defaults, and converts
+// legacy audit details into the JSON the live model reads. Every statement is
+// scoped to rows still holding a default/legacy value, so this is a no-op on a
+// fresh install and re-runnable on a partially converted one.
+func backfillLegacyDataUp(ctx context.Context, db *bun.DB) error {
+	if err := backfillAccountDeployment(ctx, db); err != nil {
+		return err
+	}
+	return backfillAuditDetails(ctx, db)
+}
+
+func backfillAccountDeployment(ctx context.Context, db *bun.DB) error {
+	// Legacy accounts predate deploy methods; they were all plain SSH, and
+	// connector.Resolve("") fails for every one of them until this is set.
+	if _, err := db.NewUpdate().Table("accounts").
+		Set("deploy_method = ?", "ssh").
+		Where("deploy_method = ?", "").
+		Exec(ctx); err != nil {
+		return err
+	}
+
+	// Legacy accounts had no port column. canonicalSSHAddress already treats 0
+	// as 22, but storing it keeps the value the UI shows honest.
+	if _, err := db.NewUpdate().Table("accounts").
+		Set("port = ?", "22").
+		Where("port = ?", "").
+		Exec(ctx); err != nil {
+		return err
+	}
+
+	// Prefer the active system key, falling back to the highest serial. Boolean
+	// DESC puts true first on sqlite, postgres and mysql alike.
+	var privateKey string
+	err := db.NewSelect().Table("system_keys").
+		Column("private_key").
+		OrderExpr("is_active DESC, serial DESC").
+		Limit(1).
+		Scan(ctx, &privateKey)
+	if errors.Is(err, sql.ErrNoRows) {
+		// Fresh install, or a legacy one that never generated a system key.
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if privateKey == "" {
+		return nil
+	}
+
+	// TODO: THIS IS A STOPGAP - REPLACE BEFORE RELEASE.
+	//
+	// The legacy schema kept exactly one shared SSH identity in system_keys and
+	// every deployment used it. The bunrewrite model has no system_keys table:
+	// the credential lives per account, in accounts.deploy_secret. So the only
+	// way to keep a bridged install able to connect at all is to fan that one
+	// private key out into every account row.
+	//
+	// What that costs, explicitly:
+	//   - The private key is now stored in plaintext N times instead of once.
+	//     Every account row is a copy of the same secret.
+	//   - Key rotation is gone. Legacy RotateSystemKey deactivated one row and
+	//     inserted a new one; the equivalent here is an N-row rewrite that
+	//     nothing in the client implements yet.
+	//   - accounts.deploy_secret_rollback exists for a two-phase secret swap and
+	//     is written by nobody, so there is no recovery path if a rewrite is
+	//     interrupted halfway.
+	//   - accounts.serial still records which system key serial was last
+	//     deployed, but there is no longer a table mapping that serial back to a
+	//     key, so an account deployed with an older key cannot be reconciled.
+	//
+	// The real fix is a per-account credential (or a deploy_secret that holds a
+	// reference into a secret store rather than the key material itself) plus a
+	// rotation operation on the client. Until then this migration is what keeps
+	// upgraded installs working, and the duplication above is deliberate.
+	_, err = db.NewUpdate().Table("accounts").
+		Set("deploy_secret = ?", privateKey).
+		Where("deploy_secret = ?", "").
+		Exec(ctx)
+	return err
+}
+
+// backfillAuditDetails rewrites legacy free-text audit details (e.g.
+// "account: root@example.com") as the JSON array the live AuditLogModel scans
+// into, so ListAuditLogs does not fail on pre-cutover rows. Rows already in the
+// new format are skipped, which also makes a re-run harmless.
+func backfillAuditDetails(ctx context.Context, db *bun.DB) error {
+	var rows []legacyAuditRow
+	err := db.NewSelect().
+		Model(&rows).
+		Column("id", "details").
+		Where("details IS NOT NULL").
+		Where("details <> ?", "").
+		// A JSON array is the new format; 'null' is what bun writes for a nil
+		// details slice. Neither needs converting.
+		Where("details NOT LIKE ?", "[%").
+		Where("details <> ?", "null").
+		Scan(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, row := range rows {
+		// Marshalling in Go rather than assembling JSON in SQL keeps the
+		// escaping of quotes and backslashes in the original text correct.
+		encoded, err := json.Marshal([]auditDetail{{"legacy", row.Details}})
+		if err != nil {
+			return err
+		}
+		if _, err := db.NewUpdate().Table("audit_log").
+			Set("details = ?", string(encoded)).
+			Where("id = ?", row.ID).
+			Exec(ctx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// backfillLegacyDataDown is a no-op: a backfill cannot tell what it filled in
+// from what was already there, so there is nothing safe to undo.
+func backfillLegacyDataDown(_ context.Context, _ *bun.DB) error {
+	return nil
+}
