@@ -549,6 +549,11 @@ errors.connector.connect: "failed to connect to %s@%s: %v"
 errors.connector.deploy_keys: "failed to deploy authorized_keys: %v"
 errors.connector.read_keys: "failed to read authorized_keys: %v"
 errors.connector.parse_private_key: "failed to parse private key from secret: %v"
+errors.connector.parse_cache: "failed to parse deploy cache: %v"
+errors.connector.serialize_secret: "failed to serialize deploy secret: %v"
+errors.connector.serialize_cache: "failed to serialize deploy cache: %v"
+errors.connector.secret_type: "deploy secret was created by a different connector: %s"
+errors.connector.cache_type: "deploy cache was created by a different connector: %s"
 errors.client.public_key_not_found: "public key not found: %d"
 errors.client.public_keys_not_found: "public keys with ids could not be found: %s"
 errors.client.public_keys_delete_missing: "%d public key ids could not be found"
@@ -573,6 +578,11 @@ connector.status.done: "done"
 connector.status.reading_keys: "reading remote authorized_keys"
 connector.status.verified: "verified"
 connector.status.drift_detected: "drift detected"
+
+# --- Connector secret fields ---
+connector.ssh.secret.private_key: "Private Key"
+connector.ssh.secret.passphrase: "Passphrase"
+connector.mock.secret.succeed: "Succeed (true/false)"
 
 # --- Audit log action labels (display-only; stored action codes are unchanged) ---
 audit.action.add_account: "Add Account"

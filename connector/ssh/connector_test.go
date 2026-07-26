@@ -69,8 +69,8 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 	progress := make(chan connector.Progress)
 
 	var (
-		cache      string
-		deployErr  error
+		cache     connector.Cache
+		deployErr error
 	)
 	go func() {
 		defer close(progress)
@@ -80,7 +80,8 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 				Data:      "AAAAC3NzaC1lZDI1NTE5AAAAIexample",
 				Comment:   "alice@example",
 			}},
-			Secret:          secret,
+			Secret:          &Secret{PrivateKey: secret},
+			Cache:           &Cache{KnownHost: "ssh-ed25519 AAAAknownhost"},
 			SystemKeySerial: 7,
 		}, connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, nil, progress)
 	}()
@@ -97,8 +98,11 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 	if !sawDone {
 		t.Fatal("expected final progress update after deploy")
 	}
-	if cache == "" {
-		t.Fatal("expected Deploy to return a non-empty cache")
+	if cache == nil || cache.(*Cache).AuthorizedKeysHash == "" {
+		t.Fatal("expected Deploy to return a non-empty authorized_keys hash")
+	}
+	if got := cache.(*Cache).KnownHost; got != "ssh-ed25519 AAAAknownhost" {
+		t.Fatalf("expected Deploy to carry the known host forward, got %q", got)
 	}
 	if deployer.closed == false {
 		t.Fatal("expected deployer to be closed")

@@ -19,11 +19,23 @@ type Connector struct{}
 // *[Connector] implements [connector.Connector]
 var _ connector.Connector = (*Connector)(nil)
 
-func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (string, error) {
+func (c *Connector) NewSecret(raw string) (connector.Secret, error) {
 	panic("unimplemented")
 }
 
-func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (bool, string, error) {
+func (c *Connector) NewSecretFromValues(values map[string]string) (connector.Secret, error) {
+	panic("unimplemented")
+}
+
+func (c *Connector) NewCache(raw string) (connector.Cache, error) {
+	panic("unimplemented")
+}
+
+func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (connector.Cache, error) {
+	panic("unimplemented")
+}
+
+func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (bool, connector.Cache, error) {
 	panic("unimplemented")
 }
 

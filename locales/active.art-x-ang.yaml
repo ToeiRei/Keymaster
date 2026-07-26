@@ -610,6 +610,11 @@ errors.connector.connect: "mislāmp tō ġebindenne tō %s@%s: %v"
 errors.connector.deploy_keys: "mislāmp tō sendenne authorized_keys: %v"
 errors.connector.read_keys: "mislāmp tō rǣdenne authorized_keys: %v"
 errors.connector.parse_private_key: "mislāmp tō rǣdenne dīeglan cǣġ of dēagle: %v"
+errors.connector.parse_cache: "mislāmp tō rǣdenne sende-ġemynd: %v"
+errors.connector.serialize_secret: "mislāmp tō ġewritenne sende-dēagol: %v"
+errors.connector.serialize_cache: "mislāmp tō ġewritenne sende-ġemynd: %v"
+errors.connector.secret_type: "sende-dēagol cōm fram ōðrum ġebindere: %s"
+errors.connector.cache_type: "sende-ġemynd cōm fram ōðrum ġebindere: %s"
 errors.client.public_key_not_found: "open cǣġ næs ġefunden: %d"
 errors.client.public_keys_not_found: "opene cǣgan mid þǣm IDum ne mihton bēon ġefunden: %s"
 errors.client.public_keys_delete_missing: "%d open-cǣġes IDa ne mihton bēon ġefunden"
@@ -634,6 +639,11 @@ connector.status.done: "ġedōn"
 connector.status.reading_keys: "rǣdende feorrena cǣga"
 connector.status.verified: "fæstnod"
 connector.status.drift_detected: "ungelīcnes onfunden"
+
+# --- Ġebinderes dēagol-feldas ---
+connector.ssh.secret.private_key: "Dīegol Cǣġ"
+connector.ssh.secret.passphrase: "Fērword"
+connector.mock.secret.succeed: "Ġesǣlan (true/false)"
 
 # --- Ġewritrǣdinge-dǣda naman (ānlīċ æteoƿung; ġehealdene codas ne beoþ āƿende) ---
 audit.action.add_account: "Ġeeċ Rǣdmann"

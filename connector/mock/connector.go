@@ -22,54 +22,69 @@ func init() {
 
 // Connector is a network-free stand-in for a real connector, intended for
 // exercising client-layer functionality without a real remote host. It
-// deterministically succeeds or fails based on DeployData.Secret: exactly
-// "true" simulates success, any other value simulates a connection failure.
+// deterministically succeeds or fails based on DeployData.Secret: a secret
+// whose succeed field is set simulates success, anything else simulates a
+// connection failure.
 type Connector struct{}
 
 // *[Connector] implements [connector.Connector]
 var _ connector.Connector = (*Connector)(nil)
 
-var errSimulatedFailure = errors.New("mock connector: simulated failure (secret != \"true\")")
+var errSimulatedFailure = errors.New("mock connector: simulated failure (secret succeed field not set)")
 
-func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (string, error) {
+func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (connector.Cache, error) {
 	if ctx.Err() != nil {
-		return "", ctx.Err()
+		return nil, ctx.Err()
+	}
+
+	secret, err := secretOf(deployData)
+	if err != nil {
+		return nil, err
 	}
 
 	progress <- connector.Progress{Progress: 0.25, Status: i18n.Text("connector.status.connecting")}
-	if deployData.Secret != "true" {
-		return "", i18n.WrapError(errSimulatedFailure, "errors.connector.connect", connectionData.Username, connectionData.Host)
+	if !secret.Succeed {
+		return nil, i18n.WrapError(errSimulatedFailure, "errors.connector.connect", connectionData.Username, connectionData.Host)
 	}
 
 	progress <- connector.Progress{Progress: 0.6, Status: i18n.Text("connector.status.uploading_keys")}
-	newCache := c.hash(deployData)
+	newCache := &Cache{c.hash(deployData)}
 
 	progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.done")}
 	return newCache, nil
 }
 
-func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (bool, string, error) {
+func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (bool, connector.Cache, error) {
 	if ctx.Err() != nil {
-		return false, "", ctx.Err()
+		return false, nil, ctx.Err()
+	}
+
+	secret, err := secretOf(deployData)
+	if err != nil {
+		return false, nil, err
 	}
 
 	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.connecting")}
-	if deployData.Secret != "true" {
-		return false, "", i18n.WrapError(errSimulatedFailure, "errors.connector.connect", connectionData.Username, connectionData.Host)
+	if !secret.Succeed {
+		return false, nil, i18n.WrapError(errSimulatedFailure, "errors.connector.connect", connectionData.Username, connectionData.Host)
 	}
 
 	progress <- connector.Progress{Progress: 0.6, Status: i18n.Text("connector.status.reading_keys")}
 	hash := c.hash(deployData)
 
 	progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.verified")}
-	return true, hash, nil
+	return true, &Cache{hash}, nil
 }
 
 func (c *Connector) VerifyOffline(ctx context.Context, deployData connector.DeployData) (bool, error) {
-	if deployData.Cache == "" {
+	cache, err := cacheOf(deployData)
+	if err != nil {
+		return false, err
+	}
+	if cache.Hash == "" {
 		return false, nil
 	}
-	return c.hash(deployData) == deployData.Cache, nil
+	return c.hash(deployData) == cache.Hash, nil
 }
 
 // hash returns a deterministic SHA256 hex fingerprint of the deploy data, so

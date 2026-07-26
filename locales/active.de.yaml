@@ -666,6 +666,11 @@ errors.connector.connect: "Verbindung zu %s@%s fehlgeschlagen: %v"
 errors.connector.deploy_keys: "authorized_keys konnte nicht ausgerollt werden: %v"
 errors.connector.read_keys: "authorized_keys konnte nicht gelesen werden: %v"
 errors.connector.parse_private_key: "Privater Schlüssel aus Secret konnte nicht gelesen werden: %v"
+errors.connector.parse_cache: "Deploy-Cache konnte nicht gelesen werden: %v"
+errors.connector.serialize_secret: "Deploy-Secret konnte nicht serialisiert werden: %v"
+errors.connector.serialize_cache: "Deploy-Cache konnte nicht serialisiert werden: %v"
+errors.connector.secret_type: "Deploy-Secret stammt von einem anderen Connector: %s"
+errors.connector.cache_type: "Deploy-Cache stammt von einem anderen Connector: %s"
 errors.client.public_key_not_found: "Öffentlicher Schlüssel nicht gefunden: %d"
 errors.client.public_keys_not_found: "Öffentliche Schlüssel mit folgenden IDs nicht gefunden: %s"
 errors.client.public_keys_delete_missing: "%d öffentliche Schlüssel-IDs konnten nicht gefunden werden"
@@ -690,6 +695,11 @@ connector.status.done: "fertig"
 connector.status.reading_keys: "lese entfernte authorized_keys"
 connector.status.verified: "verifiziert"
 connector.status.drift_detected: "Abweichung festgestellt"
+
+# --- Connector-Secret-Felder ---
+connector.ssh.secret.private_key: "Privater Schlüssel"
+connector.ssh.secret.passphrase: "Passphrase"
+connector.mock.secret.succeed: "Erfolg (true/false)"
 
 # --- Audit-Log-Aktionsbezeichnungen (nur Anzeige; gespeicherte Codes bleiben unverändert) ---
 audit.action.add_account: "Konto hinzufügen"

@@ -10,8 +10,17 @@ import (
 )
 
 type Connector interface {
-	Deploy(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester, progress chan<- Progress) (newCache string, err error)
-	Verify(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester, progress chan<- Progress) (ok bool, newCache string, err error)
+	// NewSecret parses a stored secret. An empty raw yields a zero secret, whose
+	// Fields are the blank template a UI renders for a new account.
+	NewSecret(raw string) (Secret, error)
+	// NewSecretFromValues builds a secret from values keyed by SecretField.Key.
+	// Missing keys are treated as empty; unknown keys are ignored.
+	NewSecretFromValues(values map[string]string) (Secret, error)
+	// NewCache parses a stored cache. An empty raw yields a zero cache.
+	NewCache(raw string) (Cache, error)
+
+	Deploy(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester, progress chan<- Progress) (newCache Cache, err error)
+	Verify(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester, progress chan<- Progress) (ok bool, newCache Cache, err error)
 	VerifyOffline(ctx context.Context, deployData DeployData) (bool, error)
 }
 
@@ -23,8 +32,8 @@ type ConnectionData struct {
 
 type DeployData struct {
 	Records         []DeployRecord
-	Secret          string
-	Cache           string
+	Secret          Secret
+	Cache           Cache
 	SystemKeySerial int
 }
 
