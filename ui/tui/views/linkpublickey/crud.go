@@ -66,7 +66,7 @@ func createFormRows(c client.Client) func() []form.FormOpt[recordCreateT] {
 	return func() []form.FormOpt[recordCreateT] {
 		return []form.FormOpt[recordCreateT]{
 			form.WithRowItem[recordCreateT]("account", formelement.NewPopup(i18n.Text("link.form.account_label"),
-				func(returnValue func(value client.Account) tea.Cmd) tea.Cmd {
+				func(_ client.Account, returnValue func(value client.Account) tea.Cmd) tea.Cmd {
 					return selectpopup.Open(
 						i18n.Text("link.select_account"),
 						func(ctx context.Context) ([]client.Account, error) { return c.ListAccounts(ctx) },

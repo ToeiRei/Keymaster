@@ -22,8 +22,10 @@ var _ form.FormElement = (*Popup[any])(nil)
 type popupReturnValueMsg[T any] struct{ value T }
 
 type Popup[T any] struct {
-	Label       fmt.Stringer
-	fnOpenPopup func(returnValue func(value T) tea.Cmd) tea.Cmd
+	Label fmt.Stringer
+	// fnOpenPopup receives the value the element currently holds, so a popup can
+	// open on it instead of starting blank.
+	fnOpenPopup func(current T, returnValue func(value T) tea.Cmd) tea.Cmd
 	fnToString  func(value T) string
 
 	DisabledStyle lipgloss.Style
@@ -37,7 +39,7 @@ type Popup[T any] struct {
 
 func NewPopup[T any](
 	label fmt.Stringer,
-	fnOpenPopup func(returnValue func(value T) tea.Cmd) tea.Cmd,
+	fnOpenPopup func(current T, returnValue func(value T) tea.Cmd) tea.Cmd,
 	fnToString func(value T) string,
 ) form.FormElement {
 	return &Popup[T]{
@@ -86,6 +88,7 @@ func (p *Popup[T]) Update(msg tea.Msg) (tea.Cmd, form.Action) {
 		switch {
 		case key.Matches(msg, keys.Open()):
 			return p.fnOpenPopup(
+				p.value,
 				func(value T) tea.Cmd { return util.TeaMsgToCmd(popupReturnValueMsg[T]{value}) },
 			), form.ActionNone
 		case key.Matches(msg, keys.DownArrow(), keys.RightArrow()):

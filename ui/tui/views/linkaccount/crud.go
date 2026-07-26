@@ -69,7 +69,7 @@ func createFormRows(c client.Client) func() []form.FormOpt[recordCreateT] {
 	return func() []form.FormOpt[recordCreateT] {
 		return []form.FormOpt[recordCreateT]{
 			form.WithRowItem[recordCreateT]("public_key", formelement.NewPopup(i18n.Text("link.form.public_key_label"),
-				func(returnValue func(value client.PublicKey) tea.Cmd) tea.Cmd {
+				func(_ client.PublicKey, returnValue func(value client.PublicKey) tea.Cmd) tea.Cmd {
 					return selectpopup.Open(
 						i18n.Text("link.select_public_key"),
 						func(ctx context.Context) ([]client.PublicKey, error) { return c.ListPublicKeys(ctx) },

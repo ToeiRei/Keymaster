@@ -34,6 +34,12 @@ func WithTextDisable() TextOption {
 	return func(t *Text) { t.Disabled = true }
 }
 
+// WithTextEchoPassword renders the value as bullets instead of its characters,
+// for inputs that hold a secret.
+func WithTextEchoPassword() TextOption {
+	return func(t *Text) { t.input.EchoMode = textinput.EchoPassword }
+}
+
 func NewText(label, placeholder fmt.Stringer, opts ...TextOption) form.FormElement {
 	text := &Text{
 		Label:       label,
