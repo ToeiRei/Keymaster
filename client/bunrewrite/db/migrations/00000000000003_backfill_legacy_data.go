@@ -9,6 +9,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"net"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
@@ -31,6 +33,38 @@ type auditDetail struct {
 	Value string `json:"value"`
 }
 
+// legacyKnownHost is the known_hosts row this migration reads. The table is
+// dropped by 00000000000004, so this is the last chance to salvage it.
+type legacyKnownHost struct {
+	bun.BaseModel `bun:"table:known_hosts"`
+
+	Hostname string `bun:"hostname"`
+	Key      string `bun:"key"`
+}
+
+// legacyAccountHost identifies an account by the address its host key would
+// have been stored under.
+type legacyAccountHost struct {
+	bun.BaseModel `bun:"table:accounts"`
+
+	ID   int    `bun:"id"`
+	Host string `bun:"host"`
+	Port string `bun:"port"`
+}
+
+// sshSecret and sshCache mirror the ssh connector's JSON encodings. They are
+// duplicated here for the same reason as auditDetail: the migration must keep
+// producing these exact shapes however the connector types evolve. Fields the
+// connector fills in at runtime — the derived public key, the authorized_keys
+// hash — are deliberately absent.
+type sshSecret struct {
+	PrivateKey string `json:"private_key"`
+}
+
+type sshCache struct {
+	KnownHost string `json:"known_host,omitempty"`
+}
+
 func init() {
 	Migrations.MustRegister(backfillLegacyDataUp, backfillLegacyDataDown)
 }
@@ -42,6 +76,9 @@ func init() {
 // fresh install and re-runnable on a partially converted one.
 func backfillLegacyDataUp(ctx context.Context, db *bun.DB) error {
 	if err := backfillAccountDeployment(ctx, db); err != nil {
+		return err
+	}
+	if err := backfillAccountDeployCache(ctx, db); err != nil {
 		return err
 	}
 	return backfillAuditDetails(ctx, db)
@@ -110,11 +147,78 @@ func backfillAccountDeployment(ctx context.Context, db *bun.DB) error {
 	// reference into a secret store rather than the key material itself) plus a
 	// rotation operation on the client. Until then this migration is what keeps
 	// upgraded installs working, and the duplication above is deliberate.
+	//
+	// Marshalling in Go rather than assembling JSON in SQL keeps the PEM's
+	// newlines escaped correctly.
+	encoded, err := json.Marshal(sshSecret{privateKey})
+	if err != nil {
+		return err
+	}
 	_, err = db.NewUpdate().Table("accounts").
-		Set("deploy_secret = ?", privateKey).
+		Set("deploy_secret = ?", string(encoded)).
 		Where("deploy_secret = ?", "").
 		Exec(ctx)
 	return err
+}
+
+// backfillAccountDeployCache salvages the legacy known_hosts table into each
+// account's deploy_cache before 00000000000004 drops it. The authorized_keys
+// hash is deliberately left unset: nothing has been deployed through the new
+// stack yet, so every account should still report dirty and get a real deploy.
+func backfillAccountDeployCache(ctx context.Context, db *bun.DB) error {
+	var knownHosts []legacyKnownHost
+	if err := db.NewSelect().Model(&knownHosts).Column("hostname", "key").Scan(ctx); err != nil {
+		return err
+	}
+	if len(knownHosts) == 0 {
+		return nil
+	}
+
+	byHostname := make(map[string]string, len(knownHosts))
+	for _, knownHost := range knownHosts {
+		byHostname[strings.TrimSpace(knownHost.Hostname)] = strings.TrimSpace(knownHost.Key)
+	}
+
+	var accounts []legacyAccountHost
+	if err := db.NewSelect().Model(&accounts).
+		Column("id", "host", "port").
+		Where("deploy_cache = ?", "").
+		Scan(ctx); err != nil {
+		return err
+	}
+
+	for _, account := range accounts {
+		host := strings.TrimSpace(account.Host)
+		port := strings.TrimSpace(account.Port)
+		if port == "" {
+			// Legacy accounts had no port column; core/deploy already treated a
+			// missing port as 22 when it canonicalized the hostname.
+			port = "22"
+		}
+
+		// The normal verification path stored a canonical host:port, while the
+		// pinned-key path stored the host alone. Prefer the canonical form.
+		key, ok := byHostname[net.JoinHostPort(host, port)]
+		if !ok {
+			key, ok = byHostname[host]
+		}
+		if !ok || key == "" {
+			continue
+		}
+
+		encoded, err := json.Marshal(sshCache{key})
+		if err != nil {
+			return err
+		}
+		if _, err := db.NewUpdate().Table("accounts").
+			Set("deploy_cache = ?", string(encoded)).
+			Where("id = ?", account.ID).
+			Exec(ctx); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // backfillAuditDetails rewrites legacy free-text audit details (e.g.

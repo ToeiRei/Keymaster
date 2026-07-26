@@ -88,8 +88,17 @@ func TestLegacyUpgrade_ReadableThroughClient(t *testing.T) {
 	if acc.DeployMethod != "ssh" {
 		t.Fatalf("deploy method %q would not resolve to a connector", acc.DeployMethod)
 	}
-	if acc.DeploySecret != legacyPrivateKey {
-		t.Fatalf("system private key not carried into deploy_secret: %q", acc.DeploySecret)
+	// deploy_secret holds the ssh connector's JSON shape, so read the key back
+	// through the connector rather than comparing the raw column.
+	secretFields, err := c.AccountSecretFields(ctx, acc)
+	if err != nil {
+		t.Fatalf("AccountSecretFields: %v", err)
+	}
+	if len(secretFields) == 0 || secretFields[0].Key != "private_key" {
+		t.Fatalf("unexpected secret fields: %+v", secretFields)
+	}
+	if secretFields[0].Value != legacyPrivateKey {
+		t.Fatalf("system private key not carried into deploy_secret: %q", secretFields[0].Value)
 	}
 	if acc.Serial != 3 {
 		t.Fatalf("serial not preserved: %d", acc.Serial)

@@ -128,33 +128,62 @@ func exec(t *testing.T, db *bun.DB, query string, args ...any) {
 	}
 }
 
+// deploySecretPrivateKey reads back the private key from an account's
+// deploy_secret JSON, so the tests assert on the value rather than on the
+// exact encoding.
+func deploySecretPrivateKey(t *testing.T, db *bun.DB, username string) string {
+	t.Helper()
+
+	var raw string
+	if err := db.QueryRow("SELECT deploy_secret FROM accounts WHERE username = ?", username).Scan(&raw); err != nil {
+		t.Fatalf("query deploy_secret for %s: %v", username, err)
+	}
+	if raw == "" {
+		return ""
+	}
+
+	var secret sshSecret
+	if err := json.Unmarshal([]byte(raw), &secret); err != nil {
+		t.Fatalf("deploy_secret for %s is not valid JSON (%q): %v", username, raw, err)
+	}
+	return secret.PrivateKey
+}
+
 func TestBackfill_CopiesActiveSystemKeyIntoDeploySecret(t *testing.T) {
 	db := openMemBunDB(t)
 	seedCutoverSchema(t, db)
 
+	// a PEM's newlines and slashes must survive the trip through JSON
+	activeKey := "-----BEGIN OPENSSH PRIVATE KEY-----\nb3Blb/nNz\n-----END OPENSSH PRIVATE KEY-----\n"
+
 	// higher serial but inactive: the active key must still win
 	exec(t, db, "INSERT INTO system_keys (serial, public_key, private_key, is_active) VALUES (2, 'pub2', 'PRIV-STALE', false)")
-	exec(t, db, "INSERT INTO system_keys (serial, public_key, private_key, is_active) VALUES (1, 'pub1', 'PRIV-ACTIVE', true)")
+	exec(t, db, "INSERT INTO system_keys (serial, public_key, private_key, is_active) VALUES (1, 'pub1', ?, true)", activeKey)
 	exec(t, db, "INSERT INTO accounts (username, host) VALUES ('root', 'example.com')")
 	// an account already configured by the new client must not be clobbered
-	exec(t, db, "INSERT INTO accounts (username, host, port, deploy_method, deploy_secret) VALUES ('deploy', 'other.com', '2222', 'mock', 'true')")
+	exec(t, db, `INSERT INTO accounts (username, host, port, deploy_method, deploy_secret) VALUES ('deploy', 'other.com', '2222', 'mock', '{"succeed":true}')`)
 
 	migrateAll(t, db)
 
-	var secret, method, port string
-	if err := db.QueryRow("SELECT deploy_secret, deploy_method, port FROM accounts WHERE username = 'root'").
-		Scan(&secret, &method, &port); err != nil {
-		t.Fatalf("query backfilled account: %v", err)
-	}
-	if secret != "PRIV-ACTIVE" || method != "ssh" || port != "22" {
-		t.Fatalf("account not backfilled: secret=%q method=%q port=%q", secret, method, port)
+	if got := deploySecretPrivateKey(t, db, "root"); got != activeKey {
+		t.Fatalf("private key not backfilled: %q", got)
 	}
 
+	var method, port string
+	if err := db.QueryRow("SELECT deploy_method, port FROM accounts WHERE username = 'root'").
+		Scan(&method, &port); err != nil {
+		t.Fatalf("query backfilled account: %v", err)
+	}
+	if method != "ssh" || port != "22" {
+		t.Fatalf("account not backfilled: method=%q port=%q", method, port)
+	}
+
+	var secret string
 	if err := db.QueryRow("SELECT deploy_secret, deploy_method, port FROM accounts WHERE username = 'deploy'").
 		Scan(&secret, &method, &port); err != nil {
 		t.Fatalf("query configured account: %v", err)
 	}
-	if secret != "true" || method != "mock" || port != "2222" {
+	if secret != `{"succeed":true}` || method != "mock" || port != "2222" {
 		t.Fatalf("configured account was clobbered: secret=%q method=%q port=%q", secret, method, port)
 	}
 }
@@ -169,12 +198,76 @@ func TestBackfill_FallsBackToHighestSerialWhenNoneActive(t *testing.T) {
 
 	migrateAll(t, db)
 
-	var secret string
-	if err := db.QueryRow("SELECT deploy_secret FROM accounts WHERE username = 'root'").Scan(&secret); err != nil {
-		t.Fatalf("query account: %v", err)
+	if got := deploySecretPrivateKey(t, db, "root"); got != "PRIV-NEWEST" {
+		t.Fatalf("private key = %q, want PRIV-NEWEST", got)
 	}
-	if secret != "PRIV-NEWEST" {
-		t.Fatalf("deploy_secret = %q, want PRIV-NEWEST", secret)
+}
+
+// deployCache reads back an account's deploy_cache as the ssh connector's shape.
+func deployCache(t *testing.T, db *bun.DB, username string) (string, sshCache) {
+	t.Helper()
+
+	var raw string
+	if err := db.QueryRow("SELECT deploy_cache FROM accounts WHERE username = ?", username).Scan(&raw); err != nil {
+		t.Fatalf("query deploy_cache for %s: %v", username, err)
+	}
+	if raw == "" {
+		return raw, sshCache{}
+	}
+
+	var cache sshCache
+	if err := json.Unmarshal([]byte(raw), &cache); err != nil {
+		t.Fatalf("deploy_cache for %s is not valid JSON (%q): %v", username, raw, err)
+	}
+	return raw, cache
+}
+
+func TestBackfill_SalvagesKnownHostsIntoDeployCache(t *testing.T) {
+	db := openMemBunDB(t)
+	seedCutoverSchema(t, db)
+
+	// ssh.MarshalAuthorizedKey leaves a trailing newline; the backfill trims it
+	exec(t, db, "INSERT INTO known_hosts (hostname, key) VALUES ('canonical.com:2222', 'ssh-ed25519 AAAAcanonical\n')")
+	// the pinned-key path stored the host without a port
+	exec(t, db, "INSERT INTO known_hosts (hostname, key) VALUES ('hostonly.com', 'ssh-ed25519 AAAAhostonly')")
+
+	exec(t, db, "INSERT INTO accounts (username, host, port) VALUES ('a', 'canonical.com', '2222')")
+	exec(t, db, "INSERT INTO accounts (username, host) VALUES ('b', 'hostonly.com')")
+	// a legacy account with no port must still match a canonical :22 entry
+	exec(t, db, "INSERT INTO known_hosts (hostname, key) VALUES ('defaultport.com:22', 'ssh-ed25519 AAAAdefaultport')")
+	exec(t, db, "INSERT INTO accounts (username, host) VALUES ('c', 'defaultport.com')")
+	// no known host: the cache must stay empty so the account reports dirty
+	exec(t, db, "INSERT INTO accounts (username, host, port) VALUES ('d', 'untrusted.com', '22')")
+
+	migrateAll(t, db)
+
+	for _, tc := range []struct{ username, wantKnownHost string }{
+		{"a", "ssh-ed25519 AAAAcanonical"},
+		{"b", "ssh-ed25519 AAAAhostonly"},
+		{"c", "ssh-ed25519 AAAAdefaultport"},
+	} {
+		_, cache := deployCache(t, db, tc.username)
+		if cache.KnownHost != tc.wantKnownHost {
+			t.Errorf("account %s known_host = %q, want %q", tc.username, cache.KnownHost, tc.wantKnownHost)
+		}
+	}
+
+	if raw, _ := deployCache(t, db, "d"); raw != "" {
+		t.Errorf("account without a known host got a cache: %q", raw)
+	}
+}
+
+func TestBackfill_LeavesExistingDeployCacheAlone(t *testing.T) {
+	db := openMemBunDB(t)
+	seedCutoverSchema(t, db)
+
+	exec(t, db, "INSERT INTO known_hosts (hostname, key) VALUES ('example.com:22', 'ssh-ed25519 AAAAlegacy')")
+	exec(t, db, `INSERT INTO accounts (username, host, port, deploy_cache) VALUES ('root', 'example.com', '22', '{"authorized_keys_hash":"abc123"}')`)
+
+	migrateAll(t, db)
+
+	if raw, _ := deployCache(t, db, "root"); raw != `{"authorized_keys_hash":"abc123"}` {
+		t.Fatalf("existing deploy_cache was rewritten: %q", raw)
 	}
 }
 
@@ -191,6 +284,8 @@ func TestBackfill_NoSystemKeysLeavesDeploySecretEmpty(t *testing.T) {
 		Scan(&secret, &method); err != nil {
 		t.Fatalf("query account: %v", err)
 	}
+	// Nothing to copy, so no JSON is written at all — the column stays at its
+	// default and the account has no secret rather than an empty one.
 	if secret != "" {
 		t.Fatalf("deploy_secret = %q, want empty", secret)
 	}

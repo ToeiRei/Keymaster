@@ -7,6 +7,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
@@ -199,9 +200,16 @@ func TestOpen_LegacyMidChain(t *testing.T) {
 		Scan(&host, &deployMethod, &deploySecret, &port); err != nil {
 		t.Fatalf("query accounts: %v", err)
 	}
-	if host != "example.com" || deployMethod != "ssh" || deploySecret != "PRIV-ACTIVE" || port != "22" {
-		t.Fatalf("account not reshaped/backfilled: host=%q deploy_method=%q deploy_secret=%q port=%q",
-			host, deployMethod, deploySecret, port)
+	// deploy_secret holds the ssh connector's JSON shape, not the bare PEM.
+	var secret struct {
+		PrivateKey string `json:"private_key"`
+	}
+	if err := json.Unmarshal([]byte(deploySecret), &secret); err != nil {
+		t.Fatalf("deploy_secret is not valid JSON (%q): %v", deploySecret, err)
+	}
+	if host != "example.com" || deployMethod != "ssh" || secret.PrivateKey != "PRIV-ACTIVE" || port != "22" {
+		t.Fatalf("account not reshaped/backfilled: host=%q deploy_method=%q private_key=%q port=%q",
+			host, deployMethod, secret.PrivateKey, port)
 	}
 
 	var details string

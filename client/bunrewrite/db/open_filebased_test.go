@@ -6,6 +6,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
@@ -157,8 +158,15 @@ func assertBridgedCorrectly(t *testing.T, bunDB *bun.DB) {
 	if host != "example.com" || data != "AAAAdata" {
 		t.Fatalf("unexpected data after bridging: host=%q data=%q", host, data)
 	}
-	if deployMethod != "ssh" || deploySecret != "PRIV-ACTIVE" {
-		t.Fatalf("account not backfilled: deploy_method=%q deploy_secret=%q", deployMethod, deploySecret)
+	// deploy_secret holds the ssh connector's JSON shape, not the bare PEM.
+	var secret struct {
+		PrivateKey string `json:"private_key"`
+	}
+	if err := json.Unmarshal([]byte(deploySecret), &secret); err != nil {
+		t.Fatalf("deploy_secret is not valid JSON (%q): %v", deploySecret, err)
+	}
+	if deployMethod != "ssh" || secret.PrivateKey != "PRIV-ACTIVE" {
+		t.Fatalf("account not backfilled: deploy_method=%q private_key=%q", deployMethod, secret.PrivateKey)
 	}
 }
 
