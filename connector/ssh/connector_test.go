@@ -44,6 +44,9 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 		t.Fatalf("generate test private key: %v", err)
 	}
 
+	hostKey := testHostKey(t)
+	stubHostKeyProbe(t, hostKey, nil)
+
 	deployer := &fakeSSHDeployer{}
 	oldNewDeployer := newDeployer
 	defer func() { newDeployer = oldNewDeployer }()
@@ -83,7 +86,7 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 				Comment:   "alice@example",
 			}},
 			Secret:          &Secret{PrivateKey: secret},
-			Cache:           &Cache{KnownHost: "ssh-ed25519 AAAAknownhost"},
+			Cache:           &Cache{KnownHost: marshalKnownHost(hostKey)},
 			SystemKeySerial: 7,
 		}, connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, nil, progress)
 	}()
@@ -103,7 +106,7 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 	if cache == nil || cache.(*Cache).AuthorizedKeysHash == "" {
 		t.Fatal("expected Deploy to return a non-empty authorized_keys hash")
 	}
-	if got := cache.(*Cache).KnownHost; got != "ssh-ed25519 AAAAknownhost" {
+	if got := cache.(*Cache).KnownHost; got != marshalKnownHost(hostKey) {
 		t.Fatalf("expected Deploy to carry the known host forward, got %q", got)
 	}
 	if deployer.closed == false {
@@ -121,6 +124,87 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 	}})
 	if deployer.deployed != want {
 		t.Fatalf("unexpected authorized_keys payload\n got: %q\nwant: %q", deployer.deployed, want)
+	}
+}
+
+// TestConnectorHostKeyTrust covers what Deploy and Verify do with the user's
+// answer to an untrusted host key: trusting writes the new key into the cache
+// they return, allowing once leaves the cache as it was, and refusing stops the
+// operation before it ever connects.
+func TestConnectorHostKeyTrust(t *testing.T) {
+	secret, err := generateTestPrivateKeyPEM()
+	if err != nil {
+		t.Fatalf("generate test private key: %v", err)
+	}
+	hostKey := testHostKey(t)
+	stale := marshalKnownHost(testHostKey(t))
+
+	operations := map[string]func(*Connector, connector.DeployData, connector.UserRequester, chan<- connector.Progress) (connector.Cache, error){
+		"deploy": func(c *Connector, deployData connector.DeployData, requester connector.UserRequester, progress chan<- connector.Progress) (connector.Cache, error) {
+			return c.Deploy(context.Background(), deployData, connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, requester, progress)
+		},
+		"verify": func(c *Connector, deployData connector.DeployData, requester connector.UserRequester, progress chan<- connector.Progress) (connector.Cache, error) {
+			_, cache, err := c.Verify(context.Background(), deployData, connector.ConnectionData{Username: "alice", Host: "host.example", Port: 22}, requester, progress)
+			return cache, err
+		},
+	}
+
+	for operation, run := range operations {
+		for _, tc := range []struct {
+			name        string
+			choice      int
+			want        string
+			wantErr     bool
+			wantConnect bool
+		}{
+			{"trust", hostKeyTrust, marshalKnownHost(hostKey), false, true},
+			{"allow once", hostKeyAllowOnce, stale, false, true},
+			{"refuse", -1, "", true, false},
+		} {
+			t.Run(operation+" "+tc.name, func(t *testing.T) {
+				stubHostKeyProbe(t, hostKey, nil)
+
+				connected := false
+				oldNewDeployer := newDeployer
+				defer func() { newDeployer = oldNewDeployer }()
+				newDeployer = func(string, string, security.Secret, []byte, *deploy.ConnectionConfig, bool) (deployerClient, error) {
+					connected = true
+					return &fakeSSHDeployer{}, nil
+				}
+
+				requester := &fakeUserRequester{choice: tc.choice}
+				progress := make(chan connector.Progress)
+
+				var (
+					cache connector.Cache
+					opErr error
+					data  = connector.DeployData{nil, &Secret{PrivateKey: secret}, &Cache{"stalehash", stale}, 7}
+				)
+				go func() {
+					defer close(progress)
+					cache, opErr = run(&Connector{}, data, requester, progress)
+				}()
+				for range progress { //nolint:revive // drain the progress channel
+				}
+
+				if tc.wantErr {
+					if opErr == nil {
+						t.Fatalf("expected %s to abort on a refused host key", operation)
+					}
+				} else if opErr != nil {
+					t.Fatalf("%s returned error: %v", operation, opErr)
+				}
+				if connected != tc.wantConnect {
+					t.Fatalf("connected = %v, want %v", connected, tc.wantConnect)
+				}
+				if tc.wantErr {
+					return
+				}
+				if got := cache.(*Cache).KnownHost; got != tc.want {
+					t.Fatalf("known host = %q, want %q", got, tc.want)
+				}
+			})
+		}
 	}
 }
 
