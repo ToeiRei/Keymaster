@@ -134,7 +134,7 @@ func assertBridgedCorrectly(t *testing.T, bunDB *bun.DB) {
 	}
 
 	for _, table := range []string{
-		"account_keys", "system_keys", "known_hosts", "bootstrap_sessions",
+		"account_keys", "system_keys", "known_hosts", "bootstrap_sessions", "schema_migrations",
 	} {
 		var exists int
 		err := bunDB.QueryRow("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", table).Scan(&exists)

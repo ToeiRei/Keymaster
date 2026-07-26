@@ -25,11 +25,10 @@ var modelTables = []any{
 }
 
 // bookkeepingPrefixes match the tables that legitimately exist alongside the
-// model tables: the bun migrator's own (bun_migrations, bun_migration_locks),
-// sqlite internals (sqlite_sequence, sqlite_autoindex_*), and - on a bridged
-// install only - the legacy runner's version log, which bridge.go still uses to
-// recognise a legacy-origin database.
-var bookkeepingPrefixes = []string{"bun_", "sqlite_", "schema_migrations"}
+// model tables: the bun migrator's own (bun_migrations, bun_migration_locks)
+// and sqlite internals (sqlite_sequence, sqlite_autoindex_*). The legacy
+// runner's schema_migrations is deliberately absent - it gets dropped too.
+var bookkeepingPrefixes = []string{"bun_", "sqlite_"}
 
 // TestSchema_MatchesModels asserts the schema the migrations actually produce
 // is exactly what the models expect - same tables, same columns, nothing left

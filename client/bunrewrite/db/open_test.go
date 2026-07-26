@@ -177,12 +177,6 @@ func TestOpen_LegacyMidChain(t *testing.T) {
 		t.Fatalf("runMigrations: %v", err)
 	}
 
-	// legacy runner completed 000005
-	var version string
-	if err := conn.QueryRow("SELECT version FROM schema_migrations WHERE version = '000005_bunrewrite_schema'").Scan(&version); err != nil {
-		t.Fatalf("expected 000005 recorded in schema_migrations: %v", err)
-	}
-
 	// every migration recorded on the new system, without baseline's Up() ever
 	// running (it would fail: accounts already exists)
 	names := appliedMigrationNames(t, bunDB)
@@ -190,8 +184,10 @@ func TestOpen_LegacyMidChain(t *testing.T) {
 		t.Fatalf("unexpected applied migrations: %v", names)
 	}
 
+	// that the legacy runner completed 000005 is proven by the reshape below;
+	// its schema_migrations log is itself dropped once the bridge is done.
 	for _, table := range []string{
-		"account_keys", "system_keys", "known_hosts", "bootstrap_sessions",
+		"account_keys", "system_keys", "known_hosts", "bootstrap_sessions", "schema_migrations",
 	} {
 		if tableExistsSQLite(t, conn, table) {
 			t.Errorf("%s should have been dropped", table)
