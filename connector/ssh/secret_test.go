@@ -4,6 +4,7 @@
 package ssh
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -11,7 +12,7 @@ import (
 	"github.com/toeirei/keymaster/connector"
 )
 
-func TestNewSecret_RoundTrip(t *testing.T) {
+func TestParseSecret_RoundTrip(t *testing.T) {
 	c := &Connector{}
 
 	// SecretFields is the blank template for a new account; ParseSecret is for
@@ -44,7 +45,8 @@ func TestNewSecret_RoundTrip(t *testing.T) {
 		}
 	}
 
-	privateKey, err := generateTestPrivateKeyPEM()
+	// An encrypted key, so the passphrase is one the secret is allowed to keep.
+	privateKey, err := generateEncryptedTestPrivateKeyPEM("hunter2")
 	if err != nil {
 		t.Fatalf("generate test private key: %v", err)
 	}
@@ -54,7 +56,7 @@ func TestNewSecret_RoundTrip(t *testing.T) {
 		"passphrase":  "hunter2",
 	})
 	if err != nil {
-		t.Fatalf("NewSecretFromValues: %v", err)
+		t.Fatalf("ParseSecretFromValues: %v", err)
 	}
 	raw, err := fromValues.Serialize()
 	if err != nil {
@@ -65,7 +67,7 @@ func TestNewSecret_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseSecret(%q): %v", raw, err)
 	}
-	secret := parsed.(*Secret)
+	secret := parsed.(*secret)
 	if secret.PrivateKey != privateKey {
 		t.Fatalf("private key did not survive the round trip: %q", secret.PrivateKey)
 	}
@@ -73,7 +75,7 @@ func TestNewSecret_RoundTrip(t *testing.T) {
 		t.Fatalf("passphrase did not survive the round trip: %q", secret.Passphrase)
 	}
 
-	wantPublicKey, err := publicKeyFromPrivateKey(privateKey, "")
+	wantPublicKey, _, err := publicKeyFromPrivateKey(privateKey, "hunter2")
 	if err != nil {
 		t.Fatalf("publicKeyFromPrivateKey: %v", err)
 	}
@@ -82,7 +84,7 @@ func TestNewSecret_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestNewSecretFromValues_Validates(t *testing.T) {
+func TestParseSecretFromValues_Validates(t *testing.T) {
 	c := &Connector{}
 	privateKey, err := generateTestPrivateKeyPEM()
 	if err != nil {
@@ -100,20 +102,92 @@ func TestNewSecretFromValues_Validates(t *testing.T) {
 		"missing passphrase":     {"private_key": encryptedKey},
 		"wrong passphrase":       {"private_key": encryptedKey, "passphrase": "hunter3"},
 		"unparsable omit option": {"private_key": privateKey, "omit_passphrase": "maybe"},
+		// Nothing downstream reads a passphrase for a key that is not encrypted,
+		// so storing one would persist material that is never used again.
+		"needless passphrase": {"private_key": privateKey, "passphrase": "hunter2"},
 	} {
 		if _, err := c.ParseSecretFromValues(values); err == nil {
-			t.Fatalf("expected NewSecretFromValues to reject %s", name)
+			t.Fatalf("expected ParseSecretFromValues to reject %s", name)
 		}
 	}
 }
 
-func TestNewSecretFromValues_DerivesPublicKeyFromEncryptedKey(t *testing.T) {
+// TestParseSecret_Validates covers the structural checks the read path can
+// afford, and — just as importantly — the two shapes it must keep accepting: a
+// key whose passphrase was deliberately not stored, and a secret backfilled
+// before the public key field was written.
+func TestParseSecret_Validates(t *testing.T) {
+	c := &Connector{}
+	privateKey, err := generateTestPrivateKeyPEM()
+	if err != nil {
+		t.Fatalf("generate test private key: %v", err)
+	}
+	encryptedKey, err := generateEncryptedTestPrivateKeyPEM("hunter2")
+	if err != nil {
+		t.Fatalf("generate encrypted test private key: %v", err)
+	}
+	encoded, err := json.Marshal(privateKey)
+	if err != nil {
+		t.Fatalf("marshal private key: %v", err)
+	}
+
+	for name, raw := range map[string]string{
+		"empty":               "",
+		"blank private key":   `{"private_key":"  \n"}`,
+		"no private key":      `{"public_key":"ssh-rsa AAAA"}`,
+		"garbage private key": `{"private_key":"pem"}`,
+		"unparsable public key": `{"private_key":` + string(encoded) +
+			`,"public_key":"not a key"}`,
+	} {
+		if _, err := c.ParseSecret(raw); err == nil {
+			t.Errorf("expected ParseSecret to reject %s", name)
+		}
+	}
+
+	encryptedPublicKey, _, err := publicKeyFromPrivateKey(encryptedKey, "hunter2")
+	if err != nil {
+		t.Fatalf("publicKeyFromPrivateKey: %v", err)
+	}
+
+	// An encrypted key with no passphrase is what omit_passphrase stores, and it
+	// must not cost a key derivation to accept.
+	encryptedEncoded, err := json.Marshal(&secret{encryptedKey, "", true, encryptedPublicKey})
+	if err != nil {
+		t.Fatalf("marshal encrypted secret: %v", err)
+	}
+	if _, err := c.ParseSecret(string(encryptedEncoded)); err != nil {
+		t.Fatalf("expected an encrypted key without a passphrase to parse: %v", err)
+	}
+
+	// The legacy backfill writes a private key and nothing else; such a row has
+	// to stay listable, and fails later at deploy instead.
+	if _, err := c.ParseSecret(`{"private_key":` + string(encoded) + `}`); err != nil {
+		t.Fatalf("expected a secret without a public key to parse: %v", err)
+	}
+
+	// omit_passphrase steers the form and the derivation, not the stored pair, so
+	// a row holding both is left exactly as it is.
+	both := &secret{encryptedKey, "hunter2", true, encryptedPublicKey}
+	bothEncoded, err := json.Marshal(both)
+	if err != nil {
+		t.Fatalf("marshal secret: %v", err)
+	}
+	parsed, err := c.ParseSecret(string(bothEncoded))
+	if err != nil {
+		t.Fatalf("expected an omitted passphrase that is stored anyway to parse: %v", err)
+	}
+	if *parsed.(*secret) != *both {
+		t.Fatalf("expected the stored pair to be left alone, got %+v", parsed)
+	}
+}
+
+func TestParseSecretFromValues_DerivesPublicKeyFromEncryptedKey(t *testing.T) {
 	c := &Connector{}
 	encryptedKey, err := generateEncryptedTestPrivateKeyPEM("hunter2")
 	if err != nil {
 		t.Fatalf("generate encrypted test private key: %v", err)
 	}
-	wantPublicKey, err := publicKeyFromPrivateKey(encryptedKey, "hunter2")
+	wantPublicKey, _, err := publicKeyFromPrivateKey(encryptedKey, "hunter2")
 	if err != nil {
 		t.Fatalf("publicKeyFromPrivateKey: %v", err)
 	}
@@ -123,9 +197,9 @@ func TestNewSecretFromValues_DerivesPublicKeyFromEncryptedKey(t *testing.T) {
 		"passphrase":  "hunter2",
 	})
 	if err != nil {
-		t.Fatalf("NewSecretFromValues: %v", err)
+		t.Fatalf("ParseSecretFromValues: %v", err)
 	}
-	secret := parsed.(*Secret)
+	secret := parsed.(*secret)
 	if secret.Passphrase != "hunter2" {
 		t.Fatalf("expected the passphrase to be kept, got %q", secret.Passphrase)
 	}
@@ -134,13 +208,13 @@ func TestNewSecretFromValues_DerivesPublicKeyFromEncryptedKey(t *testing.T) {
 	}
 }
 
-func TestNewSecretFromValues_OmitsPassphraseButKeepsPublicKey(t *testing.T) {
+func TestParseSecretFromValues_OmitsPassphraseButKeepsPublicKey(t *testing.T) {
 	c := &Connector{}
 	encryptedKey, err := generateEncryptedTestPrivateKeyPEM("hunter2")
 	if err != nil {
 		t.Fatalf("generate encrypted test private key: %v", err)
 	}
-	wantPublicKey, err := publicKeyFromPrivateKey(encryptedKey, "hunter2")
+	wantPublicKey, _, err := publicKeyFromPrivateKey(encryptedKey, "hunter2")
 	if err != nil {
 		t.Fatalf("publicKeyFromPrivateKey: %v", err)
 	}
@@ -151,9 +225,9 @@ func TestNewSecretFromValues_OmitsPassphraseButKeepsPublicKey(t *testing.T) {
 		"omit_passphrase": "true",
 	})
 	if err != nil {
-		t.Fatalf("NewSecretFromValues: %v", err)
+		t.Fatalf("ParseSecretFromValues: %v", err)
 	}
-	secret := parsed.(*Secret)
+	secret := parsed.(*secret)
 	if secret.Passphrase != "" {
 		t.Fatalf("expected the passphrase to be dropped, got %q", secret.Passphrase)
 	}
@@ -182,28 +256,31 @@ func TestNewSecretFromValues_OmitsPassphraseButKeepsPublicKey(t *testing.T) {
 	}
 }
 
-func TestSecretPublicKey_FallsBackToPrivateKey(t *testing.T) {
+// TestSecretPublicKey_NeverDerives pins the reason the public key is stored at
+// all: authorized_keys has to stay byte-stable, so the deploy path may only use
+// the key that was written when the secret was saved. A secret without one is an
+// error, never a re-derivation.
+func TestSecretPublicKey_NeverDerives(t *testing.T) {
 	privateKey, err := generateTestPrivateKeyPEM()
 	if err != nil {
 		t.Fatalf("generate test private key: %v", err)
 	}
-	want, err := publicKeyFromPrivateKey(privateKey, "")
-	if err != nil {
-		t.Fatalf("publicKeyFromPrivateKey: %v", err)
+
+	if _, err := (&secret{PrivateKey: privateKey}).publicKey(); err == nil {
+		t.Fatal("expected publicKey to refuse deriving from the private key")
 	}
 
-	// Secrets stored before the public key field existed still render.
-	got, err := (&Secret{PrivateKey: privateKey}).publicKey()
+	got, err := (&secret{privateKey, "", false, "ssh-rsa AAAAstored"}).publicKey()
 	if err != nil {
 		t.Fatalf("publicKey: %v", err)
 	}
-	if got != want {
-		t.Fatalf("unexpected public key: got %q, want %q", got, want)
+	if got != "ssh-rsa AAAAstored" {
+		t.Fatalf("expected the stored public key, got %q", got)
 	}
 }
 
 func TestSecret_Redacts(t *testing.T) {
-	secret := &Secret{"-----BEGIN RSA PRIVATE KEY-----\nsupersecret\n", "hunter2", false, "ssh-rsa AAAApublic"}
+	secret := &secret{"-----BEGIN RSA PRIVATE KEY-----\nsupersecret\n", "hunter2", false, "ssh-rsa AAAApublic"}
 
 	for _, formatted := range []string{
 		secret.String(),
@@ -218,10 +295,10 @@ func TestSecret_Redacts(t *testing.T) {
 }
 
 func TestSecret_PassphraseBytesNilWhenUnset(t *testing.T) {
-	if got := (&Secret{PrivateKey: "pem"}).passphraseBytes(); got != nil {
+	if got := (&secret{PrivateKey: "pem"}).passphraseBytes(); got != nil {
 		t.Fatalf("expected nil passphrase bytes when unset, got %v", got)
 	}
-	if got := (&Secret{"pem", "hunter2", false, ""}).passphraseBytes(); string(got) != "hunter2" {
+	if got := (&secret{"pem", "hunter2", false, ""}).passphraseBytes(); string(got) != "hunter2" {
 		t.Fatalf("unexpected passphrase bytes: %q", got)
 	}
 }

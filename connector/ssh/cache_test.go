@@ -5,43 +5,71 @@ package ssh
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/toeirei/keymaster/connector"
 )
 
-func TestNewCache_RoundTrip(t *testing.T) {
+func TestParseCache_RoundTrip(t *testing.T) {
 	c := &Connector{}
 
 	blank, err := c.ParseCache("")
 	if err != nil {
-		t.Fatalf("NewCache(\"\"): %v", err)
+		t.Fatalf("ParseCache(\"\"): %v", err)
 	}
-	if *blank.(*Cache) != (Cache{}) {
+	if *blank.(*cache) != (cache{}) {
 		t.Fatalf("expected an empty raw cache to parse to a zero cache, got %+v", blank)
 	}
 
-	raw, err := (&Cache{"abc123", "ssh-ed25519 AAAAknownhost"}).Serialize()
+	want := cache{c.hashAuthorizedKeys("authorized_keys"), marshalKnownHost(testHostKey(t))}
+	raw, err := want.Serialize()
 	if err != nil {
 		t.Fatalf("Serialize: %v", err)
 	}
 	parsed, err := c.ParseCache(raw)
 	if err != nil {
-		t.Fatalf("NewCache(%q): %v", raw, err)
+		t.Fatalf("ParseCache(%q): %v", raw, err)
 	}
-	if cache := *parsed.(*Cache); cache != (Cache{"abc123", "ssh-ed25519 AAAAknownhost"}) {
-		t.Fatalf("cache did not survive the round trip through %q: %+v", raw, cache)
+	if got := *parsed.(*cache); got != want {
+		t.Fatalf("cache did not survive the round trip through %q: %+v", raw, got)
 	}
 
 	if _, err := c.ParseCache("not json"); err == nil {
-		t.Fatal("expected NewCache to reject a non-JSON raw value")
+		t.Fatal("expected ParseCache to reject a non-JSON raw value")
+	}
+}
+
+// TestParseCache_Validates covers what a stored cache is not allowed to hold: a
+// fingerprint hashAuthorizedKeys could not have written, and a host key that
+// resolveKnownHost would never match against a presented one.
+func TestParseCache_Validates(t *testing.T) {
+	c := &Connector{}
+	knownHost := marshalKnownHost(testHostKey(t))
+
+	for name, raw := range map[string]string{
+		"short hash":              `{"authorized_keys_hash":"abc123"}`,
+		"uppercase hash":          `{"authorized_keys_hash":"` + strings.ToUpper(c.hashAuthorizedKeys("x")) + `"}`,
+		"non-hex hash":            `{"authorized_keys_hash":"` + strings.Repeat("z", 64) + `"}`,
+		"unparsable known host":   `{"known_host":"ssh-ed25519 AAAAknownhost"}`,
+		"known host with comment": `{"known_host":"` + knownHost + ` alice@example"}`,
+		"known host with options": `{"known_host":"no-pty ` + knownHost + `"}`,
+	} {
+		if _, err := c.ParseCache(raw); err == nil {
+			t.Errorf("expected ParseCache to reject %s", name)
+		}
 	}
 }
 
 func TestVerifyOffline_IgnoresKnownHost(t *testing.T) {
-	secret, err := generateTestPrivateKeyPEM()
+	privateKey, err := generateTestPrivateKeyPEM()
 	if err != nil {
 		t.Fatalf("generate test private key: %v", err)
+	}
+
+	publicKey, _, err := publicKeyFromPrivateKey(privateKey, "")
+	if err != nil {
+		t.Fatalf("publicKeyFromPrivateKey: %v", err)
 	}
 
 	c := &Connector{}
@@ -50,30 +78,26 @@ func TestVerifyOffline_IgnoresKnownHost(t *testing.T) {
 		Data:      "AAAAC3NzaC1lZDI1NTE5AAAAIexample",
 		Comment:   "alice@example",
 	}}
-	deployData := connector.DeployData{records, &Secret{PrivateKey: secret}, nil, 7}
+	deployData := connector.DeployData{records, &secret{privateKey, "", false, publicKey}, nil, 7}
 
 	if ok, err := c.VerifyOffline(context.Background(), deployData); err != nil || ok {
 		t.Fatalf("expected VerifyOffline to be false with no cache, got ok=%v err=%v", ok, err)
 	}
 
 	// A cache holding only a known host has never seen a deploy.
-	deployData.Cache = &Cache{KnownHost: "ssh-ed25519 AAAAknownhost"}
+	deployData.Cache = &cache{KnownHost: "ssh-ed25519 AAAAknownhost"}
 	if ok, err := c.VerifyOffline(context.Background(), deployData); err != nil || ok {
 		t.Fatalf("expected VerifyOffline to be false with only a known host, got ok=%v err=%v", ok, err)
 	}
 
-	publicKey, err := publicKeyFromPrivateKey(secret, "")
-	if err != nil {
-		t.Fatalf("publicKeyFromPrivateKey: %v", err)
-	}
 	hash := c.hashAuthorizedKeys(c.makeAuthorizedKeys(7, publicKey, records))
 
 	// The known host must not participate in the comparison either way.
-	deployData.Cache = &Cache{hash, "ssh-ed25519 AAAAknownhost"}
+	deployData.Cache = &cache{hash, "ssh-ed25519 AAAAknownhost"}
 	if ok, err := c.VerifyOffline(context.Background(), deployData); err != nil || !ok {
 		t.Fatalf("expected VerifyOffline to match, got ok=%v err=%v", ok, err)
 	}
-	deployData.Cache = &Cache{AuthorizedKeysHash: hash}
+	deployData.Cache = &cache{AuthorizedKeysHash: hash}
 	if ok, err := c.VerifyOffline(context.Background(), deployData); err != nil || !ok {
 		t.Fatalf("expected VerifyOffline to match without a known host, got ok=%v err=%v", ok, err)
 	}

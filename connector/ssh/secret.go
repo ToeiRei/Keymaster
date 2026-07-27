@@ -16,24 +16,24 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// Secret holds the SSH identity used to reach a target.
-type Secret struct {
+// secret holds the SSH identity used to reach a target.
+type secret struct {
 	PrivateKey     string `json:"private_key"`
 	Passphrase     string `json:"passphrase,omitempty"`
 	OmitPassphrase bool   `json:"omit_passphrase,omitempty"`
-	PublicKey      string `json:"public_key"` // calculated from [Secret.PrivateKey] and [Secret.Passphrase]
+	PublicKey      string `json:"public_key"` // derived from the private key once, when the secret is parsed from user input
 }
 
-// *[Secret] implements [connector.Secret]
-var _ connector.Secret = (*Secret)(nil)
+// implements [connector.Secret]
+var _ connector.Secret = (*secret)(nil)
 
-// *[Secret] implements [fmt.Stringer] for redaction
-var _ fmt.Stringer = (*Secret)(nil)
+// implements [fmt.Stringer] for redaction
+var _ fmt.Stringer = (*secret)(nil)
 
-// *[Secret] implements [fmt.Formatter] for redaction
-var _ fmt.Formatter = (*Secret)(nil)
+// implements [fmt.Formatter] for redaction
+var _ fmt.Formatter = (*secret)(nil)
 
-func (s *Secret) Serialize() (string, error) {
+func (s *secret) Serialize() (string, error) {
 	raw, err := json.Marshal(s)
 	if err != nil {
 		return "", i18n.WrapError(err, "errors.connector.serialize_secret")
@@ -41,7 +41,7 @@ func (s *Secret) Serialize() (string, error) {
 	return string(raw), nil
 }
 
-func (s *Secret) Fields() []connector.SecretField {
+func (s *secret) Fields() []connector.SecretField {
 	return []connector.SecretField{
 		{"private_key", i18n.Text("connector.ssh.secret.private_key"), s.PrivateKey, true, false},
 		{"passphrase", i18n.Text("connector.ssh.secret.passphrase"), s.Passphrase, false, true},
@@ -49,9 +49,9 @@ func (s *Secret) Fields() []connector.SecretField {
 	}
 }
 
-func (s *Secret) String() string { return "[SECRET]" }
+func (s *secret) String() string { return "[SECRET]" }
 
-func (s *Secret) Format(f fmt.State, c rune) {
+func (s *secret) Format(f fmt.State, c rune) {
 	if _, err := io.WriteString(f, "[SECRET]"); err != nil {
 		_ = err // intentionally ignore write error when formatting secrets for logs
 	}
@@ -59,68 +59,96 @@ func (s *Secret) Format(f fmt.State, c rune) {
 
 // passphraseBytes returns nil rather than an empty slice for an unset
 // passphrase, so the deployer keeps taking its no-passphrase branch.
-func (s *Secret) passphraseBytes() []byte {
+func (s *secret) passphraseBytes() []byte {
 	if s.Passphrase == "" {
 		return nil
 	}
 	return []byte(s.Passphrase)
 }
 
-// missingPassphrase reports whether the secret withholds a passphrase its private
-// key needs, so an edit form re-offers the choice it was stored with.
-func (s *Secret) missingPassphrase() bool {
-	if s.PrivateKey == "" || s.Passphrase != "" {
-		return false
+// publicKey returns the public key stored alongside the private one. It is
+// never re-derived here: authorized_keys — and therefore the hash drift
+// detection compares — has to stay byte-stable, so the key that was written
+// when the secret was stored is the only one that may reach a target. A secret
+// stored without one has to be saved again.
+func (s *secret) publicKey() (string, error) {
+	if s.PublicKey == "" {
+		return "", i18n.NewError("errors.connector.missing_public_key")
 	}
-	_, err := ssh.ParsePrivateKey([]byte(s.PrivateKey))
-	var passphraseMissing *ssh.PassphraseMissingError
-	return errors.As(err, &passphraseMissing)
-}
-
-// publicKey returns the stored public key, deriving it from the private key for
-// secrets persisted before the field existed.
-func (s *Secret) publicKey() (string, error) {
-	if s.PublicKey != "" {
-		return s.PublicKey, nil
-	}
-	return publicKeyFromPrivateKey(s.PrivateKey, s.Passphrase)
+	return s.PublicKey, nil
 }
 
 // publicKeyFromPrivateKey parses the PEM-encoded private key, decrypting it with
 // passphrase when it is encrypted, and returns its public key in
-// authorized_keys wire format (without a trailing newline).
-func publicKeyFromPrivateKey(privateKey, passphrase string) (string, error) {
+// authorized_keys wire format (without a trailing newline). It also reports
+// whether the key was encrypted, so a caller can tell a passphrase that was
+// needed from one that was beside the point.
+func publicKeyFromPrivateKey(privateKey, passphrase string) (string, bool, error) {
+	encrypted := false
 	signer, err := ssh.ParsePrivateKey([]byte(privateKey))
 	if _, ok := errors.AsType[*ssh.PassphraseMissingError](err); ok {
+		encrypted = true
 		if passphrase == "" {
-			return "", i18n.NewError("errors.connector.passphrase_required")
+			return "", encrypted, i18n.NewError("errors.connector.passphrase_required")
 		}
 		signer, err = ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), []byte(passphrase))
 	}
 	if err != nil {
-		return "", i18n.WrapError(err, "errors.connector.parse_private_key")
+		return "", encrypted, i18n.WrapError(err, "errors.connector.parse_private_key")
 	}
 	// MarshalAuthorizedKey appends a single trailing newline; strip just that
 	// so the key can be embedded on a line of its own.
 	pubKey := ssh.MarshalAuthorizedKey(signer.PublicKey())
-	return strings.TrimSuffix(string(pubKey), "\n"), nil
+	return strings.TrimSuffix(string(pubKey), "\n"), encrypted, nil
+}
+
+// validate checks a secret as far as it can be checked cheaply: the private key
+// has to be a key, and any public key stored beside it has to be one too.
+// Whether the passphrase really opens the private key is settled once, in
+// ParseSecretFromValues -- ParseSecret runs for every account of every listing,
+// so it must not pay for a key derivation.
+func (s *secret) validate() error {
+	if strings.TrimSpace(s.PrivateKey) == "" {
+		return i18n.NewError("errors.connector.missing_private_key")
+	}
+	// An encrypted key reports itself before any key derivation runs, so a
+	// structural check stays affordable even on the read path.
+	if _, err := ssh.ParseRawPrivateKey([]byte(s.PrivateKey)); err != nil {
+		if _, encrypted := errors.AsType[*ssh.PassphraseMissingError](err); !encrypted {
+			return i18n.WrapError(err, "errors.connector.parse_private_key")
+		}
+	}
+	if s.PublicKey != "" {
+		if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(s.PublicKey)); err != nil {
+			return i18n.WrapError(err, "errors.connector.parse_public_key")
+		}
+	}
+	return nil
 }
 
 func (c *Connector) SecretFields() []connector.SecretField {
-	return (&Secret{}).Fields()
+	return (&secret{}).Fields()
 }
 
 func (c *Connector) ParseSecret(raw string) (connector.Secret, error) {
-	secret := &Secret{}
-	if err := json.Unmarshal([]byte(raw), secret); err != nil {
+	if strings.TrimSpace(raw) == "" {
+		return nil, i18n.NewError("errors.connector.missing_secret")
+	}
+	parsed := &secret{}
+	if err := json.Unmarshal([]byte(raw), parsed); err != nil {
 		return nil, i18n.WrapError(err, "errors.connector.parse_secret")
 	}
-	return secret, nil
+	if err := parsed.validate(); err != nil {
+		return nil, err
+	}
+	return parsed, nil
 }
 
 // ParseSecretFromValues validates the submitted values, derives the public key
 // from the private key — using the passphrase when the key is encrypted — and
 // drops the passphrase again when the caller asked for it not to be stored.
+// This is the only place the connector derives the public key; every later
+// reader takes the stored one, so what reaches authorized_keys cannot drift.
 func (c *Connector) ParseSecretFromValues(values map[string]string) (connector.Secret, error) {
 	privateKey := values["private_key"]
 	passphrase := values["passphrase"]
@@ -138,22 +166,31 @@ func (c *Connector) ParseSecretFromValues(values map[string]string) (connector.S
 		return nil, i18n.NewError("errors.connector.missing_private_key")
 	}
 
-	publicKey, err := publicKeyFromPrivateKey(privateKey, passphrase)
+	publicKey, encrypted, err := publicKeyFromPrivateKey(privateKey, passphrase)
 	if err != nil {
 		return nil, err
+	}
+	// The deployer only ever reads the passphrase for an encrypted key, so
+	// storing one here would persist material nothing goes on to use.
+	if !encrypted && passphrase != "" {
+		return nil, i18n.NewError("errors.connector.passphrase_unexpected")
 	}
 
 	if omitPassphrase {
 		passphrase = ""
 	}
-	return &Secret{privateKey, passphrase, omitPassphrase, publicKey}, nil
+	parsed := &secret{privateKey, passphrase, omitPassphrase, publicKey}
+	if err := parsed.validate(); err != nil {
+		return nil, err
+	}
+	return parsed, nil
 }
 
 // secretOf narrows the deploy data's secret to this connector's type.
-func secretOf(deployData connector.DeployData) (*Secret, error) {
-	secret, ok := deployData.Secret.(*Secret)
+func secretOf(deployData connector.DeployData) (*secret, error) {
+	parsed, ok := deployData.Secret.(*secret)
 	if !ok {
 		return nil, i18n.NewError("errors.connector.secret_type", fmt.Sprintf("%T", deployData.Secret))
 	}
-	return secret, nil
+	return parsed, nil
 }

@@ -5,7 +5,7 @@ package mock
 
 import "testing"
 
-func TestNewSecret_RoundTrip(t *testing.T) {
+func TestParseSecret_RoundTrip(t *testing.T) {
 	c := &Connector{}
 
 	blank, err := c.ParseSecret("")
@@ -18,7 +18,7 @@ func TestNewSecret_RoundTrip(t *testing.T) {
 
 	fromValues, err := c.ParseSecretFromValues(map[string]string{"succeed": "true"})
 	if err != nil {
-		t.Fatalf("NewSecretFromValues: %v", err)
+		t.Fatalf("ParseSecretFromValues: %v", err)
 	}
 	raw, err := fromValues.Serialize()
 	if err != nil {
@@ -29,11 +29,11 @@ func TestNewSecret_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseSecret(%q): %v", raw, err)
 	}
-	if !parsed.(*Secret).Succeed {
+	if !parsed.(*secret).Succeed {
 		t.Fatalf("expected succeed to survive the round trip through %q", raw)
 	}
 
 	if _, err := c.ParseSecretFromValues(map[string]string{"succeed": "maybe"}); err == nil {
-		t.Fatal("expected NewSecretFromValues to reject a non-boolean value")
+		t.Fatal("expected ParseSecretFromValues to reject a non-boolean value")
 	}
 }

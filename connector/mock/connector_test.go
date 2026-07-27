@@ -17,7 +17,7 @@ func testDeployData(succeed bool) connector.DeployData {
 			Data:      "AAAAC3NzaC1lZDI1NTE5AAAAIexample",
 			Comment:   "alice@example",
 		}},
-		Secret:          &Secret{succeed},
+		Secret:          &secret{succeed},
 		SystemKeySerial: 7,
 	}
 }
@@ -26,11 +26,11 @@ func TestConnectorDeploy_SecretSucceed_Succeeds(t *testing.T) {
 	c := &Connector{}
 	progress := make(chan connector.Progress)
 
-	var cache connector.Cache
+	var newCache connector.Cache
 	var err error
 	go func() {
 		defer close(progress)
-		cache, err = c.Deploy(context.Background(), testDeployData(true), connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
+		newCache, err = c.Deploy(context.Background(), testDeployData(true), connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
 	}()
 	for range progress {
 	}
@@ -38,10 +38,10 @@ func TestConnectorDeploy_SecretSucceed_Succeeds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Deploy returned error: %v", err)
 	}
-	if cache == nil {
+	if newCache == nil {
 		t.Fatal("expected Deploy to return a cache")
 	}
-	if cache.(*Cache).Hash == "" {
+	if newCache.(*cache).Hash == "" {
 		t.Fatal("expected Deploy to return a non-empty cache hash")
 	}
 }
@@ -68,11 +68,11 @@ func TestConnectorVerify_SecretSucceed_Succeeds(t *testing.T) {
 	progress := make(chan connector.Progress)
 
 	var ok bool
-	var cache connector.Cache
+	var newCache connector.Cache
 	var err error
 	go func() {
 		defer close(progress)
-		ok, cache, err = c.Verify(context.Background(), testDeployData(true), connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
+		ok, newCache, err = c.Verify(context.Background(), testDeployData(true), connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
 	}()
 	for range progress {
 	}
@@ -83,7 +83,7 @@ func TestConnectorVerify_SecretSucceed_Succeeds(t *testing.T) {
 	if !ok {
 		t.Fatal("expected Verify to report ok=true")
 	}
-	if cache == nil || cache.(*Cache).Hash == "" {
+	if newCache == nil || newCache.(*cache).Hash == "" {
 		t.Fatal("expected Verify to return a non-empty cache hash")
 	}
 }
@@ -117,12 +117,12 @@ func TestConnectorVerifyOffline(t *testing.T) {
 		t.Fatalf("expected VerifyOffline to be false with no cache, got ok=%v err=%v", ok, err)
 	}
 
-	deployData.Cache = &Cache{c.hash(deployData)}
+	deployData.Cache = &cache{c.hash(deployData)}
 	if ok, err := c.VerifyOffline(context.Background(), deployData); err != nil || !ok {
 		t.Fatalf("expected VerifyOffline to match cache, got ok=%v err=%v", ok, err)
 	}
 
-	deployData.Cache = &Cache{"stale"}
+	deployData.Cache = &cache{"stale"}
 	if ok, err := c.VerifyOffline(context.Background(), deployData); err != nil || ok {
 		t.Fatalf("expected VerifyOffline to report mismatch, got ok=%v err=%v", ok, err)
 	}

@@ -37,18 +37,18 @@ func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData,
 		return nil, ctx.Err()
 	}
 
-	secret, err := secretOf(deployData)
+	connectorSecret, err := secretOf(deployData)
 	if err != nil {
 		return nil, err
 	}
 
 	progress <- connector.Progress{Progress: 0.25, Status: i18n.Text("connector.status.connecting")}
-	if !secret.Succeed {
+	if !connectorSecret.Succeed {
 		return nil, i18n.WrapError(errSimulatedFailure, "errors.connector.connect", connectionData.User, connectionData.Host)
 	}
 
 	progress <- connector.Progress{Progress: 0.6, Status: i18n.Text("connector.status.uploading_keys")}
-	newCache := &Cache{c.hash(deployData)}
+	newCache := &cache{c.hash(deployData)}
 
 	progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.done")}
 	return newCache, nil
@@ -59,13 +59,13 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 		return false, nil, ctx.Err()
 	}
 
-	secret, err := secretOf(deployData)
+	connectorSecret, err := secretOf(deployData)
 	if err != nil {
 		return false, nil, err
 	}
 
 	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.connecting")}
-	if !secret.Succeed {
+	if !connectorSecret.Succeed {
 		return false, nil, i18n.WrapError(errSimulatedFailure, "errors.connector.connect", connectionData.User, connectionData.Host)
 	}
 
@@ -73,18 +73,18 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 	hash := c.hash(deployData)
 
 	progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.verified")}
-	return true, &Cache{hash}, nil
+	return true, &cache{hash}, nil
 }
 
 func (c *Connector) VerifyOffline(ctx context.Context, deployData connector.DeployData) (bool, error) {
-	cache, err := cacheOf(deployData)
+	connectorCache, err := cacheOf(deployData)
 	if err != nil {
 		return false, err
 	}
-	if cache.Hash == "" {
+	if connectorCache.Hash == "" {
 		return false, nil
 	}
-	return c.hash(deployData) == cache.Hash, nil
+	return c.hash(deployData) == connectorCache.Hash, nil
 }
 
 // hash returns a deterministic SHA256 hex fingerprint of the deploy data, so

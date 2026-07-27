@@ -39,9 +39,14 @@ func (f *fakeSSHDeployer) Close() {
 }
 
 func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
-	secret, err := generateTestPrivateKeyPEM()
+	privateKey, err := generateTestPrivateKeyPEM()
 	if err != nil {
 		t.Fatalf("generate test private key: %v", err)
+	}
+
+	publicKey, _, err := publicKeyFromPrivateKey(privateKey, "")
+	if err != nil {
+		t.Fatalf("publicKeyFromPrivateKey: %v", err)
 	}
 
 	hostKey := testHostKey(t)
@@ -87,19 +92,19 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 	progress := make(chan connector.Progress)
 
 	var (
-		cache     connector.Cache
+		newCache  connector.Cache
 		deployErr error
 	)
 	go func() {
 		defer close(progress)
-		cache, deployErr = c.Deploy(context.Background(), connector.DeployData{
+		newCache, deployErr = c.Deploy(context.Background(), connector.DeployData{
 			Records: []connector.DeployRecord{{
 				Algorithm: "ssh-ed25519",
 				Data:      "AAAAC3NzaC1lZDI1NTE5AAAAIexample",
 				Comment:   "alice@example",
 			}},
-			Secret:          &Secret{PrivateKey: secret},
-			Cache:           &Cache{KnownHost: marshalKnownHost(hostKey)},
+			Secret:          &secret{privateKey, "", false, publicKey},
+			Cache:           &cache{KnownHost: marshalKnownHost(hostKey)},
 			SystemKeySerial: 7,
 		}, connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
 	}()
@@ -116,21 +121,17 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 	if !sawDone {
 		t.Fatal("expected final progress update after deploy")
 	}
-	if cache == nil || cache.(*Cache).AuthorizedKeysHash == "" {
+	if newCache == nil || newCache.(*cache).AuthorizedKeysHash == "" {
 		t.Fatal("expected Deploy to return a non-empty authorized_keys hash")
 	}
-	if got := cache.(*Cache).KnownHost; got != marshalKnownHost(hostKey) {
+	if got := newCache.(*cache).KnownHost; got != marshalKnownHost(hostKey) {
 		t.Fatalf("expected Deploy to carry the known host forward, got %q", got)
 	}
 	if deployer.closed == false {
 		t.Fatal("expected deployer to be closed")
 	}
 
-	key, err := publicKeyFromPrivateKey(secret, "")
-	if err != nil {
-		t.Fatalf("publicKeyFromPrivateKey: %v", err)
-	}
-	want := c.makeAuthorizedKeys(7, key, []connector.DeployRecord{{
+	want := c.makeAuthorizedKeys(7, publicKey, []connector.DeployRecord{{
 		Algorithm: "ssh-ed25519",
 		Data:      "AAAAC3NzaC1lZDI1NTE5AAAAIexample",
 		Comment:   "alice@example",
@@ -145,9 +146,13 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 // they return, allowing once leaves the cache as it was, and refusing stops the
 // operation before it ever connects.
 func TestConnectorHostKeyTrust(t *testing.T) {
-	secret, err := generateTestPrivateKeyPEM()
+	privateKey, err := generateTestPrivateKeyPEM()
 	if err != nil {
 		t.Fatalf("generate test private key: %v", err)
+	}
+	publicKey, _, err := publicKeyFromPrivateKey(privateKey, "")
+	if err != nil {
+		t.Fatalf("publicKeyFromPrivateKey: %v", err)
 	}
 	hostKey := testHostKey(t)
 	stale := marshalKnownHost(testHostKey(t))
@@ -157,8 +162,8 @@ func TestConnectorHostKeyTrust(t *testing.T) {
 			return c.Deploy(context.Background(), deployData, connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, requester, progress)
 		},
 		"verify": func(c *Connector, deployData connector.DeployData, requester connector.UserRequester, progress chan<- connector.Progress) (connector.Cache, error) {
-			_, cache, err := c.Verify(context.Background(), deployData, connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, requester, progress)
-			return cache, err
+			_, newCache, err := c.Verify(context.Background(), deployData, connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, requester, progress)
+			return newCache, err
 		},
 	}
 
@@ -189,13 +194,13 @@ func TestConnectorHostKeyTrust(t *testing.T) {
 				progress := make(chan connector.Progress)
 
 				var (
-					cache connector.Cache
-					opErr error
-					data  = connector.DeployData{nil, &Secret{PrivateKey: secret}, &Cache{"stalehash", stale}, 7}
+					newCache connector.Cache
+					opErr    error
+					data     = connector.DeployData{nil, &secret{privateKey, "", false, publicKey}, &cache{"stalehash", stale}, 7}
 				)
 				go func() {
 					defer close(progress)
-					cache, opErr = run(&Connector{}, data, requester, progress)
+					newCache, opErr = run(&Connector{}, data, requester, progress)
 				}()
 				for range progress { //nolint:revive // drain the progress channel
 				}
@@ -213,7 +218,7 @@ func TestConnectorHostKeyTrust(t *testing.T) {
 				if tc.wantErr {
 					return
 				}
-				if got := cache.(*Cache).KnownHost; got != tc.want {
+				if got := newCache.(*cache).KnownHost; got != tc.want {
 					t.Fatalf("known host = %q, want %q", got, tc.want)
 				}
 			})

@@ -60,17 +60,17 @@ func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData,
 		return nil, ctx.Err()
 	}
 
-	secret, err := secretOf(deployData)
+	connectorSecret, err := secretOf(deployData)
 	if err != nil {
 		return nil, err
 	}
-	cache, err := cacheOf(deployData)
+	connectorCache, err := cacheOf(deployData)
 	if err != nil {
 		return nil, err
 	}
 
 	progress <- connector.Progress{Progress: 0.1, Status: i18n.Text("connector.status.rendering_keys")}
-	internalPublicKey, err := secret.publicKey()
+	internalPublicKey, err := connectorSecret.publicKey()
 	if err != nil {
 		return nil, err
 	}
@@ -81,14 +81,14 @@ func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData,
 	addr := canonicalSSHAddress(connectionData.Host, connectionData.Port)
 
 	progress <- connector.Progress{Progress: 0.2, Status: i18n.Text("connector.status.checking_host_key")}
-	hostKey, knownHost, err := resolveKnownHost(addr, cache.KnownHost, userRequester, config.ConnectionTimeout)
+	hostKey, knownHost, err := resolveKnownHost(addr, connectorCache.KnownHost, userRequester, config.ConnectionTimeout)
 	if err != nil {
 		return nil, err
 	}
 	config.HostKeyCallback = ssh.FixedHostKey(hostKey)
 
 	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.connecting")}
-	client, err := newDeployer(addr, connectionData.User, security.FromString(secret.PrivateKey), secret.passphraseBytes(), config, false)
+	client, err := newDeployer(addr, connectionData.User, security.FromString(connectorSecret.PrivateKey), connectorSecret.passphraseBytes(), config, false)
 	if err != nil {
 		return nil, i18n.WrapError(err, "errors.connector.connect", connectionData.User, addr)
 	}
@@ -100,7 +100,7 @@ func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData,
 	}
 
 	progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.done")}
-	return &Cache{c.hashAuthorizedKeys(authorizedKeys), knownHost}, nil
+	return &cache{c.hashAuthorizedKeys(authorizedKeys), knownHost}, nil
 }
 
 func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (bool, connector.Cache, error) {
@@ -108,17 +108,17 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 		return false, nil, ctx.Err()
 	}
 
-	secret, err := secretOf(deployData)
+	connectorSecret, err := secretOf(deployData)
 	if err != nil {
 		return false, nil, err
 	}
-	cache, err := cacheOf(deployData)
+	connectorCache, err := cacheOf(deployData)
 	if err != nil {
 		return false, nil, err
 	}
 
 	progress <- connector.Progress{Progress: 0.1, Status: i18n.Text("connector.status.rendering_keys")}
-	internalPublicKey, err := secret.publicKey()
+	internalPublicKey, err := connectorSecret.publicKey()
 	if err != nil {
 		return false, nil, err
 	}
@@ -129,14 +129,14 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 	addr := canonicalSSHAddress(connectionData.Host, connectionData.Port)
 
 	progress <- connector.Progress{Progress: 0.2, Status: i18n.Text("connector.status.checking_host_key")}
-	hostKey, knownHost, err := resolveKnownHost(addr, cache.KnownHost, userRequester, config.ConnectionTimeout)
+	hostKey, knownHost, err := resolveKnownHost(addr, connectorCache.KnownHost, userRequester, config.ConnectionTimeout)
 	if err != nil {
 		return false, nil, err
 	}
 	config.HostKeyCallback = ssh.FixedHostKey(hostKey)
 
 	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.connecting")}
-	client, err := newDeployer(addr, connectionData.User, security.FromString(secret.PrivateKey), secret.passphraseBytes(), config, false)
+	client, err := newDeployer(addr, connectionData.User, security.FromString(connectorSecret.PrivateKey), connectorSecret.passphraseBytes(), config, false)
 	if err != nil {
 		return false, nil, i18n.WrapError(err, "errors.connector.connect", connectionData.User, addr)
 	}
@@ -158,30 +158,30 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 		progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.drift_detected")}
 	}
 
-	return ok, &Cache{remoteHash, knownHost}, nil
+	return ok, &cache{remoteHash, knownHost}, nil
 }
 
 func (c *Connector) VerifyOffline(ctx context.Context, deployData connector.DeployData) (bool, error) {
-	secret, err := secretOf(deployData)
+	connectorSecret, err := secretOf(deployData)
 	if err != nil {
 		return false, err
 	}
-	cache, err := cacheOf(deployData)
+	connectorCache, err := cacheOf(deployData)
 	if err != nil {
 		return false, err
 	}
-	if cache.AuthorizedKeysHash == "" {
+	if connectorCache.AuthorizedKeysHash == "" {
 		return false, nil
 	}
 
-	internalPublicKey, err := secret.publicKey()
+	internalPublicKey, err := connectorSecret.publicKey()
 	if err != nil {
 		return false, err
 	}
 	authorizedKeys := c.makeAuthorizedKeys(deployData.SystemKeySerial, internalPublicKey, deployData.Records)
 	localHash := c.hashAuthorizedKeys(authorizedKeys)
 
-	return localHash == cache.AuthorizedKeysHash, nil
+	return localHash == connectorCache.AuthorizedKeysHash, nil
 }
 
 func canonicalSSHAddress(host string, port int) string {
