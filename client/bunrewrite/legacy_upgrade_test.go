@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/toeirei/keymaster/client"
+	"github.com/toeirei/keymaster/client/bunrewrite/db"
 	"github.com/toeirei/keymaster/config"
 
 	_ "modernc.org/sqlite"
@@ -100,8 +101,19 @@ func TestLegacyUpgrade_ReadableThroughClient(t *testing.T) {
 	if secretFields[0].Value != legacyPrivateKey {
 		t.Fatalf("system private key not carried into connector_secret: %q", secretFields[0].Value)
 	}
-	if acc.Serial != 3 {
-		t.Fatalf("serial not preserved: %d", acc.Serial)
+	// The serial is no longer read by anything, so it cannot be asserted through
+	// the client any more. The migration still has to carry it across, so check
+	// the column directly rather than dropping the assertion.
+	var serial int
+	if err := c.bun.NewSelect().
+		Model((*db.AccountModel)(nil)).
+		Column("serial").
+		Where("id = ?", int(acc.Id)).
+		Scan(ctx, &serial); err != nil {
+		t.Fatalf("read serial column: %v", err)
+	}
+	if serial != 3 {
+		t.Fatalf("serial not preserved: %d", serial)
 	}
 
 	keys, err := c.ListPublicKeysLinkedToAccount(ctx, acc.Id, false)

@@ -13,9 +13,13 @@ import (
 	"github.com/toeirei/keymaster/ui/i18n"
 )
 
-// secret decides whether the simulated connection succeeds.
+// secret decides whether the simulated connection succeeds. Key is arbitrary
+// identity material with no effect on reachability: it stands in for the public
+// half a real connector installs on the target, so two working secrets can still
+// be told apart and a rotation between them changes what [Connector.hash] sees.
 type secret struct {
-	Succeed bool `json:"succeed"`
+	Succeed bool   `json:"succeed"`
+	Key     string `json:"key,omitempty"`
 }
 
 // implements [connector.Secret]
@@ -31,7 +35,8 @@ func (s *secret) Serialize() (string, error) {
 
 func (s *secret) Fields() []connector.SecretField {
 	return []connector.SecretField{
-		{"succeed", i18n.Text("connector.mock.secret.succeed"), strconv.FormatBool(s.Succeed), false, false},
+		{"succeed", strconv.FormatBool(s.Succeed), i18n.Text("connector.mock.secret.succeed"), false, false},
+		{"key", s.Key, i18n.Text("connector.mock.secret.key"), false, false},
 	}
 }
 
@@ -52,24 +57,26 @@ func (c *Connector) ParseSecret(raw string) (connector.Secret, error) {
 	return parsed, nil
 }
 
-func (c *Connector) ParseSecretFromValues(values map[string]string) (connector.Secret, error) {
+func (c *Connector) ParseSecretFromFields(fieldValues map[string]string) (connector.Secret, error) {
+	key := strings.TrimSpace(fieldValues["key"])
+
 	// An empty field means "not configured", which for the mock is a failure.
-	raw := strings.TrimSpace(values["succeed"])
+	raw := strings.TrimSpace(fieldValues["succeed"])
 	if raw == "" {
-		return &secret{}, nil
+		return &secret{false, key}, nil
 	}
 	succeed, err := strconv.ParseBool(raw)
 	if err != nil {
 		return nil, i18n.WrapError(err, "errors.connector.parse_secret")
 	}
-	return &secret{succeed}, nil
+	return &secret{succeed, key}, nil
 }
 
-// secretOf narrows the deploy data's secret to this connector's type.
-func secretOf(deployData connector.DeployData) (*secret, error) {
-	parsed, ok := deployData.Secret.(*secret)
+// narrowSecret narrows a secret to this connector's type.
+func narrowSecret(s connector.Secret) (*secret, error) {
+	parsed, ok := s.(*secret)
 	if !ok {
-		return nil, i18n.NewError("errors.connector.secret_type", fmt.Sprintf("%T", deployData.Secret))
+		return nil, i18n.NewError("errors.connector.secret_type", fmt.Sprintf("%T", s))
 	}
 	return parsed, nil
 }

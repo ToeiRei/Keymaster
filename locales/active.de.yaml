@@ -663,6 +663,7 @@ errors.ssh.parse_private_key: "Privater Schlüssel konnte nicht gelesen werden: 
 errors.ssh.passphrase_required: "Passphrase für verschlüsselten Systemschlüssel erforderlich"
 errors.connector.parse_secret: "Deploy-Secret konnte nicht gelesen werden: %v"
 errors.connector.connect: "Verbindung zu %s@%s fehlgeschlagen: %v"
+errors.connector.connection_closed: "Die Verbindung ist bereits geschlossen: %v"
 errors.connector.deploy_keys: "authorized_keys konnte nicht ausgerollt werden: %v"
 errors.connector.read_keys: "authorized_keys konnte nicht gelesen werden: %v"
 errors.connector.parse_private_key: "Privater Schlüssel aus Secret konnte nicht gelesen werden: %v"
@@ -722,6 +723,7 @@ connector.ssh.hostkey.unknown.trust: "%s ist noch unbekannt (%s) - Host-Schlüss
 connector.ssh.hostkey.mismatch.once: "HOST-SCHLÜSSEL VON %s GEÄNDERT zu %s - einmalig verbinden, nicht merken"
 connector.ssh.hostkey.mismatch.trust: "HOST-SCHLÜSSEL VON %s GEÄNDERT zu %s - neuem Host-Schlüssel künftig vertrauen"
 connector.mock.secret.succeed: "Erfolg (true/false)"
+connector.mock.secret.key: "Schlüssel (nur Identität, ohne Einfluss auf die Erreichbarkeit)"
 
 # --- Audit-Log-Aktionsbezeichnungen (nur Anzeige; gespeicherte Codes bleiben unverändert) ---
 audit.action.add_account: "Konto hinzufügen"

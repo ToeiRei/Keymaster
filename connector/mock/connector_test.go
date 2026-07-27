@@ -10,120 +10,94 @@ import (
 	"github.com/toeirei/keymaster/connector"
 )
 
-func testDeployData(succeed bool) connector.DeployData {
-	return connector.DeployData{
+func testDeployment(succeed bool) connector.Deployment {
+	return connector.Deployment{
+		Secret: &secret{succeed, "primary"},
 		Records: []connector.DeployRecord{{
 			Algorithm: "ssh-ed25519",
 			Data:      "AAAAC3NzaC1lZDI1NTE5AAAAIexample",
 			Comment:   "alice@example",
 		}},
-		Secret:          &secret{succeed},
-		SystemKeySerial: 7,
 	}
 }
 
-func TestConnectorDeploy_SecretSucceed_Succeeds(t *testing.T) {
-	c := &Connector{}
-	progress := make(chan connector.Progress)
+// open dials with the deployment's own secret, the way an ordinary deploy does.
+func open(t *testing.T, c *Connector, deployment connector.Deployment) (connector.Connection, error) {
+	t.Helper()
+	return c.OpenConnection(context.Background(), deployment.Secret, nil, "alice", "host.example", 22, nil)
+}
 
-	var newCache connector.Cache
-	var err error
+// drain runs op with a progress channel the way a client does, so a connector
+// that forgets to send progress cannot deadlock the test.
+func drain(op func(progress chan<- connector.Progress)) {
+	progress := make(chan connector.Progress)
 	go func() {
 		defer close(progress)
-		newCache, err = c.Deploy(context.Background(), testDeployData(true), connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
+		op(progress)
 	}()
 	for range progress {
 	}
+}
 
+func TestOpenConnection_SecretSucceed_Succeeds(t *testing.T) {
+	c := &Connector{}
+
+	conn, err := open(t, c, testDeployment(true))
 	if err != nil {
-		t.Fatalf("Deploy returned error: %v", err)
+		t.Fatalf("OpenConnection returned error: %v", err)
 	}
-	if newCache == nil {
-		t.Fatal("expected Deploy to return a cache")
-	}
-	if newCache.(*cache).Hash == "" {
-		t.Fatal("expected Deploy to return a non-empty cache hash")
+	if conn == nil {
+		t.Fatal("expected OpenConnection to return a connection")
 	}
 }
 
-func TestConnectorDeploy_SecretNotSucceed_Fails(t *testing.T) {
+func TestOpenConnection_SecretNotSucceed_Fails(t *testing.T) {
 	c := &Connector{}
-	progress := make(chan connector.Progress)
 
-	var err error
-	go func() {
-		defer close(progress)
-		_, err = c.Deploy(context.Background(), testDeployData(false), connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
-	}()
-	for range progress {
-	}
-
-	if err == nil {
-		t.Fatal("expected Deploy to return an error when the secret does not succeed")
+	if _, err := open(t, c, testDeployment(false)); err == nil {
+		t.Fatal("expected OpenConnection to fail when the secret does not succeed")
 	}
 }
 
-func TestConnectorVerify_SecretSucceed_Succeeds(t *testing.T) {
-	c := &Connector{}
-	progress := make(chan connector.Progress)
-
-	var ok bool
-	var newCache connector.Cache
-	var err error
-	go func() {
-		defer close(progress)
-		ok, newCache, err = c.Verify(context.Background(), testDeployData(true), connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
-	}()
-	for range progress {
-	}
-
-	if err != nil {
-		t.Fatalf("Verify returned error: %v", err)
-	}
-	if !ok {
-		t.Fatal("expected Verify to report ok=true")
-	}
-	if newCache == nil || newCache.(*cache).Hash == "" {
-		t.Fatal("expected Verify to return a non-empty cache hash")
-	}
-}
-
-func TestConnectorVerify_SecretNotSucceed_Fails(t *testing.T) {
-	c := &Connector{}
-	progress := make(chan connector.Progress)
-
-	var ok bool
-	var err error
-	go func() {
-		defer close(progress)
-		ok, _, err = c.Verify(context.Background(), testDeployData(false), connector.ConnectionData{User: "alice", Host: "host.example", Port: 22}, nil, progress)
-	}()
-	for range progress {
-	}
-
-	if err == nil {
-		t.Fatal("expected Verify to return an error when the secret does not succeed")
-	}
-	if ok {
-		t.Fatal("expected Verify to report ok=false on failure")
-	}
-}
-
-func TestConnectorVerifyOffline(t *testing.T) {
+func TestVerifyOffline(t *testing.T) {
 	c := &Connector{}
 
-	deployData := testDeployData(true)
-	if ok, err := c.VerifyOffline(context.Background(), deployData); err != nil || ok {
+	deployment := testDeployment(true)
+	if ok, err := c.VerifyOffline(context.Background(), nil, deployment); err != nil || ok {
 		t.Fatalf("expected VerifyOffline to be false with no cache, got ok=%v err=%v", ok, err)
 	}
 
-	deployData.Cache = &cache{c.hash(deployData)}
-	if ok, err := c.VerifyOffline(context.Background(), deployData); err != nil || !ok {
+	hash, err := c.hash(deployment)
+	if err != nil {
+		t.Fatalf("hash: %v", err)
+	}
+	if ok, err := c.VerifyOffline(context.Background(), &cache{hash}, deployment); err != nil || !ok {
 		t.Fatalf("expected VerifyOffline to match cache, got ok=%v err=%v", ok, err)
 	}
 
-	deployData.Cache = &cache{"stale"}
-	if ok, err := c.VerifyOffline(context.Background(), deployData); err != nil || ok {
+	if ok, err := c.VerifyOffline(context.Background(), &cache{"stale"}, deployment); err != nil || ok {
 		t.Fatalf("expected VerifyOffline to report mismatch, got ok=%v err=%v", ok, err)
+	}
+}
+
+// The secret is part of the hash because a real connector installs its public
+// half on the target, so a rotation has to look like a change.
+func TestHash_ChangesWithTheSecret(t *testing.T) {
+	c := &Connector{}
+
+	deployment := testDeployment(true)
+	before, err := c.hash(deployment)
+	if err != nil {
+		t.Fatalf("hash: %v", err)
+	}
+
+	deployment.Secret = &secret{true, "rotated"}
+	after, err := c.hash(deployment)
+	if err != nil {
+		t.Fatalf("hash: %v", err)
+	}
+
+	if before == after {
+		t.Fatal("expected the hash to change when the deployment is keyed to another secret")
 	}
 }

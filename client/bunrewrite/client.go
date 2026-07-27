@@ -30,7 +30,7 @@ import (
 
 	// for now, directly import/activate connectors here
 	_ "github.com/toeirei/keymaster/connector/mock"
-	_ "github.com/toeirei/keymaster/connector/ssh"
+	_ "github.com/toeirei/keymaster/connector/ssh2"
 )
 
 type Client struct {
@@ -423,7 +423,6 @@ func modelToClientAccount(accountModel db.AccountModel) (client.Account, error) 
 		accountModel.Username,
 		accountModel.Host,
 		accountModel.Port,
-		accountModel.Serial,
 		accountModel.Connector,
 		secret,
 	}, nil
@@ -436,7 +435,7 @@ func serializeSecret(connectorKey string, values map[string]string) (string, err
 	if err != nil {
 		return "", err
 	}
-	secret, err := con.ParseSecretFromValues(values)
+	secret, err := con.ParseSecretFromFields(values)
 	if err != nil {
 		return "", err
 	}
@@ -679,12 +678,12 @@ func (c *Client) IsAccountDirty(ctx context.Context, account client.Account) (bo
 		return true, err
 	}
 
-	deployData, err := c.accountDeployData(ctx, con, account)
+	deployment, cache, err := c.accountDeployment(ctx, con, account)
 	if err != nil {
 		return true, err
 	}
 
-	valid, err := con.VerifyOffline(ctx, deployData)
+	valid, err := con.VerifyOffline(ctx, cache, deployment)
 	if err != nil {
 		return true, err
 	}
@@ -871,15 +870,35 @@ func (c *Client) accountConnectorCache(ctx context.Context, id client.AccountId)
 	return rawCache, err
 }
 
-func (c *Client) accountDeployData(ctx context.Context, con connector.Connector, account client.Account) (connector.DeployData, error) {
+// persistConnectorCache stores what a connection observed. A connector hands
+// back a cache on every path, so this runs after a failed operation too.
+func (c *Client) persistConnectorCache(ctx context.Context, id client.AccountId, cache connector.Cache) error {
+	serialized, err := cache.Serialize()
+	if err != nil {
+		return err
+	}
+
+	_, err = c.bun.NewUpdate().
+		Model(&db.AccountModel{ID: int(id), ConnectorCache: serialized}).
+		Column("connector_cache").
+		WherePK().
+		Exec(ctx)
+	return err
+}
+
+// accountDeployment builds the state an account's target should be in, together
+// with the connector cache describing what was last seen there. The cache is a
+// second return rather than part of the deployment: a deployment is what a target
+// should hold, a cache is what it did hold.
+func (c *Client) accountDeployment(ctx context.Context, con connector.Connector, account client.Account) (connector.Deployment, connector.Cache, error) {
 	rawCache, err := c.accountConnectorCache(ctx, account.Id)
 	if err != nil {
-		return connector.DeployData{}, err
+		return connector.Deployment{}, nil, err
 	}
 
 	cache, err := con.ParseCache(rawCache)
 	if err != nil {
-		return connector.DeployData{}, err
+		return connector.Deployment{}, nil, err
 	}
 
 	now := time.Now()
@@ -901,7 +920,7 @@ func (c *Client) accountDeployData(ctx context.Context, con connector.Connector,
 
 	err = query.Scan(ctx)
 	if err != nil {
-		return connector.DeployData{}, err
+		return connector.Deployment{}, nil, err
 	}
 
 	var globalPublicKeyModels []db.PublicKeyModel
@@ -911,7 +930,7 @@ func (c *Client) accountDeployData(ctx context.Context, con connector.Connector,
 		Where("is_global = ?", true).
 		Scan(ctx)
 	if err != nil {
-		return connector.DeployData{}, err
+		return connector.Deployment{}, nil, err
 	}
 
 	globalRecords := slicest.Map(globalPublicKeyModels, func(publicKeyModel db.PublicKeyModel) connector.DeployRecord {
@@ -922,9 +941,9 @@ func (c *Client) accountDeployData(ctx context.Context, con connector.Connector,
 		return connector.DeployRecord{
 			publicKeyModel.Algorithm,
 			publicKeyModel.Data,
+			expiresAt,
 			publicKeyModel.Comment,
 			publicKeyModel.IsGlobal,
-			expiresAt,
 		}
 	})
 
@@ -949,29 +968,23 @@ func (c *Client) accountDeployData(ctx context.Context, con connector.Connector,
 		return connector.DeployRecord{
 			linkModel.PublicKey.Algorithm,
 			linkModel.PublicKey.Data,
+			expiresAt,
 			linkModel.PublicKey.Comment,
 			linkModel.PublicKey.IsGlobal,
-			expiresAt,
 		}
 	})
 
-	return connector.DeployData{
-		append(globalRecords, localRecords...),
+	return connector.Deployment{
 		account.ConnectorSecret,
-		cache,
-		account.Serial,
-	}, nil
+		append(globalRecords, localRecords...),
+	}, cache, nil
 }
 
-func accountConnectionData(account client.Account) connector.ConnectionData {
-	return connector.ConnectionData{
-		account.Username,
-		account.Host,
-		account.Port,
-	}
-}
-
-type connectorOperation func(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (ok bool, newCache connector.Cache, err error)
+// connectorOperation is what a client-level operation does with an already-open
+// connection. It returns no cache: the connection accumulates that itself and
+// hands it over on Close, so the caller can persist it whether the operation
+// succeeded or not.
+type connectorOperation func(ctx context.Context, conn connector.Connection, deployment connector.Deployment, progress chan<- connector.Progress) (ok bool, err error)
 
 type accountProgressUpdate struct {
 	accountId client.AccountId
@@ -1061,7 +1074,7 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 		})
 	}
 
-	// runOp funnels every terminal path (connector unreachable, deploy-data
+	// runOp funnels every terminal path (connector unreachable, deployment
 	// failure, drift, or normal completion) into a single return so the outcome
 	// is audited exactly once. It returns the number of keys involved and the
 	// operation error, if any.
@@ -1072,7 +1085,20 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 			return 0, err
 		}
 
-		deployData, err := c.accountDeployData(ctx, con, account)
+		deployment, cache, err := c.accountDeployment(ctx, con, account)
+		if err != nil {
+			fail(err)
+			return 0, err
+		}
+
+		// Opening carries no progress channel of its own: it is where the host key
+		// handshake may stop to ask the user something, so the status has to be on
+		// screen before the call rather than reported by it.
+		sendProgress(client.ProgressAccountWithError{ProgressAccount: connector.Progress{
+			Progress: 0.1,
+			Status:   i18n.Text("client.status.connecting"),
+		}})
+		conn, err := con.OpenConnection(ctx, deployment.Secret, cache, account.Username, account.Host, account.Port, userRequester)
 		if err != nil {
 			fail(err)
 			return 0, err
@@ -1080,43 +1106,35 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 
 		connectorProgress := make(chan connector.Progress)
 		var ok bool
-		var cache connector.Cache
 		go func() {
 			defer close(connectorProgress)
-			ok, cache, err = selectOp(con)(ctx, deployData, accountConnectionData(account), userRequester, connectorProgress)
+			ok, err = selectOp(con)(ctx, conn, deployment, connectorProgress)
 		}()
 		for cp := range connectorProgress {
 			sendProgress(client.ProgressAccountWithError{ProgressAccount: cp})
 		}
-		if err != nil {
-			fail(err)
-			return 0, err
-		}
+		opErr := err
 
-		serializedCache, err := cache.Serialize()
-		if err != nil {
-			fail(err)
-			return 0, err
+		// Persisted whether the operation succeeded or not: the connection hands
+		// back what it actually observed, including a host key the user has just
+		// trusted, and discarding that would only mean asking them again.
+		if err := c.persistConnectorCache(ctx, account.Id, conn.Close()); err != nil {
+			fail(errors.Join(opErr, err))
+			return 0, errors.Join(opErr, err)
 		}
-
-		_, err = c.bun.NewUpdate().
-			Model(&db.AccountModel{ID: int(account.Id), ConnectorCache: serializedCache}).
-			Column("connector_cache").
-			WherePK().
-			Exec(ctx)
-		if err != nil {
-			fail(err)
-			return 0, err
+		if opErr != nil {
+			fail(opErr)
+			return 0, opErr
 		}
 
 		if !ok {
 			// A verify mismatch is a per-account failure, not a connector error.
 			err := i18n.NewError("errors.client.out_of_sync")
 			fail(err)
-			return len(deployData.Records), err
+			return len(deployment.Records), err
 		}
 
-		return len(deployData.Records), nil
+		return len(deployment.Records), nil
 	}
 
 	keyCount, opErr := runOp()
@@ -1159,9 +1177,8 @@ func (c *Client) DeployAccount(ctx context.Context, userRequester client.UserReq
 
 func (c *Client) DeployAccounts(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccounts, accountIds ...client.AccountId) error {
 	return c.runAccounts(ctx, func(con connector.Connector) connectorOperation {
-		return func(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (bool, connector.Cache, error) {
-			cache, err := con.Deploy(ctx, deployData, connectionData, userRequester, progress)
-			return true, cache, err
+		return func(ctx context.Context, conn connector.Connection, deployment connector.Deployment, progress chan<- connector.Progress) (bool, error) {
+			return true, conn.Deploy(ctx, deployment, progress)
 		}
 	}, "account.deploy", userRequester, progress, runtime.GOMAXPROCS(0), accountIds...)
 }
@@ -1174,7 +1191,9 @@ func (c *Client) VerifyAccount(ctx context.Context, userRequester client.UserReq
 
 func (c *Client) VerifyAccounts(ctx context.Context, userRequester client.UserRequester, progress chan<- client.VerifyProgressAccounts, accountIds ...client.AccountId) error {
 	return c.runAccounts(ctx, func(con connector.Connector) connectorOperation {
-		return con.Verify
+		return func(ctx context.Context, conn connector.Connection, deployment connector.Deployment, progress chan<- connector.Progress) (bool, error) {
+			return conn.Verify(ctx, deployment, progress)
+		}
 	}, "account.verify", userRequester, progress, runtime.GOMAXPROCS(0), accountIds...)
 }
 

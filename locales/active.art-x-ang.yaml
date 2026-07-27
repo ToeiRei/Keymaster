@@ -607,6 +607,7 @@ errors.ssh.parse_private_key: "mislāmp tō rǣdenne dīeglan cǣġ: %v"
 errors.ssh.passphrase_required: "fæstƿord bēþearf for ġehǣled systemcǣġ"
 errors.connector.parse_secret: "mislāmp tō rǣdenne sende-dēagol: %v"
 errors.connector.connect: "mislāmp tō ġebindenne tō %s@%s: %v"
+errors.connector.connection_closed: "sēo ġebindung is ġecliesed nū þā: %v"
 errors.connector.deploy_keys: "mislāmp tō sendenne authorized_keys: %v"
 errors.connector.read_keys: "mislāmp tō rǣdenne authorized_keys: %v"
 errors.connector.parse_private_key: "mislāmp tō rǣdenne dīeglan cǣġ of dēagle: %v"
@@ -666,6 +667,7 @@ connector.ssh.hostkey.unknown.trust: "%s nis ġȳt cūð (%s) - trēowe þisne h
 connector.ssh.hostkey.mismatch.once: "HŌS-CǢĠ OF %s ĀWENDE tō %s - teng ǣne, ne ġemyne"
 connector.ssh.hostkey.mismatch.trust: "HŌS-CǢĠ OF %s ĀWENDE tō %s - trēowe þǣm nīwan hōs-cǣġe heonanforð"
 connector.mock.secret.succeed: "Ġesǣlan (true/false)"
+connector.mock.secret.key: "Cǣġ (ānlīċ nama, ne āwendeþ ġerǣcnesse)"
 
 # --- Ġewritrǣdinge-dǣda naman (ānlīċ æteoƿung; ġehealdene codas ne beoþ āƿende) ---
 audit.action.add_account: "Ġeeċ Rǣdmann"

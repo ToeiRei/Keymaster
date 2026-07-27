@@ -20,7 +20,10 @@ func TestParseCache_RoundTrip(t *testing.T) {
 		t.Fatal("expected an empty raw cache to parse to a zero cache")
 	}
 
-	hash := c.hash(connector.DeployData{})
+	hash, err := c.hash(connector.Deployment{Secret: &secret{}})
+	if err != nil {
+		t.Fatalf("hash: %v", err)
+	}
 	raw, err := (&cache{hash}).Serialize()
 	if err != nil {
 		t.Fatalf("Serialize: %v", err)

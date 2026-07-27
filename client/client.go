@@ -111,7 +111,6 @@ type Account struct {
 	Username        string
 	Host            string
 	Port            int
-	Serial          int
 	Connector       string // ssh, cisco, ...
 	ConnectorSecret connector.Secret
 }

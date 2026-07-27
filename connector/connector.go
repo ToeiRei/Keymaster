@@ -10,50 +10,61 @@ import (
 )
 
 type Connector interface {
+	// OpenConnection tries to open a connector specific connection for remote interactions.
+	OpenConnection(
+		ctx context.Context,
+		secret Secret,
+		cache Cache,
+		user string,
+		host string,
+		port int,
+		userRequester UserRequester,
+	) (Connection, error)
+
+	// SecretFields provides fields from [Secret.Fields] for client implementations,
+	// to prompt the user for a secret's configuration.
 	SecretFields() []SecretField
-	// ParseSecret parses a stored secret and validates what it can. Connectors
-	// whose secret needs credential material reject an empty raw; SecretFields is
-	// the blank template a UI renders for a new account.
+
+	// ParseSecretFromFields builds a secret from fieldValues keyed by [SecretField.Key].
+	// The input is also validated to ensure the user provided a working configuration.
+	ParseSecretFromFields(fieldValues map[string]string) (Secret, error)
+
+	// ParseSecret parses a serialized secret from [Secret.Serialize] back into [Secret].
 	ParseSecret(raw string) (Secret, error)
-	// ParseSecretFromValues builds a secret from values keyed by SecretField.Key.
-	// Missing keys are treated as empty; unknown keys are ignored.
-	ParseSecretFromValues(values map[string]string) (Secret, error)
-	// ParseCache parses a stored cache and validates what it can. An empty raw
-	// yields a zero cache.
+
+	// ParseCache parses a serialized cache from [Cache.Serialize] back into [Cache].
 	ParseCache(raw string) (Cache, error)
 
-	Deploy(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester, progress chan<- Progress) (newCache Cache, err error)
-	Verify(ctx context.Context, deployData DeployData, connectionData ConnectionData, userRequester UserRequester, progress chan<- Progress) (ok bool, newCache Cache, err error)
-	VerifyOffline(ctx context.Context, deployData DeployData) (bool, error)
+	// VerifyOffline verifies the provided deployment matches the last cached deployment,
+	// without requiring a [Connection].
+	VerifyOffline(
+		ctx context.Context,
+		cache Cache,
+		deployment Deployment,
+	) (ok bool, err error)
 }
 
-type ConnectionData struct {
-	User string
-	Host string
-	Port int
-}
-
-type DeployData struct {
-	Records         []DeployRecord
-	Secret          Secret
-	Cache           Cache
-	SystemKeySerial int
+// Deployment is the state a target should be in: the records to install and the
+// secret whose public material identifies Keymaster on that target. A deployment
+// is normally keyed to the secret its connection authenticated with; keying it to
+// a different one is what makes a secret rotation an ordinary deploy.
+type Deployment struct {
+	Secret  Secret
+	Records []DeployRecord
 }
 
 type DeployRecord struct {
 	Algorithm string
 	Data      string
-	Comment   string
-	IsGlobal  bool
 	ExpiresAt time.Time
-}
 
-type Progress struct {
-	Progress float64
-	Status   fmt.Stringer
+	// non critical metadata:
+
+	Comment  string
+	IsGlobal bool
 }
 
 type UserRequester interface {
-	RequestText(promt fmt.Stringer) string
-	RequestChoice(promts []fmt.Stringer) int
+	RequestText(prompt fmt.Stringer) string
+	RequestChoice(prompts []fmt.Stringer) int
 }

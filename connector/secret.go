@@ -5,20 +5,27 @@ package connector
 
 import "fmt"
 
-// Secret holds a connector's credential material. Implementations serialize to
-// JSON for persistence and redact themselves when formatted.
+// Secret holds a connector's credential material.
 type Secret interface {
+	// Serialize serializes the secret for persistence, to be parsed back by [Connector.ParseSecret].
 	Serialize() (string, error)
+
+	// Fields provides the secrets current values as editable fields,
+	// so clients can render them without knowing the connector specific shape.
 	Fields() []SecretField
+
+	// String formats the secret with its credential material redacted.
 	fmt.Stringer
 }
 
-// SecretField describes one editable component of a secret, with its current
-// value, so a UI can render it without knowing the connector's JSON shape.
+// SecretField describes one editable component of a secret, keyed for [Connector.ParseSecretFromFields].
 type SecretField struct {
-	Key       string
+	Key   string
+	Value string
+
+	// field decoration/presentation
+
 	Label     fmt.Stringer
-	Value     string
 	Multiline bool
 	Masked    bool
 }

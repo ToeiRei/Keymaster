@@ -22,9 +22,9 @@ func init() {
 
 // Connector is a network-free stand-in for a real connector, intended for
 // exercising client-layer functionality without a real remote host. It
-// deterministically succeeds or fails based on DeployData.Secret: a secret
-// whose succeed field is set simulates success, anything else simulates a
-// connection failure.
+// deterministically succeeds or fails based on the secret it is asked to
+// authenticate with: a secret whose succeed field is set simulates success,
+// anything else simulates a connection failure.
 type Connector struct{}
 
 // *[Connector] implements [connector.Connector]
@@ -32,69 +32,57 @@ var _ connector.Connector = (*Connector)(nil)
 
 var errSimulatedFailure = errors.New("mock connector: simulated failure (secret succeed field not set)")
 
-func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (connector.Cache, error) {
+func (c *Connector) OpenConnection(ctx context.Context, secret connector.Secret, cache connector.Cache, user string, host string, port int, userRequester connector.UserRequester) (connector.Connection, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
 
-	connectorSecret, err := secretOf(deployData)
+	connectorSecret, err := narrowSecret(secret)
+	if err != nil {
+		return nil, err
+	}
+	connectorCache, err := narrowCache(cache)
 	if err != nil {
 		return nil, err
 	}
 
-	progress <- connector.Progress{Progress: 0.25, Status: i18n.Text("connector.status.connecting")}
 	if !connectorSecret.Succeed {
-		return nil, i18n.WrapError(errSimulatedFailure, "errors.connector.connect", connectionData.User, connectionData.Host)
+		return nil, i18n.WrapError(errSimulatedFailure, "errors.connector.connect", user, host)
 	}
 
-	progress <- connector.Progress{Progress: 0.6, Status: i18n.Text("connector.status.uploading_keys")}
-	newCache := &cache{c.hash(deployData)}
-
-	progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.done")}
-	return newCache, nil
+	return &connection{c, connectorCache.Hash, false}, nil
 }
 
-func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (bool, connector.Cache, error) {
-	if ctx.Err() != nil {
-		return false, nil, ctx.Err()
-	}
-
-	connectorSecret, err := secretOf(deployData)
-	if err != nil {
-		return false, nil, err
-	}
-
-	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.connecting")}
-	if !connectorSecret.Succeed {
-		return false, nil, i18n.WrapError(errSimulatedFailure, "errors.connector.connect", connectionData.User, connectionData.Host)
-	}
-
-	progress <- connector.Progress{Progress: 0.6, Status: i18n.Text("connector.status.reading_keys")}
-	hash := c.hash(deployData)
-
-	progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.verified")}
-	return true, &cache{hash}, nil
-}
-
-func (c *Connector) VerifyOffline(ctx context.Context, deployData connector.DeployData) (bool, error) {
-	connectorCache, err := cacheOf(deployData)
+func (c *Connector) VerifyOffline(ctx context.Context, cache connector.Cache, deployment connector.Deployment) (bool, error) {
+	connectorCache, err := narrowCache(cache)
 	if err != nil {
 		return false, err
 	}
 	if connectorCache.Hash == "" {
 		return false, nil
 	}
-	return c.hash(deployData) == connectorCache.Hash, nil
+	hash, err := c.hash(deployment)
+	if err != nil {
+		return false, err
+	}
+	return hash == connectorCache.Hash, nil
 }
 
-// hash returns a deterministic SHA256 hex fingerprint of the deploy data, so
-// repeated calls with the same records/serial produce the same cache value.
-func (c *Connector) hash(deployData connector.DeployData) string {
+// hash returns a deterministic SHA256 hex fingerprint of a deployment, so
+// repeated calls with the same records and secret produce the same cache value.
+// The secret is part of it because a real connector installs the secret's public
+// material alongside the records, so rotating the secret has to change the hash.
+func (c *Connector) hash(deployment connector.Deployment) (string, error) {
+	connectorSecret, err := narrowSecret(deployment.Secret)
+	if err != nil {
+		return "", err
+	}
+
 	var b strings.Builder
-	fmt.Fprintf(&b, "serial:%d\n", deployData.SystemKeySerial)
-	for _, r := range deployData.Records {
+	fmt.Fprintf(&b, "key:%s\n", connectorSecret.Key)
+	for _, r := range deployment.Records {
 		fmt.Fprintf(&b, "%s %s %s global=%v expires=%s\n", r.Algorithm, r.Data, r.Comment, r.IsGlobal, r.ExpiresAt.UTC())
 	}
 	sum := sha256.Sum256([]byte(b.String()))
-	return hex.EncodeToString(sum[:])
+	return hex.EncodeToString(sum[:]), nil
 }

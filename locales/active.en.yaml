@@ -546,6 +546,7 @@ errors.ssh.parse_private_key: "failed to parse private key: %v"
 errors.ssh.passphrase_required: "passphrase required for encrypted system key"
 errors.connector.parse_secret: "failed to parse deploy secret: %v"
 errors.connector.connect: "failed to connect to %s@%s: %v"
+errors.connector.connection_closed: "the connection is already closed: %v"
 errors.connector.deploy_keys: "failed to deploy authorized_keys: %v"
 errors.connector.read_keys: "failed to read authorized_keys: %v"
 errors.connector.parse_private_key: "failed to parse private key from secret: %v"
@@ -605,6 +606,7 @@ connector.ssh.hostkey.unknown.trust: "%s is not known yet (%s) - trust this host
 connector.ssh.hostkey.mismatch.once: "HOST KEY OF %s CHANGED to %s - connect once, do not remember"
 connector.ssh.hostkey.mismatch.trust: "HOST KEY OF %s CHANGED to %s - trust the new host key from now on"
 connector.mock.secret.succeed: "Succeed (true/false)"
+connector.mock.secret.key: "Key (identity only, does not affect reachability)"
 
 # --- Audit log action labels (display-only; stored action codes are unchanged) ---
 audit.action.add_account: "Add Account"

@@ -12,15 +12,15 @@ func TestParseSecret_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseSecret(\"\"): %v", err)
 	}
-	if fields := blank.Fields(); len(fields) != 1 || fields[0].Value != "false" {
+	if fields := blank.Fields(); len(fields) != 2 || fields[0].Value != "false" || fields[1].Value != "" {
 		t.Fatalf("unexpected blank fields: %+v", fields)
 	}
 
-	fromValues, err := c.ParseSecretFromValues(map[string]string{"succeed": "true"})
+	fromFields, err := c.ParseSecretFromFields(map[string]string{"succeed": "true", "key": "primary"})
 	if err != nil {
-		t.Fatalf("ParseSecretFromValues: %v", err)
+		t.Fatalf("ParseSecretFromFields: %v", err)
 	}
-	raw, err := fromValues.Serialize()
+	raw, err := fromFields.Serialize()
 	if err != nil {
 		t.Fatalf("Serialize: %v", err)
 	}
@@ -32,8 +32,11 @@ func TestParseSecret_RoundTrip(t *testing.T) {
 	if !parsed.(*secret).Succeed {
 		t.Fatalf("expected succeed to survive the round trip through %q", raw)
 	}
+	if got := parsed.(*secret).Key; got != "primary" {
+		t.Fatalf("expected key to survive the round trip through %q, got %q", raw, got)
+	}
 
-	if _, err := c.ParseSecretFromValues(map[string]string{"succeed": "maybe"}); err == nil {
-		t.Fatal("expected ParseSecretFromValues to reject a non-boolean value")
+	if _, err := c.ParseSecretFromFields(map[string]string{"succeed": "maybe"}); err == nil {
+		t.Fatal("expected ParseSecretFromFields to reject a non-boolean value")
 	}
 }
