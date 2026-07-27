@@ -36,7 +36,7 @@ type Client interface {
 
 	// --- Account Management ---
 
-	CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret map[string]string) (Account, error)
+	CreateAccount(ctx context.Context, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (Account, error)
 
 	GetAccount(ctx context.Context, id AccountId) (Account, error)
 
@@ -46,7 +46,7 @@ type Client interface {
 	ListAccountsDirty(ctx context.Context) ([]Account, error)
 	ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId PublicKeyId, expired bool) ([]Account, error)
 
-	UpdateAccount(ctx context.Context, id AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret map[string]string) (Account, error)
+	UpdateAccount(ctx context.Context, id AccountId, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (Account, error)
 
 	DeleteAccounts(ctx context.Context, ids ...AccountId) error
 
@@ -107,18 +107,17 @@ type PublicKey struct {
 // Account represents an account on a target host.
 type AccountId id
 type Account struct {
-	Id           AccountId
-	Username     string
-	Host         string
-	Port         int
-	Serial       int
-	DeployMethod string           // ssh, cisco, ... // TODO rename to Connector
-	DeploySecret connector.Secret // TODO remove from client interface, only needed internally
-	DeployCache  string           // TODO remove from client interface, only needed internally
+	Id              AccountId
+	Username        string
+	Host            string
+	Port            int
+	Serial          int
+	Connector       string // ssh, cisco, ...
+	ConnectorSecret connector.Secret
 }
 
 func (a Account) String() string {
-	return fmt.Sprintf("%s %s@%s:%d", a.DeployMethod, a.Username, a.Host, a.Port)
+	return fmt.Sprintf("%s %s@%s:%d", a.Connector, a.Username, a.Host, a.Port)
 }
 
 type Link struct {

@@ -31,13 +31,13 @@ type ClientOverwrites struct {
 	DeletePublicKeys              func(ctx context.Context, ids ...client.PublicKeyId) error
 
 	// --- Account Management ---
-	CreateAccount                 func(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret map[string]string) (client.Account, error)
+	CreateAccount                 func(ctx context.Context, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error)
 	GetAccount                    func(ctx context.Context, id client.AccountId) (client.Account, error)
 	GetAccounts                   func(ctx context.Context, ids ...client.AccountId) ([]client.Account, error)
 	ListAccounts                  func(ctx context.Context) ([]client.Account, error)
 	ListAccountsDirty             func(ctx context.Context) ([]client.Account, error)
 	ListAccountsLinkedToPublicKey func(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Account, error)
-	UpdateAccount                 func(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret map[string]string) (client.Account, error)
+	UpdateAccount                 func(ctx context.Context, id client.AccountId, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error)
 	DeleteAccounts                func(ctx context.Context, ids ...client.AccountId) error
 	IsAccountDirty                func(ctx context.Context, account client.Account) (bool, error)
 
@@ -247,20 +247,20 @@ func (m *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 
 // --- Account Management ---
 
-func (m *Client) CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret map[string]string) (client.Account, error) {
+func (m *Client) CreateAccount(ctx context.Context, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error) {
 	if m.Pre != nil {
 		err := m.Pre("CreateAccount", map[string]any{
 			"ctx": ctx, "username": username, "host": host, "port": port,
-			"deploymentMethod": deploymentMethod, "deploymentSecret": deploymentSecret,
+			"connectorKey": connectorKey, "connectorSecret": connectorSecret,
 		})
 		if err != nil {
 			return client.Account{}, err
 		}
 	}
 	if m.Overwrites.CreateAccount != nil {
-		return m.Overwrites.CreateAccount(ctx, username, host, port, deploymentMethod, deploymentSecret)
+		return m.Overwrites.CreateAccount(ctx, username, host, port, connectorKey, connectorSecret)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.CreateAccount(ctx, username, host, port, deploymentMethod, deploymentSecret)
+		return m.BaseClient.CreateAccount(ctx, username, host, port, connectorKey, connectorSecret)
 	}
 	panic("Client.CreateAccount not implemented")
 }
@@ -340,20 +340,20 @@ func (m *Client) ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId 
 	panic("Client.ListAccountsLinkedToPublicKey not implemented")
 }
 
-func (m *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret map[string]string) (client.Account, error) {
+func (m *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error) {
 	if m.Pre != nil {
 		err := m.Pre("UpdateAccount", map[string]any{
 			"ctx": ctx, "id": id, "username": username, "host": host, "port": port,
-			"deploymentMethod": deploymentMethod, "deploymentSecret": deploymentSecret,
+			"connectorKey": connectorKey, "connectorSecret": connectorSecret,
 		})
 		if err != nil {
 			return client.Account{}, err
 		}
 	}
 	if m.Overwrites.UpdateAccount != nil {
-		return m.Overwrites.UpdateAccount(ctx, id, username, host, port, deploymentMethod, deploymentSecret)
+		return m.Overwrites.UpdateAccount(ctx, id, username, host, port, connectorKey, connectorSecret)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.UpdateAccount(ctx, id, username, host, port, deploymentMethod, deploymentSecret)
+		return m.BaseClient.UpdateAccount(ctx, id, username, host, port, connectorKey, connectorSecret)
 	}
 	panic("Client.UpdateAccount not implemented")
 }

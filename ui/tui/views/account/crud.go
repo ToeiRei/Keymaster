@@ -35,12 +35,12 @@ type connectorData struct {
 
 func accountConnectorData(account client.Account) connectorData {
 	values := make(map[string]string)
-	if account.DeploySecret != nil {
-		for _, field := range account.DeploySecret.Fields() {
+	if account.ConnectorSecret != nil {
+		for _, field := range account.ConnectorSecret.Fields() {
 			values[field.Key] = field.Value
 		}
 	}
-	return connectorData{account.DeployMethod, values}
+	return connectorData{account.Connector, values}
 }
 
 type recordT = struct {
@@ -129,10 +129,10 @@ func formRows[T any](c client.Client) []form.FormOpt[T] {
 		form.WithRowItem[T]("username", formelement.NewText(i18n.Text("account.form.username_label"), i18n.Text("account.form.username_placeholder"))),
 		form.WithRowItem[T]("host", formelement.NewText(i18n.Text("account.form.host_label"), i18n.Text("account.form.host_placeholder"))),
 		form.WithRowItem[T]("port", formelement.NewText(i18n.Text("account.form.port_label"), i18n.Text("account.form.port_placeholder"))),
-		form.WithRowItem[T]("connector", formelement.NewPopup(i18n.Text("account.form.deploy_method_label"),
+		form.WithRowItem[T]("connector", formelement.NewPopup(i18n.Text("account.form.connector_label"),
 			func(current connectorData, returnValue func(value connectorData) tea.Cmd) tea.Cmd {
 				return selectpopup.Open(
-					i18n.Text("account.select_deploy_method"),
+					i18n.Text("account.select_connector"),
 					func(ctx context.Context) ([]string, error) { return c.ListConnectorKeys(ctx) },
 					func(connectorKey string) tea.Cmd {
 						secretFields, err := c.ConnectorSecretFields(connectorKey)
@@ -279,7 +279,7 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 			{Title: i18n.Text("account.col_username"), View: func(r recordT) string { return r.account.Username }},
 			{Title: i18n.Text("account.col_host"), View: func(r recordT) string { return r.account.Host }},
 			{Title: i18n.Text("account.col_port"), View: func(r recordT) string { return fmt.Sprint(r.account.Port) }},
-			{Title: i18n.Text("account.col_deploy_method"), View: func(r recordT) string { return r.account.DeployMethod }},
+			{Title: i18n.Text("account.col_connector"), View: func(r recordT) string { return r.account.Connector }},
 			{Title: i18n.Text("account.col_dirty"), View: func(r recordT) string { return fmt.Sprint(r.isDirty) }},
 			{Title: i18n.Text("account.col_links"), View: func(r recordT) string {
 				return fmt.Sprintf("%d/%d", r.activeLinkCount, r.totalLinkCount)

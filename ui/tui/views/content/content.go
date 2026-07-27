@@ -156,7 +156,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 					{Title: i18n.RawText("Username"), View: func(r client.Account) string { return r.Username }},
 					{Title: i18n.RawText("Host"), View: func(r client.Account) string { return r.Host }},
 					{Title: i18n.RawText("Port"), View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
-					{Title: i18n.RawText("Deploy Method"), View: func(r client.Account) string { return r.DeployMethod }},
+					{Title: i18n.RawText("Connector"), View: func(r client.Account) string { return r.Connector }},
 				}),
 			)
 
@@ -173,14 +173,14 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 					{Title: i18n.RawText("Username"), View: func(r client.Account) string { return r.Username }},
 					{Title: i18n.RawText("Host"), View: func(r client.Account) string { return r.Host }},
 					{Title: i18n.RawText("Port"), View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
-					{Title: i18n.RawText("Deploy Method"), View: func(r client.Account) string { return r.DeployMethod }},
+					{Title: i18n.RawText("Connector"), View: func(r client.Account) string { return r.Connector }},
 				}),
 				selectpopup.WithFilter(func(filter string, records []client.Account) []client.Account {
 					return slicest.Filter(records, func(record client.Account) bool {
 						return strings.Contains(record.Username, filter) ||
 							strings.Contains(record.Host, filter) ||
 							strings.Contains(fmt.Sprint(record.Port), filter) ||
-							strings.Contains(record.DeployMethod, filter)
+							strings.Contains(record.Connector, filter)
 					})
 				}),
 			)

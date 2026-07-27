@@ -75,14 +75,14 @@ func createFormRows(c client.Client) func() []form.FormOpt[recordCreateT] {
 							{Title: i18n.Text("account.col_username"), View: func(r client.Account) string { return r.Username }},
 							{Title: i18n.Text("account.col_host"), View: func(r client.Account) string { return r.Host }},
 							{Title: i18n.Text("account.col_port"), View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
-							{Title: i18n.Text("account.col_deploy_method"), View: func(r client.Account) string { return r.DeployMethod }},
+							{Title: i18n.Text("account.col_connector"), View: func(r client.Account) string { return r.Connector }},
 						}),
 						selectpopup.WithFilter(func(filter string, records []client.Account) []client.Account {
 							return slicest.Filter(records, func(record client.Account) bool {
 								return strings.Contains(record.Username, filter) ||
 									strings.Contains(record.Host, filter) ||
 									strings.Contains(fmt.Sprint(record.Port), filter) ||
-									strings.Contains(record.DeployMethod, filter)
+									strings.Contains(record.Connector, filter)
 							})
 						}),
 					)

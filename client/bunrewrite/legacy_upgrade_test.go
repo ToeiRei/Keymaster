@@ -85,12 +85,12 @@ func TestLegacyUpgrade_ReadableThroughClient(t *testing.T) {
 	if acc.Username != "root" || acc.Host != "example.com" || acc.Port != 22 {
 		t.Fatalf("account not reshaped: %+v", acc)
 	}
-	if acc.DeployMethod != "ssh" {
-		t.Fatalf("deploy method %q would not resolve to a connector", acc.DeployMethod)
+	if acc.Connector != "ssh" {
+		t.Fatalf("connector %q would not resolve", acc.Connector)
 	}
 	// deploy_secret holds the ssh connector's JSON shape, so read the key back
 	// through the connector rather than comparing the raw column.
-	secretFields := acc.DeploySecret.Fields()
+	secretFields := acc.ConnectorSecret.Fields()
 	if len(secretFields) == 0 || secretFields[0].Key != "private_key" {
 		t.Fatalf("unexpected secret fields: %+v", secretFields)
 	}
