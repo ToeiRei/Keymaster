@@ -58,7 +58,7 @@ func TestMakeAuthorizedKeys_Golden(t *testing.T) {
 }
 
 // The payload hash in the header covers only the user keys, so re-keying the
-// managed line must not move it. This is what lets a rotation be diffed.
+// managed line must not move it. This is what lets a secret update be diffed.
 func TestMakeAuthorizedKeys_PayloadHashIgnoresTheManagedKey(t *testing.T) {
 	c := &Connector{}
 	records := goldenRecords()

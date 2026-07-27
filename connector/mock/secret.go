@@ -16,7 +16,7 @@ import (
 // secret decides whether the simulated connection succeeds. Key is arbitrary
 // identity material with no effect on reachability: it stands in for the public
 // half a real connector installs on the target, so two working secrets can still
-// be told apart and a rotation between them changes what [Connector.hash] sees.
+// be told apart and swapping between them changes what [Connector.hash] sees.
 type secret struct {
 	Succeed bool   `json:"succeed"`
 	Key     string `json:"key,omitempty"`

@@ -31,14 +31,14 @@ func (n *connection) Deploy(ctx context.Context, deployment connector.Deployment
 		return err
 	}
 
-	progress <- connector.Progress{Progress: 0.5, Status: i18n.Text("connector.status.uploading_keys")}
+	progress <- connector.Progress{0.5, i18n.Text("connector.status.uploading_keys")}
 	hash, err := n.connector.hash(deployment)
 	if err != nil {
 		return err
 	}
 	n.hash = hash
 
-	progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.done")}
+	progress <- connector.Progress{1, i18n.Text("connector.status.done")}
 	return nil
 }
 
@@ -50,14 +50,14 @@ func (n *connection) Verify(ctx context.Context, deployment connector.Deployment
 		return false, err
 	}
 
-	progress <- connector.Progress{Progress: 0.5, Status: i18n.Text("connector.status.reading_keys")}
+	progress <- connector.Progress{0.5, i18n.Text("connector.status.reading_keys")}
 	hash, err := n.connector.hash(deployment)
 	if err != nil {
 		return false, err
 	}
 	n.hash = hash
 
-	progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.verified")}
+	progress <- connector.Progress{1, i18n.Text("connector.status.verified")}
 	return true, nil
 }
 

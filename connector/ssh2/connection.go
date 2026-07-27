@@ -54,19 +54,19 @@ func (n *connection) Deploy(ctx context.Context, deployment connector.Deployment
 		return err
 	}
 
-	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.rendering_keys")}
+	progress <- connector.Progress{0.3, i18n.Text("connector.status.rendering_keys")}
 	authorizedKeys, err := n.connector.renderAuthorizedKeys(deployment)
 	if err != nil {
 		return err
 	}
 
-	progress <- connector.Progress{Progress: 0.7, Status: i18n.Text("connector.status.uploading_keys")}
+	progress <- connector.Progress{0.7, i18n.Text("connector.status.uploading_keys")}
 	if err := n.client.DeployAuthorizedKeys(authorizedKeys); err != nil {
 		return i18n.WrapError(err, "errors.connector.deploy_keys")
 	}
 	n.hash = n.connector.hashAuthorizedKeys(authorizedKeys)
 
-	progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.done")}
+	progress <- connector.Progress{1, i18n.Text("connector.status.done")}
 	return nil
 }
 
@@ -75,13 +75,13 @@ func (n *connection) Verify(ctx context.Context, deployment connector.Deployment
 		return false, err
 	}
 
-	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.rendering_keys")}
+	progress <- connector.Progress{0.3, i18n.Text("connector.status.rendering_keys")}
 	expected, err := n.connector.renderAuthorizedKeys(deployment)
 	if err != nil {
 		return false, err
 	}
 
-	progress <- connector.Progress{Progress: 0.7, Status: i18n.Text("connector.status.reading_keys")}
+	progress <- connector.Progress{0.7, i18n.Text("connector.status.reading_keys")}
 	remoteBytes, err := n.client.GetAuthorizedKeys()
 	if err != nil {
 		return false, i18n.WrapError(err, "errors.connector.read_keys")
@@ -93,9 +93,9 @@ func (n *connection) Verify(ctx context.Context, deployment connector.Deployment
 
 	ok := n.hash == n.connector.hashAuthorizedKeys(expected)
 	if ok {
-		progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.verified")}
+		progress <- connector.Progress{1, i18n.Text("connector.status.verified")}
 	} else {
-		progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.drift_detected")}
+		progress <- connector.Progress{1, i18n.Text("connector.status.drift_detected")}
 	}
 
 	return ok, nil

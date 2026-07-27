@@ -17,7 +17,7 @@ import (
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/connector"
 	_ "github.com/toeirei/keymaster/connector/mock" // activate the mock connector so ListConnectorKeys reports it
-	_ "github.com/toeirei/keymaster/connector/ssh2"  // activate the ssh connector so ListConnectorKeys reports it
+	_ "github.com/toeirei/keymaster/connector/ssh2" // activate the ssh connector so ListConnectorKeys reports it
 	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/util/slicest"
 )
@@ -334,24 +334,39 @@ func (c *Client) ListAccountsDirty(ctx context.Context) ([]client.Account, error
 	})
 }
 
-func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error) {
-	secret, err := newSecret(connectorKey, connectorSecret)
-	if err != nil {
-		return client.Account{}, err
-	}
-
+func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int) (client.Account, error) {
 	if account, ok := c.accounts[id]; ok {
 		account.Username = username
 		account.Host = host
 		account.Port = port
-		account.Connector = connectorKey
-		account.ConnectorSecret = secret
 		c.accounts[id] = account
 
 		_ = c.writeAuditLog("account.update", client.AuditLogDetails{{"account", auditAccount(account)}})
 		return account, nil
 	}
 	return client.Account{}, fmt.Errorf("account with id %v not found", id)
+}
+
+func (c *Client) UpdateAccountConnectorForce(ctx context.Context, id client.AccountId, connectorKey string, connectorSecret map[string]string) (client.Account, error) {
+	secret, err := newSecret(connectorKey, connectorSecret)
+	if err != nil {
+		return client.Account{}, err
+	}
+
+	account, ok := c.accounts[id]
+	if !ok {
+		return client.Account{}, fmt.Errorf("account with id %v not found", id)
+	}
+
+	account.Connector = connectorKey
+	account.ConnectorSecret = secret
+	c.accounts[id] = account
+	// Nothing has confirmed what the target holds, so drop the cache and let the
+	// account read dirty until the next deploy or verify.
+	delete(c.deployCaches, id)
+
+	_ = c.writeAuditLog("account.update.connector_force", client.AuditLogDetails{{"account", auditAccount(account)}})
+	return account, nil
 }
 
 func (c *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) error {
@@ -419,7 +434,47 @@ func (c *Client) DeleteLink(ctx context.Context, accountId client.AccountId, pub
 	return nil
 }
 
-// --- Deploy & Verify ---
+// --- Deploy & Verify & Secret Update ---
+
+// UpdateAccountSecret simulates the secret update: ticks, swaps the stored secret,
+// then invalidates the cache the way a real confirmation would replace it. There
+// is no rollback bookkeeping to keep because there is no target that could end up
+// holding the wrong secret.
+func (c *Client) UpdateAccountSecret(ctx context.Context, userRequester client.UserRequester, progress chan<- client.UpdateSecretProgressAccount, accountId client.AccountId, connectorSecret map[string]string) error {
+	account, ok := c.accounts[accountId]
+	if !ok {
+		return fmt.Errorf("account with id %v not found", accountId)
+	}
+
+	secret, err := newSecret(account.Connector, connectorSecret)
+	if err != nil {
+		return err
+	}
+
+	for _, step := range []struct {
+		fraction float64
+		status   string
+	}{
+		{0.1, "client.status.connecting"},
+		{0.5, "client.status.deploying"},
+		{0.6, "client.status.confirming_secret"},
+		{0.95, "client.status.verifying"},
+	} {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		time.Sleep(time.Millisecond * 100)
+		progress <- client.UpdateSecretProgressAccount{step.fraction, i18n.Text(step.status)}
+	}
+
+	account.ConnectorSecret = secret
+	c.accounts[accountId] = account
+	delete(c.deployCaches, accountId)
+
+	progress <- client.UpdateSecretProgressAccount{1, i18n.Text("client.status.finished")}
+	_ = c.writeAuditLog("account.update.secret", client.AuditLogDetails{{"account", auditAccount(account)}})
+	return nil
+}
 
 func (c *Client) DeployAccount(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccount, accountId client.AccountId) error {
 	return projectSingleAccount(accountId, progress, func(p chan<- client.ProgressAccounts) error {
@@ -442,7 +497,7 @@ func (c *Client) DeployAccounts(ctx context.Context, userRequester client.UserRe
 
 	deployProgress := client.DeployProgressAccounts{
 		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.ProgressAccountWithError) {
-			return account.Id, &client.ProgressAccountWithError{ProgressAccount: client.ProgressAccount{Progress: 0, Status: i18n.Text("client.status.not_started")}}
+			return account.Id, &client.ProgressAccountWithError{ProgressAccount: client.ProgressAccount{0, i18n.Text("client.status.not_started")}}
 		}),
 	}
 
@@ -538,7 +593,7 @@ func (c *Client) VerifyAccounts(ctx context.Context, userRequester client.UserRe
 
 	verifyProgress := client.VerifyProgressAccounts{
 		Accounts: slicest.ToMap(accounts, func(account client.Account) (client.AccountId, *client.ProgressAccountWithError) {
-			return account.Id, &client.ProgressAccountWithError{ProgressAccount: client.ProgressAccount{Progress: 0, Status: i18n.Text("client.status.not_started")}}
+			return account.Id, &client.ProgressAccountWithError{ProgressAccount: client.ProgressAccount{0, i18n.Text("client.status.not_started")}}
 		}),
 	}
 

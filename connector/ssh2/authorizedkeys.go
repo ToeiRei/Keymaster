@@ -33,7 +33,7 @@ const expiryTimeLayout = "20060102150405"
 // so what Deploy uploads, what Verify compares against and what VerifyOffline
 // hashes cannot drift apart. The public key comes from the deployment's secret
 // rather than the connection's: keying a deployment to another secret is how a
-// secret rotation reuses an ordinary deploy.
+// secret update reuses an ordinary deploy.
 func (c *Connector) renderAuthorizedKeys(deployment connector.Deployment) (string, error) {
 	connectorSecret, err := narrowSecret(deployment.Secret)
 	if err != nil {

@@ -37,7 +37,8 @@ type ClientOverwrites struct {
 	ListAccounts                  func(ctx context.Context) ([]client.Account, error)
 	ListAccountsDirty             func(ctx context.Context) ([]client.Account, error)
 	ListAccountsLinkedToPublicKey func(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Account, error)
-	UpdateAccount                 func(ctx context.Context, id client.AccountId, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error)
+	UpdateAccount                 func(ctx context.Context, id client.AccountId, username string, host string, port int) (client.Account, error)
+	UpdateAccountConnectorForce   func(ctx context.Context, id client.AccountId, connectorKey string, connectorSecret map[string]string) (client.Account, error)
 	DeleteAccounts                func(ctx context.Context, ids ...client.AccountId) error
 	IsAccountDirty                func(ctx context.Context, account client.Account) (bool, error)
 
@@ -49,11 +50,12 @@ type ClientOverwrites struct {
 	UpdateLink            func(ctx context.Context, accountId client.AccountId, publicKeyId client.PublicKeyId, expiresAt time.Time) (client.Link, error)
 	DeleteLink            func(ctx context.Context, accountId client.AccountId, publicKeyId client.PublicKeyId) error
 
-	// --- Deploy & Verify ---
-	DeployAccount  func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccount, accountId client.AccountId) error
-	DeployAccounts func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccounts, accountIds ...client.AccountId) error
-	VerifyAccount  func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.VerifyProgressAccount, accountId client.AccountId) error
-	VerifyAccounts func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.VerifyProgressAccounts, accountIds ...client.AccountId) error
+	// --- Deploy & Verify & Secret Update ---
+	UpdateAccountSecret func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.UpdateSecretProgressAccount, accountId client.AccountId, connectorSecret map[string]string) error
+	DeployAccount       func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccount, accountId client.AccountId) error
+	DeployAccounts      func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccounts, accountIds ...client.AccountId) error
+	VerifyAccount       func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.VerifyProgressAccount, accountId client.AccountId) error
+	VerifyAccounts      func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.VerifyProgressAccounts, accountIds ...client.AccountId) error
 
 	// --- Other ---
 	ListAuditLogs         func(ctx context.Context, offset int, limit int) ([]client.AuditLog, error)
@@ -340,22 +342,38 @@ func (m *Client) ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId 
 	panic("Client.ListAccountsLinkedToPublicKey not implemented")
 }
 
-func (m *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error) {
+func (m *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int) (client.Account, error) {
 	if m.Pre != nil {
 		err := m.Pre("UpdateAccount", map[string]any{
 			"ctx": ctx, "id": id, "username": username, "host": host, "port": port,
-			"connectorKey": connectorKey, "connectorSecret": connectorSecret,
 		})
 		if err != nil {
 			return client.Account{}, err
 		}
 	}
 	if m.Overwrites.UpdateAccount != nil {
-		return m.Overwrites.UpdateAccount(ctx, id, username, host, port, connectorKey, connectorSecret)
+		return m.Overwrites.UpdateAccount(ctx, id, username, host, port)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.UpdateAccount(ctx, id, username, host, port, connectorKey, connectorSecret)
+		return m.BaseClient.UpdateAccount(ctx, id, username, host, port)
 	}
 	panic("Client.UpdateAccount not implemented")
+}
+
+func (m *Client) UpdateAccountConnectorForce(ctx context.Context, id client.AccountId, connectorKey string, connectorSecret map[string]string) (client.Account, error) {
+	if m.Pre != nil {
+		err := m.Pre("UpdateAccountConnectorForce", map[string]any{
+			"ctx": ctx, "id": id, "connectorKey": connectorKey, "connectorSecret": connectorSecret,
+		})
+		if err != nil {
+			return client.Account{}, err
+		}
+	}
+	if m.Overwrites.UpdateAccountConnectorForce != nil {
+		return m.Overwrites.UpdateAccountConnectorForce(ctx, id, connectorKey, connectorSecret)
+	} else if m.BaseClient != nil {
+		return m.BaseClient.UpdateAccountConnectorForce(ctx, id, connectorKey, connectorSecret)
+	}
+	panic("Client.UpdateAccountConnectorForce not implemented")
 }
 
 func (m *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) error {
@@ -480,7 +498,24 @@ func (m *Client) DeleteLink(ctx context.Context, accountId client.AccountId, pub
 	panic("Client.DeleteLink not implemented")
 }
 
-// --- Deploy & Verify ---
+// --- Deploy & Verify & Secret Update ---
+
+func (m *Client) UpdateAccountSecret(ctx context.Context, userRequester client.UserRequester, progress chan<- client.UpdateSecretProgressAccount, accountId client.AccountId, connectorSecret map[string]string) error {
+	if m.Pre != nil {
+		err := m.Pre("UpdateAccountSecret", map[string]any{
+			"ctx": ctx, "userRequester": userRequester, "accountId": accountId, "connectorSecret": connectorSecret,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	if m.Overwrites.UpdateAccountSecret != nil {
+		return m.Overwrites.UpdateAccountSecret(ctx, userRequester, progress, accountId, connectorSecret)
+	} else if m.BaseClient != nil {
+		return m.BaseClient.UpdateAccountSecret(ctx, userRequester, progress, accountId, connectorSecret)
+	}
+	panic("Client.UpdateAccountSecret not implemented")
+}
 
 func (m *Client) DeployAccount(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccount, accountId client.AccountId) error {
 	if m.Pre != nil {

@@ -46,7 +46,8 @@ type Client interface {
 	ListAccountsDirty(ctx context.Context) ([]Account, error)
 	ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId PublicKeyId, expired bool) ([]Account, error)
 
-	UpdateAccount(ctx context.Context, id AccountId, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (Account, error)
+	UpdateAccount(ctx context.Context, id AccountId, username string, host string, port int) (Account, error)
+	UpdateAccountConnectorForce(ctx context.Context, id AccountId, connectorKey string, connectorSecret map[string]string) (Account, error)
 
 	DeleteAccounts(ctx context.Context, ids ...AccountId) error
 
@@ -65,7 +66,9 @@ type Client interface {
 
 	DeleteLink(ctx context.Context, accountId AccountId, publicKeyId PublicKeyId) error
 
-	// --- Deploy & Verify ---
+	// --- Deploy & Verify & Secret Update ---
+
+	UpdateAccountSecret(ctx context.Context, userRequester UserRequester, progress chan<- UpdateSecretProgressAccount, accountId AccountId, connectorSecret map[string]string) error
 
 	DeployAccount(ctx context.Context, userRequester UserRequester, progress chan<- DeployProgressAccount, accountId AccountId) error
 
@@ -170,13 +173,14 @@ func (a AuditLogMetadata) String() string {
 }
 
 type (
-	ProgressAccount        = connector.Progress
-	DeployProgressAccount  = ProgressAccount
-	VerifyProgressAccount  = ProgressAccount
-	DeployProgressAccounts = ProgressAccounts
-	VerifyProgressAccounts = ProgressAccounts
-	UserRequester          = connector.UserRequester
-	SecretField            = connector.SecretField
+	ProgressAccount             = connector.Progress
+	DeployProgressAccount       = ProgressAccount
+	VerifyProgressAccount       = ProgressAccount
+	UpdateSecretProgressAccount = ProgressAccount
+	DeployProgressAccounts      = ProgressAccounts
+	VerifyProgressAccounts      = ProgressAccounts
+	UserRequester               = connector.UserRequester
+	SecretField                 = connector.SecretField
 )
 
 type ProgressAccountWithError struct {

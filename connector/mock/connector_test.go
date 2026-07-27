@@ -12,8 +12,8 @@ import (
 
 func testDeployment(succeed bool) connector.Deployment {
 	return connector.Deployment{
-		Secret: &secret{succeed, "primary"},
-		Records: []connector.DeployRecord{{
+		&secret{succeed, "primary"},
+		[]connector.DeployRecord{{
 			Algorithm: "ssh-ed25519",
 			Data:      "AAAAC3NzaC1lZDI1NTE5AAAAIexample",
 			Comment:   "alice@example",
@@ -81,7 +81,7 @@ func TestVerifyOffline(t *testing.T) {
 }
 
 // The secret is part of the hash because a real connector installs its public
-// half on the target, so a rotation has to look like a change.
+// half on the target, so a secret update has to look like a change.
 func TestHash_ChangesWithTheSecret(t *testing.T) {
 	c := &Connector{}
 

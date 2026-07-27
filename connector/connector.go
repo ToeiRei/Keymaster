@@ -47,7 +47,7 @@ type Connector interface {
 // Deployment is the state a target should be in: the records to install and the
 // secret whose public material identifies Keymaster on that target. A deployment
 // is normally keyed to the secret its connection authenticated with; keying it to
-// a different one is what makes a secret rotation an ordinary deploy.
+// a different one is what makes a secret update an ordinary deploy.
 type Deployment struct {
 	Secret  Secret
 	Records []DeployRecord

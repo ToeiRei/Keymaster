@@ -75,7 +75,7 @@ func TestConnectionDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 }
 
 // A deployment keyed to another secret installs that secret's public half, which
-// is what makes a rotation an ordinary deploy over the old credential.
+// is what makes a secret update an ordinary deploy over the old credential.
 func TestConnectionDeploy_KeyedToAnotherSecret(t *testing.T) {
 	c := &Connector{}
 	oldSecret := testSecret(t)

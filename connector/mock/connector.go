@@ -71,7 +71,7 @@ func (c *Connector) VerifyOffline(ctx context.Context, cache connector.Cache, de
 // hash returns a deterministic SHA256 hex fingerprint of a deployment, so
 // repeated calls with the same records and secret produce the same cache value.
 // The secret is part of it because a real connector installs the secret's public
-// material alongside the records, so rotating the secret has to change the hash.
+// material alongside the records, so updating the secret has to change the hash.
 func (c *Connector) hash(deployment connector.Deployment) (string, error) {
 	connectorSecret, err := narrowSecret(deployment.Secret)
 	if err != nil {
