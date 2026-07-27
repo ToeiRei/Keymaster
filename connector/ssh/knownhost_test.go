@@ -60,12 +60,15 @@ func TestResolveKnownHost_MatchNeedsNoPrompt(t *testing.T) {
 	// counts as a match.
 	stored := marshalKnownHost(key) + "\n"
 
-	knownHost, err := resolveKnownHost("host.example:22", stored, requester, time.Second)
+	hostKey, knownHost, err := resolveKnownHost("host.example:22", stored, requester, time.Second)
 	if err != nil {
 		t.Fatalf("resolveKnownHost: %v", err)
 	}
 	if knownHost != stored {
 		t.Fatalf("expected the stored known host to be returned untouched, got %q", knownHost)
+	}
+	if marshalKnownHost(hostKey) != marshalKnownHost(key) {
+		t.Fatalf("expected the presented key to be pinned for the connection")
 	}
 	if len(requester.asked) != 0 {
 		t.Fatalf("expected no user request for a matching host key, got %d", len(requester.asked))
@@ -93,12 +96,17 @@ func TestResolveKnownHost_UserChoices(t *testing.T) {
 			stubHostKeyProbe(t, key, nil)
 			requester := &fakeUserRequester{choice: tc.choice}
 
-			knownHost, err := resolveKnownHost("host.example:22", tc.stored, requester, time.Second)
+			hostKey, knownHost, err := resolveKnownHost("host.example:22", tc.stored, requester, time.Second)
 			if err != nil {
 				t.Fatalf("resolveKnownHost: %v", err)
 			}
 			if knownHost != tc.want {
 				t.Fatalf("known host = %q, want %q", knownHost, tc.want)
+			}
+			// Allowing once leaves the cache alone but still has to let the
+			// connection through with the key the user just approved.
+			if marshalKnownHost(hostKey) != presented {
+				t.Fatalf("pinned key = %q, want the presented %q", marshalKnownHost(hostKey), presented)
 			}
 			if len(requester.asked) != 1 {
 				t.Fatalf("expected exactly one user request, got %d", len(requester.asked))
@@ -136,12 +144,15 @@ func TestResolveKnownHost_AbortsWithoutConsent(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			stubHostKeyProbe(t, key, nil)
 
-			knownHost, err := resolveKnownHost("host.example:22", tc.stored, tc.requester, time.Second)
+			hostKey, knownHost, err := resolveKnownHost("host.example:22", tc.stored, tc.requester, time.Second)
 			if err == nil {
 				t.Fatalf("expected an error, got known host %q", knownHost)
 			}
 			if knownHost != "" {
 				t.Fatalf("expected no known host on abort, got %q", knownHost)
+			}
+			if hostKey != nil {
+				t.Fatalf("expected no pinned host key on abort")
 			}
 		})
 	}
@@ -151,7 +162,7 @@ func TestResolveKnownHost_ProbeFailurePropagates(t *testing.T) {
 	stubHostKeyProbe(t, nil, errors.New("dial tcp: connection refused"))
 
 	requester := &fakeUserRequester{choice: hostKeyTrust}
-	if _, err := resolveKnownHost("host.example:22", "", requester, time.Second); err == nil {
+	if _, _, err := resolveKnownHost("host.example:22", "", requester, time.Second); err == nil {
 		t.Fatal("expected the probe failure to propagate")
 	}
 	if len(requester.asked) != 0 {

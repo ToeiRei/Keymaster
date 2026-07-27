@@ -61,27 +61,28 @@ func probeHostKey(addr string, timeout time.Duration) (ssh.PublicKey, error) {
 	return presented, nil
 }
 
-// resolveKnownHost pins the host key of the target at addr. It returns the
-// known host to store in the cache: the pinned one when the target still
+// resolveKnownHost pins the host key of the target at addr. It returns the key
+// the connection must accept — always the one the target just presented — and
+// the known host to store in the cache: the pinned one when the target still
 // presents it, the newly presented one when the user trusts it, and the pinned
 // one unchanged when the user allows the connection just this once.
 //
 // A cache with no known host is a target that has never been reached — it gets
 // the same prompt as a mismatch, only worded as a first contact rather than a
 // warning. Declining, cancelling, or having no one to ask aborts.
-func resolveKnownHost(addr, knownHost string, userRequester connector.UserRequester, timeout time.Duration) (string, error) {
+func resolveKnownHost(addr, knownHost string, userRequester connector.UserRequester, timeout time.Duration) (ssh.PublicKey, string, error) {
 	presentedKey, err := hostKeyProbe(addr, timeout)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 	presented := marshalKnownHost(presentedKey)
 
 	if strings.TrimSpace(knownHost) == presented {
-		return knownHost, nil
+		return presentedKey, knownHost, nil
 	}
 
 	if userRequester == nil {
-		return "", knownHostError(addr, knownHost, presentedKey)
+		return nil, "", knownHostError(addr, knownHost, presentedKey)
 	}
 
 	fingerprint := ssh.FingerprintSHA256(presentedKey)
@@ -100,11 +101,11 @@ func resolveKnownHost(addr, knownHost string, userRequester connector.UserReques
 
 	switch userRequester.RequestChoice(choices) {
 	case hostKeyAllowOnce:
-		return knownHost, nil
+		return presentedKey, knownHost, nil
 	case hostKeyTrust:
-		return presented, nil
+		return presentedKey, presented, nil
 	default:
-		return "", knownHostError(addr, knownHost, presentedKey)
+		return nil, "", knownHostError(addr, knownHost, presentedKey)
 	}
 }
 

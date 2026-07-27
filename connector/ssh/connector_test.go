@@ -64,6 +64,19 @@ func TestConnectorDeploy_WritesRenderedAuthorizedKeysToRemote(t *testing.T) {
 		if config == nil {
 			t.Fatal("expected connection config to be provided")
 		}
+		// The resolved host key has to be pinned on the config: core/deploy's own
+		// callback would look the host up in the global core/db store, which the
+		// bunrewrite client never initializes.
+		if config.HostKeyCallback == nil {
+			t.Error("expected the resolved host key to be pinned on the connection config")
+		} else {
+			if err := config.HostKeyCallback("host.example:22", nil, hostKey); err != nil {
+				t.Errorf("pinned callback rejected the resolved host key: %v", err)
+			}
+			if err := config.HostKeyCallback("host.example:22", nil, testHostKey(t)); err == nil {
+				t.Error("pinned callback accepted a host key other than the resolved one")
+			}
+		}
 		if isBootstrap {
 			t.Fatal("expected regular deploy path, not bootstrap")
 		}

@@ -81,10 +81,11 @@ func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData,
 	addr := canonicalSSHAddress(connectionData.Host, connectionData.Port)
 
 	progress <- connector.Progress{Progress: 0.2, Status: i18n.Text("connector.status.checking_host_key")}
-	knownHost, err := resolveKnownHost(addr, cache.KnownHost, userRequester, config.ConnectionTimeout)
+	hostKey, knownHost, err := resolveKnownHost(addr, cache.KnownHost, userRequester, config.ConnectionTimeout)
 	if err != nil {
 		return nil, err
 	}
+	config.HostKeyCallback = ssh.FixedHostKey(hostKey)
 
 	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.connecting")}
 	client, err := newDeployer(addr, connectionData.User, security.FromString(secret.PrivateKey), secret.passphraseBytes(), config, false)
@@ -128,10 +129,11 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 	addr := canonicalSSHAddress(connectionData.Host, connectionData.Port)
 
 	progress <- connector.Progress{Progress: 0.2, Status: i18n.Text("connector.status.checking_host_key")}
-	knownHost, err := resolveKnownHost(addr, cache.KnownHost, userRequester, config.ConnectionTimeout)
+	hostKey, knownHost, err := resolveKnownHost(addr, cache.KnownHost, userRequester, config.ConnectionTimeout)
 	if err != nil {
 		return false, nil, err
 	}
+	config.HostKeyCallback = ssh.FixedHostKey(hostKey)
 
 	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.connecting")}
 	client, err := newDeployer(addr, connectionData.User, security.FromString(secret.PrivateKey), secret.passphraseBytes(), config, false)
