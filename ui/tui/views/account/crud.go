@@ -11,6 +11,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/components/router"
@@ -183,7 +184,12 @@ func formRows[T any](c client.Client) []form.FormOpt[T] {
 					}),
 				)
 			},
-			func(data connectorData) string { return data.Key },
+			func(data connectorData) string {
+				if data.Key == "" {
+					return lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("240")).Render(i18n.T("crud.none"))
+				}
+				return data.Key
+			},
 		)),
 	}
 }

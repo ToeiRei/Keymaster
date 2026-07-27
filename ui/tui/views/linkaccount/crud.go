@@ -48,7 +48,7 @@ type filterT = struct{}
 
 func publicKeyToString(publicKey client.PublicKey) string {
 	if publicKey == util.NewZero[client.PublicKey]() {
-		return lipgloss.NewStyle().Italic(true).Render(i18n.T("link.none"))
+		return lipgloss.NewStyle().Italic(true).Render(i18n.T("crud.none"))
 	}
 	if publicKey.Comment != "" {
 		return fmt.Sprintf("%s (%s)", publicKey.Comment, publicKey.Algorithm)

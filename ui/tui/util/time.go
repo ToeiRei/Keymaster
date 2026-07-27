@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/toeirei/keymaster/ui/i18n"
 )
 
 const (
@@ -53,10 +54,10 @@ func StringifyTime(value time.Time) string {
 }
 
 // RenderExpiry renders an expiry time for display in tables: an unset (zero)
-// expiry shows a greyed-out, italic "never" instead of a blank cell.
+// expiry shows a greyed-out, italic "never" (localized) instead of a blank cell.
 func RenderExpiry(value time.Time) string {
 	if value.IsZero() {
-		return lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("240")).Render("never")
+		return lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("240")).Render(i18n.T("crud.never"))
 	}
 	return StringifyTimeZero(value)
 }

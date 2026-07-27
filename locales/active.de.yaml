@@ -811,6 +811,8 @@ crud.select_generic: "Bitte ein %s auswählen."
 crud.select_to_duplicate: "Bitte ein %s zum Duplizieren auswählen."
 crud.discard_guard_question: "Sie haben ungespeicherte Änderungen. Möchten Sie diese verwerfen?"
 crud.btn_discard: "Verwerfen"
+crud.never: "nie"
+crud.none: "keiner"
 
 # --- Kontenansicht (neue komponentenbasierte TUI) ---
 account.entity_singular: "Konto"
@@ -829,8 +831,8 @@ account.form.host_label: "Host"
 account.form.host_placeholder: "IP/Domain zum Verbinden"
 account.form.port_label: "Port"
 account.form.port_placeholder: "z. B. 22"
-account.form.deploy_method_label: "Deploy-Methode"
-account.select_deploy_method: "Deploy-Methode auswählen"
+account.form.connector_label: "Konnektor"
+account.select_connector: "Konnektor auswählen"
 
 # --- Ansicht öffentliche Schlüssel ---
 public_key.entity_singular: "Öffentlicher Schlüssel"

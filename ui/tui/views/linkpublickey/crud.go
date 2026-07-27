@@ -48,7 +48,7 @@ type filterT = struct{}
 
 func accountToString(account client.Account) string {
 	if account == util.NewZero[client.Account]() {
-		return lipgloss.NewStyle().Italic(true).Render(i18n.T("link.none"))
+		return lipgloss.NewStyle().Italic(true).Render(i18n.T("crud.none"))
 	}
 	return account.String()
 }

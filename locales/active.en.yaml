@@ -694,6 +694,8 @@ crud.select_generic: "Please select a %s."
 crud.select_to_duplicate: "Please select a %s to duplicate."
 crud.discard_guard_question: "You have unsaved changes. Do you want to discard them?"
 crud.btn_discard: "Discard"
+crud.never: "never"
+crud.none: "none"
 
 # --- Account view (new component-based TUI) ---
 account.entity_singular: "Account"
@@ -712,8 +714,8 @@ account.form.host_label: "Host"
 account.form.host_placeholder: "ip/domain to connect to"
 account.form.port_label: "Port"
 account.form.port_placeholder: "eg. 22"
-account.form.deploy_method_label: "Deploy Method"
-account.select_deploy_method: "Select Deploy Method"
+account.form.connector_label: "Connector"
+account.select_connector: "Select Connector"
 
 # --- Public key view ---
 public_key.entity_singular: "Public Key"

@@ -755,6 +755,8 @@ crud.select_generic: "Ċēos ān %s."
 crud.select_to_duplicate: "Ċēos ān %s tō twǣmenne."
 crud.discard_guard_question: "Þū hæfst ungehealdene onwendunga. Ƿilt þū hīe āweorpan?"
 crud.btn_discard: "Āweorpan"
+crud.never: "nǣfre"
+crud.none: "nān"
 
 # --- Rǣdmanna scēaƿung (nīƿe TUI) ---
 account.entity_singular: "Rǣdmann"
@@ -773,8 +775,8 @@ account.form.host_label: "Ƿeard"
 account.form.host_placeholder: "IP/dēl tō ġebindenne"
 account.form.port_label: "Port"
 account.form.port_placeholder: "bysen: 22"
-account.form.deploy_method_label: "Sendecræft"
-account.select_deploy_method: "Ċēos sendecræft"
+account.form.connector_label: "Ġebindend"
+account.select_connector: "Ċēos ġebindend"
 
 # --- Openra cǣgena scēaƿung ---
 public_key.entity_singular: "Open Cǣġ"
