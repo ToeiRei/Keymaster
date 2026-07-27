@@ -6,8 +6,11 @@ package migrations
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"database/sql"
 	"encoding/json"
+	"encoding/pem"
 	"slices"
 	"strings"
 	"testing"
@@ -15,9 +18,43 @@ import (
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 	"github.com/uptrace/bun/migrate"
+	"golang.org/x/crypto/ssh"
 
 	_ "modernc.org/sqlite"
 )
+
+// testHostKey renders a real host key the way the legacy known_hosts writer did,
+// with the trailing newline MarshalAuthorizedKey appends. The backfill only
+// salvages keys it can parse, so these seeds cannot be stand-in strings.
+func testHostKey(t *testing.T) string {
+	t.Helper()
+
+	publicKey, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("generate host key: %v", err)
+	}
+	hostKey, err := ssh.NewPublicKey(publicKey)
+	if err != nil {
+		t.Fatalf("wrap host key: %v", err)
+	}
+	return string(ssh.MarshalAuthorizedKey(hostKey))
+}
+
+// testPrivateKeyPEM is a real system key, so the backfill can derive the public
+// key it stores alongside it.
+func testPrivateKeyPEM(t *testing.T) string {
+	t.Helper()
+
+	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	block, err := ssh.MarshalPrivateKey(privateKey, "")
+	if err != nil {
+		t.Fatalf("marshal key: %v", err)
+	}
+	return string(pem.EncodeToMemory(block))
+}
 
 func openMemBunDB(t *testing.T) *bun.DB {
 	t.Helper()
@@ -229,25 +266,31 @@ func TestBackfill_SalvagesKnownHostsIntoConnectorCache(t *testing.T) {
 	db := openMemBunDB(t)
 	seedCutoverSchema(t, db)
 
+	canonical, hostonly, defaultport := testHostKey(t), testHostKey(t), testHostKey(t)
+
 	// ssh.MarshalAuthorizedKey leaves a trailing newline; the backfill trims it
-	exec(t, db, "INSERT INTO known_hosts (hostname, key) VALUES ('canonical.com:2222', 'ssh-ed25519 AAAAcanonical\n')")
+	exec(t, db, "INSERT INTO known_hosts (hostname, key) VALUES ('canonical.com:2222', ?)", canonical)
 	// the pinned-key path stored the host without a port
-	exec(t, db, "INSERT INTO known_hosts (hostname, key) VALUES ('hostonly.com', 'ssh-ed25519 AAAAhostonly')")
+	exec(t, db, "INSERT INTO known_hosts (hostname, key) VALUES ('hostonly.com', ?)", strings.TrimSpace(hostonly))
 
 	exec(t, db, "INSERT INTO accounts (username, host, port) VALUES ('a', 'canonical.com', '2222')")
 	exec(t, db, "INSERT INTO accounts (username, host) VALUES ('b', 'hostonly.com')")
 	// a legacy account with no port must still match a canonical :22 entry
-	exec(t, db, "INSERT INTO known_hosts (hostname, key) VALUES ('defaultport.com:22', 'ssh-ed25519 AAAAdefaultport')")
+	exec(t, db, "INSERT INTO known_hosts (hostname, key) VALUES ('defaultport.com:22', ?)", defaultport)
 	exec(t, db, "INSERT INTO accounts (username, host) VALUES ('c', 'defaultport.com')")
 	// no known host: the cache must stay empty so the account reports dirty
 	exec(t, db, "INSERT INTO accounts (username, host, port) VALUES ('d', 'untrusted.com', '22')")
+	// a key the connector could not parse is worse than none: it would make the
+	// account unreadable rather than merely unverified, so it is skipped
+	exec(t, db, "INSERT INTO known_hosts (hostname, key) VALUES ('corrupt.com:22', 'ssh-ed25519 AAAAcorrupt')")
+	exec(t, db, "INSERT INTO accounts (username, host) VALUES ('e', 'corrupt.com')")
 
 	migrateAll(t, db)
 
 	for _, tc := range []struct{ username, wantKnownHost string }{
-		{"a", "ssh-ed25519 AAAAcanonical"},
-		{"b", "ssh-ed25519 AAAAhostonly"},
-		{"c", "ssh-ed25519 AAAAdefaultport"},
+		{"a", strings.TrimSpace(canonical)},
+		{"b", strings.TrimSpace(hostonly)},
+		{"c", strings.TrimSpace(defaultport)},
 	} {
 		_, cache := connectorCache(t, db, tc.username)
 		if cache.KnownHost != tc.wantKnownHost {
@@ -257,6 +300,41 @@ func TestBackfill_SalvagesKnownHostsIntoConnectorCache(t *testing.T) {
 
 	if raw, _ := connectorCache(t, db, "d"); raw != "" {
 		t.Errorf("account without a known host got a cache: %q", raw)
+	}
+	if raw, _ := connectorCache(t, db, "e"); raw != "" {
+		t.Errorf("account with an unparsable known host got a cache: %q", raw)
+	}
+}
+
+// TestBackfill_DerivesPublicKeyIntoConnectorSecret pins that the migration, not
+// the connector, is what puts a public key in the secret: the connector never
+// re-derives one, so a backfilled account would otherwise have nothing to write
+// into authorized_keys.
+func TestBackfill_DerivesPublicKeyIntoConnectorSecret(t *testing.T) {
+	db := openMemBunDB(t)
+	seedCutoverSchema(t, db)
+
+	privateKey := testPrivateKeyPEM(t)
+	exec(t, db, "INSERT INTO system_keys (serial, public_key, private_key, is_active) VALUES (1, 'pub1', ?, true)", privateKey)
+	exec(t, db, "INSERT INTO accounts (username, host) VALUES ('root', 'example.com')")
+
+	migrateAll(t, db)
+
+	var raw string
+	if err := db.QueryRow("SELECT connector_secret FROM accounts WHERE username = 'root'").Scan(&raw); err != nil {
+		t.Fatalf("query connector_secret: %v", err)
+	}
+	var secret sshSecret
+	if err := json.Unmarshal([]byte(raw), &secret); err != nil {
+		t.Fatalf("connector_secret is not valid JSON (%q): %v", raw, err)
+	}
+
+	signer, err := ssh.ParsePrivateKey([]byte(privateKey))
+	if err != nil {
+		t.Fatalf("parse test key: %v", err)
+	}
+	if want := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(signer.PublicKey()))); secret.PublicKey != want {
+		t.Fatalf("public key = %q, want %q", secret.PublicKey, want)
 	}
 }
 

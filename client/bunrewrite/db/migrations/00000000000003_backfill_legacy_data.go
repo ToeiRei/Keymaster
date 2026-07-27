@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/uptrace/bun"
+	"golang.org/x/crypto/ssh"
 )
 
 // legacyAuditRow is the audit_log row as this migration reads it: id plus the
@@ -54,11 +55,16 @@ type legacyAccountHost struct {
 
 // sshSecret and sshCache mirror the ssh connector's JSON encodings. They are
 // duplicated here for the same reason as auditDetail: the migration must keep
-// producing these exact shapes however the connector types evolve. Fields the
-// connector fills in at runtime — the derived public key, the authorized_keys
-// hash — are deliberately absent.
+// producing these exact shapes however the connector types evolve.
+//
+// The public key is derived and stored here rather than left to the connector:
+// it is what ends up in authorized_keys, and the connector deliberately never
+// re-derives it so that file stays byte-stable. The authorized_keys hash is
+// still deliberately absent — nothing has been deployed through the new stack
+// yet, so every account should read as dirty.
 type sshSecret struct {
 	PrivateKey string `json:"private_key"`
+	PublicKey  string `json:"public_key"`
 }
 
 type sshCache struct {
@@ -148,9 +154,18 @@ func backfillAccountDeployment(ctx context.Context, db *bun.DB) error {
 	// rotation operation on the client. Until then this migration is what keeps
 	// upgraded installs working, and the duplication above is deliberate.
 	//
+	// An unparsable or encrypted key leaves the public key empty: there is no
+	// passphrase in the legacy schema to unlock one with, and guessing is not an
+	// option when the result would be written into authorized_keys. Such an
+	// account reports a missing public key at deploy time until it is saved again.
+	publicKey := ""
+	if signer, err := ssh.ParsePrivateKey([]byte(privateKey)); err == nil {
+		publicKey = strings.TrimSpace(string(ssh.MarshalAuthorizedKey(signer.PublicKey())))
+	}
+
 	// Marshalling in Go rather than assembling JSON in SQL keeps the PEM's
 	// newlines escaped correctly.
-	encoded, err := json.Marshal(sshSecret{privateKey})
+	encoded, err := json.Marshal(sshSecret{privateKey, publicKey})
 	if err != nil {
 		return err
 	}
@@ -206,7 +221,17 @@ func backfillAccountDeployCache(ctx context.Context, db *bun.DB) error {
 			continue
 		}
 
-		encoded, err := json.Marshal(sshCache{key})
+		// The connector pins host keys by comparing the canonical authorized_keys
+		// rendering, and refuses to parse a cache holding anything else. The legacy
+		// writer produced that form, but a restored backup can hold whatever was in
+		// it, so re-render here and skip what does not parse — a skipped row just
+		// prompts for the host key on the next deploy.
+		hostKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
+		if err != nil {
+			continue
+		}
+
+		encoded, err := json.Marshal(sshCache{strings.TrimSpace(string(ssh.MarshalAuthorizedKey(hostKey)))})
 		if err != nil {
 			return err
 		}

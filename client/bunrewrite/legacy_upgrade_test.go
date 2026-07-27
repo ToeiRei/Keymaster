@@ -18,13 +18,15 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const legacyPrivateKey = "-----BEGIN OPENSSH PRIVATE KEY-----\nnot-a-real-key\n-----END OPENSSH PRIVATE KEY-----\n"
-
 // seedLegacyDatabase writes an on-disk SQLite file in the original (000001)
 // schema, populated the way a real pre-bunrewrite install would be, and
-// records that migration so Open() takes the legacy bridge path.
-func seedLegacyDatabase(t *testing.T, path string) {
+// records that migration so Open() takes the legacy bridge path. It returns the
+// system key it seeded: the connector validates a secret when it parses one, so
+// reading the migrated account back only works with a real key.
+func seedLegacyDatabase(t *testing.T, path string) string {
 	t.Helper()
+
+	legacyPrivateKey := testPrivateKeyPEM(t)
 
 	conn, err := sql.Open("sqlite", path)
 	if err != nil {
@@ -52,6 +54,7 @@ func seedLegacyDatabase(t *testing.T, path string) {
 			t.Fatalf("seed %.40q: %v", stmt, err)
 		}
 	}
+	return legacyPrivateKey
 }
 
 // TestLegacyUpgrade_ReadableThroughClient is the end-to-end counterpart to the
@@ -62,7 +65,7 @@ func seedLegacyDatabase(t *testing.T, path string) {
 func TestLegacyUpgrade_ReadableThroughClient(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "keymaster.db")
-	seedLegacyDatabase(t, path)
+	legacyPrivateKey := seedLegacyDatabase(t, path)
 
 	cfg := config.Config{
 		Database: config.ConfigDatabase{Type: "sqlite", Dsn: path},
