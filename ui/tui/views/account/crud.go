@@ -6,7 +6,6 @@ package account
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strconv"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -301,15 +300,6 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 		func() []form.FormOpt[recordUpdateT] { return formRows[recordUpdateT](c) },
 
 		rc,
-
-		crud.WithCreateRecordPreset[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](
-			func() recordCreateT {
-				connectorKeys, err := c.ListConnectorKeys(context.Background())
-				if err != nil || !slices.Contains(connectorKeys, "ssh") {
-					return recordCreateT{}
-				}
-				return recordCreateT{Connector: connectorData{Key: "ssh"}}
-			}),
 
 		crud.WithListDuplicateAction[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](func(record recordT) recordCreateT {
 			return recordCreateT{
