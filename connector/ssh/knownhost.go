@@ -27,7 +27,7 @@ var hostKeyProbe = probeHostKey
 
 // probeHostKey opens a throwaway handshake to read the host key a target
 // presents. It offers no authentication method, so the handshake fails right
-// after the key exchange — by then the callback has captured the key, which is
+// after the key exchange; by then the callback has captured the key, which is
 // all this needs.
 func probeHostKey(addr string, timeout time.Duration) (ssh.PublicKey, error) {
 	conn, err := net.DialTimeout("tcp", addr, timeout)
@@ -62,12 +62,12 @@ func probeHostKey(addr string, timeout time.Duration) (ssh.PublicKey, error) {
 }
 
 // resolveKnownHost pins the host key of the target at addr. It returns the key
-// the connection must accept — always the one the target just presented — and
+// the connection must accept, always the one the target just presented, and
 // the known host to store in the cache: the pinned one when the target still
 // presents it, the newly presented one when the user trusts it, and the pinned
 // one unchanged when the user allows the connection just this once.
 //
-// A cache with no known host is a target that has never been reached — it gets
+// A cache with no known host is a target that has never been reached; it gets
 // the same prompt as a mismatch, only worded as a first contact rather than a
 // warning. Declining, cancelling, or having no one to ask aborts.
 func resolveKnownHost(addr, knownHost string, userRequester connector.UserRequester, timeout time.Duration) (ssh.PublicKey, string, error) {

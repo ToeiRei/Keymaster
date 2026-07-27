@@ -194,7 +194,7 @@ func canonicalSSHAddress(host string, port int) string {
 // makeAuthorizedKeys renders the authorized_keys content for an account. The
 // restricted Keymaster system key (internalPublicKey) is always written first,
 // followed by the deduplicated, non-expired user keys sorted deterministically
-// so the resulting content — and therefore its fingerprint — is stable across
+// so the resulting content, and therefore its fingerprint, is stable across
 // runs and platforms.
 func (c *Connector) makeAuthorizedKeys(serial int, internalPublicKey string, records []connector.DeployRecord) string {
 	lines := make([]string, 0, 10+len(records))

@@ -365,7 +365,7 @@ func TestBackfill_NoSystemKeysLeavesConnectorSecretEmpty(t *testing.T) {
 		Scan(&secret, &con); err != nil {
 		t.Fatalf("query account: %v", err)
 	}
-	// Nothing to copy, so no JSON is written at all — the column stays at its
+	// Nothing to copy, so no JSON is written at all; the column stays at its
 	// default and the account has no secret rather than an empty one.
 	if secret != "" {
 		t.Fatalf("connector_secret = %q, want empty", secret)

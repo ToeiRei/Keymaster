@@ -3,5 +3,5 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package cli
 
-// Note: audit writer helper removed — prefer calling `db.DefaultAuditWriter()`
+// Note: audit writer helper removed; prefer calling `db.DefaultAuditWriter()`
 // directly where needed.

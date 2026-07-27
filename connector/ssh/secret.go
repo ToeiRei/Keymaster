@@ -67,8 +67,8 @@ func (s *secret) passphraseBytes() []byte {
 }
 
 // publicKey returns the public key stored alongside the private one. It is
-// never re-derived here: authorized_keys — and therefore the hash drift
-// detection compares — has to stay byte-stable, so the key that was written
+// never re-derived here: authorized_keys, and therefore the hash drift
+// detection compares, has to stay byte-stable, so the key that was written
 // when the secret was stored is the only one that may reach a target. A secret
 // stored without one has to be saved again.
 func (s *secret) publicKey() (string, error) {
@@ -145,7 +145,7 @@ func (c *Connector) ParseSecret(raw string) (connector.Secret, error) {
 }
 
 // ParseSecretFromValues validates the submitted values, derives the public key
-// from the private key — using the passphrase when the key is encrypted — and
+// from the private key, using the passphrase when the key is encrypted, and
 // drops the passphrase again when the caller asked for it not to be stored.
 // This is the only place the connector derives the public key; every later
 // reader takes the stored one, so what reaches authorized_keys cannot drift.

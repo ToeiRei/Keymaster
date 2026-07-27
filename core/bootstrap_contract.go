@@ -205,7 +205,7 @@ func PerformBootstrapDeployment(ctx context.Context, params BootstrapParams, dep
 					return res, fmt.Errorf("failed to assign key %d: %w", kid, err)
 				}
 			} else {
-				// Not fatal: warn and continue — record a warning so callers know assignment was skipped.
+				// Not fatal: warn and continue: record a warning so callers know assignment was skipped.
 				res.Warnings = append(res.Warnings, fmt.Sprintf("no AssignKey dependency; skipped assigning key %d", kid))
 			}
 		}

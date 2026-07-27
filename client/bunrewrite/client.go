@@ -137,7 +137,7 @@ func accountOpAuditDetails(account client.Account, keyCount int, opErr error) cl
 
 // writeAuditLog records a single audit log entry through the given handle.
 // Callers pass the transaction (tx) from their surrounding RunInTx so the audit
-// entry is committed — or rolled back — atomically with the change it documents.
+// entry is committed (or rolled back) atomically with the change it documents.
 func (c *Client) writeAuditLog(ctx context.Context, idb bun.IDB, action string, details client.AuditLogDetails) error {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -1045,7 +1045,7 @@ func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connec
 // reported as an error status on that account rather than aborting the batch.
 // Once the operation resolves, its outcome is recorded under action. The remote
 // side effect has already happened by then, so a failed audit write cannot be
-// rolled back — it is surfaced as an error on this account's progress instead.
+// rolled back: it is surfaced as an error on this account's progress instead.
 func (c *Client) runAccount(ctx context.Context, account client.Account, selectOp func(connector.Connector) connectorOperation, action string, progressChanAccount chan accountProgressUpdate, userRequester connector.UserRequester) {
 	sendProgress := func(progress client.ProgressAccountWithError) {
 		progressChanAccount <- accountProgressUpdate{

@@ -113,7 +113,7 @@ func TestParseSecretFromValues_Validates(t *testing.T) {
 }
 
 // TestParseSecret_Validates covers the structural checks the read path can
-// afford, and — just as importantly — the two shapes it must keep accepting: a
+// afford, and, just as importantly, the two shapes it must keep accepting: a
 // key whose passphrase was deliberately not stored, and a secret backfilled
 // before the public key field was written.
 func TestParseSecret_Validates(t *testing.T) {

@@ -60,7 +60,7 @@ type legacyAccountHost struct {
 // The public key is derived and stored here rather than left to the connector:
 // it is what ends up in authorized_keys, and the connector deliberately never
 // re-derives it so that file stays byte-stable. The authorized_keys hash is
-// still deliberately absent — nothing has been deployed through the new stack
+// still deliberately absent: nothing has been deployed through the new stack
 // yet, so every account should read as dirty.
 type sshSecret struct {
 	PrivateKey string `json:"private_key"`
@@ -224,7 +224,7 @@ func backfillAccountDeployCache(ctx context.Context, db *bun.DB) error {
 		// The connector pins host keys by comparing the canonical authorized_keys
 		// rendering, and refuses to parse a cache holding anything else. The legacy
 		// writer produced that form, but a restored backup can hold whatever was in
-		// it, so re-render here and skip what does not parse — a skipped row just
+		// it, so re-render here and skip what does not parse; a skipped row just
 		// prompts for the host key on the next deploy.
 		hostKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
 		if err != nil {

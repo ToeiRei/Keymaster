@@ -82,7 +82,7 @@ type Client interface {
 	ListConnectorKeys(ctx context.Context) ([]string, error)
 
 	// ConnectorSecretFields describes the secret a connector expects, with empty
-	// values — the blank template for a new account.
+	// values: the blank template for a new account.
 	ConnectorSecretFields(connectorKey string) ([]SecretField, error)
 
 	OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan OnboardHostProgress, error)

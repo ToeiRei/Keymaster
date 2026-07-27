@@ -37,7 +37,7 @@ func Open(dbType, dsn string) (*bun.DB, error) {
 	} else if driver == "sqlite" && !strings.Contains(dsn, "_pragma=busy_timeout") {
 		// Without a busy_timeout, a writer that finds the database locked by
 		// another connection fails immediately with "database is locked"
-		// instead of waiting — exactly what happens when deploy/verify run
+		// instead of waiting, exactly what happens when deploy/verify run
 		// several accounts concurrently (see runAccounts). WAL mode also lets
 		// readers proceed without blocking on a writer. Both are applied by
 		// the modernc.org/sqlite driver per-connection via _pragma params.

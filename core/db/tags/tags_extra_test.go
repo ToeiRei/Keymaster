@@ -24,7 +24,7 @@ func TestSplitOnTopLevelChar_NestedAndSimple(t *testing.T) {
 		t.Fatalf("expected single element for simple input, got: %#v", single)
 	}
 
-	// nested with deeper parentheses — expect three top-level parts here
+	// nested with deeper parentheses; expect three top-level parts here
 	deep := splitOnTopLevelChar("(a&(b|c))|d|e", '|')
 	if len(deep) != 3 || strings.TrimSpace(deep[0]) != "(a&(b|c))" || strings.TrimSpace(deep[1]) != "d" || strings.TrimSpace(deep[2]) != "e" {
 		t.Fatalf("unexpected deep split: %#v", deep)
@@ -32,7 +32,7 @@ func TestSplitOnTopLevelChar_NestedAndSimple(t *testing.T) {
 }
 
 func TestParseTagMatcher_ValidationOnly_DoesNotPanic(t *testing.T) {
-	// validation-only path uses a nil QueryBuilder — ensure complex expressions validate
+	// validation-only path uses a nil QueryBuilder; ensure complex expressions validate
 	if _, err := parseTagMatcherColumn("(prod|staging)&!dev", nil, true, false, "tags"); err != nil {
 		t.Fatalf("expected validation to succeed, got: %v", err)
 	}

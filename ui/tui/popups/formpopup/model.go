@@ -20,7 +20,7 @@ func Open[T any](form form.Form[T]) tea.Cmd {
 }
 
 // New hosts f in a popup. A hosted form has to dismiss the popup once it
-// resolves, so its OnSubmit and OnCancel are wrapped to close first — the
+// resolves, so its OnSubmit and OnCancel are wrapped to close first; the
 // callbacks themselves only decide what to hand back, and need not close.
 // A submit the callback rejects as invalid leaves the popup open.
 //

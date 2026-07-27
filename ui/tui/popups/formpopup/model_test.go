@@ -15,7 +15,7 @@ type innerMsg struct{}
 func innerCmd() tea.Msg { return innerMsg{} }
 
 // New wraps the hosted form's callbacks so the popup closes itself. popup's
-// close message is unexported, so these assert the wrapper's contract — that it
+// close message is unexported, so these assert the wrapper's contract: that it
 // calls through, and that it only appends to the command when the form resolved.
 
 func TestNew_SubmitWrapsTheCallersCommand(t *testing.T) {
@@ -83,7 +83,7 @@ func TestNew_CancelWrapsTheCallersCommand(t *testing.T) {
 	}
 }
 
-// A form built without callbacks must still dismiss its popup — several callers
+// A form built without callbacks must still dismiss its popup; several callers
 // only want the close, and choicepopup sets neither callback at all.
 func TestNew_ClosesWithoutCallbacks(t *testing.T) {
 	popupForm := New(form.New[map[string]string]())

@@ -56,7 +56,7 @@ func TestNewDeployer_PrivateKeyFailsAgentSucceeds(t *testing.T) {
 	// 5) Make agent available via sshAgentGetter
 	sshAgentGetter = func() agent.Agent { return keyring }
 
-	// 6) Call NewDeployerWithConfig — system key will fail, agent should succeed
+	// 6) Call NewDeployerWithConfig; system key will fail, agent should succeed
 	d, err := NewDeployerWithConfig("example.com", "user", security.FromString(privPEM), nil, DefaultConnectionConfig(), false)
 	if err != nil {
 		t.Fatalf("expected success via agent fallback, got error: %v", err)

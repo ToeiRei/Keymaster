@@ -6,7 +6,7 @@
 // that predates the bun/migrate-based system in the parent db package. Its
 // only job is advancing a pre-existing on-disk database from wherever it is
 // (000001..000004) up to the final legacy shape (000005). It is never
-// extended with new migrations — new schema changes go in ../migrations.
+// extended with new migrations; new schema changes go in ../migrations.
 package legacymigrate
 
 import (

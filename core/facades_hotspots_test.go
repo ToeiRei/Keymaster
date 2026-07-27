@@ -310,7 +310,7 @@ func TestInitializeServices_NoopAndWrappers(t *testing.T) {
 		t.Fatalf("expected backup data")
 	}
 
-	// Recover/Cleanup/Signal wrappers — call for coverage (they delegate to bootstrap)
+	// Recover/Cleanup/Signal wrappers: call for coverage (they delegate to bootstrap)
 	_ = RecoverFromCrash()
 	StartSessionReaper()
 	InstallSignalHandler()
