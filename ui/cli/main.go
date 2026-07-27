@@ -59,6 +59,15 @@ var auditReferrer string
 var appConfig config.Config
 
 func setupDefaultServices(cmd *cobra.Command, args []string) error {
+	return setupServices(cmd, args, true)
+}
+
+// setupServices loads config and initializes i18n, and - only when
+// initLegacyStore is set - bootstraps the legacy core/db store. The TUI runs
+// entirely on the bunrewrite client, which opens and migrates the database
+// itself; letting core/db migrate the same DSN replays the legacy SQL
+// migrations over a schema bun already owns.
+func setupServices(cmd *cobra.Command, args []string, initLegacyStore bool) error {
 	// Load optional config file argument from cli
 	optionalConfigPath, err := getConfigPathFromCli(cmd)
 	if err != nil {
@@ -139,6 +148,10 @@ func setupDefaultServices(cmd *cobra.Command, args []string) error {
 
 	// Initialize i18n
 	i18n.Init(appConfig.Language)
+
+	if !initLegacyStore {
+		return nil
+	}
 
 	// Initialize the database if not already initialized by tests or earlier setup.
 	if !core.IsDBInitialized() {
@@ -246,29 +259,9 @@ system key per account and uses it as a foothold to rewrite and
 version-control access. A database becomes the source of truth.
 
 Running without a subcommand will launch the interactive TUI.`,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if showVersionFlag {
-				v, c, d := resolveBuildVersion(nil)
-				compositeVersion := v
-				if c != "" && c != "dev" {
-					compositeVersion = compositeVersion + " (" + c + ")"
-				}
-				if d != "" {
-					compositeVersion = compositeVersion + " built: " + d
-				}
-				fmt.Println(compositeVersion)
-				os.Exit(0)
-			}
-			if verbose {
-				core.SetDBDebug(true)
-			}
-			return setupDefaultServices(cmd, args)
-		},
 		Run: func(cmd *cobra.Command, args []string) {
-			core.SetAuditContext("tui", sanitizeAuditReferrer(auditReferrer))
-			// The database is already initialized by PersistentPreRunE.
-			// i18n is also initialized, so create a TUI client from the configured DB.
-			_ = uiadapters.NewStoreAdapter()
+			// i18n is initialized by PersistentPreRunE; the client opens and
+			// migrates the database itself.
 			logger := stdlog.New(os.Stdout, "[tui] ", stdlog.LstdFlags)
 			client, err := bun.NewBunClient(appConfig, logger, "keymaster cli")
 			if err != nil {
@@ -280,6 +273,28 @@ Running without a subcommand will launch the interactive TUI.`,
 			}()
 			_ = tui.RunWithClient(client)
 		},
+	}
+
+	// Assigned after the literal so the closure can recognize the root command
+	// itself - the bare `keymaster` invocation that launches the TUI - and skip
+	// the legacy core/db store for it.
+	cmd.PersistentPreRunE = func(c *cobra.Command, args []string) error {
+		if showVersionFlag {
+			v, commit, date := resolveBuildVersion(nil)
+			compositeVersion := v
+			if commit != "" && commit != "dev" {
+				compositeVersion = compositeVersion + " (" + commit + ")"
+			}
+			if date != "" {
+				compositeVersion = compositeVersion + " built: " + date
+			}
+			fmt.Println(compositeVersion)
+			os.Exit(0)
+		}
+		if verbose {
+			core.SetDBDebug(true)
+		}
+		return setupServices(c, args, c != cmd)
 	}
 
 	v, c, d := resolveBuildVersion(nil)
