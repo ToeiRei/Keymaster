@@ -36,7 +36,7 @@ type Client interface {
 
 	// --- Account Management ---
 
-	CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret string) (Account, error)
+	CreateAccount(ctx context.Context, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (Account, error)
 
 	GetAccount(ctx context.Context, id AccountId) (Account, error)
 
@@ -46,7 +46,7 @@ type Client interface {
 	ListAccountsDirty(ctx context.Context) ([]Account, error)
 	ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId PublicKeyId, expired bool) ([]Account, error)
 
-	UpdateAccount(ctx context.Context, id AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) (Account, error)
+	UpdateAccount(ctx context.Context, id AccountId, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (Account, error)
 
 	DeleteAccounts(ctx context.Context, ids ...AccountId) error
 
@@ -81,6 +81,10 @@ type Client interface {
 
 	ListConnectorKeys(ctx context.Context) ([]string, error)
 
+	// ConnectorSecretFields describes the secret a connector expects, with empty
+	// values: the blank template for a new account.
+	ConnectorSecretFields(connectorKey string) ([]SecretField, error)
+
 	OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan OnboardHostProgress, error)
 
 	DecommisionAccount(ctx context.Context, id AccountId) (chan DecommisionAccountProgress, error)
@@ -98,32 +102,28 @@ type PublicKey struct {
 	Comment   string
 	IsGlobal  bool
 	ExpiresAt time.Time
-	// ...
 }
 
 // Account represents an account on a target host.
 type AccountId id
 type Account struct {
-	Id           AccountId
-	Username     string
-	Host         string
-	Port         int
-	Serial       int
-	DeployMethod string // ssh, cisco, ...
-	DeploySecret string
-	DeployCache  string
-	// ...
+	Id              AccountId
+	Username        string
+	Host            string
+	Port            int
+	Serial          int
+	Connector       string // ssh, cisco, ...
+	ConnectorSecret connector.Secret
 }
 
 func (a Account) String() string {
-	return fmt.Sprintf("%s %s@%s:%d", a.DeployMethod, a.Username, a.Host, a.Port)
+	return fmt.Sprintf("%s %s@%s:%d", a.Connector, a.Username, a.Host, a.Port)
 }
 
 type Link struct {
 	AccountId   AccountId
 	PublicKeyId PublicKeyId
 	ExpiresAt   time.Time
-	// ...
 }
 
 type AuditLogId id
@@ -177,6 +177,7 @@ type (
 	DeployProgressAccounts = ProgressAccounts
 	VerifyProgressAccounts = ProgressAccounts
 	UserRequester          = connector.UserRequester
+	SecretField            = connector.SecretField
 )
 
 type ProgressAccountWithError struct {

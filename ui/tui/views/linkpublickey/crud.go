@@ -48,7 +48,7 @@ type filterT = struct{}
 
 func accountToString(account client.Account) string {
 	if account == util.NewZero[client.Account]() {
-		return lipgloss.NewStyle().Italic(true).Render(i18n.T("link.none"))
+		return lipgloss.NewStyle().Italic(true).Render(i18n.T("crud.none"))
 	}
 	return account.String()
 }
@@ -66,7 +66,7 @@ func createFormRows(c client.Client) func() []form.FormOpt[recordCreateT] {
 	return func() []form.FormOpt[recordCreateT] {
 		return []form.FormOpt[recordCreateT]{
 			form.WithRowItem[recordCreateT]("account", formelement.NewPopup(i18n.Text("link.form.account_label"),
-				func(returnValue func(value client.Account) tea.Cmd) tea.Cmd {
+				func(_ client.Account, returnValue func(value client.Account) tea.Cmd) tea.Cmd {
 					return selectpopup.Open(
 						i18n.Text("link.select_account"),
 						func(ctx context.Context) ([]client.Account, error) { return c.ListAccounts(ctx) },
@@ -75,14 +75,14 @@ func createFormRows(c client.Client) func() []form.FormOpt[recordCreateT] {
 							{Title: i18n.Text("account.col_username"), View: func(r client.Account) string { return r.Username }},
 							{Title: i18n.Text("account.col_host"), View: func(r client.Account) string { return r.Host }},
 							{Title: i18n.Text("account.col_port"), View: func(r client.Account) string { return fmt.Sprint(r.Port) }},
-							{Title: i18n.Text("account.col_deploy_method"), View: func(r client.Account) string { return r.DeployMethod }},
+							{Title: i18n.Text("account.col_connector"), View: func(r client.Account) string { return r.Connector }},
 						}),
 						selectpopup.WithFilter(func(filter string, records []client.Account) []client.Account {
 							return slicest.Filter(records, func(record client.Account) bool {
 								return strings.Contains(record.Username, filter) ||
 									strings.Contains(record.Host, filter) ||
 									strings.Contains(fmt.Sprint(record.Port), filter) ||
-									strings.Contains(record.DeployMethod, filter)
+									strings.Contains(record.Connector, filter)
 							})
 						}),
 					)
@@ -103,8 +103,8 @@ func updateFormRows() []form.FormOpt[recordUpdateT] {
 func NewCrud(c client.Client, rc router.Controll, publicKey client.PublicKey) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
 		crud.Texts{
-			EntityNameSingular: i18n.Text("link.entity_singular"),
-			EntityNameMultiple: i18n.Text("link.entity_plural"),
+			i18n.Text("link.entity_singular"),
+			i18n.Text("link.entity_plural"),
 		},
 
 		func(record recordT) recordIdT {

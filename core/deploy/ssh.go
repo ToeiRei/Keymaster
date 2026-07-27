@@ -120,6 +120,10 @@ type ConnectionConfig struct {
 	ConnectionTimeout time.Duration
 	CommandTimeout    time.Duration
 	SFTPTimeout       time.Duration
+	// HostKeyCallback lets a caller that has already pinned the target's host
+	// key supply its own verification instead of the known_hosts lookup this
+	// package performs through the global core/db store. Nil keeps that lookup.
+	HostKeyCallback ssh.HostKeyCallback
 }
 
 // DefaultConnectionConfig returns a ConnectionConfig with default timeout values
@@ -329,7 +333,9 @@ func newDeployerInternal(host, user string, privateKey security.Secret, passphra
 	// Define the host key callback based on bootstrap mode.
 	var hostKeyCallback ssh.HostKeyCallback
 
-	if isBootstrap {
+	if config != nil && config.HostKeyCallback != nil {
+		hostKeyCallback = config.HostKeyCallback
+	} else if isBootstrap {
 		// For bootstrap, accept any host key and save it as canonical host:port
 		hostKeyCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 			canonical := CanonicalizeHostPort(hostname)

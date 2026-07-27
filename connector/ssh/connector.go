@@ -55,61 +55,97 @@ var newDeployer = func(host, user string, privateKey security.Secret, passphrase
 // *[Connector] implements [connector.Connector]
 var _ connector.Connector = (*Connector)(nil)
 
-func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (string, error) {
+func (c *Connector) Deploy(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (connector.Cache, error) {
 	if ctx.Err() != nil {
-		return "", ctx.Err()
+		return nil, ctx.Err()
+	}
+
+	connectorSecret, err := secretOf(deployData)
+	if err != nil {
+		return nil, err
+	}
+	connectorCache, err := cacheOf(deployData)
+	if err != nil {
+		return nil, err
 	}
 
 	progress <- connector.Progress{Progress: 0.1, Status: i18n.Text("connector.status.rendering_keys")}
-	internalPublicKey, err := c.publicKeyFromSecret(deployData.Secret)
+	internalPublicKey, err := connectorSecret.publicKey()
 	if err != nil {
-		return "", i18n.WrapError(err, "errors.connector.parse_secret")
+		return nil, err
 	}
 
 	authorizedKeys := c.makeAuthorizedKeys(deployData.SystemKeySerial, internalPublicKey, deployData.Records)
-	progress <- connector.Progress{Progress: 0.25, Status: i18n.Text("connector.status.connecting")}
 
+	config := deploy.DefaultConnectionConfig()
 	addr := canonicalSSHAddress(connectionData.Host, connectionData.Port)
-	client, err := newDeployer(addr, connectionData.Username, security.FromString(deployData.Secret), nil, deploy.DefaultConnectionConfig(), false)
+
+	progress <- connector.Progress{Progress: 0.2, Status: i18n.Text("connector.status.checking_host_key")}
+	hostKey, knownHost, err := resolveKnownHost(addr, connectorCache.KnownHost, userRequester, config.ConnectionTimeout)
 	if err != nil {
-		return "", i18n.WrapError(err, "errors.connector.connect", connectionData.Username, addr)
+		return nil, err
+	}
+	config.HostKeyCallback = ssh.FixedHostKey(hostKey)
+
+	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.connecting")}
+	client, err := newDeployer(addr, connectionData.User, security.FromString(connectorSecret.PrivateKey), connectorSecret.passphraseBytes(), config, false)
+	if err != nil {
+		return nil, i18n.WrapError(err, "errors.connector.connect", connectionData.User, addr)
 	}
 	defer client.Close()
 
 	progress <- connector.Progress{Progress: 0.6, Status: i18n.Text("connector.status.uploading_keys")}
 	if err := client.DeployAuthorizedKeys(authorizedKeys); err != nil {
-		return "", i18n.WrapError(err, "errors.connector.deploy_keys")
+		return nil, i18n.WrapError(err, "errors.connector.deploy_keys")
 	}
 
 	progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.done")}
-	return c.hashAuthorizedKeys(authorizedKeys), nil
+	return &cache{c.hashAuthorizedKeys(authorizedKeys), knownHost}, nil
 }
 
-func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (bool, string, error) {
+func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (bool, connector.Cache, error) {
 	if ctx.Err() != nil {
-		return false, "", ctx.Err()
+		return false, nil, ctx.Err()
+	}
+
+	connectorSecret, err := secretOf(deployData)
+	if err != nil {
+		return false, nil, err
+	}
+	connectorCache, err := cacheOf(deployData)
+	if err != nil {
+		return false, nil, err
 	}
 
 	progress <- connector.Progress{Progress: 0.1, Status: i18n.Text("connector.status.rendering_keys")}
-	internalPublicKey, err := c.publicKeyFromSecret(deployData.Secret)
+	internalPublicKey, err := connectorSecret.publicKey()
 	if err != nil {
-		return false, "", i18n.WrapError(err, "errors.connector.parse_secret")
+		return false, nil, err
 	}
 
 	expected := c.makeAuthorizedKeys(deployData.SystemKeySerial, internalPublicKey, deployData.Records)
-	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.connecting")}
 
+	config := deploy.DefaultConnectionConfig()
 	addr := canonicalSSHAddress(connectionData.Host, connectionData.Port)
-	client, err := newDeployer(addr, connectionData.Username, security.FromString(deployData.Secret), nil, deploy.DefaultConnectionConfig(), false)
+
+	progress <- connector.Progress{Progress: 0.2, Status: i18n.Text("connector.status.checking_host_key")}
+	hostKey, knownHost, err := resolveKnownHost(addr, connectorCache.KnownHost, userRequester, config.ConnectionTimeout)
 	if err != nil {
-		return false, "", i18n.WrapError(err, "errors.connector.connect", connectionData.Username, addr)
+		return false, nil, err
+	}
+	config.HostKeyCallback = ssh.FixedHostKey(hostKey)
+
+	progress <- connector.Progress{Progress: 0.3, Status: i18n.Text("connector.status.connecting")}
+	client, err := newDeployer(addr, connectionData.User, security.FromString(connectorSecret.PrivateKey), connectorSecret.passphraseBytes(), config, false)
+	if err != nil {
+		return false, nil, i18n.WrapError(err, "errors.connector.connect", connectionData.User, addr)
 	}
 	defer client.Close()
 
 	progress <- connector.Progress{Progress: 0.6, Status: i18n.Text("connector.status.reading_keys")}
 	remoteBytes, err := client.GetAuthorizedKeys()
 	if err != nil {
-		return false, "", i18n.WrapError(err, "errors.connector.read_keys")
+		return false, nil, i18n.WrapError(err, "errors.connector.read_keys")
 	}
 
 	remoteHash := c.hashAuthorizedKeys(string(remoteBytes))
@@ -122,22 +158,30 @@ func (c *Connector) Verify(ctx context.Context, deployData connector.DeployData,
 		progress <- connector.Progress{Progress: 1, Status: i18n.Text("connector.status.drift_detected")}
 	}
 
-	return ok, remoteHash, nil
+	return ok, &cache{remoteHash, knownHost}, nil
 }
 
 func (c *Connector) VerifyOffline(ctx context.Context, deployData connector.DeployData) (bool, error) {
-	if deployData.Cache == "" {
+	connectorSecret, err := secretOf(deployData)
+	if err != nil {
+		return false, err
+	}
+	connectorCache, err := cacheOf(deployData)
+	if err != nil {
+		return false, err
+	}
+	if connectorCache.AuthorizedKeysHash == "" {
 		return false, nil
 	}
 
-	internalPublicKey, err := c.publicKeyFromSecret(deployData.Secret)
+	internalPublicKey, err := connectorSecret.publicKey()
 	if err != nil {
 		return false, err
 	}
 	authorizedKeys := c.makeAuthorizedKeys(deployData.SystemKeySerial, internalPublicKey, deployData.Records)
 	localHash := c.hashAuthorizedKeys(authorizedKeys)
 
-	return localHash == deployData.Cache, nil
+	return localHash == connectorCache.AuthorizedKeysHash, nil
 }
 
 func canonicalSSHAddress(host string, port int) string {
@@ -150,7 +194,7 @@ func canonicalSSHAddress(host string, port int) string {
 // makeAuthorizedKeys renders the authorized_keys content for an account. The
 // restricted Keymaster system key (internalPublicKey) is always written first,
 // followed by the deduplicated, non-expired user keys sorted deterministically
-// so the resulting content — and therefore its fingerprint — is stable across
+// so the resulting content, and therefore its fingerprint, is stable across
 // runs and platforms.
 func (c *Connector) makeAuthorizedKeys(serial int, internalPublicKey string, records []connector.DeployRecord) string {
 	lines := make([]string, 0, 10+len(records))
@@ -250,18 +294,4 @@ func (c *Connector) hashAuthorizedKeys(str string) string {
 	}
 	sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))
 	return hex.EncodeToString(sum[:])
-}
-
-// publicKeyFromSecret parses the PEM-encoded private key held in secret and
-// returns its public key in authorized_keys wire format (without a trailing
-// newline). It returns an error if the secret cannot be parsed as a private key.
-func (c *Connector) publicKeyFromSecret(secret string) (string, error) {
-	signer, err := ssh.ParsePrivateKey([]byte(secret))
-	if err != nil {
-		return "", i18n.WrapError(err, "errors.connector.parse_private_key")
-	}
-	// MarshalAuthorizedKey appends a single trailing newline; strip just that
-	// so the key can be embedded on a line of its own.
-	pubKey := ssh.MarshalAuthorizedKey(signer.PublicKey())
-	return strings.TrimSuffix(string(pubKey), "\n"), nil
 }

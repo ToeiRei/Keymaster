@@ -14,7 +14,6 @@ import (
 	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/ui/tui/helpers/form"
 	formelement "github.com/toeirei/keymaster/ui/tui/helpers/form/element"
-	"github.com/toeirei/keymaster/ui/tui/helpers/popup"
 	"github.com/toeirei/keymaster/ui/tui/popups/choicepopup"
 	"github.com/toeirei/keymaster/ui/tui/popups/formpopup"
 	"github.com/toeirei/keymaster/ui/tui/popups/messagepopup"
@@ -166,11 +165,11 @@ func textRequestForm(prompt fmt.Stringer, requester *userRequester, cancel conte
 			)),
 		),
 		form.WithOnSubmit(func(res textAnswer, _ error) (tea.Cmd, bool) {
-			return tea.Sequence(popup.Close(), requester.replyTextCmd(res.Answer), reopen()), true
+			return tea.Sequence(requester.replyTextCmd(res.Answer), reopen()), true
 		}),
 		form.WithOnCancel[textAnswer](func() tea.Cmd {
 			cancel()
-			return tea.Sequence(popup.Close(), reopen())
+			return reopen()
 		}),
 		form.WithDefaultRowAlign[textAnswer](form.Center),
 	))

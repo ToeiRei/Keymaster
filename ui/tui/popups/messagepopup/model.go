@@ -49,7 +49,7 @@ func New(
 		form.WithRowItem[struct{}]("_title", formelement.NewLabel(i18n.Text(title))),
 		form.WithRowItem[struct{}]("_message", formelement.NewLabel(message)),
 		form.WithRowItem[struct{}]("_ok", formelement.NewButton(i18n.Text("popup.ok"), formelement.WithButtonActionSubmit(), formelement.WithButtonGlobalKeyBindings(keys.Close()))),
-		form.WithOnSubmit(func(_ struct{}, _ error) (tea.Cmd, bool) { return tea.Sequence(popup.Close(), cmd), true }),
+		form.WithOnSubmit(func(_ struct{}, _ error) (tea.Cmd, bool) { return cmd, true }),
 		form.WithDefaultRowAlign[struct{}](form.Center),
 	))
 }

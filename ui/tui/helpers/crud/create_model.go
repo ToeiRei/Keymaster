@@ -20,10 +20,10 @@ import (
 
 type CreateModel[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ] struct {
 	// configuration
 	crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
@@ -41,10 +41,10 @@ type CreateModel[
 
 func NewCreate[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ](crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter], preset TRecordCreate) *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return &CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]{
 		crud:   crud,
@@ -138,7 +138,7 @@ func (m *CreateModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter])
 	}
 	m.focussed = true
 	return tea.Batch(
-		windowtitle.Announce(m.crud.Texts.EntityNameMultiple.String()),
+		windowtitle.Announce(m.crud.Texts.EntityNamePlural.String()),
 		m.form.Focus(parentKeyMap),
 	)
 }

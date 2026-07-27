@@ -6,10 +6,32 @@ package bunrewrite
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/pem"
 	"log"
 	"testing"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 )
+
+// testPrivateKeyPEM returns a freshly generated, unencrypted OpenSSH private
+// key. The ssh connector derives the account's public key when the secret is
+// built, so the smoke test needs real key material.
+func testPrivateKeyPEM(t *testing.T) string {
+	t.Helper()
+
+	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	block, err := ssh.MarshalPrivateKey(privateKey, "")
+	if err != nil {
+		t.Fatalf("marshal key: %v", err)
+	}
+	return string(pem.EncodeToMemory(block))
+}
 
 // TestSmokeCRUD exercises the basic CRUD happy path against an in-memory SQLite
 // database created by the vendored migrations.
@@ -22,7 +44,9 @@ func TestSmokeCRUD(t *testing.T) {
 	defer c.Close(ctx)
 
 	// account
-	acc, err := c.CreateAccount(ctx, "root", "example.com", 22, "ssh", "")
+	acc, err := c.CreateAccount(ctx, "root", "example.com", 22, "ssh", map[string]string{
+		"private_key": testPrivateKeyPEM(t),
+	})
 	if err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}

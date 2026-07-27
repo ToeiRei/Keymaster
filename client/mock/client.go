@@ -31,13 +31,13 @@ type ClientOverwrites struct {
 	DeletePublicKeys              func(ctx context.Context, ids ...client.PublicKeyId) error
 
 	// --- Account Management ---
-	CreateAccount                 func(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error)
+	CreateAccount                 func(ctx context.Context, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error)
 	GetAccount                    func(ctx context.Context, id client.AccountId) (client.Account, error)
 	GetAccounts                   func(ctx context.Context, ids ...client.AccountId) ([]client.Account, error)
 	ListAccounts                  func(ctx context.Context) ([]client.Account, error)
 	ListAccountsDirty             func(ctx context.Context) ([]client.Account, error)
 	ListAccountsLinkedToPublicKey func(ctx context.Context, publicKeyId client.PublicKeyId, expired bool) ([]client.Account, error)
-	UpdateAccount                 func(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error)
+	UpdateAccount                 func(ctx context.Context, id client.AccountId, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error)
 	DeleteAccounts                func(ctx context.Context, ids ...client.AccountId) error
 	IsAccountDirty                func(ctx context.Context, account client.Account) (bool, error)
 
@@ -56,10 +56,11 @@ type ClientOverwrites struct {
 	VerifyAccounts func(ctx context.Context, userRequester client.UserRequester, progress chan<- client.VerifyProgressAccounts, accountIds ...client.AccountId) error
 
 	// --- Other ---
-	ListAuditLogs      func(ctx context.Context, offset int, limit int) ([]client.AuditLog, error)
-	ListConnectorKeys  func(ctx context.Context) ([]string, error)
-	OnboardHost        func(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error)
-	DecommisionAccount func(ctx context.Context, id client.AccountId) (chan client.DecommisionAccountProgress, error)
+	ListAuditLogs         func(ctx context.Context, offset int, limit int) ([]client.AuditLog, error)
+	ListConnectorKeys     func(ctx context.Context) ([]string, error)
+	ConnectorSecretFields func(connectorKey string) ([]client.SecretField, error)
+	OnboardHost           func(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error)
+	DecommisionAccount    func(ctx context.Context, id client.AccountId) (chan client.DecommisionAccountProgress, error)
 }
 
 // *[Client] implements [client.Client]
@@ -246,20 +247,20 @@ func (m *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 
 // --- Account Management ---
 
-func (m *Client) CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
+func (m *Client) CreateAccount(ctx context.Context, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error) {
 	if m.Pre != nil {
 		err := m.Pre("CreateAccount", map[string]any{
 			"ctx": ctx, "username": username, "host": host, "port": port,
-			"deploymentMethod": deploymentMethod, "deploymentSecret": deploymentSecret,
+			"connectorKey": connectorKey, "connectorSecret": connectorSecret,
 		})
 		if err != nil {
 			return client.Account{}, err
 		}
 	}
 	if m.Overwrites.CreateAccount != nil {
-		return m.Overwrites.CreateAccount(ctx, username, host, port, deploymentMethod, deploymentSecret)
+		return m.Overwrites.CreateAccount(ctx, username, host, port, connectorKey, connectorSecret)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.CreateAccount(ctx, username, host, port, deploymentMethod, deploymentSecret)
+		return m.BaseClient.CreateAccount(ctx, username, host, port, connectorKey, connectorSecret)
 	}
 	panic("Client.CreateAccount not implemented")
 }
@@ -339,20 +340,20 @@ func (m *Client) ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId 
 	panic("Client.ListAccountsLinkedToPublicKey not implemented")
 }
 
-func (m *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
+func (m *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error) {
 	if m.Pre != nil {
 		err := m.Pre("UpdateAccount", map[string]any{
 			"ctx": ctx, "id": id, "username": username, "host": host, "port": port,
-			"deploymentMethod": deploymentMethod, "deploymentSecret": deploymentSecret,
+			"connectorKey": connectorKey, "connectorSecret": connectorSecret,
 		})
 		if err != nil {
 			return client.Account{}, err
 		}
 	}
 	if m.Overwrites.UpdateAccount != nil {
-		return m.Overwrites.UpdateAccount(ctx, id, username, host, port, deploymentMethod, deploymentSecret)
+		return m.Overwrites.UpdateAccount(ctx, id, username, host, port, connectorKey, connectorSecret)
 	} else if m.BaseClient != nil {
-		return m.BaseClient.UpdateAccount(ctx, id, username, host, port, deploymentMethod, deploymentSecret)
+		return m.BaseClient.UpdateAccount(ctx, id, username, host, port, connectorKey, connectorSecret)
 	}
 	panic("Client.UpdateAccount not implemented")
 }
@@ -571,6 +572,21 @@ func (m *Client) ListConnectorKeys(ctx context.Context) ([]string, error) {
 		return m.BaseClient.ListConnectorKeys(ctx)
 	}
 	panic("Client.ListConnectorKeys not implemented")
+}
+
+func (m *Client) ConnectorSecretFields(connectorKey string) ([]client.SecretField, error) {
+	if m.Pre != nil {
+		err := m.Pre("ConnectorSecretFields", map[string]any{"connectorKey": connectorKey})
+		if err != nil {
+			return nil, err
+		}
+	}
+	if m.Overwrites.ConnectorSecretFields != nil {
+		return m.Overwrites.ConnectorSecretFields(connectorKey)
+	} else if m.BaseClient != nil {
+		return m.BaseClient.ConnectorSecretFields(connectorKey)
+	}
+	panic("Client.ConnectorSecretFields not implemented")
 }
 
 func (m *Client) OnboardHost(ctx context.Context, host string, port int, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {

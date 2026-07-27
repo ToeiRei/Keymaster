@@ -24,7 +24,7 @@ func ImportRemoteKeys(account model.Account) (importedKeys []model.PublicKey, sk
 
 	kr := DefaultKeyReader()
 	if kr == nil {
-		// no reader configured — proceed but warn and use SSH agent
+		// no reader configured; proceed but warn and use SSH agent
 		warning = "Warning: No active system key. Using SSH agent."
 		privateKeySecret = nil
 	} else {

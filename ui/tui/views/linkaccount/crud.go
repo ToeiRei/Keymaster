@@ -48,7 +48,7 @@ type filterT = struct{}
 
 func publicKeyToString(publicKey client.PublicKey) string {
 	if publicKey == util.NewZero[client.PublicKey]() {
-		return lipgloss.NewStyle().Italic(true).Render(i18n.T("link.none"))
+		return lipgloss.NewStyle().Italic(true).Render(i18n.T("crud.none"))
 	}
 	if publicKey.Comment != "" {
 		return fmt.Sprintf("%s (%s)", publicKey.Comment, publicKey.Algorithm)
@@ -69,7 +69,7 @@ func createFormRows(c client.Client) func() []form.FormOpt[recordCreateT] {
 	return func() []form.FormOpt[recordCreateT] {
 		return []form.FormOpt[recordCreateT]{
 			form.WithRowItem[recordCreateT]("public_key", formelement.NewPopup(i18n.Text("link.form.public_key_label"),
-				func(returnValue func(value client.PublicKey) tea.Cmd) tea.Cmd {
+				func(_ client.PublicKey, returnValue func(value client.PublicKey) tea.Cmd) tea.Cmd {
 					return selectpopup.Open(
 						i18n.Text("link.select_public_key"),
 						func(ctx context.Context) ([]client.PublicKey, error) { return c.ListPublicKeys(ctx) },
@@ -102,8 +102,8 @@ func updateFormRows() []form.FormOpt[recordUpdateT] {
 func NewCrud(c client.Client, rc router.Controll, account client.Account) *crud.Crud[recordT, recordCreateT, recordUpdateT, recordIdT, filterT] {
 	return crud.New(
 		crud.Texts{
-			EntityNameSingular: i18n.Text("link.entity_singular"),
-			EntityNameMultiple: i18n.Text("link.entity_plural"),
+			i18n.Text("link.entity_singular"),
+			i18n.Text("link.entity_plural"),
 		},
 
 		func(record recordT) recordIdT {

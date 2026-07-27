@@ -22,10 +22,10 @@ import (
 
 type ListModel[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ] struct {
 	// configuration
 	crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]
@@ -43,10 +43,10 @@ type ListModel[
 
 func NewList[
 	TRecord any,
-	TRecordCreate comparable,
-	TRecordUpdate comparable,
+	TRecordCreate any,
+	TRecordUpdate any,
 	TRecordId comparable,
-	TFilter comparable,
+	TFilter any,
 ](crud *Crud[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter] {
 	return &ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]{
 		crud:  crud,
@@ -86,7 +86,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) U
 		m.records = msg.records
 		m.refreshTable()
 		if msg.err != nil {
-			return choicepopup.Open(i18n.Text("crud.error_loading", m.crud.Texts.EntityNameMultiple, msg.err.Error()), choicepopup.Choices{
+			return choicepopup.Open(i18n.Text("crud.error_loading", m.crud.Texts.EntityNamePlural, msg.err.Error()), choicepopup.Choices{
 				choicepopup.Choice{Name: i18n.Text("crud.close"), Cmd: m.crud.routerControll.Pop(1), KeyBindings: keys.KeyBindingList{keys.Close()}},
 				choicepopup.Choice{Name: i18n.Text("crud.reload"), Cmd: m.reload(), KeyBindings: nil},
 			})
@@ -205,7 +205,7 @@ func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) F
 	m.focussed = true
 	m.table.Focus()
 	return tea.Batch(
-		windowtitle.Announce(m.crud.Texts.EntityNameMultiple.String()),
+		windowtitle.Announce(m.crud.Texts.EntityNamePlural.String()),
 		util.AnnounceKeyMapCmd(parentKeyMap, ListBaseKeyMap, m.crud.listGlobalKeyMap),
 	)
 }
@@ -222,7 +222,7 @@ var _ util.Model = (*ListModel[any, any, any, any, any])(nil)
 func (m *ListModel[TRecord, TRecordCreate, TRecordUpdate, TRecordId, TFilter]) reload() tea.Cmd {
 	return progresspopup.Open(
 		progresspopup.Spinner,
-		i18n.Text("crud.loading", m.crud.Texts.EntityNameMultiple), func(ctx context.Context, pc progresspopup.ProgressChan) tea.Cmd {
+		i18n.Text("crud.loading", m.crud.Texts.EntityNamePlural), func(ctx context.Context, pc progresspopup.ProgressChan) tea.Cmd {
 			records, err := m.crud.getRecords(ctx, util.NewZero[TFilter]())
 			return util.TeaMsgToCmd(listMsgReloaded[TRecord]{records, err})
 		},

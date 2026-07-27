@@ -56,7 +56,7 @@ func TestNewDeployer_PrivateKeyFailsAgentSucceeds(t *testing.T) {
 	// 5) Make agent available via sshAgentGetter
 	sshAgentGetter = func() agent.Agent { return keyring }
 
-	// 6) Call NewDeployerWithConfig — system key will fail, agent should succeed
+	// 6) Call NewDeployerWithConfig; system key will fail, agent should succeed
 	d, err := NewDeployerWithConfig("example.com", "user", security.FromString(privPEM), nil, DefaultConnectionConfig(), false)
 	if err != nil {
 		t.Fatalf("expected success via agent fallback, got error: %v", err)
@@ -68,6 +68,53 @@ func TestNewDeployer_PrivateKeyFailsAgentSucceeds(t *testing.T) {
 	// avoid Close calling into zero-valued ssh.Client in tests
 	d.client = nil
 	d.Close()
+}
+
+// TestNewDeployer_ConfigHostKeyCallbackWins verifies a caller that has already
+// pinned the host key gets its own callback used, so the connection never goes
+// through the known_hosts lookup in the global core/db store.
+func TestNewDeployer_ConfigHostKeyCallbackWins(t *testing.T) {
+	origDial := sshDial
+	origNewSftp := newSftpClient
+	defer func() { sshDial = origDial; newSftpClient = origNewSftp }()
+
+	pubStr, privPEM, err := genssh.GenerateAndMarshalEd25519Key("test", "")
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	pk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pubStr))
+	if err != nil {
+		t.Fatalf("parse pubkey: %v", err)
+	}
+
+	called := false
+	config := DefaultConnectionConfig()
+	config.HostKeyCallback = func(string, net.Addr, ssh.PublicKey) error {
+		called = true
+		return nil
+	}
+
+	sshDial = func(network, addr string, cfg *ssh.ClientConfig) (sshClientIface, error) {
+		if cfg.HostKeyCallback == nil {
+			t.Fatal("expected a host key callback on the client config")
+		}
+		if err := cfg.HostKeyCallback("example.com:22", &net.TCPAddr{}, pk); err != nil {
+			t.Fatalf("host key callback returned error: %v", err)
+		}
+		return &ssh.Client{}, nil
+	}
+	newSftpClient = func(c sshClientIface) (sftpRaw, error) { return &mockSftp{}, nil }
+
+	d, err := NewDeployerWithConfig("example.com", "user", security.FromString(privPEM), nil, config, false)
+	if err != nil {
+		t.Fatalf("NewDeployerWithConfig: %v", err)
+	}
+	d.client = nil
+	d.Close()
+
+	if !called {
+		t.Fatal("expected the config-supplied host key callback to be used")
+	}
 }
 
 func TestGetRemoteHostKey_Default(t *testing.T) {

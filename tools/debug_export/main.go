@@ -53,5 +53,5 @@ func main() {
 		log.Infof("all account: %+v", a)
 	}
 
-	// Direct SQL probe removed — use package-level helpers above.
+	// Direct SQL probe removed; use package-level helpers above.
 }

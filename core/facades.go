@@ -152,7 +152,7 @@ func AuditAccounts(ctx context.Context, st Store, dm DeployerManager, mode strin
 			if remoteHash != expectedHash {
 				aerr = fmt.Errorf("%s", i18n.T("audit.error_drift_detected"))
 				// Record an audit event for detected drift (host change). Do not
-				// write audit entries for matches — auditing is meant for host changes,
+				// write audit entries for matches; auditing is meant for host changes,
 				// not verbose debug logging.
 				if aw := DefaultAuditWriter(); aw != nil {
 					_ = aw.LogAction("AUDIT_HASH_MISMATCH", fmt.Sprintf("account:%d stored:%s computed:%s", acc.ID, expectedHash, remoteHash))
@@ -493,7 +493,7 @@ func RunDecommissionCmd(ctx context.Context, targets []model.Account, opts inter
 	return DecommissionAccounts(ctx, targets, opts, dm, st, a)
 }
 
-// Bootstrap lifecycle thin wrappers — delegate to internal/bootstrap.
+// Bootstrap lifecycle thin wrappers; delegate to internal/bootstrap.
 // These exist so UI/CLI code can call core facades instead of importing
 // internal/bootstrap directly.
 

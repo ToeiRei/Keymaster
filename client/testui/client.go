@@ -29,6 +29,7 @@ type Client struct {
 	links        map[linkKey]client.Link
 	auditLogs    []client.AuditLog
 	remoteStates map[client.AccountId]string
+	deployCaches map[client.AccountId]string
 
 	// id counter to simulate serial
 	publicKeyIdCounter client.PublicKeyId
@@ -88,7 +89,27 @@ func (c *Client) accountDeployData(ctx context.Context, account client.Account) 
 }
 
 func (c *Client) accountDeployCache(account client.Account, deployCache string) string {
-	return fmt.Sprintf("%s %s@%s:%d\n%s", account.DeployMethod, account.Username, account.Host, account.Port, deployCache)
+	return fmt.Sprintf("%s %s@%s:%d\n%s", account.Connector, account.Username, account.Host, account.Port, deployCache)
+}
+
+// newSecret builds a connector secret from per-field values, using the connector
+// that owns its shape. Accounts live in memory here, so the secret is held as
+// the connector's type rather than serialized and parsed back.
+func newSecret(connectorKey string, values map[string]string) (connector.Secret, error) {
+	con, err := connector.Resolve(connectorKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return con.ParseSecretFromValues(values)
+}
+
+// auditAccount renders an account for the audit log without its connector secret.
+// Not every connector's secret redacts itself under %#v, which only consults
+// fmt.Formatter and GoStringer, so drop it rather than trust the type.
+func auditAccount(account client.Account) string {
+	account.ConnectorSecret = nil
+	return fmt.Sprintf("%#v", account)
 }
 
 // --- Lifecycle & Initialization ---
@@ -99,6 +120,7 @@ func NewClient() *Client {
 		accounts:     make(map[client.AccountId]client.Account),
 		links:        make(map[linkKey]client.Link),
 		remoteStates: make(map[client.AccountId]string),
+		deployCaches: make(map[client.AccountId]string),
 	}
 }
 
@@ -252,12 +274,17 @@ func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 
 // --- Account Management ---
 
-func (c *Client) CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
+func (c *Client) CreateAccount(ctx context.Context, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error) {
+	secret, err := newSecret(connectorKey, connectorSecret)
+	if err != nil {
+		return client.Account{}, err
+	}
+
 	c.accountIdCounter++
-	account := client.Account{Id: c.accountIdCounter, Username: username, Host: host, Port: port, DeployMethod: deploymentMethod, DeploySecret: deploymentSecret, DeployCache: ""}
+	account := client.Account{Id: c.accountIdCounter, Username: username, Host: host, Port: port, Connector: connectorKey, ConnectorSecret: secret}
 	c.accounts[account.Id] = account
 
-	_ = c.writeAuditLog("account.create", client.AuditLogDetails{{"account", fmt.Sprintf("%#v", account)}})
+	_ = c.writeAuditLog("account.create", client.AuditLogDetails{{"account", auditAccount(account)}})
 	return account, nil
 }
 
@@ -307,17 +334,21 @@ func (c *Client) ListAccountsDirty(ctx context.Context) ([]client.Account, error
 	})
 }
 
-func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
+func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error) {
+	secret, err := newSecret(connectorKey, connectorSecret)
+	if err != nil {
+		return client.Account{}, err
+	}
+
 	if account, ok := c.accounts[id]; ok {
-		account.Username = username
 		account.Username = username
 		account.Host = host
 		account.Port = port
-		account.DeployMethod = deploymentMethod
-		account.DeploySecret = deploymentSecret
+		account.Connector = connectorKey
+		account.ConnectorSecret = secret
 		c.accounts[id] = account
 
-		_ = c.writeAuditLog("account.update", client.AuditLogDetails{{"account", fmt.Sprintf("%#v", account)}})
+		_ = c.writeAuditLog("account.update", client.AuditLogDetails{{"account", auditAccount(account)}})
 		return account, nil
 	}
 	return client.Account{}, fmt.Errorf("account with id %v not found", id)
@@ -344,7 +375,7 @@ func (c *Client) IsAccountDirty(ctx context.Context, account client.Account) (bo
 		return true, err
 	}
 
-	return c.accountDeployCache(account, deployData) != account.DeployCache, nil
+	return c.accountDeployCache(account, deployData) != c.deployCaches[account.Id], nil
 }
 
 // --- client.Link Management ---
@@ -475,9 +506,7 @@ accountLoop:
 		_ = c.writeAuditLog("account.deploy", client.AuditLogDetails{{"account", fmt.Sprintf("%#v", account)}})
 
 		// update accounts deploy cache
-		_account := c.accounts[account.Id]
-		_account.DeployCache = c.remoteStates[account.Id]
-		c.accounts[account.Id] = _account
+		c.deployCaches[account.Id] = c.remoteStates[account.Id]
 
 		deployProgress.Accounts[account.Id].Status = i18n.Text("client.status.finished")
 		deployProgress.Accounts[account.Id].Progress = 1
@@ -571,9 +600,7 @@ accountLoop:
 
 		if !hasState || c.accountDeployCache(account, deployDatas[i]) != remoteState {
 			// update accounts deploy cache to reflect remotes state
-			_account := c.accounts[account.Id]
-			_account.DeployCache = c.remoteStates[account.Id]
-			c.accounts[account.Id] = _account
+			c.deployCaches[account.Id] = c.remoteStates[account.Id]
 
 			verifyProgress.Accounts[account.Id].Status = i18n.Text("client.status.error")
 			verifyProgress.Accounts[account.Id].Err = errors.New("account is out of sync")
@@ -640,6 +667,16 @@ func (c *Client) ListAuditLogs(ctx context.Context, offset int, limit int) ([]cl
 
 func (c *Client) ListConnectorKeys(ctx context.Context) ([]string, error) {
 	return connector.Keys(), nil
+}
+
+func (c *Client) ConnectorSecretFields(connectorKey string) ([]client.SecretField, error) {
+	con, err := connector.Resolve(connectorKey)
+	if err != nil {
+		// An unchosen or unregistered connector has no fields, not an error.
+		return nil, nil
+	}
+
+	return con.SecretFields(), nil
 }
 
 func (c *Client) OnboardHost(ctx context.Context, host string, port int /* , gateway string, plugin string */, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {

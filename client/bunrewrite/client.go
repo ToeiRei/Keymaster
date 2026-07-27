@@ -97,13 +97,13 @@ func auditTime(t time.Time) string {
 	return t.Format(time.RFC3339)
 }
 
-// auditSecret redacts a deploy secret for audit details: it records only whether
-// a secret was provided, never the value itself (mirroring Account.String()).
-func auditSecret(secret string) string {
-	if secret == "" {
-		return ""
+// auditSecret redacts a connector secret for audit details.
+func auditSecret(values map[string]string) string {
+	fields := make([]string, 0, len(values))
+	for key := range values {
+		fields = append(fields, key+":"+"<redacted>")
 	}
-	return "<redacted>"
+	return strings.Join(fields, ",")
 }
 
 // auditIds renders a list of numeric ids as a comma-separated string.
@@ -121,7 +121,7 @@ func accountOpAuditDetails(account client.Account, keyCount int, opErr error) cl
 	details := client.AuditLogDetails{
 		{"accountId", strconv.Itoa(int(account.Id))},
 		{"connection", fmt.Sprintf("%s@%s:%d", account.Username, account.Host, account.Port)},
-		{"deployMethod", account.DeployMethod},
+		{"connector", account.Connector},
 	}
 	if opErr != nil {
 		return append(details,
@@ -137,7 +137,7 @@ func accountOpAuditDetails(account client.Account, keyCount int, opErr error) cl
 
 // writeAuditLog records a single audit log entry through the given handle.
 // Callers pass the transaction (tx) from their surrounding RunInTx so the audit
-// entry is committed — or rolled back — atomically with the change it documents.
+// entry is committed (or rolled back) atomically with the change it documents.
 func (c *Client) writeAuditLog(ctx context.Context, idb bun.IDB, action string, details client.AuditLogDetails) error {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -407,32 +407,59 @@ func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 
 // --- Account Management ---
 
-func modelToClientAccount(accountModel db.AccountModel) client.Account {
-	port, _ := strconv.Atoi(accountModel.Port)
-	return client.Account{
-		Id:           client.AccountId(accountModel.ID),
-		Username:     accountModel.Username,
-		Host:         accountModel.Host,
-		Port:         port,
-		Serial:       accountModel.Serial,
-		DeployMethod: accountModel.DeployMethod,
-		DeploySecret: accountModel.DeploySecret,
-		DeployCache:  accountModel.DeployCache,
+func modelToClientAccount(accountModel db.AccountModel) (client.Account, error) {
+	conn, err := connector.Resolve(accountModel.Connector)
+	if err != nil {
+		return client.Account{}, err
 	}
+
+	secret, err := conn.ParseSecret(accountModel.ConnectorSecret)
+	if err != nil {
+		return client.Account{}, err
+	}
+
+	return client.Account{
+		client.AccountId(accountModel.ID),
+		accountModel.Username,
+		accountModel.Host,
+		accountModel.Port,
+		accountModel.Serial,
+		accountModel.Connector,
+		secret,
+	}, nil
 }
 
-func (c *Client) CreateAccount(ctx context.Context, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
-	accountModel := db.AccountModel{
-		Username:     username,
-		Host:         host,
-		Port:         strconv.Itoa(port),
-		IsActive:     true,
-		IsDirty:      true,
-		DeployMethod: deploymentMethod,
-		DeploySecret: deploymentSecret,
+// serializeSecret turns the per-field values a UI collected into the JSON the
+// connector_secret column stores, using the connector that owns its shape.
+func serializeSecret(connectorKey string, values map[string]string) (string, error) {
+	con, err := connector.Resolve(connectorKey)
+	if err != nil {
+		return "", err
+	}
+	secret, err := con.ParseSecretFromValues(values)
+	if err != nil {
+		return "", err
+	}
+	return secret.Serialize()
+}
+
+func (c *Client) CreateAccount(ctx context.Context, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error) {
+	serializedSecret, err := serializeSecret(connectorKey, connectorSecret)
+	if err != nil {
+		return client.Account{}, err
 	}
 
-	err := c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+	accountModel := db.AccountModel{
+		Username:        username,
+		Host:            host,
+		Port:            port,
+		IsActive:        true,
+		IsDirty:         true,
+		Connector:       connectorKey,
+		ConnectorSecret: serializedSecret,
+	}
+
+	err = c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		if _, err := tx.NewInsert().
 			Model(&accountModel).
 			Exec(ctx); err != nil {
@@ -443,15 +470,15 @@ func (c *Client) CreateAccount(ctx context.Context, username string, host string
 			{"username", username},
 			{"host", host},
 			{"port", strconv.Itoa(port)},
-			{"deployMethod", deploymentMethod},
-			{"deploySecret", auditSecret(deploymentSecret)},
+			{"connector", connectorKey},
+			{"connectorSecret", auditSecret(connectorSecret)},
 		})
 	})
 	if err != nil {
 		return client.Account{}, err
 	}
 
-	return modelToClientAccount(accountModel), nil
+	return modelToClientAccount(accountModel)
 }
 
 func (c *Client) GetAccount(ctx context.Context, id client.AccountId) (client.Account, error) {
@@ -467,7 +494,7 @@ func (c *Client) GetAccount(ctx context.Context, id client.AccountId) (client.Ac
 		return client.Account{}, err
 	}
 
-	return modelToClientAccount(accountModel), nil
+	return modelToClientAccount(accountModel)
 }
 
 func (c *Client) GetAccounts(ctx context.Context, ids ...client.AccountId) ([]client.Account, error) {
@@ -480,9 +507,12 @@ func (c *Client) GetAccounts(ctx context.Context, ids ...client.AccountId) ([]cl
 		return nil, err
 	}
 
-	accounts := slices.Map(accountModels, func(accountModel *db.AccountModel) client.Account {
+	accounts, err := slicest.MapX(accountModels, func(accountModel *db.AccountModel) (client.Account, error) {
 		return modelToClientAccount(*accountModel)
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	if len(accounts) != len(ids) {
 		accountIds := slices.Map(accounts, func(account client.Account) client.AccountId { return account.Id })
@@ -504,9 +534,9 @@ func (c *Client) ListAccounts(ctx context.Context) ([]client.Account, error) {
 		return nil, err
 	}
 
-	return slices.Map(accountModels, func(accountModel *db.AccountModel) client.Account {
+	return slicest.MapX(accountModels, func(accountModel *db.AccountModel) (client.Account, error) {
 		return modelToClientAccount(*accountModel)
-	}), nil
+	})
 }
 
 func (c *Client) ListAccountsDirty(ctx context.Context) ([]client.Account, error) {
@@ -567,21 +597,26 @@ func (c *Client) ListAccountsLinkedToPublicKey(ctx context.Context, publicKeyId 
 	return c.GetAccounts(ctx, accountIds...)
 }
 
-func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, deploymentMethod string, deploymentSecret string) (client.Account, error) {
-	accountModel := db.AccountModel{
-		ID:           int(id),
-		Username:     username,
-		Host:         host,
-		Port:         strconv.Itoa(port),
-		DeployMethod: deploymentMethod,
-		DeploySecret: deploymentSecret,
+func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, username string, host string, port int, connectorKey string, connectorSecret map[string]string) (client.Account, error) {
+	serializedSecret, err := serializeSecret(connectorKey, connectorSecret)
+	if err != nil {
+		return client.Account{}, err
 	}
 
-	err := c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+	accountModel := db.AccountModel{
+		ID:              int(id),
+		Username:        username,
+		Host:            host,
+		Port:            port,
+		Connector:       connectorKey,
+		ConnectorSecret: serializedSecret,
+	}
+
+	err = c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		// update account
 		_, err := tx.NewUpdate().
 			Model(&accountModel).
-			Column("username", "host", "port", "deploy_method", "deploy_secret").
+			Column("username", "host", "port", "connector", "connector_secret").
 			WherePK().
 			Exec(ctx)
 		if err != nil {
@@ -601,15 +636,15 @@ func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, usernam
 			{"username", username},
 			{"host", host},
 			{"port", strconv.Itoa(port)},
-			{"deployMethod", deploymentMethod},
-			{"deploySecret", auditSecret(deploymentSecret)},
+			{"connector", connectorKey},
+			{"connectorSecret", auditSecret(connectorSecret)},
 		})
 	})
 	if err != nil {
 		return client.Account{}, err
 	}
 
-	return modelToClientAccount(accountModel), nil
+	return modelToClientAccount(accountModel)
 }
 
 func (c *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) error {
@@ -639,12 +674,12 @@ func (c *Client) DeleteAccounts(ctx context.Context, ids ...client.AccountId) er
 }
 
 func (c *Client) IsAccountDirty(ctx context.Context, account client.Account) (bool, error) {
-	con, err := connector.Resolve(account.DeployMethod)
+	con, err := connector.Resolve(account.Connector)
 	if err != nil {
 		return true, err
 	}
 
-	deployData, err := c.accountDeployData(ctx, account)
+	deployData, err := c.accountDeployData(ctx, con, account)
 	if err != nil {
 		return true, err
 	}
@@ -821,7 +856,32 @@ func (c *Client) DeleteLink(ctx context.Context, accountId client.AccountId, pub
 
 // --- Deploy & Verify ---
 
-func (c *Client) accountDeployData(ctx context.Context, account client.Account) (connector.DeployData, error) {
+// accountConnectorCache reads an account's serialized connector cache, which
+// deploy and verify own and [client.Account] therefore does not carry.
+func (c *Client) accountConnectorCache(ctx context.Context, id client.AccountId) (string, error) {
+	var rawCache string
+	err := c.bun.NewSelect().
+		Model((*db.AccountModel)(nil)).
+		Column("connector_cache").
+		Where("id = ?", int(id)).
+		Scan(ctx, &rawCache)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", i18n.NewError("errors.client.account_not_found", id)
+	}
+	return rawCache, err
+}
+
+func (c *Client) accountDeployData(ctx context.Context, con connector.Connector, account client.Account) (connector.DeployData, error) {
+	rawCache, err := c.accountConnectorCache(ctx, account.Id)
+	if err != nil {
+		return connector.DeployData{}, err
+	}
+
+	cache, err := con.ParseCache(rawCache)
+	if err != nil {
+		return connector.DeployData{}, err
+	}
+
 	now := time.Now()
 
 	var linkModels []db.LinkModel
@@ -839,7 +899,7 @@ func (c *Client) accountDeployData(ctx context.Context, account client.Account) 
 	queryStr := query.String()
 	_ = queryStr
 
-	err := query.Scan(ctx)
+	err = query.Scan(ctx)
 	if err != nil {
 		return connector.DeployData{}, err
 	}
@@ -897,8 +957,8 @@ func (c *Client) accountDeployData(ctx context.Context, account client.Account) 
 
 	return connector.DeployData{
 		append(globalRecords, localRecords...),
-		account.DeploySecret,
-		account.DeployCache,
+		account.ConnectorSecret,
+		cache,
 		account.Serial,
 	}, nil
 }
@@ -911,7 +971,7 @@ func accountConnectionData(account client.Account) connector.ConnectionData {
 	}
 }
 
-type connectorOperation func(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (ok bool, newCache string, err error)
+type connectorOperation func(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (ok bool, newCache connector.Cache, err error)
 
 type accountProgressUpdate struct {
 	accountId client.AccountId
@@ -985,7 +1045,7 @@ func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connec
 // reported as an error status on that account rather than aborting the batch.
 // Once the operation resolves, its outcome is recorded under action. The remote
 // side effect has already happened by then, so a failed audit write cannot be
-// rolled back — it is surfaced as an error on this account's progress instead.
+// rolled back: it is surfaced as an error on this account's progress instead.
 func (c *Client) runAccount(ctx context.Context, account client.Account, selectOp func(connector.Connector) connectorOperation, action string, progressChanAccount chan accountProgressUpdate, userRequester connector.UserRequester) {
 	sendProgress := func(progress client.ProgressAccountWithError) {
 		progressChanAccount <- accountProgressUpdate{
@@ -1006,13 +1066,13 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 	// is audited exactly once. It returns the number of keys involved and the
 	// operation error, if any.
 	runOp := func() (int, error) {
-		con, err := connector.Resolve(account.DeployMethod)
+		con, err := connector.Resolve(account.Connector)
 		if err != nil {
 			fail(err)
 			return 0, err
 		}
 
-		deployData, err := c.accountDeployData(ctx, account)
+		deployData, err := c.accountDeployData(ctx, con, account)
 		if err != nil {
 			fail(err)
 			return 0, err
@@ -1020,7 +1080,7 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 
 		connectorProgress := make(chan connector.Progress)
 		var ok bool
-		var cache string
+		var cache connector.Cache
 		go func() {
 			defer close(connectorProgress)
 			ok, cache, err = selectOp(con)(ctx, deployData, accountConnectionData(account), userRequester, connectorProgress)
@@ -1033,9 +1093,15 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 			return 0, err
 		}
 
+		serializedCache, err := cache.Serialize()
+		if err != nil {
+			fail(err)
+			return 0, err
+		}
+
 		_, err = c.bun.NewUpdate().
-			Model(&db.AccountModel{ID: int(account.Id), DeployCache: cache}).
-			Column("deploy_cache").
+			Model(&db.AccountModel{ID: int(account.Id), ConnectorCache: serializedCache}).
+			Column("connector_cache").
 			WherePK().
 			Exec(ctx)
 		if err != nil {
@@ -1093,7 +1159,7 @@ func (c *Client) DeployAccount(ctx context.Context, userRequester client.UserReq
 
 func (c *Client) DeployAccounts(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccounts, accountIds ...client.AccountId) error {
 	return c.runAccounts(ctx, func(con connector.Connector) connectorOperation {
-		return func(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (bool, string, error) {
+		return func(ctx context.Context, deployData connector.DeployData, connectionData connector.ConnectionData, userRequester connector.UserRequester, progress chan<- connector.Progress) (bool, connector.Cache, error) {
 			cache, err := con.Deploy(ctx, deployData, connectionData, userRequester, progress)
 			return true, cache, err
 		}
@@ -1150,6 +1216,15 @@ func (c *Client) ListAuditLogs(ctx context.Context, offset int, limit int) ([]cl
 
 func (c *Client) ListConnectorKeys(ctx context.Context) ([]string, error) {
 	return connector.Keys(), nil
+}
+
+func (c *Client) ConnectorSecretFields(connectorKey string) ([]client.SecretField, error) {
+	con, err := connector.Resolve(connectorKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return con.SecretFields(), nil
 }
 
 func (c *Client) OnboardHost(ctx context.Context, host string, port int, accountUsername string, deploymentKey string) (chan client.OnboardHostProgress, error) {

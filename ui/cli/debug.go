@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the LICENSE file.
 package cli
 
-// TODO: consider removal — OWNER_APPROVAL_REQUIRED
+// TODO: consider removal: OWNER_APPROVAL_REQUIRED
 // Candidate: CLI debug command used for local diagnostics. Confirm owner before deleting.
 
 import (

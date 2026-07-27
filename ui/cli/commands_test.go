@@ -409,6 +409,39 @@ func TestSetupDefaultServices_DBInitialization(t *testing.T) {
 	core.ResetStoreForTests()
 }
 
+// TestRootCmd_TUIPathSkipsLegacyStore verifies the bare `keymaster` invocation
+// (which launches the bunrewrite-backed TUI) never bootstraps the legacy
+// core/db store: doing so replays the legacy SQL migrations over a schema the
+// bun migrator already owns.
+func TestRootCmd_TUIPathSkipsLegacyStore(t *testing.T) {
+	viper.Reset()
+	cfgFile = ""
+	t.Cleanup(func() {
+		viper.Reset()
+		cfgFile = ""
+	})
+
+	tmp := t.TempDir()
+	dbPath := filepath.Join(tmp, "test.db")
+
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+
+	root := NewRootCmd()
+	_ = root.Flags().Set("database.type", "sqlite")
+	_ = root.Flags().Set("database.dsn", dbPath)
+
+	if err := root.PersistentPreRunE(root, []string{}); err != nil {
+		t.Fatalf("root PersistentPreRunE failed: %v", err)
+	}
+
+	if _, err := os.Stat(dbPath); !os.IsNotExist(err) {
+		t.Fatalf("expected no database at %s, stat err: %v", dbPath, err)
+	}
+
+	// i18n is still initialized for the TUI.
+	_ = i18n.T("test.key")
+}
+
 // TestGetConfigPathFromCli_NoFlag verifies config path extraction when flag not set
 func TestGetConfigPathFromCli_NoFlag(t *testing.T) {
 	cmd := &cobra.Command{}

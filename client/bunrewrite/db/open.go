@@ -5,6 +5,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -36,7 +37,7 @@ func Open(dbType, dsn string) (*bun.DB, error) {
 	} else if driver == "sqlite" && !strings.Contains(dsn, "_pragma=busy_timeout") {
 		// Without a busy_timeout, a writer that finds the database locked by
 		// another connection fails immediately with "database is locked"
-		// instead of waiting — exactly what happens when deploy/verify run
+		// instead of waiting, exactly what happens when deploy/verify run
 		// several accounts concurrently (see runAccounts). WAL mode also lets
 		// readers proceed without blocking on a writer. Both are applied by
 		// the modernc.org/sqlite driver per-connection via _pragma params.
@@ -59,14 +60,14 @@ func Open(dbType, dsn string) (*bun.DB, error) {
 		conn.SetMaxIdleConns(1)
 	}
 
-	if err := RunMigrations(conn, dbType); err != nil {
-		return nil, fmt.Errorf("failed to run migrations: %w", err)
-	}
-
 	bunDB := bun.NewDB(conn, dialect)
 
 	// register the links junction so account<->public_key m2m relations resolve
 	bunDB.RegisterModel((*LinkModel)(nil))
+
+	if err := runMigrations(context.Background(), conn, bunDB, dbType); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
 
 	return bunDB, nil
 }
