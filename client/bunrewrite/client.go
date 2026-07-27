@@ -408,12 +408,12 @@ func (c *Client) DeletePublicKeys(ctx context.Context, ids ...client.PublicKeyId
 // --- Account Management ---
 
 func modelToClientAccount(accountModel db.AccountModel) (client.Account, error) {
-	conn, err := connector.Resolve(accountModel.DeployMethod)
+	conn, err := connector.Resolve(accountModel.Connector)
 	if err != nil {
 		return client.Account{}, err
 	}
 
-	secret, err := conn.ParseSecret(accountModel.DeploySecret)
+	secret, err := conn.ParseSecret(accountModel.ConnectorSecret)
 	if err != nil {
 		return client.Account{}, err
 	}
@@ -424,13 +424,13 @@ func modelToClientAccount(accountModel db.AccountModel) (client.Account, error) 
 		accountModel.Host,
 		accountModel.Port,
 		accountModel.Serial,
-		accountModel.DeployMethod,
+		accountModel.Connector,
 		secret,
 	}, nil
 }
 
 // serializeSecret turns the per-field values a UI collected into the JSON the
-// deploy_secret column stores, using the connector that owns its shape.
+// connector_secret column stores, using the connector that owns its shape.
 func serializeSecret(connectorKey string, values map[string]string) (string, error) {
 	con, err := connector.Resolve(connectorKey)
 	if err != nil {
@@ -450,13 +450,13 @@ func (c *Client) CreateAccount(ctx context.Context, username string, host string
 	}
 
 	accountModel := db.AccountModel{
-		Username:     username,
-		Host:         host,
-		Port:         port,
-		IsActive:     true,
-		IsDirty:      true,
-		DeployMethod: connectorKey,
-		DeploySecret: serializedSecret,
+		Username:        username,
+		Host:            host,
+		Port:            port,
+		IsActive:        true,
+		IsDirty:         true,
+		Connector:       connectorKey,
+		ConnectorSecret: serializedSecret,
 	}
 
 	err = c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
@@ -604,19 +604,19 @@ func (c *Client) UpdateAccount(ctx context.Context, id client.AccountId, usernam
 	}
 
 	accountModel := db.AccountModel{
-		ID:           int(id),
-		Username:     username,
-		Host:         host,
-		Port:         port,
-		DeployMethod: connectorKey,
-		DeploySecret: serializedSecret,
+		ID:              int(id),
+		Username:        username,
+		Host:            host,
+		Port:            port,
+		Connector:       connectorKey,
+		ConnectorSecret: serializedSecret,
 	}
 
 	err = c.bun.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		// update account
 		_, err := tx.NewUpdate().
 			Model(&accountModel).
-			Column("username", "host", "port", "deploy_method", "deploy_secret").
+			Column("username", "host", "port", "connector", "connector_secret").
 			WherePK().
 			Exec(ctx)
 		if err != nil {
@@ -856,13 +856,13 @@ func (c *Client) DeleteLink(ctx context.Context, accountId client.AccountId, pub
 
 // --- Deploy & Verify ---
 
-// accountDeployCache reads an account's serialized deploy cache, which deploy
-// and verify own and [client.Account] therefore does not carry.
-func (c *Client) accountDeployCache(ctx context.Context, id client.AccountId) (string, error) {
+// accountConnectorCache reads an account's serialized connector cache, which
+// deploy and verify own and [client.Account] therefore does not carry.
+func (c *Client) accountConnectorCache(ctx context.Context, id client.AccountId) (string, error) {
 	var rawCache string
 	err := c.bun.NewSelect().
 		Model((*db.AccountModel)(nil)).
-		Column("deploy_cache").
+		Column("connector_cache").
 		Where("id = ?", int(id)).
 		Scan(ctx, &rawCache)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -872,7 +872,7 @@ func (c *Client) accountDeployCache(ctx context.Context, id client.AccountId) (s
 }
 
 func (c *Client) accountDeployData(ctx context.Context, con connector.Connector, account client.Account) (connector.DeployData, error) {
-	rawCache, err := c.accountDeployCache(ctx, account.Id)
+	rawCache, err := c.accountConnectorCache(ctx, account.Id)
 	if err != nil {
 		return connector.DeployData{}, err
 	}
@@ -1100,8 +1100,8 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 		}
 
 		_, err = c.bun.NewUpdate().
-			Model(&db.AccountModel{ID: int(account.Id), DeployCache: serializedCache}).
-			Column("deploy_cache").
+			Model(&db.AccountModel{ID: int(account.Id), ConnectorCache: serializedCache}).
+			Column("connector_cache").
 			WherePK().
 			Exec(ctx)
 		if err != nil {
