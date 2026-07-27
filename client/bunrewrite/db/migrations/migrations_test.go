@@ -8,6 +8,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/uptrace/bun"
@@ -128,15 +130,15 @@ func exec(t *testing.T, db *bun.DB, query string, args ...any) {
 	}
 }
 
-// deploySecretPrivateKey reads back the private key from an account's
-// deploy_secret JSON, so the tests assert on the value rather than on the
-// exact encoding.
-func deploySecretPrivateKey(t *testing.T, db *bun.DB, username string) string {
+// connectorSecretPrivateKey reads back the private key from an account's
+// connector_secret JSON, so the tests assert on the value rather than on the
+// exact encoding. Every caller runs after migrateAll, hence the renamed column.
+func connectorSecretPrivateKey(t *testing.T, db *bun.DB, username string) string {
 	t.Helper()
 
 	var raw string
-	if err := db.QueryRow("SELECT deploy_secret FROM accounts WHERE username = ?", username).Scan(&raw); err != nil {
-		t.Fatalf("query deploy_secret for %s: %v", username, err)
+	if err := db.QueryRow("SELECT connector_secret FROM accounts WHERE username = ?", username).Scan(&raw); err != nil {
+		t.Fatalf("query connector_secret for %s: %v", username, err)
 	}
 	if raw == "" {
 		return ""
@@ -144,12 +146,12 @@ func deploySecretPrivateKey(t *testing.T, db *bun.DB, username string) string {
 
 	var secret sshSecret
 	if err := json.Unmarshal([]byte(raw), &secret); err != nil {
-		t.Fatalf("deploy_secret for %s is not valid JSON (%q): %v", username, raw, err)
+		t.Fatalf("connector_secret for %s is not valid JSON (%q): %v", username, raw, err)
 	}
 	return secret.PrivateKey
 }
 
-func TestBackfill_CopiesActiveSystemKeyIntoDeploySecret(t *testing.T) {
+func TestBackfill_CopiesActiveSystemKeyIntoConnectorSecret(t *testing.T) {
 	db := openMemBunDB(t)
 	seedCutoverSchema(t, db)
 
@@ -165,26 +167,26 @@ func TestBackfill_CopiesActiveSystemKeyIntoDeploySecret(t *testing.T) {
 
 	migrateAll(t, db)
 
-	if got := deploySecretPrivateKey(t, db, "root"); got != activeKey {
+	if got := connectorSecretPrivateKey(t, db, "root"); got != activeKey {
 		t.Fatalf("private key not backfilled: %q", got)
 	}
 
-	var method, port string
-	if err := db.QueryRow("SELECT deploy_method, port FROM accounts WHERE username = 'root'").
-		Scan(&method, &port); err != nil {
+	var con, port string
+	if err := db.QueryRow("SELECT connector, port FROM accounts WHERE username = 'root'").
+		Scan(&con, &port); err != nil {
 		t.Fatalf("query backfilled account: %v", err)
 	}
-	if method != "ssh" || port != "22" {
-		t.Fatalf("account not backfilled: method=%q port=%q", method, port)
+	if con != "ssh" || port != "22" {
+		t.Fatalf("account not backfilled: connector=%q port=%q", con, port)
 	}
 
 	var secret string
-	if err := db.QueryRow("SELECT deploy_secret, deploy_method, port FROM accounts WHERE username = 'deploy'").
-		Scan(&secret, &method, &port); err != nil {
+	if err := db.QueryRow("SELECT connector_secret, connector, port FROM accounts WHERE username = 'deploy'").
+		Scan(&secret, &con, &port); err != nil {
 		t.Fatalf("query configured account: %v", err)
 	}
-	if secret != `{"succeed":true}` || method != "mock" || port != "2222" {
-		t.Fatalf("configured account was clobbered: secret=%q method=%q port=%q", secret, method, port)
+	if secret != `{"succeed":true}` || con != "mock" || port != "2222" {
+		t.Fatalf("configured account was clobbered: secret=%q connector=%q port=%q", secret, con, port)
 	}
 }
 
@@ -198,18 +200,19 @@ func TestBackfill_FallsBackToHighestSerialWhenNoneActive(t *testing.T) {
 
 	migrateAll(t, db)
 
-	if got := deploySecretPrivateKey(t, db, "root"); got != "PRIV-NEWEST" {
+	if got := connectorSecretPrivateKey(t, db, "root"); got != "PRIV-NEWEST" {
 		t.Fatalf("private key = %q, want PRIV-NEWEST", got)
 	}
 }
 
-// deployCache reads back an account's deploy_cache as the ssh connector's shape.
-func deployCache(t *testing.T, db *bun.DB, username string) (string, sshCache) {
+// connectorCache reads back an account's connector_cache as the ssh
+// connector's shape.
+func connectorCache(t *testing.T, db *bun.DB, username string) (string, sshCache) {
 	t.Helper()
 
 	var raw string
-	if err := db.QueryRow("SELECT deploy_cache FROM accounts WHERE username = ?", username).Scan(&raw); err != nil {
-		t.Fatalf("query deploy_cache for %s: %v", username, err)
+	if err := db.QueryRow("SELECT connector_cache FROM accounts WHERE username = ?", username).Scan(&raw); err != nil {
+		t.Fatalf("query connector_cache for %s: %v", username, err)
 	}
 	if raw == "" {
 		return raw, sshCache{}
@@ -217,12 +220,12 @@ func deployCache(t *testing.T, db *bun.DB, username string) (string, sshCache) {
 
 	var cache sshCache
 	if err := json.Unmarshal([]byte(raw), &cache); err != nil {
-		t.Fatalf("deploy_cache for %s is not valid JSON (%q): %v", username, raw, err)
+		t.Fatalf("connector_cache for %s is not valid JSON (%q): %v", username, raw, err)
 	}
 	return raw, cache
 }
 
-func TestBackfill_SalvagesKnownHostsIntoDeployCache(t *testing.T) {
+func TestBackfill_SalvagesKnownHostsIntoConnectorCache(t *testing.T) {
 	db := openMemBunDB(t)
 	seedCutoverSchema(t, db)
 
@@ -246,18 +249,18 @@ func TestBackfill_SalvagesKnownHostsIntoDeployCache(t *testing.T) {
 		{"b", "ssh-ed25519 AAAAhostonly"},
 		{"c", "ssh-ed25519 AAAAdefaultport"},
 	} {
-		_, cache := deployCache(t, db, tc.username)
+		_, cache := connectorCache(t, db, tc.username)
 		if cache.KnownHost != tc.wantKnownHost {
 			t.Errorf("account %s known_host = %q, want %q", tc.username, cache.KnownHost, tc.wantKnownHost)
 		}
 	}
 
-	if raw, _ := deployCache(t, db, "d"); raw != "" {
+	if raw, _ := connectorCache(t, db, "d"); raw != "" {
 		t.Errorf("account without a known host got a cache: %q", raw)
 	}
 }
 
-func TestBackfill_LeavesExistingDeployCacheAlone(t *testing.T) {
+func TestBackfill_LeavesExistingConnectorCacheAlone(t *testing.T) {
 	db := openMemBunDB(t)
 	seedCutoverSchema(t, db)
 
@@ -266,12 +269,12 @@ func TestBackfill_LeavesExistingDeployCacheAlone(t *testing.T) {
 
 	migrateAll(t, db)
 
-	if raw, _ := deployCache(t, db, "root"); raw != `{"authorized_keys_hash":"abc123"}` {
-		t.Fatalf("existing deploy_cache was rewritten: %q", raw)
+	if raw, _ := connectorCache(t, db, "root"); raw != `{"authorized_keys_hash":"abc123"}` {
+		t.Fatalf("existing cache was rewritten: %q", raw)
 	}
 }
 
-func TestBackfill_NoSystemKeysLeavesDeploySecretEmpty(t *testing.T) {
+func TestBackfill_NoSystemKeysLeavesConnectorSecretEmpty(t *testing.T) {
 	db := openMemBunDB(t)
 	seedCutoverSchema(t, db)
 
@@ -279,19 +282,19 @@ func TestBackfill_NoSystemKeysLeavesDeploySecretEmpty(t *testing.T) {
 
 	migrateAll(t, db)
 
-	var secret, method string
-	if err := db.QueryRow("SELECT deploy_secret, deploy_method FROM accounts WHERE username = 'root'").
-		Scan(&secret, &method); err != nil {
+	var secret, con string
+	if err := db.QueryRow("SELECT connector_secret, connector FROM accounts WHERE username = 'root'").
+		Scan(&secret, &con); err != nil {
 		t.Fatalf("query account: %v", err)
 	}
 	// Nothing to copy, so no JSON is written at all — the column stays at its
 	// default and the account has no secret rather than an empty one.
 	if secret != "" {
-		t.Fatalf("deploy_secret = %q, want empty", secret)
+		t.Fatalf("connector_secret = %q, want empty", secret)
 	}
-	// the method backfill runs regardless of whether a key was found
-	if method != "ssh" {
-		t.Fatalf("deploy_method = %q, want ssh", method)
+	// the connector backfill runs regardless of whether a key was found
+	if con != "ssh" {
+		t.Fatalf("connector = %q, want ssh", con)
 	}
 }
 
@@ -340,6 +343,85 @@ func TestBackfill_ConvertsLegacyAuditDetailsToJSON(t *testing.T) {
 	}
 	if !isNull {
 		t.Error("NULL details should have been left alone")
+	}
+}
+
+func accountColumns(t *testing.T, db *bun.DB) []string {
+	t.Helper()
+	rows, err := db.Query("SELECT name FROM pragma_table_info('accounts')")
+	if err != nil {
+		t.Fatalf("table_info(accounts): %v", err)
+	}
+	defer rows.Close()
+
+	var columns []string
+	for rows.Next() {
+		var column string
+		if err := rows.Scan(&column); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		columns = append(columns, column)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows: %v", err)
+	}
+	return columns
+}
+
+// TestRenameConnectorColumns_RenamesAndKeepsValues covers both halves of the
+// rename: no deploy_* column survives it, and what the earlier migrations wrote
+// under the old names is still there under the new ones.
+func TestRenameConnectorColumns_RenamesAndKeepsValues(t *testing.T) {
+	db := openMemBunDB(t)
+	seedCutoverSchema(t, db)
+
+	exec(t, db, `INSERT INTO accounts (username, host, deploy_method, deploy_secret, deploy_cache) VALUES ('root', 'example.com', 'mock', '{"succeed":true}', '{"authorized_keys_hash":"abc123"}')`)
+
+	migrateAll(t, db)
+
+	columns := accountColumns(t, db)
+	for _, column := range []string{
+		"connector", "connector_secret", "connector_secret_rollback", "connector_cache",
+	} {
+		if !slices.Contains(columns, column) {
+			t.Errorf("expected column %q on accounts, got %v", column, columns)
+		}
+	}
+	for _, column := range columns {
+		if strings.HasPrefix(column, "deploy_") {
+			t.Errorf("column %q survived the rename", column)
+		}
+	}
+
+	var con, secret, cache string
+	if err := db.QueryRow("SELECT connector, connector_secret, connector_cache FROM accounts WHERE username = 'root'").
+		Scan(&con, &secret, &cache); err != nil {
+		t.Fatalf("query renamed account: %v", err)
+	}
+	if con != "mock" || secret != `{"succeed":true}` || cache != `{"authorized_keys_hash":"abc123"}` {
+		t.Fatalf("values lost in the rename: connector=%q secret=%q cache=%q", con, secret, cache)
+	}
+}
+
+func TestRenameConnectorColumns_DownRestoresTheOldNames(t *testing.T) {
+	ctx := context.Background()
+	db := openMemBunDB(t)
+	seedCutoverSchema(t, db)
+
+	if err := renameConnectorColumnsUp(ctx, db); err != nil {
+		t.Fatalf("up: %v", err)
+	}
+	if err := renameConnectorColumnsDown(ctx, db); err != nil {
+		t.Fatalf("down: %v", err)
+	}
+
+	columns := accountColumns(t, db)
+	for _, column := range []string{
+		"deploy_method", "deploy_secret", "deploy_secret_rollback", "deploy_cache",
+	} {
+		if !slices.Contains(columns, column) {
+			t.Errorf("expected column %q back on accounts, got %v", column, columns)
+		}
 	}
 }
 

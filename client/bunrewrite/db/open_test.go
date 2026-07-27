@@ -195,21 +195,21 @@ func TestOpen_LegacyMidChain(t *testing.T) {
 		}
 	}
 
-	var host, deployMethod, deploySecret, port string
-	if err := conn.QueryRow("SELECT host, deploy_method, deploy_secret, port FROM accounts WHERE id = 1").
-		Scan(&host, &deployMethod, &deploySecret, &port); err != nil {
+	var host, con, connectorSecret, port string
+	if err := conn.QueryRow("SELECT host, connector, connector_secret, port FROM accounts WHERE id = 1").
+		Scan(&host, &con, &connectorSecret, &port); err != nil {
 		t.Fatalf("query accounts: %v", err)
 	}
-	// deploy_secret holds the ssh connector's JSON shape, not the bare PEM.
+	// connector_secret holds the ssh connector's JSON shape, not the bare PEM.
 	var secret struct {
 		PrivateKey string `json:"private_key"`
 	}
-	if err := json.Unmarshal([]byte(deploySecret), &secret); err != nil {
-		t.Fatalf("deploy_secret is not valid JSON (%q): %v", deploySecret, err)
+	if err := json.Unmarshal([]byte(connectorSecret), &secret); err != nil {
+		t.Fatalf("connector_secret is not valid JSON (%q): %v", connectorSecret, err)
 	}
-	if host != "example.com" || deployMethod != "ssh" || secret.PrivateKey != "PRIV-ACTIVE" || port != "22" {
-		t.Fatalf("account not reshaped/backfilled: host=%q deploy_method=%q private_key=%q port=%q",
-			host, deployMethod, secret.PrivateKey, port)
+	if host != "example.com" || con != "ssh" || secret.PrivateKey != "PRIV-ACTIVE" || port != "22" {
+		t.Fatalf("account not reshaped/backfilled: host=%q connector=%q private_key=%q port=%q",
+			host, con, secret.PrivateKey, port)
 	}
 
 	var details string

@@ -97,7 +97,7 @@ func seedLegacyShapeData(t *testing.T, conn *sql.DB) {
 }
 
 // seedSystemKey plants the shared legacy SSH identity that the backfill fans
-// out into accounts.deploy_secret. system_keys exists from 000001 onward, so
+// out into accounts.connector_secret. system_keys exists from 000001 onward, so
 // every stage can seed it.
 func seedSystemKey(t *testing.T, conn *sql.DB) {
 	t.Helper()
@@ -144,29 +144,29 @@ func assertBridgedCorrectly(t *testing.T, bunDB *bun.DB) {
 		}
 	}
 
-	var host, data, deployMethod, deploySecret string
+	var host, data, con, connectorSecret string
 	err := bunDB.QueryRow(`
-		SELECT a.host, a.deploy_method, a.deploy_secret, pk.data
+		SELECT a.host, a.connector, a.connector_secret, pk.data
 		FROM accounts a
 		JOIN links l ON l.account_id = a.id
 		JOIN public_keys pk ON pk.id = l.public_key_id
 		WHERE a.id = 1
-	`).Scan(&host, &deployMethod, &deploySecret, &data)
+	`).Scan(&host, &con, &connectorSecret, &data)
 	if err != nil {
 		t.Fatalf("query reshaped/linked data: %v", err)
 	}
 	if host != "example.com" || data != "AAAAdata" {
 		t.Fatalf("unexpected data after bridging: host=%q data=%q", host, data)
 	}
-	// deploy_secret holds the ssh connector's JSON shape, not the bare PEM.
+	// connector_secret holds the ssh connector's JSON shape, not the bare PEM.
 	var secret struct {
 		PrivateKey string `json:"private_key"`
 	}
-	if err := json.Unmarshal([]byte(deploySecret), &secret); err != nil {
-		t.Fatalf("deploy_secret is not valid JSON (%q): %v", deploySecret, err)
+	if err := json.Unmarshal([]byte(connectorSecret), &secret); err != nil {
+		t.Fatalf("connector_secret is not valid JSON (%q): %v", connectorSecret, err)
 	}
-	if deployMethod != "ssh" || secret.PrivateKey != "PRIV-ACTIVE" {
-		t.Fatalf("account not backfilled: deploy_method=%q private_key=%q", deployMethod, secret.PrivateKey)
+	if con != "ssh" || secret.PrivateKey != "PRIV-ACTIVE" {
+		t.Fatalf("account not backfilled: connector=%q private_key=%q", con, secret.PrivateKey)
 	}
 }
 
