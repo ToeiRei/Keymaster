@@ -4,6 +4,7 @@
 package locales_test
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -74,6 +75,41 @@ func TestManagedKeyParity(t *testing.T) {
 				if _, ok := en[k]; !ok {
 					t.Errorf("locale %q has managed key %q not present in en", lang, k)
 				}
+			}
+		}
+	}
+}
+
+// formatVerb matches a printf verb, including flags, width and an explicit
+// argument index.
+var formatVerb = regexp.MustCompile(`%[#+\- 0-9.\[\]]*[a-zA-Z]`)
+
+func countFormatVerbs(s string) int {
+	// %% is a literal percent, not a verb.
+	return len(formatVerb.FindAllString(strings.ReplaceAll(s, "%%", ""), -1))
+}
+
+// TestManagedKeysHaveMatchingFormatVerbs guards a failure that is invisible until
+// someone switches language: a translation with fewer verbs than the English
+// original renders %!s(MISSING) instead of the value, and one with more prints a
+// stray %!s(EXTRA). Neither is an error the i18n layer can report.
+func TestManagedKeysHaveMatchingFormatVerbs(t *testing.T) {
+	en := loadLocale(t, "active.en.yaml")
+
+	for _, lang := range []string{"active.de.yaml", "active.art-x-ang.yaml"} {
+		translated := loadLocale(t, lang)
+		for k, v := range en {
+			if !managed(k) {
+				continue
+			}
+			tv, ok := translated[k]
+			if !ok {
+				// Missing keys are TestManagedKeyParity's business.
+				continue
+			}
+			if want, got := countFormatVerbs(v), countFormatVerbs(tv); want != got {
+				t.Errorf("locale %q key %q has %d format verbs, en has %d\n  en: %q\n  %s: %q",
+					lang, k, got, want, v, lang, tv)
 			}
 		}
 	}

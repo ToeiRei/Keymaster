@@ -139,64 +139,78 @@ func recordFormRows[T any]() []form.FormOpt[T] {
 	}
 }
 
+// openConnectorSelect lists the registered connectors and hands the chosen one to
+// onSelect.
+func openConnectorSelect(c client.Client, onSelect func(connectorKey string) tea.Cmd) tea.Cmd {
+	return selectpopup.Open(
+		i18n.Text("account.select_connector"),
+		func(ctx context.Context) ([]string, error) { return c.ListConnectorKeys(ctx) },
+		onSelect,
+		tablecontroll.New(tablecontroll.Columns[string]{
+			{Title: i18n.Text("account.col_connector"), View: func(r string) string { return r }},
+		}),
+	)
+}
+
+// openSecretForm renders a connector's secret fields, prefilled from current, and
+// hands the submitted values to onSubmit. Shared by the account form's connector
+// row and the standalone secret actions, so the runtime field handling and the
+// value overlay live in one place.
+func openSecretForm(c client.Client, connectorKey string, current connectorData, onSubmit func(connectorData) tea.Cmd) tea.Cmd {
+	secretFields, err := c.ConnectorSecretFields(connectorKey)
+	if err != nil {
+		return messagepopup.Open(messagepopup.Error, i18n.WrapError(err, "errors.account.connector_secret_fields", connectorKey), nil)
+	}
+
+	// the secret fields are only known at runtime, so the form
+	// is modelled as a map keyed by SecretField.Key
+	formOpts := slicest.Map(secretFields, func(secretField client.SecretField) form.FormOpt[map[string]string] {
+		if secretField.Multiline {
+			// A textarea has no echo mode, so a field that is both
+			// multiline and masked cannot be masked. No connector
+			// declares one today.
+			return form.WithRowItem[map[string]string](secretField.Key, formelement.NewTextarea(secretField.Label, i18n.RawText(""), 3, 10))
+		}
+
+		textOpts := make([]formelement.TextOption, 0, 1)
+		if secretField.Masked {
+			textOpts = append(textOpts, formelement.WithTextEchoPassword())
+		}
+		return form.WithRowItem[map[string]string](secretField.Key, formelement.NewText(secretField.Label, i18n.RawText(""), textOpts...))
+	})
+
+	formOpts = append(formOpts,
+		form.WithRow(
+			form.WithItem[map[string]string]("_cancel", formelement.NewButton(i18n.Text("crud.btn_cancel"),
+				formelement.WithButtonActionCancel(),
+				formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
+			)),
+			form.WithItem[map[string]string]("_submit", formelement.NewButton(i18n.Text("crud.btn_save"), formelement.WithButtonActionSubmit())),
+		),
+		// No OnCancel: backing out just closes the popup, leaving
+		// the element's current value alone, so cancelling does
+		// not clear an already configured connector.
+		form.WithOnSubmit(func(result map[string]string, err error) (tea.Cmd, bool) {
+			if err != nil {
+				return messagepopup.Open(messagepopup.Error, i18n.WrapError(err, "errors.account.connector_secret_invalid"), nil), false
+			}
+			return onSubmit(connectorData{connectorKey, result}), true
+		}),
+		form.WithInitialData(secretFormValues(secretFields, connectorKey, current)),
+	)
+
+	return formpopup.Open(form.New(formOpts...))
+}
+
 // connectorFormRow collects a connector and its secret. Only the create form and
 // the force-update flow use it; a plain edit must not be able to overwrite a
 // credential a target may already be holding.
 func connectorFormRow[T any](c client.Client) form.FormOpt[T] {
 	return form.WithRowItem[T]("connector", formelement.NewPopup(i18n.Text("account.form.connector_label"),
 		func(current connectorData, returnValue func(value connectorData) tea.Cmd) tea.Cmd {
-			return selectpopup.Open(
-				i18n.Text("account.select_connector"),
-				func(ctx context.Context) ([]string, error) { return c.ListConnectorKeys(ctx) },
-				func(connectorKey string) tea.Cmd {
-					secretFields, err := c.ConnectorSecretFields(connectorKey)
-					if err != nil {
-						return messagepopup.Open(messagepopup.Error, i18n.WrapError(err, "errors.account.connector_secret_fields", connectorKey), nil)
-					}
-
-					// the secret fields are only known at runtime, so the form
-					// is modelled as a map keyed by SecretField.Key
-					formOpts := slicest.Map(secretFields, func(secretField client.SecretField) form.FormOpt[map[string]string] {
-						if secretField.Multiline {
-							// A textarea has no echo mode, so a field that is both
-							// multiline and masked cannot be masked. No connector
-							// declares one today.
-							return form.WithRowItem[map[string]string](secretField.Key, formelement.NewTextarea(secretField.Label, i18n.RawText(""), 3, 10))
-						}
-
-						textOpts := make([]formelement.TextOption, 0, 1)
-						if secretField.Masked {
-							textOpts = append(textOpts, formelement.WithTextEchoPassword())
-						}
-						return form.WithRowItem[map[string]string](secretField.Key, formelement.NewText(secretField.Label, i18n.RawText(""), textOpts...))
-					})
-
-					formOpts = append(formOpts,
-						form.WithRow(
-							form.WithItem[map[string]string]("_cancel", formelement.NewButton(i18n.Text("crud.btn_cancel"),
-								formelement.WithButtonActionCancel(),
-								formelement.WithButtonGlobalKeyBindings(keys.Cancel()),
-							)),
-							form.WithItem[map[string]string]("_submit", formelement.NewButton(i18n.Text("crud.btn_save"), formelement.WithButtonActionSubmit())),
-						),
-						// No OnCancel: backing out just closes the popup, leaving
-						// the element's current value alone, so cancelling does
-						// not clear an already configured connector.
-						form.WithOnSubmit(func(result map[string]string, err error) (tea.Cmd, bool) {
-							if err != nil {
-								return messagepopup.Open(messagepopup.Error, i18n.WrapError(err, "errors.account.connector_secret_invalid"), nil), false
-							}
-							return returnValue(connectorData{connectorKey, result}), true
-						}),
-						form.WithInitialData(secretFormValues(secretFields, connectorKey, current)),
-					)
-
-					return formpopup.Open(form.New(formOpts...))
-				},
-				tablecontroll.New(tablecontroll.Columns[string]{
-					{Title: i18n.Text("account.col_connector"), View: func(r string) string { return r }},
-				}),
-			)
+			return openConnectorSelect(c, func(connectorKey string) tea.Cmd {
+				return openSecretForm(c, connectorKey, current, returnValue)
+			})
 		},
 		func(data connectorData) string {
 			if data.Key == "" {
@@ -336,6 +350,8 @@ func NewCrud(c client.Client, rc router.Controll) *crud.Crud[recordT, recordCrea
 				key.WithHelp("l", i18n.T("keys.links")),
 			),
 		),
+		withUpdateSecretAction(c),
+		withConnectorForceAction(c),
 		crud.WithListReloadAfterChange[recordT, recordCreateT, recordUpdateT, recordIdT, filterT](true),
 	)
 }
