@@ -733,7 +733,7 @@ func (c *Client) IsAccountDirty(ctx context.Context, account client.Account) (bo
 		return true, err
 	}
 
-	deployment, cache, err := c.accountDeployment(ctx, con, account)
+	deployment, cache, err := c.accountBuildDeployment(ctx, con, account)
 	if err != nil {
 		return true, err
 	}
@@ -910,9 +910,9 @@ func (c *Client) DeleteLink(ctx context.Context, accountId client.AccountId, pub
 
 // --- Deploy & Verify & Secret Update ---
 
-// accountConnectorCache reads an account's serialized connector cache, which
+// accountReadCache reads an account's serialized connector cache, which
 // deploy and verify own and [client.Account] therefore does not carry.
-func (c *Client) accountConnectorCache(ctx context.Context, id client.AccountId) (string, error) {
+func (c *Client) accountReadCache(ctx context.Context, id client.AccountId) (string, error) {
 	var rawCache string
 	err := c.bun.NewSelect().
 		Model((*db.AccountModel)(nil)).
@@ -925,9 +925,9 @@ func (c *Client) accountConnectorCache(ctx context.Context, id client.AccountId)
 	return rawCache, err
 }
 
-// persistConnectorCache stores what a connection observed. A connector hands
+// accountWriteCache stores what a connection observed. A connector hands
 // back a cache on every path, so this runs after a failed operation too.
-func (c *Client) persistConnectorCache(ctx context.Context, id client.AccountId, cache connector.Cache) error {
+func (c *Client) accountWriteCache(ctx context.Context, id client.AccountId, cache connector.Cache) error {
 	serialized, err := cache.Serialize()
 	if err != nil {
 		return err
@@ -941,12 +941,12 @@ func (c *Client) persistConnectorCache(ctx context.Context, id client.AccountId,
 	return err
 }
 
-// accountDeployment builds the state an account's target should be in, together
+// accountBuildDeployment builds the state an account's target should be in, together
 // with the connector cache describing what was last seen there. The cache is a
 // second return rather than part of the deployment: a deployment is what a target
 // should hold, a cache is what it did hold.
-func (c *Client) accountDeployment(ctx context.Context, con connector.Connector, account client.Account) (connector.Deployment, connector.Cache, error) {
-	rawCache, err := c.accountConnectorCache(ctx, account.Id)
+func (c *Client) accountBuildDeployment(ctx context.Context, con connector.Connector, account client.Account) (connector.Deployment, connector.Cache, error) {
+	rawCache, err := c.accountReadCache(ctx, account.Id)
 	if err != nil {
 		return connector.Deployment{}, nil, err
 	}
@@ -1035,12 +1035,12 @@ func (c *Client) accountDeployment(ctx context.Context, con connector.Connector,
 	}, cache, nil
 }
 
-// openAccountConnection dials the account with each candidate secret in turn and
+// accountOpenConnection dials the account with each candidate secret in turn and
 // reports which one authenticated. The dial is the only way to learn what a target
 // actually holds, so every caller that cannot assume the answer goes through here.
 // Ordinary operations pass a single candidate; the ones that have to cope with an
 // interrupted secret update pass both.
-func (c *Client) openAccountConnection(
+func (c *Client) accountOpenConnection(
 	ctx context.Context,
 	con connector.Connector,
 	account client.Account,
@@ -1071,7 +1071,7 @@ type accountProgressUpdate struct {
 	progress  client.ProgressAccountWithError
 }
 
-// runAccounts resolves each account's connector, runs the given operation
+// runAccountOperations resolves each account's connector, runs the given operation
 // (deploy or verify), and forwards every connector progress update into a
 // shared aggregate snapshot sent on the caller-provided progress channel. It
 // blocks until all accounts have been processed; per-account failures are
@@ -1086,7 +1086,16 @@ type accountProgressUpdate struct {
 // The per-account operations run concurrently and each writes its own audit
 // entry through c.bun, so this must be called on a pooled *bun.DB client, never
 // on a transaction-bound one (a bun.Tx is not safe for concurrent use).
-func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connector) connectorOperation, action string, resolvePending bool, userRequester connector.UserRequester, progress chan<- client.ProgressAccounts, concurrent int, accountIds ...client.AccountId) error {
+func (c *Client) runAccountOperations(
+	ctx context.Context,
+	getOperation func(connector.Connector) connectorOperation,
+	action string,
+	resolvePendingSecretUpdates bool,
+	userRequester connector.UserRequester,
+	progress chan<- client.ProgressAccounts,
+	concurrent int,
+	accountIds ...client.AccountId,
+) error {
 	accounts, err := c.GetAccounts(ctx, accountIds...)
 	if err != nil {
 		return err
@@ -1119,7 +1128,7 @@ func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connec
 			defer wg.Done()
 			defer func() { <-semaphore }()
 
-			c.runAccount(ctx, account, selectOp, action, resolvePending, accountProgressChan, userRequester)
+			c.runAccountOperation(ctx, account, getOperation, action, resolvePendingSecretUpdates, accountProgressChan, userRequester)
 		}(account)
 	}
 
@@ -1136,13 +1145,21 @@ func (c *Client) runAccounts(ctx context.Context, selectOp func(connector.Connec
 	return nil
 }
 
-// runAccount performs the connector operation for a single account, streaming
+// runAccountOperation performs the connector operation for a single account, streaming
 // its progress into the shared aggregate. Any failure to reach the connector is
 // reported as an error status on that account rather than aborting the batch.
 // Once the operation resolves, its outcome is recorded under action. The remote
 // side effect has already happened by then, so a failed audit write cannot be
 // rolled back: it is surfaced as an error on this account's progress instead.
-func (c *Client) runAccount(ctx context.Context, account client.Account, selectOp func(connector.Connector) connectorOperation, action string, resolvePending bool, progressChanAccount chan accountProgressUpdate, userRequester connector.UserRequester) {
+func (c *Client) runAccountOperation(
+	ctx context.Context,
+	account client.Account,
+	getOperation func(connector.Connector) connectorOperation,
+	action string,
+	resolvePendingSecretUpdates bool,
+	progressChanAccount chan<- accountProgressUpdate,
+	userRequester connector.UserRequester,
+) {
 	sendProgress := func(progress client.ProgressAccountWithError) {
 		progressChanAccount <- accountProgressUpdate{
 			account.Id,
@@ -1172,7 +1189,7 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 			return 0, err
 		}
 
-		rollback, err := c.accountSecretRollback(ctx, account.Id)
+		rollback, err := c.accountReadSecretRollback(ctx, account.Id)
 		if err != nil {
 			fail(err)
 			return 0, err
@@ -1181,7 +1198,7 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 		// An interrupted secret update leaves it unclear which secret the target holds,
 		// which an operation that writes cannot work around: it has to settle the
 		// question first. A read-only one can simply try both, below.
-		if rollback.Valid && resolvePending {
+		if rollback.Valid && resolvePendingSecretUpdates {
 			account, err = c.resolvePendingSecretUpdate(ctx, con, account, rollback, userRequester, send)
 			if err != nil {
 				fail(err)
@@ -1190,7 +1207,7 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 			rollback = sql.NullString{}
 		}
 
-		deployment, cache, err := c.accountDeployment(ctx, con, account)
+		deployment, cache, err := c.accountBuildDeployment(ctx, con, account)
 		if err != nil {
 			fail(err)
 			return 0, err
@@ -1198,21 +1215,21 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 
 		// With a secret update still outstanding the target may hold either secret, so both
 		// are offered. The recorded one goes first: it is the state we want to be in.
-		candidates := []connector.Secret{deployment.Secret}
+		secretCandidates := []connector.Secret{deployment.Secret}
 		if rollback.Valid {
 			rollbackSecret, err := con.ParseSecret(rollback.String)
 			if err != nil {
 				fail(err)
 				return 0, err
 			}
-			candidates = append(candidates, rollbackSecret)
+			secretCandidates = append(secretCandidates, rollbackSecret)
 		}
 
 		// Opening carries no progress channel of its own: it is where the host key
 		// handshake may stop to ask the user something, so the status has to be on
 		// screen before the call rather than reported by it.
 		send(client.ProgressAccount{0.1, i18n.Text("client.status.connecting")})
-		conn, _, err := c.openAccountConnection(ctx, con, account, cache, candidates, userRequester)
+		conn, _, err := c.accountOpenConnection(ctx, con, account, cache, secretCandidates, userRequester)
 		if err != nil {
 			fail(err)
 			return 0, err
@@ -1226,7 +1243,7 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 		var ok bool
 		go func() {
 			defer close(connectorProgress)
-			ok, err = selectOp(con)(ctx, conn, deployment, connectorProgress)
+			ok, err = getOperation(con)(ctx, conn, deployment, connectorProgress)
 		}()
 		for cp := range connectorProgress {
 			sendProgress(client.ProgressAccountWithError{ProgressAccount: cp})
@@ -1236,7 +1253,7 @@ func (c *Client) runAccount(ctx context.Context, account client.Account, selectO
 		// Persisted whether the operation succeeded or not: the connection hands
 		// back what it actually observed, including a host key the user has just
 		// trusted, and discarding that would only mean asking them again.
-		if err := c.persistConnectorCache(ctx, account.Id, conn.Close()); err != nil {
+		if err := c.accountWriteCache(ctx, account.Id, conn.Close()); err != nil {
 			fail(errors.Join(opErr, err))
 			return 0, errors.Join(opErr, err)
 		}
@@ -1287,9 +1304,9 @@ func projectSingleAccount(accountId client.AccountId, progress chan<- client.Pro
 	return errors.Join(opErr, accountErr)
 }
 
-// accountSecretRollback reads the secret an outstanding secret update can fall back
+// accountReadSecretRollback reads the secret an outstanding secret update can fall back
 // to. Invalid means no secret update is in flight.
-func (c *Client) accountSecretRollback(ctx context.Context, id client.AccountId) (sql.NullString, error) {
+func (c *Client) accountReadSecretRollback(ctx context.Context, id client.AccountId) (sql.NullString, error) {
 	var rollback sql.NullString
 	err := c.bun.NewSelect().
 		Model((*db.AccountModel)(nil)).
@@ -1302,18 +1319,18 @@ func (c *Client) accountSecretRollback(ctx context.Context, id client.AccountId)
 	return rollback, err
 }
 
-// beginSecretUpdate opens a secret update: the current secret is copied aside and the
+// accountWriteSecretForUpdate opens a secret update: the current secret is copied aside and the
 // new one becomes current, before anything is attempted on the target, so a crash
 // at any later point still leaves both candidates on record.
 //
 // The copy happens in SQL to preserve the stored bytes exactly, and the IS NULL
 // guard is the whole state machine: it permits one secret update at a time and makes
 // two concurrent callers race-safe, since only one can affect a row.
-func (c *Client) beginSecretUpdate(ctx context.Context, id client.AccountId, serializedNew string) error {
+func (c *Client) accountWriteSecretForUpdate(ctx context.Context, id client.AccountId, serializedNewSecret string) error {
 	res, err := c.bun.NewUpdate().
 		Model((*db.AccountModel)(nil)).
 		Set("connector_secret_rollback = connector_secret").
-		Set("connector_secret = ?", serializedNew).
+		Set("connector_secret = ?", serializedNewSecret).
 		Where("id = ?", int(id)).
 		Where("connector_secret_rollback IS NULL").
 		Exec(ctx)
@@ -1331,9 +1348,9 @@ func (c *Client) beginSecretUpdate(ctx context.Context, id client.AccountId, ser
 	return nil
 }
 
-// completeSecretUpdate closes a secret update, once the target has been confirmed
+// accountClearSecretRollback closes a secret update, once the target has been confirmed
 // reachable with the new secret.
-func (c *Client) completeSecretUpdate(ctx context.Context, id client.AccountId) error {
+func (c *Client) accountClearSecretRollback(ctx context.Context, id client.AccountId) error {
 	_, err := c.bun.NewUpdate().
 		Model((*db.AccountModel)(nil)).
 		Set("connector_secret_rollback = NULL").
@@ -1367,7 +1384,7 @@ func (c *Client) resolvePendingSecretUpdate(
 	userRequester client.UserRequester,
 	send func(client.ProgressAccount),
 ) (client.Account, error) {
-	rawCache, err := c.accountConnectorCache(ctx, account.Id)
+	rawCache, err := c.accountReadCache(ctx, account.Id)
 	if err != nil {
 		return account, err
 	}
@@ -1379,10 +1396,10 @@ func (c *Client) resolvePendingSecretUpdate(
 	send(client.ProgressAccount{0.05, i18n.Text("client.status.connecting")})
 	conn, currentErr := con.OpenConnection(ctx, account.ConnectorSecret, cache, account.Username, account.Host, account.Port, userRequester)
 	if currentErr == nil {
-		if err := c.persistConnectorCache(ctx, account.Id, conn.Close()); err != nil {
+		if err := c.accountWriteCache(ctx, account.Id, conn.Close()); err != nil {
 			return account, err
 		}
-		if err := c.completeSecretUpdate(ctx, account.Id); err != nil {
+		if err := c.accountClearSecretRollback(ctx, account.Id); err != nil {
 			return account, err
 		}
 		return account, c.writeAuditLog(ctx, c.bun, "account.update.secret", accountOpAuditDetails(account, 0, nil))
@@ -1399,7 +1416,7 @@ func (c *Client) resolvePendingSecretUpdate(
 		// can be done to this target remotely at all.
 		return account, i18n.WrapError(errors.Join(currentErr, rollbackErr), "errors.client.secret_update_unreachable", account.Id)
 	}
-	if err := c.persistConnectorCache(ctx, account.Id, probe.Close()); err != nil {
+	if err := c.accountWriteCache(ctx, account.Id, probe.Close()); err != nil {
 		return account, err
 	}
 
@@ -1416,7 +1433,7 @@ func (c *Client) resolvePendingSecretUpdate(
 		return account, c.convergeSecretUpdate(ctx, userRequester, send, account, con)
 
 	case pendingSecretUpdateDiscard:
-		if err := c.abortSecretUpdate(ctx, account.Id); err != nil {
+		if err := c.accountRollbackSecret(ctx, account.Id); err != nil {
 			return account, err
 		}
 		if err := c.writeAuditLog(ctx, c.bun, "account.update.secret.discarded", accountOpAuditDetails(account, 0, nil)); err != nil {
@@ -1462,14 +1479,14 @@ func (c *Client) convergeSecretUpdate(
 	return opErr
 }
 
-// abortSecretUpdate unwinds a secret update, for the paths where the target is known
+// accountRollbackSecret unwinds a secret update, for the paths where the target is known
 // to still hold the previous secret: nothing was written, or what was written has
 // been restored over the connection that authenticated with it.
 //
 // Leaving the account pending instead would be safe but needlessly strict -- the
 // operator could not simply correct a bad secret and try again, since a different
 // target is refused while a secret update is outstanding.
-func (c *Client) abortSecretUpdate(ctx context.Context, id client.AccountId) error {
+func (c *Client) accountRollbackSecret(ctx context.Context, id client.AccountId) error {
 	_, err := c.bun.NewUpdate().
 		Model((*db.AccountModel)(nil)).
 		Set("connector_secret = connector_secret_rollback").
@@ -1539,7 +1556,7 @@ func (c *Client) runSecretUpdate(
 	newSecret connector.Secret,
 	serializedNew string,
 ) error {
-	rollback, err := c.accountSecretRollback(ctx, account.Id)
+	rollback, err := c.accountReadSecretRollback(ctx, account.Id)
 	if err != nil {
 		return err
 	}
@@ -1556,7 +1573,7 @@ func (c *Client) runSecretUpdate(
 	var candidates []connector.Secret
 	switch {
 	case !rollback.Valid:
-		if err := c.beginSecretUpdate(ctx, account.Id, serializedNew); err != nil {
+		if err := c.accountWriteSecretForUpdate(ctx, account.Id, serializedNew); err != nil {
 			return err
 		}
 		candidates = []connector.Secret{account.ConnectorSecret, newSecret}
@@ -1576,7 +1593,7 @@ func (c *Client) runSecretUpdate(
 		return i18n.NewError("errors.client.secret_update_pending", account.Id)
 	}
 
-	oldDeployment, cache, err := c.accountDeployment(ctx, con, account)
+	oldDeployment, cache, err := c.accountBuildDeployment(ctx, con, account)
 	if err != nil {
 		return err
 	}
@@ -1631,7 +1648,7 @@ func (c *Client) runSecretUpdate(
 	// unclear which secret the target held, and it still is.
 	err = i18n.WrapError(lastErr, "errors.client.secret_update_unreachable", account.Id)
 	if !rollback.Valid {
-		if abortErr := c.abortSecretUpdate(ctx, account.Id); abortErr != nil {
+		if abortErr := c.accountRollbackSecret(ctx, account.Id); abortErr != nil {
 			return errors.Join(err, abortErr)
 		}
 	}
@@ -1656,7 +1673,7 @@ func (c *Client) finishSecretUpdate(
 	// The escape connection's cache is only worth persisting if nothing better
 	// comes along, so hold it until the end.
 	persist := func(cache connector.Cache, err error) error {
-		if cacheErr := c.persistConnectorCache(ctx, account.Id, cache); cacheErr != nil {
+		if cacheErr := c.accountWriteCache(ctx, account.Id, cache); cacheErr != nil {
 			return errors.Join(err, cacheErr)
 		}
 		return err
@@ -1669,7 +1686,7 @@ func (c *Client) finishSecretUpdate(
 	}); err != nil {
 		err = persist(escape.Close(), err)
 		if canRestore {
-			if abortErr := c.abortSecretUpdate(ctx, account.Id); abortErr != nil {
+			if abortErr := c.accountRollbackSecret(ctx, account.Id); abortErr != nil {
 				return errors.Join(err, abortErr)
 			}
 		}
@@ -1698,7 +1715,7 @@ func (c *Client) finishSecretUpdate(
 			return err
 		}
 		escape.Close()
-		if err := c.completeSecretUpdate(ctx, account.Id); err != nil {
+		if err := c.accountClearSecretRollback(ctx, account.Id); err != nil {
 			return err
 		}
 		send(1, "client.status.finished")
@@ -1727,7 +1744,7 @@ func (c *Client) finishSecretUpdate(
 	// leaves no outstanding secret update, so a corrected secret can simply be submitted
 	// again.
 	err := persist(escape.Close(), confirmErr)
-	if abortErr := c.abortSecretUpdate(ctx, account.Id); abortErr != nil {
+	if abortErr := c.accountRollbackSecret(ctx, account.Id); abortErr != nil {
 		return errors.Join(err, abortErr)
 	}
 	return err
@@ -1740,7 +1757,7 @@ func (c *Client) DeployAccount(ctx context.Context, userRequester client.UserReq
 }
 
 func (c *Client) DeployAccounts(ctx context.Context, userRequester client.UserRequester, progress chan<- client.DeployProgressAccounts, accountIds ...client.AccountId) error {
-	return c.runAccounts(ctx, func(con connector.Connector) connectorOperation {
+	return c.runAccountOperations(ctx, func(con connector.Connector) connectorOperation {
 		return func(ctx context.Context, conn connector.Connection, deployment connector.Deployment, progress chan<- connector.Progress) (bool, error) {
 			return true, conn.Deploy(ctx, deployment, progress)
 		}
@@ -1754,7 +1771,7 @@ func (c *Client) VerifyAccount(ctx context.Context, userRequester client.UserReq
 }
 
 func (c *Client) VerifyAccounts(ctx context.Context, userRequester client.UserRequester, progress chan<- client.VerifyProgressAccounts, accountIds ...client.AccountId) error {
-	return c.runAccounts(ctx, func(con connector.Connector) connectorOperation {
+	return c.runAccountOperations(ctx, func(con connector.Connector) connectorOperation {
 		return func(ctx context.Context, conn connector.Connection, deployment connector.Deployment, progress chan<- connector.Progress) (bool, error) {
 			return conn.Verify(ctx, deployment, progress)
 		}

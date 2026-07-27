@@ -70,7 +70,7 @@ func interruptSecretUpdate(t *testing.T, c *Client, ctx context.Context, id clie
 	if err != nil {
 		t.Fatalf("serializeSecret: %v", err)
 	}
-	if err := c.beginSecretUpdate(ctx, id, serialized); err != nil {
+	if err := c.accountWriteSecretForUpdate(ctx, id, serialized); err != nil {
 		t.Fatalf("beginSecretUpdate: %v", err)
 	}
 }
@@ -464,7 +464,7 @@ func TestUpdateAccountConnectorForce_AbandonsAPendingSecretUpdateAndKeepsTheCach
 	if err := runUpdateSecret(c, ctx, account.Id, mockSecret(true, "deployed")); err != nil {
 		t.Fatalf("seed secret update: %v", err)
 	}
-	cacheBefore, err := c.accountConnectorCache(ctx, account.Id)
+	cacheBefore, err := c.accountReadCache(ctx, account.Id)
 	if err != nil {
 		t.Fatalf("accountConnectorCache: %v", err)
 	}
@@ -494,7 +494,7 @@ func TestUpdateAccountConnectorForce_AbandonsAPendingSecretUpdateAndKeepsTheCach
 
 	// Same connector: the cache still parses and its known host is worth keeping,
 	// so it is left in place.
-	cacheAfter, err := c.accountConnectorCache(ctx, account.Id)
+	cacheAfter, err := c.accountReadCache(ctx, account.Id)
 	if err != nil {
 		t.Fatalf("accountConnectorCache: %v", err)
 	}
@@ -528,7 +528,7 @@ func TestUpdateAccountConnectorForce_ChangedConnectorResetsTheCache(t *testing.T
 		t.Fatalf("UpdateAccountConnectorForce: %v", err)
 	}
 
-	cache, err := c.accountConnectorCache(ctx, account.Id)
+	cache, err := c.accountReadCache(ctx, account.Id)
 	if err != nil {
 		t.Fatalf("accountConnectorCache: %v", err)
 	}
