@@ -82,15 +82,15 @@ func isSHA256Hex(str string) bool {
 	return true
 }
 
-// cacheOf narrows the deploy data's cache to this connector's type. A missing
-// cache is an account that has never been deployed, not an error.
-func cacheOf(deployData connector.DeployData) (*cache, error) {
-	if deployData.Cache == nil {
+// narrowCache narrows a cache to this connector's type. A missing cache is an
+// account that has never been deployed, not an error.
+func narrowCache(c connector.Cache) (*cache, error) {
+	if c == nil {
 		return &cache{}, nil
 	}
-	parsed, ok := deployData.Cache.(*cache)
+	parsed, ok := c.(*cache)
 	if !ok {
-		return nil, i18n.NewError("errors.connector.cache_type", fmt.Sprintf("%T", deployData.Cache))
+		return nil, i18n.NewError("errors.connector.cache_type", fmt.Sprintf("%T", c))
 	}
 	return parsed, nil
 }

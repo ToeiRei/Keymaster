@@ -30,7 +30,7 @@ import (
 
 	// for now, directly import/activate connectors here
 	_ "github.com/toeirei/keymaster/connector/mock"
-	_ "github.com/toeirei/keymaster/connector/ssh2"
+	_ "github.com/toeirei/keymaster/connector/ssh"
 )
 
 type Client struct {

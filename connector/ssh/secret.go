@@ -43,9 +43,9 @@ func (s *secret) Serialize() (string, error) {
 
 func (s *secret) Fields() []connector.SecretField {
 	return []connector.SecretField{
-		{"private_key", i18n.Text("connector.ssh.secret.private_key"), s.PrivateKey, true, false},
-		{"passphrase", i18n.Text("connector.ssh.secret.passphrase"), s.Passphrase, false, true},
-		{"omit_passphrase", i18n.Text("connector.ssh.secret.omit_passphrase"), strconv.FormatBool(s.OmitPassphrase), false, false},
+		{"private_key", s.PrivateKey, i18n.Text("connector.ssh.secret.private_key"), true, false},
+		{"passphrase", s.Passphrase, i18n.Text("connector.ssh.secret.passphrase"), false, true},
+		{"omit_passphrase", strconv.FormatBool(s.OmitPassphrase), i18n.Text("connector.ssh.secret.omit_passphrase"), false, false},
 	}
 }
 
@@ -105,7 +105,7 @@ func publicKeyFromPrivateKey(privateKey, passphrase string) (string, bool, error
 // validate checks a secret as far as it can be checked cheaply: the private key
 // has to be a key, and any public key stored beside it has to be one too.
 // Whether the passphrase really opens the private key is settled once, in
-// ParseSecretFromValues -- ParseSecret runs for every account of every listing,
+// ParseSecretFromFields -- ParseSecret runs for every account of every listing,
 // so it must not pay for a key derivation.
 func (s *secret) validate() error {
 	if strings.TrimSpace(s.PrivateKey) == "" {
@@ -144,17 +144,17 @@ func (c *Connector) ParseSecret(raw string) (connector.Secret, error) {
 	return parsed, nil
 }
 
-// ParseSecretFromValues validates the submitted values, derives the public key
+// ParseSecretFromFields validates the submitted values, derives the public key
 // from the private key, using the passphrase when the key is encrypted, and
 // drops the passphrase again when the caller asked for it not to be stored.
 // This is the only place the connector derives the public key; every later
 // reader takes the stored one, so what reaches authorized_keys cannot drift.
-func (c *Connector) ParseSecretFromValues(values map[string]string) (connector.Secret, error) {
-	privateKey := values["private_key"]
-	passphrase := values["passphrase"]
+func (c *Connector) ParseSecretFromFields(fieldValues map[string]string) (connector.Secret, error) {
+	privateKey := fieldValues["private_key"]
+	passphrase := fieldValues["passphrase"]
 
 	omitPassphrase := false
-	if raw := strings.TrimSpace(values["omit_passphrase"]); raw != "" {
+	if raw := strings.TrimSpace(fieldValues["omit_passphrase"]); raw != "" {
 		parsed, err := strconv.ParseBool(raw)
 		if err != nil {
 			return nil, i18n.WrapError(err, "errors.connector.parse_secret")
@@ -186,11 +186,11 @@ func (c *Connector) ParseSecretFromValues(values map[string]string) (connector.S
 	return parsed, nil
 }
 
-// secretOf narrows the deploy data's secret to this connector's type.
-func secretOf(deployData connector.DeployData) (*secret, error) {
-	parsed, ok := deployData.Secret.(*secret)
+// narrowSecret narrows a secret to this connector's type.
+func narrowSecret(s connector.Secret) (*secret, error) {
+	parsed, ok := s.(*secret)
 	if !ok {
-		return nil, i18n.NewError("errors.connector.secret_type", fmt.Sprintf("%T", deployData.Secret))
+		return nil, i18n.NewError("errors.connector.secret_type", fmt.Sprintf("%T", s))
 	}
 	return parsed, nil
 }

@@ -17,7 +17,7 @@ import (
 	"github.com/toeirei/keymaster/client"
 	"github.com/toeirei/keymaster/connector"
 	_ "github.com/toeirei/keymaster/connector/mock" // activate the mock connector so ListConnectorKeys reports it
-	_ "github.com/toeirei/keymaster/connector/ssh2" // activate the ssh connector so ListConnectorKeys reports it
+	_ "github.com/toeirei/keymaster/connector/ssh"  // activate the ssh connector so ListConnectorKeys reports it
 	"github.com/toeirei/keymaster/ui/i18n"
 	"github.com/toeirei/keymaster/util/slicest"
 )
