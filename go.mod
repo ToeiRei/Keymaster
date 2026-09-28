@@ -15,7 +15,7 @@ require (
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/jinzhu/copier v0.4.0
-	github.com/klauspost/compress v1.20.0
+	github.com/klauspost/compress v1.20.1
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/pkg/sftp v1.13.11
 	github.com/spf13/cobra v1.10.2
