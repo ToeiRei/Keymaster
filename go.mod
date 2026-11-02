@@ -16,7 +16,7 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/klauspost/compress v1.20.3
-	github.com/nicksnyder/go-i18n/v2 v2.6.1
+	github.com/nicksnyder/go-i18n/v2 v2.7.0
 	github.com/pkg/sftp v1.13.12
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
